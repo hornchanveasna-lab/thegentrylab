@@ -90,7 +90,7 @@ function AboutPage() {
             in Cambodia.
           </h1>
           <p className="text-white/50 text-lg max-w-xl mt-8 leading-relaxed reveal reveal-delay-2">
-            GentryLab is Cambodia's #1 Industrial Development Advisory Platform — grounded in the GIDF methodology, proven across Techo Airport, Zinus, ISI, and dozens of projects across the country.
+            GentryLab is Cambodia's Industrial Development Advisory Platform — built from over a decade inside the sector, not from a desk. Since 2014 we have advised, designed, permitted, and delivered industrial projects across the country.
           </p>
         </div>
       </section>
@@ -118,19 +118,19 @@ function AboutPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Problem side */}
           <div className="reveal">
-            <p className="font-mono text-[11px] uppercase tracking-[0.22em] mb-5" style={{ color: accent }}>The Problem</p>
+            <p className="font-mono text-[11px] uppercase tracking-[0.22em] mb-5" style={{ color: accent }}>The Gap</p>
             <h2 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter leading-[0.92] mb-6">
-              Beautiful reports.<br />Zero execution.
+              Market reports.<br />No execution map.
             </h2>
             <p className="text-white/50 leading-relaxed mb-8">
-              CBRE, JLL, Savills — they produce polished market reports. But none of them explain how to actually turn land into a working industrial development in Cambodia.
+              Most industrial market intelligence is produced by people who have never permitted a factory, negotiated an EDC connection, or sat across a table from a CDC officer. Since 2014, we have.
             </p>
             <div className="flex flex-col gap-3">
               {[
-                "Permitting timelines? Not in their reports.",
-                "EDC substation headroom by province? Missing.",
-                "Landowner behaviour and title risk? Zero coverage.",
-                "How to negotiate with CDC? Good luck.",
+                "Permitting timelines? Not covered anywhere.",
+                "EDC substation headroom by province? Nowhere.",
+                "Landowner behaviour and title risk? Not addressed.",
+                "How to actually negotiate with CDC? No guide exists.",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 text-[13px] text-white/40">
                   <span className="text-red-400 mt-0.5 shrink-0">✕</span>
@@ -145,12 +145,12 @@ function AboutPage() {
             <div className="rounded-2xl border border-white/10 bg-[#0e0e10] p-8 relative overflow-hidden">
               <div className="absolute inset-0 rounded-2xl" style={{ background: `radial-gradient(ellipse 80% 60% at 50% 100%, ${accent}12 0%, transparent 70%)` }} />
               <div className="relative z-10">
-                <p className="font-mono text-[11px] uppercase tracking-[0.22em] mb-5" style={{ color: accent }}>The GentryLab Answer</p>
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] mb-5" style={{ color: accent }}>Built from the inside · Since 2014</p>
                 <h3 className="text-3xl font-extrabold uppercase tracking-tighter leading-[0.92] mb-6">
                   We don't tell you<br /><span style={{ color: accent }}>where.</span> We show you<br /><span style={{ color: accent }}>how.</span>
                 </h3>
                 <p className="text-white/55 leading-relaxed mb-8">
-                  Built on $500M+ of delivered industrial projects across Cambodia — Techo Airport, Zinus, ISI — GentryLab combines ground-level execution knowledge with decision-grade intelligence tools.
+                  Over a decade embedded in Cambodia's industrial sector — advising on factories, SEZs, and infrastructure — GentryLab was built from lived execution, not secondary research. $500M+ delivered. Every lesson is in the platform.
                 </p>
                 <div className="flex flex-col gap-3">
                   {[
