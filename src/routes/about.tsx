@@ -123,14 +123,14 @@ function AboutPage() {
               Market reports.<br />No execution map.
             </h2>
             <p className="text-white/50 leading-relaxed mb-8">
-              Most industrial market intelligence is produced by people who have never permitted a factory, negotiated an EDC connection, or sat across a table from a CDC officer. Since 2014, we have.
+              Most industrial market intelligence is produced by people who have never permitted a factory, negotiated an EDC connection, or sat across a table with a CDC officer. Since 2014, we have — running site selection across every province, sequencing 9-ministry permit stacks, securing EDC industrial connections, and delivering over $500M in built value across Cambodia.
             </p>
             <div className="flex flex-col gap-3">
               {[
-                "Permitting timelines? Not covered anywhere.",
-                "EDC substation headroom by province? Nowhere.",
-                "Landowner behaviour and title risk? Not addressed.",
-                "How to actually negotiate with CDC? No guide exists.",
+                "Which permits to file first — and which ministry kills your QIP if you get the order wrong",
+                "Which provinces have EDC substation headroom, and which will cost you 18 additional months",
+                "Whether a Cambodian land title is clean enough to build on — and how to verify it yourself",
+                "What it actually takes to move a CDC application from submitted to approved",
               ].map((item) => (
                 <div key={item} className="flex items-start gap-3 text-[13px] text-white/40">
                   <span className="text-red-400 mt-0.5 shrink-0">✕</span>

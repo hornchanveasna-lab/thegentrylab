@@ -8,11 +8,7 @@ export const Route = createFileRoute("/tracker")({
   head: () => ({
     meta: [
       { title: "Industrial Project Tracker — The Gentry Lab" },
-      {
-        name: "description",
-        content:
-          "Live tracker of factory, warehouse and data-center projects across Cambodia. Filter by sector, province and status.",
-      },
+      { name: "description", content: "Live tracker of factory, warehouse and data-center projects across Cambodia. Filter by sector, province and status." },
       { property: "og:title", content: "Cambodia Industrial Project Tracker" },
       { property: "og:description", content: "Track manufacturing investments across Cambodia." },
     ],
@@ -22,177 +18,356 @@ export const Route = createFileRoute("/tracker")({
 
 const STATUSES = ["Planned", "Under Construction", "Operational"] as const;
 
-function TrackerPage() {
-  const provinces = useMemo(
-    () => Array.from(new Set(PROJECTS.map((p) => p.province))).sort(),
-    [],
+/* ── Photo + visual config per sector ───────────────────── */
+const SECTOR_VISUAL: Record<string, { photo: string; gradient: string; accent: string }> = {
+  Garment:         { photo: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#1e1b4b 0%,#4c1d95 100%)", accent: "#a78bfa" },
+  Electronics:     { photo: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#0c1a2e 0%,#1e3a8a 100%)", accent: "#38bdf8" },
+  "Food Processing":{ photo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#052e16 0%,#166534 100%)", accent: "#34d399" },
+  Warehousing:     { photo: "https://images.unsplash.com/photo-1485083269755-a7b559a4fe5e?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#1c1917 0%,#44403c 100%)", accent: "#d6d3d1" },
+  "Data Center":   { photo: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#0c0a1a 0%,#1e3a8a 100%)", accent: "#818cf8" },
+  Automotive:      { photo: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#0a0a0b 0%,#7f1d1d 100%)", accent: "#f87171" },
+  Energy:          { photo: "https://images.unsplash.com/photo-1466611653911-0265b219a3df?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#1a1200 0%,#713f12 100%)", accent: "#fbbf24" },
+};
+const DEFAULT_VISUAL = { photo: "https://images.unsplash.com/photo-1581922815928-45c4b2e35e34?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#0a0a0b 0%,#7c2d12 100%)", accent: "#ff5100" };
+
+const STATUS_ORDER = ["Planned", "Under Construction", "Operational"] as const;
+const STATUS_COLOR: Record<string, string> = {
+  Planned: "#fbbf24",
+  "Under Construction": "#ff5100",
+  Operational: "#34d399",
+};
+
+/* ── Origin country flags ───────────────────────────────── */
+const ORIGIN_FLAG: Record<string, string> = {
+  China: "🇨🇳", Japan: "🇯🇵", Korea: "🇰🇷", USA: "🇺🇸", Germany: "🇩🇪",
+  Thailand: "🇹🇭", Malaysia: "🇲🇾", Singapore: "🇸🇬", Denmark: "🇩🇰",
+  Cambodia: "🇰🇭", "Cambodia/Singapore": "🇰🇭🇸🇬",
+};
+
+/* ── Detail panel ───────────────────────────────────────── */
+function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose: () => void }) {
+  const vis = SECTOR_VISUAL[project.sector] ?? DEFAULT_VISUAL;
+  const statusIdx = STATUS_ORDER.indexOf(project.status as typeof STATUS_ORDER[number]);
+  const sc = STATUS_COLOR[project.status] ?? "#94a3b8";
+  const flag = ORIGIN_FLAG[project.origin] ?? "🌐";
+
+  return (
+    <div className="border border-white/10 overflow-hidden bg-[#0d0d0e] flex flex-col">
+
+      {/* ── Cover photo ── */}
+      <div className="relative overflow-hidden flex-shrink-0" style={{ height: 200 }}>
+        <div className="absolute inset-0" style={{ background: vis.gradient }} />
+        <img
+          src={vis.photo} alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ opacity: 0.3, mixBlendMode: "luminosity" }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+        />
+        {/* Grid overlay */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          backgroundImage: `linear-gradient(${vis.accent}08 1px,transparent 1px),linear-gradient(90deg,${vis.accent}08 1px,transparent 1px)`,
+          backgroundSize: "28px 28px",
+        }} />
+        {/* Glow */}
+        <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 70% 70% at 80% 20%,${vis.accent}30 0%,transparent 65%)` }} />
+        {/* Bottom fade */}
+        <div className="absolute bottom-0 inset-x-0 h-2/3 bg-gradient-to-t from-[#0d0d0e] to-transparent" />
+
+        {/* Sector badge */}
+        <div className="absolute top-4 left-4">
+          <span className="px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest font-bold"
+            style={{ backgroundColor: vis.accent, color: "#000" }}>
+            {project.sector}
+          </span>
+        </div>
+
+        {/* Status badge */}
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1.5">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: sc, boxShadow: project.status === "Under Construction" ? `0 0 6px ${sc}` : "none" }} />
+          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{project.status}</span>
+        </div>
+
+        {/* Flag + investor bottom-left */}
+        <div className="absolute bottom-4 left-4 right-10">
+          <p className="font-extrabold text-base uppercase tracking-tight text-white leading-tight line-clamp-2">
+            {project.name}
+          </p>
+          <p className="font-mono text-[10px] text-white/45 mt-1">{flag} {project.investor} · {project.origin}</p>
+        </div>
+
+        {/* Close */}
+        <button onClick={onClose}
+          className="absolute bottom-4 right-4 w-7 h-7 flex items-center justify-center bg-black/60 border border-white/15 text-white/50 hover:text-white transition text-lg leading-none">
+          ×
+        </button>
+      </div>
+
+      {/* ── Status pipeline ── */}
+      <div className="px-5 py-4 border-b border-white/8">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-3">Project Pipeline</p>
+        <div className="flex items-center gap-0">
+          {STATUS_ORDER.map((s, i) => {
+            const done  = i <= statusIdx;
+            const color = done ? STATUS_COLOR[s] : "rgba(255,255,255,0.12)";
+            const isLast = i === STATUS_ORDER.length - 1;
+            return (
+              <div key={s} className="flex items-center flex-1">
+                <div className="flex flex-col items-center flex-1">
+                  <div className="w-5 h-5 rounded-full flex items-center justify-center border-2 transition-all"
+                    style={{ borderColor: color, backgroundColor: done ? `${color}25` : "transparent" }}>
+                    {done && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
+                  </div>
+                  <p className="font-mono text-[8px] uppercase tracking-wider mt-1.5 text-center leading-tight"
+                    style={{ color: done ? color : "rgba(255,255,255,0.2)" }}>
+                    {s.replace(" ", "\n")}
+                  </p>
+                </div>
+                {!isLast && (
+                  <div className="h-px flex-1 mb-5 -mx-2" style={{ backgroundColor: i < statusIdx ? STATUS_COLOR[STATUS_ORDER[i + 1]] : "rgba(255,255,255,0.1)" }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Stats grid ── */}
+      <div className="grid grid-cols-2 gap-px bg-white/8 border-b border-white/8">
+        {[
+          { label: "Province",   value: project.province },
+          { label: "Scale",      value: project.size },
+          { label: "Last update",value: project.updated },
+          { label: "Origin",     value: `${flag} ${project.origin}` },
+        ].map((row) => (
+          <div key={row.label} className="bg-[#0d0d0e] px-4 py-3">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1">{row.label}</p>
+            <p className="text-[12px] font-bold text-white/85 leading-snug">{row.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Summary ── */}
+      <div className="px-5 py-4 flex-1 border-b border-white/8">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-2">Summary</p>
+        <p className="text-[12px] text-white/65 leading-relaxed">{project.summary}</p>
+      </div>
+
+      {/* ── Advisory CTA ── */}
+      <div className="px-5 py-4 bg-[#0e0e10]">
+        <a
+          href={`mailto:advisory@thegentrylab.io?subject=Project%20intel%20-%20${encodeURIComponent(project.name)}`}
+          className="flex items-center justify-between group"
+        >
+          <div>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
+            <p className="text-[11px] text-white/45 group-hover:text-white/70 transition">Request deeper intelligence on this project →</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="shrink-0 text-white/20 group-hover:text-[#ff5100] transition">
+            <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </a>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/20 mt-3">Illustrative · Confirm with primary sources</p>
+      </div>
+    </div>
   );
-  const [sector, setSector] = useState<Sector | "All">("All");
-  const [province, setProvince] = useState<string>("All");
-  const [status, setStatus] = useState<string>("All");
+}
+
+/* ── Empty state ────────────────────────────────────────── */
+function EmptyPanel() {
+  return (
+    <div className="border border-white/8 bg-[#0d0d0e] flex flex-col items-center justify-center py-16 px-6 text-center gap-4">
+      <div className="w-14 h-14 border border-white/10 flex items-center justify-center">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="2" y="4" width="18" height="15" rx="1"/>
+          <path d="M2 8h18M7 2v6M15 2v6"/>
+          <line x1="6" y1="13" x2="10" y2="13"/>
+          <line x1="6" y1="16" x2="14" y2="16"/>
+        </svg>
+      </div>
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-white/20 mb-1">Project intel</p>
+        <p className="text-sm text-white/30">Select any project from the list to view its full profile, pipeline status, and advisory link.</p>
+      </div>
+      <div className="flex flex-col gap-2 w-full mt-2">
+        {["Sector · Province · Scale", "Pipeline status timeline", "Investor + origin"].map((l) => (
+          <div key={l} className="flex items-center gap-2.5 text-[11px] text-white/20 font-mono">
+            <span className="w-1 h-1 rounded-full bg-white/15 shrink-0" />
+            {l}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Page ─────────────────────────────────────────────────── */
+function TrackerPage() {
+  const provinces = useMemo(() => Array.from(new Set(PROJECTS.map((p) => p.province))).sort(), []);
+  const [sector,   setSector]   = useState<Sector | "All">("All");
+  const [province, setProvince] = useState("All");
+  const [status,   setStatus]   = useState("All");
   const [selected, setSelected] = useState<TrackedProject | null>(null);
 
-  const filtered = useMemo(
-    () =>
-      PROJECTS.filter(
-        (p) =>
-          (sector === "All" || p.sector === sector) &&
-          (province === "All" || p.province === province) &&
-          (status === "All" || p.status === status),
-      ).sort((a, b) => b.updated.localeCompare(a.updated)),
+  const filtered = useMemo(() =>
+    PROJECTS.filter((p) =>
+      (sector   === "All" || p.sector   === sector)  &&
+      (province === "All" || p.province === province) &&
+      (status   === "All" || p.status   === status),
+    ).sort((a, b) => b.updated.localeCompare(a.updated)),
     [sector, province, status],
   );
 
+  /* Status summary counts */
+  const counts = useMemo(() => ({
+    Operational:          PROJECTS.filter((p) => p.status === "Operational").length,
+    "Under Construction": PROJECTS.filter((p) => p.status === "Under Construction").length,
+    Planned:              PROJECTS.filter((p) => p.status === "Planned").length,
+  }), []);
+
   return (
-    <div className="min-h-screen bg-black text-white font-sans flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans flex flex-col">
       <TopNav />
-      <main className="flex-1 px-6 py-10 max-w-7xl mx-auto w-full">
-        <header className="mb-8">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-brand-accent">
+
+      {/* ── Header ── */}
+      <div className="border-b border-white/8 bg-[#0d0d0e]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 py-10">
+          <p className="font-mono text-[10px] uppercase tracking-widest mb-3" style={{ color: "#ff5100" }}>
             Industrial Project Tracker
           </p>
-          <h1 className="text-3xl md:text-4xl font-extrabold uppercase tracking-tighter mt-2">
-            What's being built in Cambodia
-          </h1>
-          <p className="text-white/60 max-w-2xl mt-3 text-sm leading-relaxed">
-            A curated registry of active and planned industrial projects.
-            Updated continuously from CDC approvals, ground intelligence and
-            developer announcements.
-          </p>
-        </header>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <h1 className="text-3xl md:text-5xl font-extrabold uppercase tracking-tighter leading-[0.9]">
+                What's being built<br />in Cambodia
+              </h1>
+              <p className="text-white/50 max-w-xl mt-3 text-sm leading-relaxed">
+                Curated registry of active and planned industrial projects — updated from CDC approvals, ground intelligence, and developer announcements.
+              </p>
+            </div>
+            {/* Status summary chips */}
+            <div className="flex gap-4 shrink-0">
+              {(["Operational", "Under Construction", "Planned"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setStatus(status === s ? "All" : s)}
+                  className="flex flex-col items-center border px-4 py-3 transition-all hover:border-white/25"
+                  style={{
+                    borderColor: status === s ? STATUS_COLOR[s] : "rgba(255,255,255,0.1)",
+                    backgroundColor: status === s ? `${STATUS_COLOR[s]}10` : "transparent",
+                  }}
+                >
+                  <span className="text-2xl font-extrabold tabular-nums" style={{ color: STATUS_COLOR[s] }}>{counts[s]}</span>
+                  <span className="font-mono text-[8px] uppercase tracking-widest text-white/35 mt-1 whitespace-nowrap">{s}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <main className="flex-1 max-w-7xl mx-auto px-6 md:px-12 py-8 w-full">
+        {/* Filters */}
         <div className="flex flex-wrap gap-3 mb-6 font-mono text-[11px] uppercase tracking-widest">
-          <Select label="Sector" value={sector} onChange={(v) => setSector(v as Sector | "All")} options={["All", ...SECTORS]} />
+          <Select label="Sector"   value={sector}   onChange={(v) => setSector(v as Sector | "All")} options={["All", ...SECTORS]} />
           <Select label="Province" value={province} onChange={setProvince} options={["All", ...provinces]} />
-          <Select label="Status" value={status} onChange={setStatus} options={["All", ...STATUSES]} />
-          <div className="ml-auto self-center text-white/40">
-            {filtered.length} projects
+          <Select label="Status"   value={status}   onChange={setStatus}   options={["All", ...STATUSES]} />
+          <div className="ml-auto self-center font-mono text-[10px] text-white/30">
+            {filtered.length} project{filtered.length !== 1 ? "s" : ""}
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-[1fr_360px] gap-6">
-          <div className="border border-white/10 divide-y divide-white/10">
-            {filtered.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelected(p)}
-                className={`w-full grid grid-cols-12 gap-3 px-4 py-4 text-left hover:bg-white/5 transition ${selected?.id === p.id ? "bg-white/5" : ""}`}
-              >
-                <div className="col-span-12 md:col-span-5">
-                  <p className="font-bold text-sm">{p.name}</p>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mt-1">
-                    {p.investor} · {p.origin}
-                  </p>
-                </div>
-                <div className="col-span-4 md:col-span-2">
-                  <span className="inline-block px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest bg-brand-accent/15 text-brand-accent">
-                    {p.sector}
-                  </span>
-                </div>
-                <div className="col-span-4 md:col-span-2 font-mono text-[11px] text-white/70">
-                  {p.province}
-                </div>
-                <div className="col-span-4 md:col-span-2 font-mono text-[11px] text-white/70">
-                  {p.size}
-                </div>
-                <div className="col-span-12 md:col-span-1 font-mono text-[10px] uppercase tracking-widest text-white/40 md:text-right">
-                  <StatusDot s={p.status} />
-                </div>
-              </button>
-            ))}
+        {/* Two-col layout */}
+        <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
+
+          {/* Project list */}
+          <div className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e]">
+            {filtered.map((p) => {
+              const vis = SECTOR_VISUAL[p.sector] ?? DEFAULT_VISUAL;
+              const sc  = STATUS_COLOR[p.status] ?? "#94a3b8";
+              const isSelected = selected?.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelected(isSelected ? null : p)}
+                  className="w-full flex items-stretch text-left transition-all group"
+                  style={{ backgroundColor: isSelected ? `${vis.accent}08` : "transparent" }}
+                >
+                  {/* Color stripe */}
+                  <div className="w-1 shrink-0 transition-all" style={{ background: isSelected ? vis.gradient : "rgba(255,255,255,0.05)" }} />
+
+                  <div className="flex-1 px-4 py-4 grid grid-cols-12 gap-2 items-center">
+                    {/* Name + investor */}
+                    <div className="col-span-12 md:col-span-5">
+                      <p className="font-bold text-[13px] group-hover:text-white transition"
+                        style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.85)" }}>
+                        {p.name}
+                      </p>
+                      <p className="font-mono text-[10px] text-white/35 mt-0.5">
+                        {ORIGIN_FLAG[p.origin] ?? "🌐"} {p.investor}
+                      </p>
+                    </div>
+                    {/* Sector */}
+                    <div className="col-span-6 md:col-span-2">
+                      <span className="inline-block px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest"
+                        style={{ backgroundColor: `${vis.accent}18`, color: vis.accent }}>
+                        {p.sector}
+                      </span>
+                    </div>
+                    {/* Province */}
+                    <div className="col-span-6 md:col-span-2 font-mono text-[11px] text-white/50">{p.province}</div>
+                    {/* Size */}
+                    <div className="col-span-6 md:col-span-2 font-mono text-[11px] text-white/50">{p.size}</div>
+                    {/* Status */}
+                    <div className="col-span-6 md:col-span-1 flex items-center justify-end gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: sc }} />
+                    </div>
+                  </div>
+
+                  {/* Selected indicator arrow */}
+                  <div className="w-6 flex items-center justify-center shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
+                      className="transition-all"
+                      style={{ opacity: isSelected ? 1 : 0, color: vis.accent }}>
+                      <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                </button>
+              );
+            })}
+
             {filtered.length === 0 && (
-              <div className="px-4 py-10 text-center text-white/40 text-sm">
-                No projects match the current filters.
+              <div className="px-6 py-14 text-center">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-white/25">No projects match current filters</p>
               </div>
             )}
           </div>
 
-          <aside className="border border-white/10 h-fit sticky top-20">
-            {selected ? (
-              <div>
-                <div className="px-4 py-3 border-b border-white/10">
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-brand-accent">
-                    {selected.sector}
-                  </p>
-                  <h3 className="font-extrabold text-lg uppercase tracking-tight mt-1 leading-tight">
-                    {selected.name}
-                  </h3>
-                </div>
-                <dl className="px-4 py-3 grid grid-cols-3 gap-y-3 text-[11px]">
-                  <Row k="Investor" v={selected.investor} />
-                  <Row k="Origin" v={selected.origin} />
-                  <Row k="Province" v={selected.province} />
-                  <Row k="Size" v={selected.size} />
-                  <Row k="Status" v={selected.status} />
-                  <Row k="Updated" v={selected.updated} />
-                </dl>
-                <p className="px-4 py-3 border-t border-white/10 text-xs text-white/70 leading-relaxed">
-                  {selected.summary}
-                </p>
-                <div className="px-4 py-3 border-t border-white/10 font-mono text-[9px] uppercase tracking-widest text-white/30">
-                  Illustrative · Confirm with primary sources
-                </div>
-              </div>
-            ) : (
-              <div className="px-4 py-10 text-center text-white/40 text-sm">
-                Select a project to view details.
-              </div>
-            )}
-          </aside>
+          {/* Detail panel */}
+          <div className="sticky top-[4.5rem]">
+            {selected
+              ? <ProjectDetail project={selected} onClose={() => setSelected(null)} />
+              : <EmptyPanel />
+            }
+          </div>
         </div>
       </main>
+
       <Footer />
     </div>
   );
 }
 
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: readonly string[];
+/* ── Shared ──────────────────────────────────────────────── */
+function Select({ label, value, onChange, options }: {
+  label: string; value: string; onChange: (v: string) => void; options: readonly string[];
 }) {
   return (
-    <label className="flex items-center gap-2 border border-white/10 px-3 py-2 bg-white/0 hover:bg-white/5 transition">
-      <span className="text-white/40">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-transparent outline-none text-white"
-      >
-        {options.map((o) => (
-          <option key={o} value={o} className="bg-black">
-            {o}
-          </option>
-        ))}
+    <label className="flex items-center gap-2 border border-white/10 px-3 py-2 hover:bg-white/5 transition cursor-pointer">
+      <span className="text-white/35 font-mono text-[10px] uppercase tracking-widest">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className="bg-transparent outline-none text-white font-mono text-[10px] uppercase tracking-widest">
+        {options.map((o) => <option key={o} value={o} className="bg-[#0a0a0b] text-white">{o}</option>)}
       </select>
     </label>
-  );
-}
-
-function StatusDot({ s }: { s: TrackedProject["status"] }) {
-  const color =
-    s === "Operational" ? "#22c55e" : s === "Under Construction" ? "#ff5100" : "#facc15";
-  return (
-    <span className="inline-flex items-center gap-2 justify-end">
-      <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
-      {s}
-    </span>
-  );
-}
-
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <>
-      <dt className="col-span-1 font-mono text-[10px] uppercase tracking-widest text-white/40">
-        {k}
-      </dt>
-      <dd className="col-span-2 text-white">{v}</dd>
-    </>
   );
 }
