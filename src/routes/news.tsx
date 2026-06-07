@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
-import { NEWS } from "@/data/platform";
+import { NEWS, type NewsItem } from "@/data/platform";
+import { useNews } from "@/lib/data";
 
 export const Route = createFileRoute("/news")({
   head: () => ({
@@ -40,6 +41,11 @@ const SECTOR_GRADIENT: Record<string, string> = {
 };
 
 const getPhoto = (sector: string) => SECTOR_PHOTO[sector] ?? "https://images.unsplash.com/photo-1581922815928-45c4b2e35e34?w=1200&q=80&fit=crop";
+const getItemPhoto = (item: NewsItem) => item.image_url || getPhoto(item.sector);
+const isRealUrl = (url: string) => url && url !== "#";
+const linkProps = (url: string) => isRealUrl(url)
+  ? { href: url, target: "_blank", rel: "noopener noreferrer" }
+  : { href: "#" };
 const getGradient = (sector: string) => SECTOR_GRADIENT[sector] ?? "linear-gradient(135deg,#0a0a0b 0%,#7c2d12 100%)";
 
 /* ── Slider (auto-advances, keyboard + swipe) ─────────────── */
@@ -84,11 +90,11 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
         >
           <div className="absolute inset-0" style={{ background: getGradient(n.sector) }} />
           <img
-            src={getPhoto(n.sector)}
+            src={getItemPhoto(n)}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
             style={{ opacity: 0.35, mixBlendMode: "luminosity" }}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = getPhoto(n.sector); }}
           />
           {/* vignette */}
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
@@ -119,7 +125,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
         <p className="text-white/60 text-sm mt-3 leading-relaxed max-w-xl line-clamp-2">{item.summary}</p>
 
         <div className="flex items-center gap-3 mt-5">
-          <a href={item.url} className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#ff5100] text-black font-mono text-[10px] uppercase tracking-widest hover:brightness-110 transition shrink-0">
+          <a {...linkProps(item.url)} className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#ff5100] text-black font-mono text-[10px] uppercase tracking-widest hover:brightness-110 transition shrink-0">
             Read more
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 5.5h9M6.5 2l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </a>
@@ -160,18 +166,18 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
 }
 
 /* ── News card (grid layout) ─────────────────────────────── */
-function NewsCard({ item }: { item: typeof NEWS[number] }) {
+function NewsCard({ item }: { item: NewsItem }) {
   return (
     <article className="group border border-white/8 bg-[#0d0d0e] hover:border-white/20 transition-all overflow-hidden flex flex-col">
       {/* Photo strip */}
       <div className="relative h-44 overflow-hidden">
         <div className="absolute inset-0" style={{ background: getGradient(item.sector) }} />
         <img
-          src={getPhoto(item.sector)}
+          src={getItemPhoto(item)}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           style={{ opacity: 0.4, mixBlendMode: "luminosity" }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = getPhoto(item.sector); }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0e] via-transparent to-transparent" />
         <div className="absolute top-3 left-3 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
@@ -183,15 +189,17 @@ function NewsCard({ item }: { item: typeof NEWS[number] }) {
       {/* Content */}
       <div className="p-5 flex flex-col flex-1">
         <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-2">{item.province}</p>
-        <a href={item.url} className="text-[13px] font-extrabold uppercase tracking-tight leading-snug hover:text-[#ff5100] transition line-clamp-2 mb-3">
+        <a {...linkProps(item.url)} className="text-[13px] font-extrabold uppercase tracking-tight leading-snug hover:text-[#ff5100] transition line-clamp-2 mb-3">
           {item.headline}
         </a>
         <p className="text-[11px] text-white/50 leading-relaxed line-clamp-3 flex-1">{item.summary}</p>
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/8">
           <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">Source · {item.source}</span>
-          <a href={item.url} className="font-mono text-[9px] uppercase tracking-widest hover:text-[#ff5100] transition" style={{ color: "#ff5100" }}>
-            Read →
-          </a>
+          {isRealUrl(item.url) && (
+            <a {...linkProps(item.url)} className="font-mono text-[9px] uppercase tracking-widest hover:text-[#ff5100] transition" style={{ color: "#ff5100" }}>
+              Read →
+            </a>
+          )}
         </div>
       </div>
     </article>
@@ -200,13 +208,14 @@ function NewsCard({ item }: { item: typeof NEWS[number] }) {
 
 /* ── Page ─────────────────────────────────────────────────── */
 function NewsPage() {
-  const sectors = useMemo(() => Array.from(new Set(NEWS.map((n) => n.sector))).sort(), []);
-  const provinces = useMemo(() => Array.from(new Set(NEWS.map((n) => n.province))).sort(), []);
+  const { data: newsItems = NEWS } = useNews();
+  const sectors = useMemo(() => Array.from(new Set(newsItems.map((n) => n.sector))).sort(), [newsItems]);
+  const provinces = useMemo(() => Array.from(new Set(newsItems.map((n) => n.province))).sort(), [newsItems]);
   const [sector, setSector]     = useState("All");
   const [province, setProvince] = useState("All");
   const [view, setView]         = useState<"grid" | "list">("grid");
 
-  const sorted  = [...NEWS].sort((a, b) => b.date.localeCompare(a.date));
+  const sorted  = [...newsItems].sort((a, b) => b.date.localeCompare(a.date));
   const featured = sorted.slice(0, 5);
 
   const filtered = sorted.filter(
@@ -278,7 +287,7 @@ function NewsPage() {
                     <span>{n.province}</span>
                     <span className="ml-auto">{n.date}</span>
                   </div>
-                  <a href={n.url} className="text-[13px] font-bold leading-snug hover:text-[#ff5100] transition">{n.headline}</a>
+                  <a {...linkProps(n.url)} className="text-[13px] font-bold leading-snug hover:text-[#ff5100] transition">{n.headline}</a>
                   <p className="text-[11px] text-white/50 mt-1.5 leading-relaxed line-clamp-2">{n.summary}</p>
                   <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mt-2">Source · {n.source}</p>
                 </div>

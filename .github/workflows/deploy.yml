@@ -35,6 +35,8 @@ jobs:
           # Remove VITE_BASE_PATH if you have a custom domain pointed at the repo root.
           # Keep it set to /thegentrylab/ for default github.io/<repo> URLs.
           VITE_BASE_PATH: /thegentrylab/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

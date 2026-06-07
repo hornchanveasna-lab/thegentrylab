@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { PROJECTS, SECTORS, type Sector, type TrackedProject } from "@/data/platform";
+import { useProjects } from "@/lib/data";
 
 export const Route = createFileRoute("/tracker")({
   head: () => ({
@@ -251,27 +252,28 @@ function MobileBottomSheet({ project, onClose }: { project: TrackedProject | nul
 
 /* ── Page ─────────────────────────────────────────────────── */
 function TrackerPage() {
-  const provinces = useMemo(() => Array.from(new Set(PROJECTS.map((p) => p.province))).sort(), []);
+  const { data: projects = PROJECTS } = useProjects();
+  const provinces = useMemo(() => Array.from(new Set(projects.map((p) => p.province))).sort(), [projects]);
   const [sector,   setSector]   = useState<Sector | "All">("All");
   const [province, setProvince] = useState("All");
   const [status,   setStatus]   = useState("All");
   const [selected, setSelected] = useState<TrackedProject | null>(null);
 
   const filtered = useMemo(() =>
-    PROJECTS.filter((p) =>
+    projects.filter((p) =>
       (sector   === "All" || p.sector   === sector)  &&
       (province === "All" || p.province === province) &&
       (status   === "All" || p.status   === status),
     ).sort((a, b) => b.updated.localeCompare(a.updated)),
-    [sector, province, status],
+    [projects, sector, province, status],
   );
 
   /* Status summary counts */
   const counts = useMemo(() => ({
-    Operational:          PROJECTS.filter((p) => p.status === "Operational").length,
-    "Under Construction": PROJECTS.filter((p) => p.status === "Under Construction").length,
-    Planned:              PROJECTS.filter((p) => p.status === "Planned").length,
-  }), []);
+    Operational:          projects.filter((p) => p.status === "Operational").length,
+    "Under Construction": projects.filter((p) => p.status === "Under Construction").length,
+    Planned:              projects.filter((p) => p.status === "Planned").length,
+  }), [projects]);
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans flex flex-col">

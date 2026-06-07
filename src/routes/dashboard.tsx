@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useSupabaseStatus } from "@/lib/data";
 import { GentryMark } from "@/components/site/GentryMark";
 import {
   DEFAULT_CONFIG,
@@ -736,6 +737,7 @@ const LOG_KEY     = "tgl_refresh_log";
 interface RefreshEntry { ts: string; sites: number; corridors: number; status: "success" | "error" }
 
 function DataIntelligenceSection({ cfg, set }: { cfg: SiteConfig; set: Setter }) {
+  const { data: dbStatus, isLoading: dbLoading } = useSupabaseStatus();
   const [lastRefresh, setLastRefresh] = useState<string>(() => localStorage.getItem(REFRESH_KEY) ?? "Never");
   const [log, setLog] = useState<RefreshEntry[]>(() => {
     try { return JSON.parse(localStorage.getItem(LOG_KEY) ?? "[]"); } catch { return []; }
@@ -779,12 +781,26 @@ function DataIntelligenceSection({ cfg, set }: { cfg: SiteConfig; set: Setter })
         </div>
       )}
 
+      {/* Supabase connection status */}
+      <div className="flex items-center gap-2 px-3 py-2 border border-white/8 bg-[#0a0a0b] w-fit">
+        {dbLoading ? (
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-white/20 animate-pulse" />
+        ) : dbStatus?.connected ? (
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-400" />
+        ) : (
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-400" />
+        )}
+        <span className="font-mono text-[10px] uppercase tracking-widest text-white/40">
+          {dbLoading ? "Connecting…" : dbStatus?.connected ? "Supabase live" : "Static fallback"}
+        </span>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Map sites",     value: "44",  color: "#ff5100" },
-          { label: "Corridors",     value: "9",   color: "#34d399" },
-          { label: "Research briefs",value: "9",  color: "#38bdf8" },
-          { label: "Last refresh",  value: lastRefresh === "Never" ? "—" : "✓", color: lastRefresh === "Never" ? "#94a3b8" : "#34d399" },
+          { label: "Map sites",     value: dbStatus?.counts?.sites?.toString() ?? "—",     color: "#ff5100" },
+          { label: "Projects",      value: dbStatus?.counts?.projects?.toString() ?? "—",  color: "#facc15" },
+          { label: "News articles", value: dbStatus?.counts?.news?.toString() ?? "—",      color: "#34d399" },
+          { label: "Research",      value: dbStatus?.counts?.research?.toString() ?? "—",  color: "#38bdf8" },
         ].map((s) => (
           <div key={s.label} className="border border-white/8 bg-[#0a0a0b] px-4 py-3">
             <p className="text-xl font-extrabold tracking-tighter" style={{ color: s.color }}>{s.value}</p>
@@ -827,7 +843,7 @@ function DataIntelligenceSection({ cfg, set }: { cfg: SiteConfig; set: Setter })
             <><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M11 6.5a4.5 4.5 0 1 1-1.2-3.1"/><polyline points="11,2 11,5.5 7.5,5.5"/></svg>Refresh now</>
           )}
         </button>
-        <p className="text-[11px] text-white/30 font-mono">Simulated — Phase 2 will pull from CDC/EDC APIs</p>
+        <p className="text-[11px] text-white/30 font-mono">Resets React Query cache · Claude cron agents populate Supabase weekly</p>
       </div>
 
       {log.length > 0 && (

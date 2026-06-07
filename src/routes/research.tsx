@@ -3,6 +3,7 @@ import { useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { RESEARCH } from "@/data/platform";
+import { useResearch } from "@/lib/data";
 
 export const Route = createFileRoute("/research")({
   head: () => ({
@@ -91,7 +92,7 @@ function ResearchCard({
   brief,
   featured = false,
 }: {
-  brief: typeof RESEARCH[number];
+  brief: typeof RESEARCH[0];
   featured?: boolean;
 }) {
   const style = getCategoryStyle(brief.category);
@@ -186,10 +187,11 @@ function ResearchCard({
 
 /* ── Page ─────────────────────────────────────────────────── */
 function ResearchPage() {
+  const { data: briefs = RESEARCH } = useResearch();
   const [activeCategory, setActiveCategory] = useState("All");
-  const categories = ["All", ...Array.from(new Set(RESEARCH.map((r) => r.category)))];
+  const categories = ["All", ...Array.from(new Set(briefs.map((r) => r.category)))];
 
-  const filtered = RESEARCH.filter((r) => activeCategory === "All" || r.category === activeCategory);
+  const filtered = briefs.filter((r) => activeCategory === "All" || r.category === activeCategory);
   const [featured, ...rest] = filtered;
 
   return (
@@ -220,8 +222,8 @@ function ResearchPage() {
             {/* Stats */}
             <div className="flex gap-8 shrink-0">
               {[
-                { n: RESEARCH.length, label: "Briefs available" },
-                { n: RESEARCH.reduce((a, r) => a + r.pages, 0), label: "Pages of intel" },
+                { n: briefs.length, label: "Briefs available" },
+                { n: briefs.reduce((a, r) => a + r.pages, 0), label: "Pages of intel" },
               ].map((s) => (
                 <div key={s.label} className="text-right">
                   <p className="text-4xl font-extrabold tabular-nums" style={{ color: "#ff5100" }}>{s.n}</p>

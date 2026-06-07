@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLang } from "@/lib/i18n";
+import { useMapSites } from "@/lib/data";
 import "leaflet/dist/leaflet.css";
 import {
   CORRIDORS,
@@ -105,6 +106,7 @@ interface IndustrialMapProps {
 export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [mods, setMods] = useState<{ rl: RL; L: L } | null>(null);
   const { t } = useLang();
+  const { data: sites = SITES } = useMapSites();
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
   const [selected, setSelected] = useState<MapSite | null>(null);
   const [query, setQuery] = useState("");
@@ -130,7 +132,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const visible = useMemo(() => {
     if (previewMode) return [];
     const q = query.trim().toLowerCase();
-    return SITES.filter((s) => {
+    return sites.filter((s) => {
       if (!active.has(s.layer)) return false;
       const subKind = subKinds[s.layer];
       if (subKind && subKind !== "all" && s.kind !== subKind) return false;
@@ -294,7 +296,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             {ALL_LAYERS.map((g, i) => {
               const meta    = LAYER_META[g];
               const on      = active.has(g);
-              const count   = g === "corridors" ? CORRIDORS.length : SITES.filter((s) => s.layer === g).length;
+              const count   = g === "corridors" ? CORRIDORS.length : sites.filter((s) => s.layer === g).length;
               const subDefs = LAYER_SUBKINDS[g];
               const curSub  = subKinds[g] ?? "all";
               return (

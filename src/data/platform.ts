@@ -753,6 +753,7 @@ export interface NewsItem {
   province: string;
   summary: string;
   url: string;
+  image_url?: string;  // OG image URL from article (populated by scheduled agents)
 }
 
 export const NEWS: NewsItem[] = [
