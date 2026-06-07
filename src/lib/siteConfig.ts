@@ -41,6 +41,9 @@ export interface SiteConfig {
   /* ── Map */
   mapCenter:     [number, number];
   mapZoom:       number;
+
+  /* ── Data Intelligence */
+  refreshSchedule: "daily" | "weekly" | "monthly";
 }
 
 export const DEFAULT_CONFIG: SiteConfig = {
@@ -87,6 +90,8 @@ export const DEFAULT_CONFIG: SiteConfig = {
 
   mapCenter: [11.55, 104.9],
   mapZoom:   7,
+
+  refreshSchedule: "weekly",
 };
 
 const STORAGE_KEY = "tgl_site_config";

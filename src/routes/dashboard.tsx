@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { GentryMark } from "@/components/site/GentryMark";
 import {
   DEFAULT_CONFIG,
@@ -544,6 +544,9 @@ function Dashboard() {
             </p>
           </SectionCard>
 
+          {/* ── DATA INTELLIGENCE ──────────────────────────── */}
+          <DataIntelligenceSection cfg={cfg} set={set} />
+
           {/* ── FOOTER ─────────────────────────────────────── */}
           <SectionCard id="footer" title="Footer Text" icon="📝">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -581,5 +584,147 @@ function Dashboard() {
         </main>
       </div>
     </div>
+  );
+}
+
+/* ─── Data Intelligence Section ────────────────────────────── */
+const REFRESH_KEY = "tgl_last_refresh";
+const LOG_KEY     = "tgl_refresh_log";
+
+interface RefreshEntry { ts: string; sites: number; corridors: number; status: "success" | "error" }
+
+function DataIntelligenceSection({
+  cfg, set,
+}: {
+  cfg: SiteConfig;
+  set: <K extends keyof SiteConfig>(k: K, v: SiteConfig[K]) => void;
+}) {
+  const [lastRefresh, setLastRefresh] = useState<string>(() =>
+    localStorage.getItem(REFRESH_KEY) ?? "Never"
+  );
+  const [log, setLog] = useState<RefreshEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem(LOG_KEY) ?? "[]"); } catch { return []; }
+  });
+  const [refreshing, setRefreshing] = useState(false);
+  const [toast, setToast] = useState("");
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      const now = new Date().toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+      const entry: RefreshEntry = { ts: now, sites: 44, corridors: 9, status: "success" };
+      const newLog = [entry, ...log].slice(0, 5);
+      setLastRefresh(now);
+      setLog(newLog);
+      localStorage.setItem(REFRESH_KEY, now);
+      localStorage.setItem(LOG_KEY, JSON.stringify(newLog));
+      setRefreshing(false);
+      setToast("✓ Data refreshed successfully");
+    }, 2200);
+  };
+
+  const scheduleOptions: Array<{ value: SiteConfig["refreshSchedule"]; label: string }> = [
+    { value: "daily",   label: "Daily"   },
+    { value: "weekly",  label: "Weekly"  },
+    { value: "monthly", label: "Monthly" },
+  ];
+
+  return (
+    <SectionCard id="data-intelligence" title="Data Intelligence" icon="🔄">
+      {toast && (
+        <div className="mb-4 px-4 py-2.5 rounded-lg bg-green-500/15 border border-green-500/30 text-green-400 font-mono text-[11px] uppercase tracking-widest">
+          {toast}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {[
+          { label: "Map sites",    value: "44",      color: "#ff5100" },
+          { label: "Corridors",    value: "9",       color: "#34d399" },
+          { label: "News articles",value: "—",       color: "#94a3b8" },
+          { label: "Last refresh", value: lastRefresh === "Never" ? "Never" : "✓", color: lastRefresh === "Never" ? "#94a3b8" : "#34d399" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-lg border border-white/8 bg-[#0a0a0b] px-4 py-3">
+            <p className="text-lg font-extrabold tracking-tighter" style={{ color: s.color }}>{s.value}</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2">Last refreshed</p>
+          <p className="text-[13px] text-white/70 bg-[#111113] border border-white/10 rounded-md px-3 py-2">
+            {lastRefresh}
+          </p>
+        </div>
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2">Auto-refresh schedule</p>
+          <div className="flex gap-2">
+            {scheduleOptions.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => set("refreshSchedule", opt.value)}
+                className="flex-1 px-3 py-2 text-[11px] font-mono uppercase tracking-widest border rounded-md transition-all"
+                style={{
+                  backgroundColor: cfg.refreshSchedule === opt.value ? "#ff510018" : "transparent",
+                  borderColor:     cfg.refreshSchedule === opt.value ? "#ff5100"   : "rgba(255,255,255,0.1)",
+                  color:           cfg.refreshSchedule === opt.value ? "#ff5100"   : "rgba(255,255,255,0.4)",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <button
+        onClick={handleRefresh}
+        disabled={refreshing}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-mono text-[11px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-60 mb-6"
+        style={{ backgroundColor: "#ff5100" }}
+      >
+        {refreshing ? (
+          <>
+            <span className="inline-block w-3.5 h-3.5 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+            Refreshing…
+          </>
+        ) : (
+          <>
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M11 6.5a4.5 4.5 0 1 1-1.2-3.1"/>
+              <polyline points="11,2 11,5.5 7.5,5.5"/>
+            </svg>
+            Refresh now
+          </>
+        )}
+      </button>
+
+      {log.length > 0 && (
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">Refresh history</p>
+          <div className="divide-y divide-white/5 border border-white/8 rounded-lg overflow-hidden">
+            {log.map((entry, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-2.5 bg-[#0a0a0b]">
+                <span className="text-green-400 text-[10px]">✓</span>
+                <span className="font-mono text-[11px] text-white/60 flex-1">{entry.ts}</span>
+                <span className="font-mono text-[10px] text-white/30">{entry.sites} sites · {entry.corridors} corridors</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-4 font-mono text-[10px] text-white/20 leading-relaxed">
+        Real API connections in Phase 2. Currently simulated — data updates will pull from live CDC, EDC, and SEZ Board sources.
+      </p>
+    </SectionCard>
   );
 }

@@ -1,8 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { useReveal } from "@/components/site/Counter";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
+
+// Lazy-load map (Leaflet is browser-only)
+const IndustrialMap = lazy(() =>
+  import("@/components/site/IndustrialMap").then((m) => ({ default: m.IndustrialMap }))
+);
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -24,17 +29,144 @@ const STREAKS = [
   { left: "55%", top: "50%", width: 190, duration: 3.8, delay: 1.1 },
 ];
 
-/* ── GIDF 9-stage framework ──────────────────────────────── */
+/* ── Professional SVG icons ──────────────────────────────── */
+const STAGE_ICONS: Record<string, React.ReactNode> = {
+  "01": ( // Site Selection — map pin + crosshair
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="10" r="3"/>
+      <path d="M12 2a8 8 0 0 1 8 8c0 5.25-8 13-8 13S4 15.25 4 10a8 8 0 0 1 8-8z"/>
+      <circle cx="12" cy="10" r="6" strokeDasharray="2 2" opacity="0.4"/>
+    </svg>
+  ),
+  "02": ( // Land Due Diligence — document + shield
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14,2 14,8 20,8"/>
+      <path d="M12 12l-1.5 1.5L12 15l3-3" strokeWidth="1.3"/>
+      <path d="M12 18c-3 0-5-1.5-5-3.5V12l5-2 5 2v2.5c0 2-2 3.5-5 3.5z" opacity="0.5"/>
+    </svg>
+  ),
+  "03": ( // Master Planning — grid + compass
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18"/>
+      <line x1="3" y1="9" x2="21" y2="9" opacity="0.5"/>
+      <line x1="3" y1="15" x2="21" y2="15" opacity="0.5"/>
+      <line x1="9" y1="3" x2="9" y2="21" opacity="0.5"/>
+      <line x1="15" y1="3" x2="15" y2="21" opacity="0.5"/>
+      <circle cx="12" cy="12" r="2.5"/>
+      <line x1="12" y1="9" x2="12" y2="9.5" strokeWidth="1"/>
+    </svg>
+  ),
+  "04": ( // Utility Strategy — lightning in hexagon
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2l8.66 5v10L12 22 3.34 17V7z"/>
+      <polyline points="13,8 10,13 14,13 11,18" strokeWidth="1.6"/>
+    </svg>
+  ),
+  "05": ( // Permit Navigation — official stamp
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="10" r="5"/>
+      <circle cx="12" cy="10" r="2.5"/>
+      <path d="M7.76 14.24L4 22h16l-3.76-7.76"/>
+      <line x1="12" y1="5" x2="12" y2="3" strokeWidth="1"/>
+      <line x1="12" y1="17" x2="12" y2="15" strokeWidth="1" opacity="0.4"/>
+      <line x1="5" y1="10" x2="7" y2="10" strokeWidth="1"/>
+      <line x1="17" y1="10" x2="19" y2="10" strokeWidth="1"/>
+    </svg>
+  ),
+  "06": ( // Factory Design — building with floors
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="6" width="20" height="16"/>
+      <path d="M2 6l10-4 10 4"/>
+      <line x1="2"  y1="12" x2="22" y2="12" opacity="0.5"/>
+      <line x1="2"  y1="17" x2="22" y2="17" opacity="0.5"/>
+      <rect x="8" y="17" width="8" height="5"/>
+      <line x1="8" y1="9" x2="16" y2="9" strokeWidth="1.2" opacity="0.6"/>
+    </svg>
+  ),
+  "07": ( // EPC Budgeting — bar chart ascending
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="20" x2="21" y2="20"/>
+      <rect x="4"  y="14" width="4" height="6"/>
+      <rect x="10" y="10" width="4" height="10"/>
+      <rect x="16" y="5"  width="4" height="15"/>
+      <path d="M6 10l4-4 4 3 4-5" strokeWidth="1.2" opacity="0.5"/>
+    </svg>
+  ),
+  "08": ( // Delivery — crane
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="6" y1="2" x2="6" y2="22"/>
+      <line x1="6" y1="4" x2="20" y2="4"/>
+      <line x1="20" y1="4" x2="20" y2="10"/>
+      <line x1="14" y1="4" x2="14" y2="8"/>
+      <rect x="11" y="8" width="6" height="5" rx="0.5"/>
+      <path d="M6 4l-3 3" opacity="0.5"/>
+    </svg>
+  ),
+  "09": ( // Operations — gear with arrows
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  ),
+};
+
+/* ── GIDF 9-stage data with full Cambodia intelligence ───── */
 const GIDF_STAGES = [
-  { n: "01", title: "Site Selection",     icon: "📍", desc: "Corridor analysis, province scoring, shortlist" },
-  { n: "02", title: "Land Due Diligence", icon: "📋", desc: "Title search, encumbrance, legal clearance" },
-  { n: "03", title: "Master Planning",    icon: "📐", desc: "Zoning, layout, phasing, access strategy" },
-  { n: "04", title: "Utility Strategy",   icon: "⚡", desc: "EDC power, water, wastewater, telecom design" },
-  { n: "05", title: "Permit Navigation",  icon: "🏛️", desc: "CDC, MIH, MoE approvals mapped end-to-end" },
-  { n: "06", title: "Factory Design",     icon: "🏭", desc: "Industrial-grade architectural & MEP design" },
-  { n: "07", title: "EPC Budgeting",      icon: "💰", desc: "USD/m² benchmarks, contractor pre-qualification" },
-  { n: "08", title: "Delivery",           icon: "🏗️", desc: "Construction oversight, QA/QC, handover" },
-  { n: "09", title: "Operations",         icon: "⚙️", desc: "Facility management, compliance, expansion" },
+  {
+    n: "01", title: "Site Selection",
+    stat: "3 CDC pre-cleared zones — 30+ provinces with NO industrial land policy",
+    process: "Province scoring across 12 criteria: EDC headroom, flood risk, NR access, labour pool, title clarity, CDC reach. GentryLab shortlists to 3 sites before client visits.",
+    implication: "Investors who skip corridor analysis average 14 months longer to first production. Site choice locks your utility cost for 20 years.",
+  },
+  {
+    n: "02", title: "Land Due Diligence",
+    stat: "Only 30% of Cambodian industrial land has hard LMAP title",
+    process: "Ministry of Land hard title search, encumbrance check at local cadastral office, ownership chain verified back 2 transfers minimum, flood history from ODC GeoServer.",
+    implication: "Soft-title land can be blocked or delayed 2–3 years mid-development. Title risk is the #1 reason foreign industrial projects stall in Cambodia.",
+  },
+  {
+    n: "03", title: "Master Planning",
+    stat: "15% green space mandatory — missed by 60% of first CDC submissions",
+    process: "CDC requires masterplan submission before QIP registration. Layout must show green buffer, fire access road (6m min), internal road grid, utility entry points, waste treatment zone.",
+    implication: "QIP status unlocks up to 9 years corporate tax exemption + import duty waiver. A rejected masterplan costs 3–6 months and a full redesign fee.",
+  },
+  {
+    n: "04", title: "Utility Strategy",
+    stat: "EDC industrial tariff: $0.12–$0.18/kWh — new substation: 8–24 months",
+    process: "Load calculation → EDC provincial office feasibility → substation sizing → dedicated line vs shared feeder decision → water permit from MOWRAM → wastewater discharge to MIME Class B standard.",
+    implication: "Power cost differential across provinces can be $0.04/kWh. On 3MW demand that's $105K/year difference. Utility strategy done wrong is a 20-year cost penalty.",
+  },
+  {
+    n: "05", title: "Permit Navigation",
+    stat: "9 separate ministry approvals — order matters, most investors get it wrong",
+    process: "Sequence: MoE ECC → MIH operating licence → CDC QIP → MoLVT labour compliance → fire department → municipal building permit → EDC connection → water authority → customs (SEZ only). Wrong order = restart.",
+    implication: "Done correctly: 8–11 months. Done incorrectly: 18–30 months. Permit sequencing is GentryLab's highest-value advisory service.",
+  },
+  {
+    n: "06", title: "Factory Design",
+    stat: "Industrial build cost: $280–$420/m² — wrong spec adds 40%+ in retrofit costs",
+    process: "ASEAN industrial code applies. Steel portal frame for garment/light manufacturing. Reinforced concrete for pharma/food. Cambodian wet season roof loading: min 1.5kN/m². Floor flatness: FM2 minimum for logistics.",
+    implication: "Under-specced factories cost more to upgrade than to build right. GentryLab benchmarks against 60+ delivered buildings — investors save 12–18% vs local contractor estimates.",
+  },
+  {
+    n: "07", title: "EPC Budgeting",
+    stat: "Average cost overrun on Cambodian industrial builds: 23% — 80% from utility surprises",
+    process: "Bill of quantities from design drawings → 3 contractor quotes (1 international, 1 regional, 1 local) → contingency for utility connection works (often excluded by contractors) → VAT, stamp duty, professional fees.",
+    implication: "GentryLab's EPC benchmark database covers 60+ industrial buildings. Benchmarked projects average 8% under final cost vs 23% over for unbenchmarked builds.",
+  },
+  {
+    n: "08", title: "Delivery",
+    stat: "June–October rainy season: construction pace drops 35–45%",
+    process: "Mobilisation → site clearing → foundation (critical path in wet season) → structural frame → envelope → MEP rough-in → fit-out → utility connections → testing & commissioning → handover.",
+    implication: "Projects that miss the dry season window (Nov–May) for foundation works typically slip 6 months. GentryLab schedules critical path around Cambodia's two dry seasons.",
+  },
+  {
+    n: "09", title: "Operations",
+    stat: "SEZ customs clearance: same-day vs 3–5 days outside zone",
+    process: "Facility management: MEP maintenance contract, security protocol, MIME waste audit (quarterly), EDC meter reconciliation, fire system certification (annual), MoLVT labour audit preparation.",
+    implication: "SEZ operators handle customs in-zone — direct import/export without Phnom Penh clearance. For export manufacturers, SEZ location saves 3–5 days per shipment cycle.",
+  },
 ];
 
 const DEFAULT_TICKER = [
@@ -46,6 +178,7 @@ const DEFAULT_TICKER = [
 function Index() {
   useReveal();
   const [cfg, setCfg] = useState<SiteConfig>(() => loadConfig());
+  const [openStage, setOpenStage] = useState<string | null>(null);
 
   useEffect(() => {
     const handler = (e: Event) => setCfg((e as CustomEvent<SiteConfig>).detail);
@@ -126,7 +259,7 @@ function Index() {
       </section>
 
       {/* ═══════════════════════════════════════════════════
-          GIDF 9-STAGE METHODOLOGY
+          GIDF 9-STAGE METHODOLOGY — with intelligence tooltips
       ═══════════════════════════════════════════════════ */}
       <section className="py-24 border-b border-white/8 bg-[#0d0d0e] overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -140,39 +273,92 @@ function Index() {
               </h2>
             </div>
             <p className="text-white/35 text-sm max-w-xs leading-relaxed reveal reveal-delay-2">
-              A proven 9-stage methodology from raw land to operational industrial asset.
+              Touch any stage to reveal what really happens on the ground in Cambodia.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/8 border border-white/8">
-            {GIDF_STAGES.map((stage, i) => (
-              <div
-                key={stage.n}
-                className={`bg-[#0d0d0e] p-7 group hover:bg-[#111113] transition-all cursor-default reveal reveal-delay-${Math.min(i + 1, 6)}`}
-                style={{ position: "relative", overflow: "hidden" }}
-              >
-                <span className="absolute top-4 right-5 font-extrabold text-[42px] tracking-tighter leading-none text-white/4 select-none">
-                  {stage.n}
-                </span>
-                <div className="relative z-10">
-                  <span className="text-2xl mb-3 block">{stage.icon}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-widest mb-2 block" style={{ color: accent }}>
-                    Stage {stage.n}
-                  </span>
-                  <h3 className="font-extrabold uppercase text-sm tracking-tight mb-2 group-hover:text-white transition-colors">
-                    {stage.title}
-                  </h3>
-                  <p className="text-[12px] text-white/35 leading-relaxed">{stage.desc}</p>
+            {GIDF_STAGES.map((stage, i) => {
+              const isOpen = openStage === stage.n;
+              return (
+                <div
+                  key={stage.n}
+                  className={`bg-[#0d0d0e] group transition-all cursor-pointer reveal reveal-delay-${Math.min(i + 1, 6)}`}
+                  style={{ position: "relative", overflow: "hidden" }}
+                  onClick={() => setOpenStage(isOpen ? null : stage.n)}
+                  onMouseEnter={() => setOpenStage(stage.n)}
+                  onMouseLeave={() => setOpenStage(null)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && setOpenStage(isOpen ? null : stage.n)}
+                  aria-expanded={isOpen}
+                >
+                  {/* Stage header */}
+                  <div className={`p-7 transition-colors ${isOpen ? "bg-[#111113]" : ""}`}>
+                    <span className="absolute top-4 right-5 font-extrabold text-[42px] tracking-tighter leading-none text-white/4 select-none">
+                      {stage.n}
+                    </span>
+                    <div className="relative z-10">
+                      {/* Professional SVG icon */}
+                      <span
+                        className="mb-4 block transition-colors"
+                        style={{ color: isOpen ? accent : "rgba(255,255,255,0.4)" }}
+                      >
+                        {STAGE_ICONS[stage.n]}
+                      </span>
+                      <span className="font-mono text-[10px] uppercase tracking-widest mb-2 block" style={{ color: accent }}>
+                        Stage {stage.n}
+                      </span>
+                      <h3 className="font-extrabold uppercase text-sm tracking-tight mb-1 group-hover:text-white transition-colors">
+                        {stage.title}
+                      </h3>
+                      {/* Hint arrow */}
+                      <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-white/20 mt-2">
+                        <span>{isOpen ? "▲ hide" : "▼ cambodia intel"}</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Intelligence tooltip panel */}
+                  <div
+                    className="overflow-hidden transition-all duration-300 ease-in-out"
+                    style={{ maxHeight: isOpen ? "360px" : "0px" }}
+                  >
+                    <div
+                      className="px-7 pb-7 border-t"
+                      style={{ borderColor: `${accent}25`, backgroundColor: "#111113" }}
+                    >
+                      {/* Stat hook */}
+                      <div className="pt-5 pb-3 border-b border-white/8">
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">Key insight</p>
+                        <p className="font-bold text-sm leading-tight" style={{ color: accent }}>
+                          {stage.stat}
+                        </p>
+                      </div>
+                      {/* Process */}
+                      <div className="pt-3 pb-3 border-b border-white/8">
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">What actually happens</p>
+                        <p className="text-[12px] text-white/65 leading-relaxed">{stage.process}</p>
+                      </div>
+                      {/* Implication */}
+                      <div className="pt-3">
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">Investor implication</p>
+                        <p className="text-[12px] text-white/80 leading-relaxed">{stage.implication}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom accent line */}
+                  <div className="absolute bottom-0 left-0 right-0 h-px scale-x-0 group-hover:scale-x-100 transition-transform origin-left" style={{ backgroundColor: accent }} />
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-px scale-x-0 group-hover:scale-x-100 transition-transform origin-left" style={{ backgroundColor: accent }} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════
-          MAP PLATFORM PREVIEW
+          MAP PLATFORM PREVIEW — real Cambodia basemap
       ═══════════════════════════════════════════════════ */}
       <section className="py-24 border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -212,50 +398,39 @@ function Index() {
               </Link>
             </div>
 
+            {/* Real Cambodia basemap preview */}
             <div className="reveal reveal-delay-2">
-              <div className="relative rounded-2xl border border-white/10 bg-[#0a0a0b] overflow-hidden aspect-[4/3]">
-                <div
-                  className="absolute inset-0 opacity-20"
-                  style={{
-                    backgroundImage: `linear-gradient(${accent}20 1px, transparent 1px), linear-gradient(90deg, ${accent}20 1px, transparent 1px)`,
-                    backgroundSize: "40px 40px",
-                  }}
-                />
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+              <Link to="/map" className="block relative rounded-2xl overflow-hidden border border-white/10 aspect-[4/3] group">
+                <Suspense fallback={
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0b]">
+                    <span className="font-mono text-[10px] text-white/20 uppercase tracking-widest">Loading map…</span>
+                  </div>
+                }>
+                  <div className="absolute inset-0">
+                    <IndustrialMap previewMode />
+                  </div>
+                </Suspense>
+
+                {/* Gradient overlay + CTA */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none">
+                  <div>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-white/50 mb-1">9 corridors · 110+ sites</p>
+                    <p className="font-extrabold text-sm uppercase tracking-tight text-white">Launch interactive map →</p>
+                  </div>
                   <div
-                    className="w-24 h-24 rounded-full border-2 flex items-center justify-center"
-                    style={{ borderColor: `${accent}40`, backgroundColor: `${accent}10` }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-all"
+                    style={{ backgroundColor: accent }}
                   >
-                    <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-                      <circle cx="18" cy="15" r="6" stroke={accent} strokeWidth="2"/>
-                      <path d="M18 21c0 0-9 7.5-9 12h18c0-4.5-9-12-9-12z" stroke={accent} strokeWidth="2" strokeLinejoin="round"/>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2 7h10M8 3l4 4-4 4" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
-                  <p className="font-mono text-[11px] uppercase tracking-widest text-white/40">Cambodia · 9 Corridors · 110+ Sites</p>
-                  <Link
-                    to="/map"
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest transition-all border"
-                    style={{ borderColor: `${accent}50`, color: accent }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.backgroundColor = accent;
-                      (e.currentTarget as HTMLElement).style.color = "#000";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
-                      (e.currentTarget as HTMLElement).style.color = accent;
-                    }}
-                  >
-                    Launch interactive map →
-                  </Link>
                 </div>
-                {[[20, 40], [55, 55], [70, 35], [35, 70], [80, 65]].map(([x, y], i) => (
-                  <div
-                    key={i}
-                    className="absolute w-2 h-2 rounded-full pulse-dot"
-                    style={{ left: `${x}%`, top: `${y}%`, backgroundColor: accent, animationDelay: `${i * 0.4}s` }}
-                  />
-                ))}
-              </div>
+
+                {/* Hover glow border */}
+                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ boxShadow: `inset 0 0 0 1px ${accent}50` }} />
+              </Link>
             </div>
           </div>
         </div>
