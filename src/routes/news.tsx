@@ -123,16 +123,18 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
           className="absolute inset-0 transition-opacity duration-700"
           style={{ opacity: i === idx ? 1 : 0, zIndex: i === idx ? 1 : 0 }}
         >
-          <div className="absolute inset-0" style={{ background: getGradient(n.sector) }} />
+          <div className="absolute inset-0 bg-[#050505]" />
           <img
             src={getItemPhoto(n)}
             alt=""
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ opacity: 0.35, mixBlendMode: "luminosity" }}
+            style={{ opacity: 0.6 }}
             onError={(e) => { (e.currentTarget as HTMLImageElement).src = getPhoto(n.sector); }}
           />
+          {/* Sector colour wash */}
+          <div className="absolute inset-0" style={{ backgroundColor: getAccent(n.sector), opacity: 0.32, mixBlendMode: "multiply" }} />
           {/* vignette */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/30 to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
         </div>
       ))}
@@ -216,15 +218,17 @@ function NewsCard({ item }: { item: NewsItem }) {
     >
       {/* Photo strip */}
       <div className="relative h-44 overflow-hidden">
-        <div className="absolute inset-0" style={{ background: getGradient(item.sector) }} />
+        <div className="absolute inset-0 bg-[#050505]" />
         <img
           src={getItemPhoto(item)}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ opacity: 0.45, mixBlendMode: "luminosity" }}
+          style={{ opacity: 0.55 }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).src = getPhoto(item.sector); }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0e] via-black/20 to-transparent" />
+        {/* Sector colour wash — makes each card distinctly tinted */}
+        <div className="absolute inset-0" style={{ backgroundColor: getAccent(item.sector), opacity: 0.38, mixBlendMode: "multiply" }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
         {/* Sector badge — sector accent color */}
         <div className="absolute top-3 left-3 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest font-bold"
           style={{ backgroundColor: accent, color: "#000" }}>
