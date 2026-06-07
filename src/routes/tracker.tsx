@@ -185,10 +185,54 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
         <p className="text-[12px] text-white/65 leading-relaxed">{project.summary}</p>
       </div>
 
+      {/* ── Latest news coverage ── */}
+      {project.latest_news_headline && (
+        <div className="border-b border-white/8">
+          <div className="px-5 pt-4 pb-1 flex items-center justify-between">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/30">Latest Coverage</p>
+            {project.latest_news_date && (
+              <span className="font-mono text-[9px] text-white/25">{project.latest_news_date}</span>
+            )}
+          </div>
+          {/* News image strip */}
+          {project.image_url && (
+            <div className="mx-5 mb-3 relative overflow-hidden" style={{ height: 80 }}>
+              <img
+                src={project.image_url}
+                alt=""
+                className="w-full h-full object-cover"
+                style={{ opacity: 0.75 }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+            </div>
+          )}
+          <div className="px-5 pb-4">
+            {project.latest_news_url ? (
+              <a
+                href={project.latest_news_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[12px] text-white/75 hover:text-white transition leading-snug block"
+              >
+                {project.latest_news_headline} ↗
+              </a>
+            ) : (
+              <p className="text-[12px] text-white/65 leading-snug">{project.latest_news_headline}</p>
+            )}
+            {project.latest_news_url && (
+              <p className="font-mono text-[9px] text-white/25 mt-1">
+                {(() => { try { return new URL(project.latest_news_url).hostname; } catch { return ""; } })()}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Source link ── */}
       {project.source_url && (
         <div className="px-5 py-3 border-b border-white/8">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1">Source</p>
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1">Announcement Source</p>
           <a
             href={project.source_url}
             target="_blank"

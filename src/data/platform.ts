@@ -728,6 +728,10 @@ export interface TrackedProject {
   maps_url?:   string;
   source_url?: string;
   image_url?:  string;
+  // latest news coverage (updated weekly by agent)
+  latest_news_headline?: string;
+  latest_news_url?:      string;
+  latest_news_date?:     string;
 }
 
 export const PROJECTS: TrackedProject[] = [
