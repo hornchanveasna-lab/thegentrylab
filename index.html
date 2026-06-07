@@ -3,24 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script>
-      // Restore path from GitHub Pages 404 redirect
-      (function() {
-        var redirect = sessionStorage.redirect;
-        delete sessionStorage.redirect;
-        if (redirect && redirect !== location.href) {
-          history.replaceState(null, null, redirect);
-        }
-        // Also handle ?p= query param redirect
-        var p = window.location.search.slice(1).split('&').find(function(s) { return s.startsWith('p='); });
-        if (p) {
-          var path = '/' + p.slice(2).replace(/~and~/g, '&');
-          var q = window.location.search.slice(1).split('&').find(function(s) { return s.startsWith('q='); });
-          var query = q ? '?' + q.slice(2).replace(/~and~/g, '&') : '';
-          window.history.replaceState(null, null, path + query + window.location.hash);
-        }
-      })();
-    </script>
     <title>The Gentry Lab — Cambodia Industrial Intelligence Platform</title>
     <meta name="description" content="Interactive map of Cambodia's SEZs, factories, infrastructure, utilities and industrial risk. Decision-grade intelligence for foreign manufacturers and investors." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
