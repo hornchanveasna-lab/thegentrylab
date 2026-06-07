@@ -17,36 +17,71 @@ export const Route = createFileRoute("/news")({
   component: NewsPage,
 });
 
-/* ── Photo map by sector ─────────────────────────────────── */
-const SECTOR_PHOTO: Record<string, string> = {
-  Infrastructure: "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&q=80&fit=crop",
-  Energy:         "https://images.unsplash.com/photo-1466611653911-0265b219a3df?w=1200&q=80&fit=crop",
-  Automotive:     "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1200&q=80&fit=crop",
-  Garment:        "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80&fit=crop",
-  Warehousing:    "https://images.unsplash.com/photo-1485083269755-a7b559a4fe5e?w=1200&q=80&fit=crop",
-  "Data Center":  "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&q=80&fit=crop",
-  Policy:         "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80&fit=crop",
-  Electronics:    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=80&fit=crop",
+/* ── Sector visual identity ──────────────────────────────── */
+// Each sector: accent color, gradient, fallback Unsplash photo
+const SECTOR_META: Record<string, { accent: string; gradient: string; photo: string }> = {
+  Infrastructure: {
+    accent:   "#38bdf8",
+    gradient: "linear-gradient(135deg,#0a1628 0%,#0c3a5c 60%,#0e5280 100%)",
+    photo:    "https://images.unsplash.com/photo-1545558014-8692077e9b5c?w=1200&q=80&fit=crop",
+  },
+  Energy: {
+    accent:   "#fbbf24",
+    gradient: "linear-gradient(135deg,#0f0a00 0%,#7c4800 60%,#a85e00 100%)",
+    photo:    "https://images.unsplash.com/photo-1466611653911-0265b219a3df?w=1200&q=80&fit=crop",
+  },
+  Automotive: {
+    accent:   "#f43f5e",
+    gradient: "linear-gradient(135deg,#0d0005 0%,#5a0018 60%,#8b0025 100%)",
+    photo:    "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1200&q=80&fit=crop",
+  },
+  Garment: {
+    accent:   "#a78bfa",
+    gradient: "linear-gradient(135deg,#0c0820 0%,#2d1060 60%,#4a1d96 100%)",
+    photo:    "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=1200&q=80&fit=crop",
+  },
+  Warehousing: {
+    accent:   "#34d399",
+    gradient: "linear-gradient(135deg,#001a0e 0%,#054a27 60%,#076b38 100%)",
+    photo:    "https://images.unsplash.com/photo-1553413077-190dd305871c?w=1200&q=80&fit=crop",
+  },
+  "Data Center": {
+    accent:   "#818cf8",
+    gradient: "linear-gradient(135deg,#06050f 0%,#111860 60%,#1a2580 100%)",
+    photo:    "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=1200&q=80&fit=crop",
+  },
+  "Food Processing": {
+    accent:   "#fb923c",
+    gradient: "linear-gradient(135deg,#0f0500 0%,#7c2e00 60%,#a84000 100%)",
+    photo:    "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80&fit=crop",
+  },
+  Electronics: {
+    accent:   "#22d3ee",
+    gradient: "linear-gradient(135deg,#020c12 0%,#053d52 60%,#075e7a 100%)",
+    photo:    "https://images.unsplash.com/photo-1518770660439-4636190af475?w=1200&q=80&fit=crop",
+  },
+  Policy: {
+    accent:   "#94a3b8",
+    gradient: "linear-gradient(135deg,#080808 0%,#1e2025 60%,#2c2f38 100%)",
+    photo:    "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=1200&q=80&fit=crop",
+  },
 };
 
-const SECTOR_GRADIENT: Record<string, string> = {
-  Infrastructure: "linear-gradient(135deg,#0f172a 0%,#0d4a6b 100%)",
-  Energy:         "linear-gradient(135deg,#1a0a2e 0%,#b45309 100%)",
-  Automotive:     "linear-gradient(135deg,#0a0a0b 0%,#7f1d1d 100%)",
-  Garment:        "linear-gradient(135deg,#1e1b4b 0%,#4c1d95 100%)",
-  Warehousing:    "linear-gradient(135deg,#052e16 0%,#166534 100%)",
-  "Data Center":  "linear-gradient(135deg,#0c0a1a 0%,#1e3a8a 100%)",
-  Policy:         "linear-gradient(135deg,#1c1917 0%,#44403c 100%)",
-  Electronics:    "linear-gradient(135deg,#0c1a2e 0%,#164e63 100%)",
+const DEFAULT_META = {
+  accent:   "#ff5100",
+  gradient: "linear-gradient(135deg,#0a0a0b 0%,#5c1e00 100%)",
+  photo:    "https://images.unsplash.com/photo-1581922815928-45c4b2e35e34?w=1200&q=80&fit=crop",
 };
 
-const getPhoto = (sector: string) => SECTOR_PHOTO[sector] ?? "https://images.unsplash.com/photo-1581922815928-45c4b2e35e34?w=1200&q=80&fit=crop";
-const getItemPhoto = (item: NewsItem) => item.image_url || getPhoto(item.sector);
-const isRealUrl = (url: string) => url && url !== "#";
-const linkProps = (url: string) => isRealUrl(url)
+const getSectorMeta  = (sector: string) => SECTOR_META[sector] ?? DEFAULT_META;
+const getPhoto       = (sector: string) => getSectorMeta(sector).photo;
+const getGradient    = (sector: string) => getSectorMeta(sector).gradient;
+const getAccent      = (sector: string) => getSectorMeta(sector).accent;
+const getItemPhoto   = (item: NewsItem) => item.image_url || getPhoto(item.sector);
+const isRealUrl      = (url: string) => url && url !== "#";
+const linkProps      = (url: string) => isRealUrl(url)
   ? { href: url, target: "_blank", rel: "noopener noreferrer" }
   : { href: "#" };
-const getGradient = (sector: string) => SECTOR_GRADIENT[sector] ?? "linear-gradient(135deg,#0a0a0b 0%,#7c2d12 100%)";
 
 /* ── Slider (auto-advances, keyboard + swipe) ─────────────── */
 function FeaturedSlider({ items }: { items: typeof NEWS }) {
@@ -102,16 +137,20 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
         </div>
       ))}
 
-      {/* Grid overlay */}
+      {/* Grid overlay — tinted to sector accent */}
       <div className="absolute inset-0 z-[2] pointer-events-none" style={{
-        backgroundImage: "linear-gradient(rgba(255,81,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,81,0,0.04) 1px,transparent 1px)",
+        backgroundImage: `linear-gradient(${getAccent(item.sector)}08 1px,transparent 1px),linear-gradient(90deg,${getAccent(item.sector)}08 1px,transparent 1px)`,
         backgroundSize: "48px 48px",
       }} />
+
+      {/* Left accent bar */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 z-[3]" style={{ backgroundColor: getAccent(item.sector) }} />
 
       {/* Content */}
       <div className="absolute inset-0 z-[3] flex flex-col justify-end px-8 md:px-16 pb-14 pt-8">
         <div className="flex items-center gap-3 mb-5">
-          <span className="px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
+          <span className="px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest font-bold"
+            style={{ backgroundColor: getAccent(item.sector), color: "#000" }}>
             {item.sector}
           </span>
           <span className="font-mono text-[11px] uppercase tracking-widest text-white/50">{item.province}</span>
@@ -125,7 +164,8 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
         <p className="text-white/60 text-sm mt-3 leading-relaxed max-w-xl line-clamp-2">{item.summary}</p>
 
         <div className="flex items-center gap-3 mt-5">
-          <a {...linkProps(item.url)} className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#ff5100] text-black font-mono text-[10px] uppercase tracking-widest hover:brightness-110 transition shrink-0">
+          <a {...linkProps(item.url)} className="inline-flex items-center gap-2 px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest hover:brightness-110 transition shrink-0 font-bold"
+            style={{ backgroundColor: getAccent(item.sector), color: "#000" }}>
             Read more
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 5.5h9M6.5 2l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </a>
@@ -141,9 +181,9 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 2l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
       </button>
 
-      {/* Dot indicators */}
+      {/* Dot indicators — sector-colored active dot */}
       <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[4] flex items-center gap-2">
-        {items.map((_, i) => (
+        {items.map((n, i) => (
           <button
             key={i}
             onClick={() => setIdx(i)}
@@ -151,7 +191,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
             style={{
               width: i === idx ? 20 : 6, height: 6,
               borderRadius: 3,
-              backgroundColor: i === idx ? "#ff5100" : "rgba(255,255,255,0.3)",
+              backgroundColor: i === idx ? getAccent(n.sector) : "rgba(255,255,255,0.3)",
             }}
           />
         ))}
@@ -167,8 +207,13 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
 
 /* ── News card (grid layout) ─────────────────────────────── */
 function NewsCard({ item }: { item: NewsItem }) {
+  const accent = getAccent(item.sector);
   return (
-    <article className="group border border-white/8 bg-[#0d0d0e] hover:border-white/20 transition-all overflow-hidden flex flex-col">
+    <article className="group border bg-[#0d0d0e] transition-all overflow-hidden flex flex-col"
+      style={{ borderColor: "rgba(255,255,255,0.08)" }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${accent}50`)}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
+    >
       {/* Photo strip */}
       <div className="relative h-44 overflow-hidden">
         <div className="absolute inset-0" style={{ background: getGradient(item.sector) }} />
@@ -176,27 +221,36 @@ function NewsCard({ item }: { item: NewsItem }) {
           src={getItemPhoto(item)}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ opacity: 0.4, mixBlendMode: "luminosity" }}
+          style={{ opacity: 0.45, mixBlendMode: "luminosity" }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).src = getPhoto(item.sector); }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0e] via-transparent to-transparent" />
-        <div className="absolute top-3 left-3 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0e] via-black/20 to-transparent" />
+        {/* Sector badge — sector accent color */}
+        <div className="absolute top-3 left-3 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest font-bold"
+          style={{ backgroundColor: accent, color: "#000" }}>
           {item.sector}
         </div>
         <div className="absolute bottom-3 right-3 font-mono text-[9px] text-white/40">{item.date}</div>
+        {/* Bottom accent line */}
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: accent }} />
       </div>
 
       {/* Content */}
       <div className="p-5 flex flex-col flex-1">
         <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-2">{item.province}</p>
-        <a {...linkProps(item.url)} className="text-[13px] font-extrabold uppercase tracking-tight leading-snug hover:text-[#ff5100] transition line-clamp-2 mb-3">
+        <a {...linkProps(item.url)} className="text-[13px] font-extrabold uppercase tracking-tight leading-snug transition line-clamp-2 mb-3 text-white/90"
+          style={{ ["--hover-color" as string]: accent }}
+          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = accent)}
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)")}>
           {item.headline}
         </a>
         <p className="text-[11px] text-white/50 leading-relaxed line-clamp-3 flex-1">{item.summary}</p>
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/8">
           <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">Source · {item.source}</span>
           {isRealUrl(item.url) && (
-            <a {...linkProps(item.url)} className="font-mono text-[9px] uppercase tracking-widest hover:text-[#ff5100] transition" style={{ color: "#ff5100" }}>
+            <a {...linkProps(item.url)} className="font-mono text-[9px] uppercase tracking-widest transition"
+              style={{ color: accent }}>
               Read →
             </a>
           )}
@@ -277,22 +331,29 @@ function NewsPage() {
           </div>
         ) : (
           <ul className="border border-white/8 divide-y divide-white/8">
-            {filtered.map((n) => (
-              <li key={n.id} className="flex gap-0 hover:bg-white/4 transition group">
-                {/* Color strip */}
-                <div className="w-1 shrink-0" style={{ background: getGradient(n.sector) }} />
+            {filtered.map((n) => {
+              const accent = getAccent(n.sector);
+              return (
+              <li key={n.id} className="flex gap-0 hover:bg-white/3 transition group">
+                {/* Sector accent strip */}
+                <div className="w-1 shrink-0 transition-all group-hover:w-1.5" style={{ backgroundColor: accent }} />
                 <div className="flex-1 p-5">
                   <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2">
-                    <span className="px-2 py-0.5 text-black font-bold text-[9px]" style={{ backgroundColor: "#ff5100" }}>{n.sector}</span>
+                    <span className="px-2 py-0.5 font-bold text-[9px]"
+                      style={{ backgroundColor: accent, color: "#000" }}>{n.sector}</span>
                     <span>{n.province}</span>
                     <span className="ml-auto">{n.date}</span>
                   </div>
-                  <a {...linkProps(n.url)} className="text-[13px] font-bold leading-snug hover:text-[#ff5100] transition">{n.headline}</a>
+                  <a {...linkProps(n.url)} className="text-[13px] font-bold leading-snug transition text-white/90"
+                    onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = accent)}
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)")}>
+                    {n.headline}
+                  </a>
                   <p className="text-[11px] text-white/50 mt-1.5 leading-relaxed line-clamp-2">{n.summary}</p>
                   <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mt-2">Source · {n.source}</p>
                 </div>
               </li>
-            ))}
+            )})}
           </ul>
         )}
 
