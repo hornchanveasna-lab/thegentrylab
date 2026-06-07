@@ -17,6 +17,10 @@ const CASE_STUDIES = [
     scope: "Site selection, master planning & utility strategy for 120-ha industrial zone adjacent to new international gateway",
     outcome: "Secured CDC QIP status · 3 anchor tenants · Phase 1 operational",
     color: "#ff5100",
+    photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=900&q=80&fit=crop",
+    stat1: { n: "120 ha", label: "Zone area" },
+    stat2: { n: "3",      label: "Anchor tenants" },
+    gradient: "linear-gradient(135deg,#1a0700 0%,#7c2d12 100%)",
   },
   {
     tag: "Manufacturing",
@@ -25,6 +29,10 @@ const CASE_STUDIES = [
     scope: "End-to-end industrial development advisory: land due diligence through EPC budgeting for 65,000 m² manufacturing facility",
     outcome: "On-budget delivery · EDC 3MW substation secured · Export-ready",
     color: "#facc15",
+    photo: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=900&q=80&fit=crop",
+    stat1: { n: "65,000 m²", label: "Factory floor" },
+    stat2: { n: "3 MW",      label: "EDC power" },
+    gradient: "linear-gradient(135deg,#1a1400 0%,#713f12 100%)",
   },
   {
     tag: "Industrial Park",
@@ -33,6 +41,10 @@ const CASE_STUDIES = [
     scope: "Permit navigation, utility strategy, and factory design for GMP-grade pharmaceutical warehouse + logistics hub",
     outcome: "MoH GMP certified · Phnom Penh Special Economic Zone · Operational",
     color: "#34d399",
+    photo: "https://images.unsplash.com/photo-1583912267382-49a82f938b2a?w=900&q=80&fit=crop",
+    stat1: { n: "GMP",    label: "MoH certified" },
+    stat2: { n: "PPSEZ",  label: "Location" },
+    gradient: "linear-gradient(135deg,#012117 0%,#064e3b 100%)",
   },
 ];
 
@@ -179,23 +191,57 @@ function AboutPage() {
             {CASE_STUDIES.map((cs, i) => (
               <div
                 key={cs.title}
-                className={`relative rounded-xl border border-white/10 bg-[#0e0e10] p-7 flex flex-col hover:border-white/20 transition-all group reveal reveal-delay-${i + 1}`}
-                style={{ overflow: "hidden" }}
+                className={`group relative overflow-hidden border border-white/10 hover:border-white/25 transition-all flex flex-col reveal reveal-delay-${i + 1}`}
+                style={{ background: "#0d0d0e" }}
               >
-                <div className="absolute top-0 left-0 right-0 h-0.5 rounded-t-xl" style={{ backgroundColor: cs.color }} />
-                <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: `radial-gradient(ellipse 70% 50% at 50% 100%, ${cs.color}14 0%, transparent 70%)` }} />
-                <div className="relative z-10 flex flex-col flex-1">
-                  <span
-                    className="inline-flex self-start items-center px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest mb-4"
-                    style={{ backgroundColor: `${cs.color}20`, color: cs.color }}
-                  >
-                    {cs.tag}
-                  </span>
+                {/* Photo cover */}
+                <div className="relative overflow-hidden flex-shrink-0" style={{ height: 220 }}>
+                  <div className="absolute inset-0" style={{ background: cs.gradient }} />
+                  <img
+                    src={cs.photo}
+                    alt={cs.title}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    style={{ opacity: 0.35, mixBlendMode: "luminosity" }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                  />
+                  {/* Grid overlay */}
+                  <div className="absolute inset-0 pointer-events-none" style={{
+                    backgroundImage: `linear-gradient(${cs.color}08 1px,transparent 1px),linear-gradient(90deg,${cs.color}08 1px,transparent 1px)`,
+                    backgroundSize: "28px 28px",
+                  }} />
+                  {/* Glow */}
+                  <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 70% 70% at 80% 20%,${cs.color}30 0%,transparent 65%)` }} />
+                  {/* Bottom fade */}
+                  <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-[#0d0d0e] to-transparent" />
+
+                  {/* Tag badge */}
+                  <div className="absolute top-4 left-4">
+                    <span className="px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest text-black font-bold"
+                      style={{ backgroundColor: cs.color }}>
+                      {cs.tag}
+                    </span>
+                  </div>
+
+                  {/* Stats pills top-right */}
+                  <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
+                    <div className="bg-black/60 border border-white/10 px-2.5 py-1 text-right">
+                      <p className="font-extrabold text-xs" style={{ color: cs.color }}>{cs.stat1.n}</p>
+                      <p className="font-mono text-[8px] uppercase tracking-widest text-white/35">{cs.stat1.label}</p>
+                    </div>
+                    <div className="bg-black/60 border border-white/10 px-2.5 py-1 text-right">
+                      <p className="font-extrabold text-xs" style={{ color: cs.color }}>{cs.stat2.n}</p>
+                      <p className="font-mono text-[8px] uppercase tracking-widest text-white/35">{cs.stat2.label}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 flex flex-col flex-1">
                   <h3 className="font-extrabold uppercase text-base tracking-tight mb-1 leading-tight">{cs.title}</h3>
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-4">{cs.sector}</p>
-                  <p className="text-[12px] text-white/50 leading-relaxed mb-6 flex-1">{cs.scope}</p>
-                  <div className="border-t border-white/8 pt-4">
-                    <p className="text-[11px] font-mono text-white/35">
+                  <p className="font-mono text-[10px] uppercase tracking-widest mb-3" style={{ color: cs.color }}>{cs.sector}</p>
+                  <p className="text-[12px] text-white/50 leading-relaxed flex-1">{cs.scope}</p>
+                  <div className="mt-5 pt-4 border-t border-white/8">
+                    <p className="text-[11px] font-mono text-white/40">
                       <span style={{ color: cs.color }}>✓ </span>{cs.outcome}
                     </p>
                   </div>
