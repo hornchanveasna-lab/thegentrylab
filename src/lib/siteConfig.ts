@@ -3,18 +3,19 @@
    Persisted in localStorage so the dashboard can live-update the site.
 ───────────────────────────────────────────────────────────────── */
 
-export interface StatItem   { value: string; suffix: string; label: string }
+export interface StatItem    { value: string; suffix: string; label: string }
 export interface RoadmapItem { n: string; title: string; desc: string }
+export interface NavLinkItem { id: string; label: string; visible: boolean }
 
 export interface SiteConfig {
   /* ── Branding */
   accentColor:   string;
-  logoColor:     string;   // SVG G mark fill color (can differ from accentColor)
-  logoImage:     string;   // base64 data URL — if set, replaces the SVG G mark
-  logoLine1:     string;   // "The"
-  logoLine2:     string;   // "Gentry"
-  logoLine3:     string;   // "Lab"
-  tagline:       string;   // "Industrial Intelligence · KH"
+  logoColor:     string;
+  logoImage:     string;
+  logoLine1:     string;
+  logoLine2:     string;
+  logoLine3:     string;
+  tagline:       string;
 
   /* ── Hero */
   heroEyebrow:   string;
@@ -41,10 +42,41 @@ export interface SiteConfig {
   /* ── Map */
   mapCenter:     [number, number];
   mapZoom:       number;
+  mapDefaultLayers: string[];   // which layer groups are ON by default
 
   /* ── Data Intelligence */
   refreshSchedule: "daily" | "weekly" | "monthly";
+
+  /* ── Advisory & Contact */
+  advisoryEmail:   string;
+  contactOffice:   string;
+  contactCity:     string;
+  contactPhone:    string;
+  contactHours:    string;
+
+  /* ── SEO & Meta */
+  seoSiteName:     string;
+  seoDescription:  string;
+  seoOgImage:      string;   // URL for social sharing image
+
+  /* ── Platform Settings */
+  platformVersion: string;
+  maintenanceMode: boolean;
+  showAdvisoryBanner: boolean;
+  analyticsId:     string;   // e.g. GA-XXXXXXXXXX (stored, not injected in MVP)
+
+  /* ── Navigation */
+  navLinks: NavLinkItem[];
 }
+
+const DEFAULT_NAV_LINKS: NavLinkItem[] = [
+  { id: "map",      label: "Map",      visible: true  },
+  { id: "tracker",  label: "Tracker",  visible: true  },
+  { id: "news",     label: "News",     visible: true  },
+  { id: "research", label: "Research", visible: true  },
+  { id: "about",    label: "About",    visible: true  },
+  { id: "contact",  label: "Contact",  visible: true  },
+];
 
 export const DEFAULT_CONFIG: SiteConfig = {
   accentColor:  "#ff5100",
@@ -65,7 +97,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
 
   stats: [
     { value: "54",  suffix: "",  label: "Active & planned SEZs" },
-    { value: "9",   suffix: "",  label: "Industrial corridors" },
+    { value: "9",   suffix: "",  label: "Industrial corridors"  },
     { value: "110", suffix: "+", label: "Sites on intelligence map" },
     { value: "12",  suffix: "",  label: "Investment projects tracked" },
   ],
@@ -90,8 +122,26 @@ export const DEFAULT_CONFIG: SiteConfig = {
 
   mapCenter: [11.55, 104.9],
   mapZoom:   7,
+  mapDefaultLayers: ["investment", "infrastructure", "corridors"],
 
   refreshSchedule: "weekly",
+
+  advisoryEmail:   "advisory@thegentrylab.io",
+  contactOffice:   "Phnom Penh, Cambodia",
+  contactCity:     "Phnom Penh",
+  contactPhone:    "",
+  contactHours:    "Mon–Fri, 09:00–18:00 ICT",
+
+  seoSiteName:     "The Gentry Lab",
+  seoDescription:  "Interactive map of Cambodia's SEZs, factories, infrastructure, utilities and industrial risk. Decision-grade intelligence for foreign manufacturers and investors.",
+  seoOgImage:      "",
+
+  platformVersion:    "0.1 MVP",
+  maintenanceMode:    false,
+  showAdvisoryBanner: true,
+  analyticsId:        "",
+
+  navLinks: DEFAULT_NAV_LINKS,
 };
 
 const STORAGE_KEY = "tgl_site_config";
@@ -100,7 +150,6 @@ export function loadConfig(): SiteConfig {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_CONFIG;
-    // Deep merge: default values fill any keys missing from stored config
     return deepMerge(DEFAULT_CONFIG, JSON.parse(raw)) as SiteConfig;
   } catch {
     return DEFAULT_CONFIG;
@@ -110,7 +159,6 @@ export function loadConfig(): SiteConfig {
 export function saveConfig(cfg: SiteConfig): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-    // Notify other tabs / components
     window.dispatchEvent(new CustomEvent("tgl-config-updated", { detail: cfg }));
   } catch {/* ignore */}
 }
@@ -121,13 +169,32 @@ export function resetConfig(): SiteConfig {
   return DEFAULT_CONFIG;
 }
 
+export function exportConfig(cfg: SiteConfig): void {
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: "application/json" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `tgl-config-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export function importConfig(json: string): SiteConfig | null {
+  try {
+    const parsed = JSON.parse(json);
+    return deepMerge(DEFAULT_CONFIG, parsed) as SiteConfig;
+  } catch {
+    return null;
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepMerge(base: any, override: any): any {
   const out = { ...base };
   for (const key of Object.keys(base)) {
     if (key in override) {
       if (Array.isArray(base[key])) {
-        out[key] = override[key]; // arrays: take stored value wholesale
+        out[key] = override[key];
       } else if (typeof base[key] === "object" && base[key] !== null) {
         out[key] = deepMerge(base[key], override[key] ?? {});
       } else {
