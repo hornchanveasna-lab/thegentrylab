@@ -18,9 +18,23 @@ export function TopNav() {
       <div className="flex items-center justify-between px-6 md:px-12 py-3.5 max-w-7xl mx-auto">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-7 h-7 bg-brand-accent flex items-center justify-center transition-shadow group-hover:shadow-[0_0_16px_rgba(255,81,0,0.6)]">
-            <div className="w-3 h-3 border border-black/60 rotate-45" />
-          </div>
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className="shrink-0 transition-[filter] group-hover:drop-shadow-[0_0_8px_rgba(255,81,0,0.8)]"
+          >
+            {/* Top bar */}
+            <rect x="0" y="0"  width="100" height="22" fill="#ff5100" />
+            {/* Left bar */}
+            <rect x="0" y="0"  width="22"  height="100" fill="#ff5100" />
+            {/* Bottom bar */}
+            <rect x="0" y="78" width="100" height="22" fill="#ff5100" />
+            {/* Middle tongue (G crossbar) */}
+            <rect x="48" y="40" width="52" height="20" fill="#ff5100" />
+          </svg>
           <span className="font-extrabold tracking-tighter text-sm uppercase text-white">
             The Gentry Lab
           </span>
