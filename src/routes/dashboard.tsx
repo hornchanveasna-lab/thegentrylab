@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useCallback, useRef } from "react";
+import { GentryMark } from "@/components/site/GentryMark";
 import {
   DEFAULT_CONFIG,
   loadConfig,
@@ -264,14 +265,7 @@ function BrandingSection({
           {cfg.logoImage ? (
             <img src={cfg.logoImage} alt="Logo" className="h-9 w-auto object-contain shrink-0" />
           ) : (
-            <svg width="34" height="32" viewBox="0 0 100 95" fill="none">
-              <rect x="0"  y="0"  width="17" height="95" fill={logoColor}/>
-              <rect x="0"  y="0"  width="61" height="17" fill={logoColor}/>
-              <rect x="33" y="17" width="67" height="17" fill={logoColor}/>
-              <rect x="33" y="34" width="17" height="25" fill={logoColor}/>
-              <rect x="33" y="59" width="67" height="17" fill={logoColor}/>
-              <rect x="0"  y="78" width="100" height="17" fill={logoColor}/>
-            </svg>
+            <GentryMark color={logoColor} size={36} />
           )}
           {/* Wordmark */}
           <div className="flex flex-col leading-none">

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
+import { GentryMark } from "@/components/site/GentryMark";
 
 const links = [
   { to: "/",          label: "Home"     },
@@ -23,7 +24,7 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
       <div className="flex items-center justify-between px-6 md:px-12 py-3.5 max-w-7xl mx-auto">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 group">
-          {/* Logo mark — uploaded image OR default SVG G mark */}
+          {/* Logo mark — uploaded image OR official G mark */}
           {cfg.logoImage ? (
             <img
               src={cfg.logoImage}
@@ -31,21 +32,11 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               className="h-9 w-auto shrink-0 object-contain transition-[filter] group-hover:drop-shadow-[0_0_10px_rgba(255,81,0,0.5)]"
             />
           ) : (
-            <svg
-              width="34"
-              height="32"
-              viewBox="0 0 100 95"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+            <GentryMark
+              color={logoColor}
+              size={36}
               className="shrink-0 transition-[filter] group-hover:drop-shadow-[0_0_10px_rgba(255,81,0,0.7)]"
-            >
-              <rect x="0"  y="0"  width="17" height="95" fill={logoColor} />
-              <rect x="0"  y="0"  width="61" height="17" fill={logoColor} />
-              <rect x="33" y="17" width="67" height="17" fill={logoColor} />
-              <rect x="33" y="34" width="17" height="25" fill={logoColor} />
-              <rect x="33" y="59" width="67" height="17" fill={logoColor} />
-              <rect x="0"  y="78" width="100" height="17" fill={logoColor} />
-            </svg>
+            />
           )}
           {/* Wordmark */}
           <div className="flex flex-col leading-none">
