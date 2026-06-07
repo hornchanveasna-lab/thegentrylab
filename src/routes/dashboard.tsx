@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   DEFAULT_CONFIG,
   loadConfig,
@@ -91,6 +91,198 @@ function Badge({ label }: { label: string }) {
     <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-brand-accent/15 text-brand-accent text-[10px] font-mono uppercase tracking-widest">
       {label}
     </span>
+  );
+}
+
+/* ─── Branding section (logo upload + color) ───────────────────── */
+
+function BrandingSection({
+  cfg,
+  set,
+}: {
+  cfg: SiteConfig;
+  set: <K extends keyof SiteConfig>(key: K, value: SiteConfig[K]) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoColor = cfg.logoColor || cfg.accentColor;
+  const [syncColors, setSyncColors] = useState(cfg.logoColor === cfg.accentColor || !cfg.logoColor);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      set("logoImage", (ev.target?.result as string) ?? "");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAccentChange = (v: string) => {
+    set("accentColor", v);
+    if (syncColors) set("logoColor", v);
+  };
+
+  const handleLogoColorChange = (v: string) => {
+    set("logoColor", v);
+    setSyncColors(false);
+  };
+
+  const toggleSync = () => {
+    const next = !syncColors;
+    setSyncColors(next);
+    if (next) set("logoColor", cfg.accentColor);
+  };
+
+  return (
+    <SectionCard id="branding" title="Branding" icon="🎨">
+      {/* ── Colors ───────────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ColorField
+          label="Accent colour (buttons, highlights)"
+          value={cfg.accentColor}
+          onChange={handleAccentChange}
+        />
+        <Field label="Tagline (nav bar)" value={cfg.tagline} onChange={(v) => set("tagline", v)} />
+      </div>
+
+      {/* ── Logo colour with sync toggle ─────────────────── */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">Logo G mark colour</span>
+          <button
+            onClick={toggleSync}
+            className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all border ${
+              syncColors
+                ? "bg-brand-accent/10 border-brand-accent/30 text-brand-accent"
+                : "bg-white/5 border-white/10 text-white/35 hover:border-white/25 hover:text-white/60"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${syncColors ? "bg-brand-accent" : "bg-white/30"}`} />
+            {syncColors ? "Linked to accent" : "Independent colour"}
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="color"
+            value={logoColor}
+            onChange={(e) => handleLogoColorChange(e.target.value)}
+            disabled={syncColors}
+            className={`h-12 w-20 rounded-lg cursor-pointer border transition-all ${
+              syncColors ? "opacity-40 cursor-not-allowed border-white/5" : "border-white/20 hover:border-white/40"
+            }`}
+          />
+          <input
+            type="text"
+            value={logoColor}
+            onChange={(e) => handleLogoColorChange(e.target.value)}
+            disabled={syncColors}
+            className={`flex-1 bg-[#111113] border rounded-md px-3 py-2 text-[13px] font-mono text-white focus:outline-none transition-colors ${
+              syncColors ? "opacity-40 cursor-not-allowed border-white/5" : "border-white/10 focus:border-brand-accent/50"
+            }`}
+          />
+          {/* Quick colour swatches */}
+          <div className="flex gap-1.5 shrink-0">
+            {["#ff5100","#ffffff","#facc15","#34d399","#38bdf8","#a78bfa","#f43f5e","#000000"].map((c) => (
+              <button
+                key={c}
+                onClick={() => handleLogoColorChange(c)}
+                title={c}
+                className="w-6 h-6 rounded-full border-2 transition-all hover:scale-110"
+                style={{
+                  backgroundColor: c,
+                  borderColor: logoColor === c ? "#fff" : "transparent",
+                  outline: c === "#ffffff" ? "1px solid rgba(255,255,255,0.2)" : "none",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        {syncColors && (
+          <p className="text-[10px] text-white/25 font-mono">
+            Logo colour follows the accent colour. Click "Independent colour" to set them separately.
+          </p>
+        )}
+      </div>
+
+      {/* ── Logo image upload ─────────────────────────────── */}
+      <div className="flex flex-col gap-2">
+        <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">
+          Logo image (replaces G mark)
+        </span>
+        <div className="flex items-start gap-4">
+          {/* Upload zone */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-col items-center justify-center gap-2 w-32 h-20 rounded-xl border-2 border-dashed border-white/15 hover:border-brand-accent/50 hover:bg-brand-accent/5 transition-all text-white/35 hover:text-white/60 shrink-0"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3v10M6 7l4-4 4 4M3 14v1a2 2 0 002 2h10a2 2 0 002-2v-1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span className="text-[10px] font-mono uppercase tracking-wider">Upload</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            className="hidden"
+            onChange={handleLogoUpload}
+          />
+
+          {/* Uploaded image preview OR placeholder */}
+          {cfg.logoImage ? (
+            <div className="relative flex items-center justify-center h-20 px-4 bg-[#0a0a0b] rounded-xl border border-white/10">
+              <img src={cfg.logoImage} alt="Uploaded logo" className="max-h-14 max-w-[120px] object-contain" />
+              <button
+                onClick={() => set("logoImage", "")}
+                title="Remove uploaded logo (revert to SVG G mark)"
+                className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center hover:bg-red-400 transition-colors"
+              >✕</button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-4 h-20 bg-[#0a0a0b] rounded-xl border border-white/8 text-[11px] text-white/25">
+              No image — using SVG G mark
+            </div>
+          )}
+        </div>
+        <p className="text-[10px] text-white/25 font-mono">
+          Accepts PNG, JPG, SVG, WebP. Stored in browser only — re-upload after clearing site data.
+        </p>
+      </div>
+
+      {/* ── Logo wordmark lines ───────────────────────────── */}
+      <div className="grid grid-cols-3 gap-4">
+        <Field label='Line 1 ("The")' value={cfg.logoLine1} onChange={(v) => set("logoLine1", v)} />
+        <Field label='Line 2 ("Gentry")' value={cfg.logoLine2} onChange={(v) => set("logoLine2", v)} />
+        <Field label='Line 3 ("Lab") — accent colour' value={cfg.logoLine3} onChange={(v) => set("logoLine3", v)} />
+      </div>
+
+      {/* ── Live preview ─────────────────────────────────── */}
+      <div className="border border-white/8 rounded-xl p-5 bg-[#0a0a0b]">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">Live preview</p>
+        <div className="flex items-center gap-3">
+          {/* Mark */}
+          {cfg.logoImage ? (
+            <img src={cfg.logoImage} alt="Logo" className="h-9 w-auto object-contain shrink-0" />
+          ) : (
+            <svg width="34" height="32" viewBox="0 0 100 95" fill="none">
+              <rect x="0"  y="0"  width="17" height="95" fill={logoColor}/>
+              <rect x="0"  y="0"  width="61" height="17" fill={logoColor}/>
+              <rect x="33" y="17" width="67" height="17" fill={logoColor}/>
+              <rect x="33" y="34" width="17" height="25" fill={logoColor}/>
+              <rect x="33" y="59" width="67" height="17" fill={logoColor}/>
+              <rect x="0"  y="78" width="100" height="17" fill={logoColor}/>
+            </svg>
+          )}
+          {/* Wordmark */}
+          <div className="flex flex-col leading-none">
+            <span className="font-extrabold text-[10px] uppercase tracking-[0.18em] text-white/50">{cfg.logoLine1}</span>
+            <span className="font-extrabold text-[15px] uppercase tracking-tighter text-white leading-tight">{cfg.logoLine2}</span>
+            <span className="font-extrabold text-[15px] uppercase tracking-tighter leading-tight" style={{ color: cfg.accentColor }}>{cfg.logoLine3}</span>
+          </div>
+          <span className="ml-4 font-mono text-[10px] uppercase tracking-widest text-white/20 border-l border-white/10 pl-4">{cfg.tagline}</span>
+        </div>
+      </div>
+    </SectionCard>
   );
 }
 
@@ -240,40 +432,7 @@ function Dashboard() {
           </div>
 
           {/* ── BRANDING ───────────────────────────────────── */}
-          <SectionCard id="branding" title="Branding" icon="🎨">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ColorField
-                label="Accent colour"
-                value={cfg.accentColor}
-                onChange={(v) => set("accentColor", v)}
-              />
-              <Field label="Tagline (nav)" value={cfg.tagline} onChange={(v) => set("tagline", v)} />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label='Logo line 1 ("The")' value={cfg.logoLine1} onChange={(v) => set("logoLine1", v)} />
-              <Field label='Logo line 2 ("Gentry")' value={cfg.logoLine2} onChange={(v) => set("logoLine2", v)} />
-              <Field label='Logo line 3 ("Lab")' value={cfg.logoLine3} onChange={(v) => set("logoLine3", v)} />
-            </div>
-            {/* Live preview */}
-            <div className="border border-white/8 rounded-lg p-4 bg-[#0a0a0b]">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-3">Logo preview</p>
-              <div className="flex items-center gap-3">
-                <svg width="34" height="32" viewBox="0 0 100 95" fill="none">
-                  <rect x="0"  y="0"  width="17" height="95" fill={cfg.accentColor}/>
-                  <rect x="0"  y="0"  width="61" height="17" fill={cfg.accentColor}/>
-                  <rect x="33" y="17" width="67" height="17" fill={cfg.accentColor}/>
-                  <rect x="33" y="34" width="17" height="25" fill={cfg.accentColor}/>
-                  <rect x="33" y="59" width="67" height="17" fill={cfg.accentColor}/>
-                  <rect x="0"  y="78" width="100" height="17" fill={cfg.accentColor}/>
-                </svg>
-                <div className="flex flex-col leading-none">
-                  <span className="font-extrabold text-[10px] uppercase tracking-[0.18em] text-white/50">{cfg.logoLine1}</span>
-                  <span className="font-extrabold text-[15px] uppercase tracking-tighter text-white leading-tight">{cfg.logoLine2}</span>
-                  <span className="font-extrabold text-[15px] uppercase tracking-tighter leading-tight" style={{ color: cfg.accentColor }}>{cfg.logoLine3}</span>
-                </div>
-              </div>
-            </div>
-          </SectionCard>
+          <BrandingSection cfg={cfg} set={set} />
 
           {/* ── HERO ───────────────────────────────────────── */}
           <SectionCard id="hero" title="Hero Section" icon="🏔️">

@@ -9,6 +9,8 @@ export interface RoadmapItem { n: string; title: string; desc: string }
 export interface SiteConfig {
   /* ── Branding */
   accentColor:   string;
+  logoColor:     string;   // SVG G mark fill color (can differ from accentColor)
+  logoImage:     string;   // base64 data URL — if set, replaces the SVG G mark
   logoLine1:     string;   // "The"
   logoLine2:     string;   // "Gentry"
   logoLine3:     string;   // "Lab"
@@ -43,6 +45,8 @@ export interface SiteConfig {
 
 export const DEFAULT_CONFIG: SiteConfig = {
   accentColor:  "#ff5100",
+  logoColor:    "#ff5100",
+  logoImage:    "",
   logoLine1:    "The",
   logoLine2:    "Gentry",
   logoLine3:    "Lab",

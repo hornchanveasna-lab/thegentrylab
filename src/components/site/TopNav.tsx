@@ -15,32 +15,37 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const cfg = cfgProp ?? loadConfig();
   const accent = cfg.accentColor;
+  const logoColor = cfg.logoColor || accent;
 
   return (
     <nav className="sticky top-0 z-[1000] border-b border-white/8 bg-[#0a0a0b]/85 backdrop-blur-md">
       <div className="flex items-center justify-between px-6 md:px-12 py-3.5 max-w-7xl mx-auto">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 group">
-          {/*
-            G mark — 6 rects tracing the double-step nested-G shape from the reference logo.
-            Outer C: left bar (full height) + outer top bar (61% width) + bottom bar (full width)
-            Inner C: inner shelf (right 67%) + inner left bar + inner crossbar (right 67%)
-          */}
-          <svg
-            width="34"
-            height="32"
-            viewBox="0 0 100 95"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="shrink-0 transition-[filter] group-hover:drop-shadow-[0_0_10px_rgba(255,81,0,0.7)]"
-          >
-            <rect x="0"  y="0"  width="17" height="95" fill={accent} />
-            <rect x="0"  y="0"  width="61" height="17" fill={accent} />
-            <rect x="33" y="17" width="67" height="17" fill={accent} />
-            <rect x="33" y="34" width="17" height="25" fill={accent} />
-            <rect x="33" y="59" width="67" height="17" fill={accent} />
-            <rect x="0"  y="78" width="100" height="17" fill={accent} />
-          </svg>
+          {/* Logo mark — uploaded image OR default SVG G mark */}
+          {cfg.logoImage ? (
+            <img
+              src={cfg.logoImage}
+              alt="Logo"
+              className="h-9 w-auto shrink-0 object-contain transition-[filter] group-hover:drop-shadow-[0_0_10px_rgba(255,81,0,0.5)]"
+            />
+          ) : (
+            <svg
+              width="34"
+              height="32"
+              viewBox="0 0 100 95"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="shrink-0 transition-[filter] group-hover:drop-shadow-[0_0_10px_rgba(255,81,0,0.7)]"
+            >
+              <rect x="0"  y="0"  width="17" height="95" fill={logoColor} />
+              <rect x="0"  y="0"  width="61" height="17" fill={logoColor} />
+              <rect x="33" y="17" width="67" height="17" fill={logoColor} />
+              <rect x="33" y="34" width="17" height="25" fill={logoColor} />
+              <rect x="33" y="59" width="67" height="17" fill={logoColor} />
+              <rect x="0"  y="78" width="100" height="17" fill={logoColor} />
+            </svg>
+          )}
           {/* Wordmark */}
           <div className="flex flex-col leading-none">
             <span className="font-extrabold text-[10px] uppercase tracking-[0.18em] text-white/50">
