@@ -26,9 +26,9 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0b;
-  --border: rgba(0, 0, 0, 0.05);
+  --background: #0a0a0b;
+  --foreground: #f5f5f4;
+  --border: rgba(255, 255, 255, 0.08);
 }
 
 @layer base {
@@ -36,6 +36,7 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    background: #0a0a0b;
   }
   body {
     background-color: var(--background);
@@ -46,3 +47,96 @@
     color: #fff;
   }
 }
+
+/* ── Streak / speed-line animation ─────────────────────── */
+@keyframes streak-move {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  5%   { opacity: 1; }
+  85%  { opacity: 0.6; }
+  100% { transform: translate(130vw, -130vh); opacity: 0; }
+}
+.streak {
+  position: absolute;
+  height: 1.5px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, transparent 0%, #ff5100 40%, #ffb347 70%, transparent 100%);
+  animation: streak-move linear infinite;
+  pointer-events: none;
+  will-change: transform;
+}
+
+/* ── Scroll reveal ──────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.08s; }
+.reveal-delay-2 { transition-delay: 0.16s; }
+.reveal-delay-3 { transition-delay: 0.24s; }
+.reveal-delay-4 { transition-delay: 0.32s; }
+.reveal-delay-5 { transition-delay: 0.40s; }
+.reveal-delay-6 { transition-delay: 0.48s; }
+
+/* ── Glow / pulse ───────────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(255,81,0,0.5); }
+  50%       { box-shadow: 0 0 18px 5px rgba(255,81,0,0.9); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.75); }
+}
+.glow-accent   { animation: pulse-glow 2s ease-in-out infinite; }
+.pulse-dot     { animation: pulse-dot  1.5s ease-in-out infinite; }
+
+/* ── Gradient text ──────────────────────────────────────── */
+.text-gradient {
+  background: linear-gradient(135deg, #ff5100 0%, #ffb347 60%, #fff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Scanlines overlay ──────────────────────────────────── */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,0.06) 3px,
+    rgba(0,0,0,0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── Border glow on hover ───────────────────────────────── */
+.hover-glow {
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.hover-glow:hover {
+  border-color: rgba(255,81,0,0.4);
+  box-shadow: 0 0 20px rgba(255,81,0,0.15);
+}
+
+/* ── Marquee (infinite scroll ticker) ──────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+.marquee-track:hover { animation-play-state: paused; }
