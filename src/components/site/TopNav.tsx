@@ -19,8 +19,16 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
 
+  // Reactive config — subscribes to dashboard saves so changes reflect immediately
+  const [cfg, setCfg] = useState<SiteConfig>(() => cfgProp ?? loadConfig());
+  useEffect(() => {
+    if (cfgProp) { setCfg(cfgProp); return; } // parent-controlled
+    const handler = (e: Event) => setCfg((e as CustomEvent<SiteConfig>).detail);
+    window.addEventListener("tgl-config-updated", handler);
+    return () => window.removeEventListener("tgl-config-updated", handler);
+  }, [cfgProp]);
+
   const { lang, t } = useLang();
-  const cfg    = cfgProp ?? loadConfig();
   const accent = cfg.accentColor;
   const logoColor = cfg.logoColor || accent;
 
@@ -44,15 +52,26 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
     setLangOpen(false);
   };
 
-  const NAV_LINKS = [
-    { to: "/",          label: t("nav.home")     },
-    { to: "/map",       label: t("nav.map")      },
-    { to: "/tracker",   label: t("nav.tracker")  },
-    { to: "/news",      label: t("nav.news")     },
-    { to: "/research",  label: t("nav.research") },
-    { to: "/about",     label: t("nav.about")    },
-    { to: "/contact",   label: t("nav.contact")  },
-  ] as const;
+  // Base link definitions — labels come from cfg.navLinks if set, else i18n
+  const NAV_LINK_BASE = [
+    { to: "/",          id: "home",     fallbackLabel: t("nav.home")     },
+    { to: "/map",       id: "map",      fallbackLabel: t("nav.map")      },
+    { to: "/tracker",   id: "tracker",  fallbackLabel: t("nav.tracker")  },
+    { to: "/news",      id: "news",     fallbackLabel: t("nav.news")     },
+    { to: "/research",  id: "research", fallbackLabel: t("nav.research") },
+    { to: "/about",     id: "about",    fallbackLabel: t("nav.about")    },
+    { to: "/contact",   id: "contact",  fallbackLabel: t("nav.contact")  },
+  ];
+
+  // Filter by cfg.navLinks visibility; home is always shown
+  const NAV_LINKS = NAV_LINK_BASE.filter((l) => {
+    if (l.id === "home") return true;
+    const override = cfg.navLinks?.find((n) => n.id === l.id);
+    return override ? override.visible : true;
+  }).map((l) => {
+    const override = cfg.navLinks?.find((n) => n.id === l.id);
+    return { to: l.to, label: override?.label || l.fallbackLabel };
+  });
 
   return (
     <nav className="sticky top-0 z-[1000] nav-bar backdrop-blur-md">

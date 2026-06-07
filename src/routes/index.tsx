@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { useReveal } from "@/components/site/Counter";
-import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
+import { useConfig } from "@/lib/siteConfig";
 import { useLang } from "@/lib/i18n";
 
 // Lazy-load map (Leaflet is browser-only)
@@ -178,15 +178,9 @@ const DEFAULT_TICKER = [
 
 function Index() {
   useReveal();
-  const [cfg, setCfg] = useState<SiteConfig>(() => loadConfig());
+  const cfg = useConfig();
   const [openStage, setOpenStage] = useState<string | null>(null);
   const { t, ta, to } = useLang();
-
-  useEffect(() => {
-    const handler = (e: Event) => setCfg((e as CustomEvent<SiteConfig>).detail);
-    window.addEventListener("tgl-config-updated", handler);
-    return () => window.removeEventListener("tgl-config-updated", handler);
-  }, []);
 
   const accent = cfg.accentColor;
   const ticker = cfg.ticker?.length ? cfg.ticker : DEFAULT_TICKER;

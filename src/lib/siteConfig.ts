@@ -188,6 +188,33 @@ export function importConfig(json: string): SiteConfig | null {
   }
 }
 
+/* ── React hook — reactive config consumer ───────────────── */
+import { useCallback, useEffect, useState } from "react";
+
+export function useConfig(): SiteConfig {
+  const [cfg, setCfg] = useState<SiteConfig>(loadConfig);
+  useEffect(() => {
+    const handler = (e: Event) => setCfg((e as CustomEvent<SiteConfig>).detail);
+    window.addEventListener("tgl-config-updated", handler);
+    return () => window.removeEventListener("tgl-config-updated", handler);
+  }, []);
+  return cfg;
+}
+
+/** Setter returned by useManagedConfig — for the dashboard */
+export function useManagedConfig() {
+  const [cfg, setCfg] = useState<SiteConfig>(loadConfig);
+  useEffect(() => {
+    const handler = (e: Event) => setCfg((e as CustomEvent<SiteConfig>).detail);
+    window.addEventListener("tgl-config-updated", handler);
+    return () => window.removeEventListener("tgl-config-updated", handler);
+  }, []);
+  const set = useCallback(<K extends keyof SiteConfig>(key: K, value: SiteConfig[K]) => {
+    setCfg((prev) => ({ ...prev, [key]: value }));
+  }, []);
+  return { cfg, setCfg, set };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function deepMerge(base: any, override: any): any {
   const out = { ...base };
