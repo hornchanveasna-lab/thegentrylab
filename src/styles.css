@@ -125,6 +125,25 @@
 /* Hero radial glows → lighter for light mode */
 [data-theme="light"] .scanlines::after { opacity: 0.3; }
 
+/* ── GIDF tooltip panel — light mode text fixes ─────────── */
+.gidf-label       { color: rgba(255,255,255,0.30); }
+.gidf-body        { color: rgba(255,255,255,0.65); }
+.gidf-body-strong { color: rgba(255,255,255,0.80); }
+[data-theme="light"] .gidf-label       { color: rgba(0,0,0,0.45) !important; }
+[data-theme="light"] .gidf-body        { color: rgba(0,0,0,0.72) !important; }
+[data-theme="light"] .gidf-body-strong { color: rgba(0,0,0,0.88) !important; }
+[data-theme="light"] .bg-\[\#111113\]  { background-color: #e8e6e0 !important; }
+[data-theme="light"] .text-white\/65   { color: rgba(0,0,0,0.65) !important; }
+[data-theme="light"] .text-white\/15   { color: rgba(0,0,0,0.15) !important; }
+[data-theme="light"] .text-white\/10   { color: rgba(0,0,0,0.10) !important; }
+[data-theme="light"] .text-white\/4    { color: rgba(0,0,0,0.06) !important; }
+
+/* ── Nav surface dropdown light mode ────────────────────── */
+[data-theme="light"] .nav-surface { background-color: var(--background) !important; border-color: var(--border) !important; }
+
+/* ── Map: lock to dark regardless of page theme ─────────── */
+/* Apply data-theme="dark" to the IndustrialMap root div to keep map always dark */
+
 /* ── Streak / speed-line animation ──────────────────────── */
 @keyframes streak-move {
   0%   { transform: translate(0, 0);          opacity: 0;   }

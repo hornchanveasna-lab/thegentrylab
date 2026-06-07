@@ -1,30 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
 import { GentryMark } from "@/components/site/GentryMark";
+import { LANG_FLAGS, LANG_NAMES, LANG_ORDER, setLang, useLang, type LangCode } from "@/lib/i18n";
 
-const links = [
-  { to: "/",          label: "Home"     },
-  { to: "/map",       label: "Map"      },
-  { to: "/tracker",   label: "Tracker"  },
-  { to: "/news",      label: "News"     },
-  { to: "/research",  label: "Research" },
-  { to: "/about",     label: "About"    },
-  { to: "/contact",   label: "Contact"  },
-] as const;
-
-const LANGUAGES = [
-  { code: "kh", flag: "🇰🇭" },
-  { code: "cn", flag: "🇨🇳" },
-  { code: "en", flag: "🇬🇧" },
-  { code: "fr", flag: "🇫🇷" },
-  { code: "kr", flag: "🇰🇷" },
-  { code: "jp", flag: "🇯🇵" },
-] as const;
-
-type LangCode = typeof LANGUAGES[number]["code"];
-
-/* ── Dark/light mode helpers ─────────────────────────── */
+/* ── Dark/light helpers ─────────────────────────────────── */
 function getStoredTheme(): "dark" | "light" {
   try { return (localStorage.getItem("tgl_theme") as "dark" | "light") || "dark"; } catch { return "dark"; }
 }
@@ -33,32 +13,51 @@ function applyTheme(t: "dark" | "light") {
   try { localStorage.setItem("tgl_theme", t); } catch { /* */ }
 }
 
-/* ── Language helpers ────────────────────────────────── */
-function getStoredLang(): LangCode {
-  try { return (localStorage.getItem("tgl_lang") as LangCode) || "en"; } catch { return "en"; }
-}
-
 export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">(getStoredTheme);
-  const [lang, setLang] = useState<LangCode>(getStoredLang);
+  const [langOpen, setLangOpen] = useState(false);
+  const langRef = useRef<HTMLDivElement>(null);
 
-  const cfg = cfgProp ?? loadConfig();
+  const { lang, t } = useLang();
+  const cfg    = cfgProp ?? loadConfig();
   const accent = cfg.accentColor;
   const logoColor = cfg.logoColor || accent;
 
-  /* Apply theme on mount + change */
   useEffect(() => { applyTheme(theme); }, [theme]);
 
+  /* Close lang dropdown on outside click */
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(e.target as Node)) {
+        setLangOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
-  const setLanguage = (code: LangCode) => {
+
+  const selectLang = (code: LangCode) => {
     setLang(code);
-    try { localStorage.setItem("tgl_lang", code); } catch { /* */ }
+    setLangOpen(false);
   };
+
+  const NAV_LINKS = [
+    { to: "/",          label: t("nav.home")     },
+    { to: "/map",       label: t("nav.map")      },
+    { to: "/tracker",   label: t("nav.tracker")  },
+    { to: "/news",      label: t("nav.news")     },
+    { to: "/research",  label: t("nav.research") },
+    { to: "/about",     label: t("nav.about")    },
+    { to: "/contact",   label: t("nav.contact")  },
+  ] as const;
 
   return (
     <nav className="sticky top-0 z-[1000] nav-bar backdrop-blur-md">
       <div className="flex items-center justify-between px-6 md:px-12 py-3.5 max-w-7xl mx-auto">
+
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 group">
           {cfg.logoImage ? (
@@ -78,9 +77,9 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
           </span>
         </Link>
 
-        {/* Desktop right side */}
+        {/* Desktop right */}
         <div className="hidden md:flex items-center gap-1 text-[11px] font-mono uppercase tracking-widest">
-          {links.map((l) => (
+          {NAV_LINKS.map((l) => (
             <Link key={l.to} to={l.to}
               activeOptions={{ exact: true }}
               activeProps={{ className: "text-brand-accent" }}
@@ -92,29 +91,50 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
             </Link>
           ))}
 
-          {/* Divider */}
           <span className="w-px h-5 nav-divider mx-2" />
 
-          {/* Language flags */}
-          <div className="flex items-center gap-0.5">
-            {LANGUAGES.map((l) => (
-              <button
-                key={l.code}
-                onClick={() => setLanguage(l.code)}
-                title={l.code.toUpperCase()}
-                className="w-7 h-7 flex items-center justify-center rounded transition-all text-base leading-none"
-                style={{
-                  opacity: lang === l.code ? 1 : 0.35,
-                  transform: lang === l.code ? "scale(1.15)" : "scale(1)",
-                  filter: lang === l.code ? "drop-shadow(0 0 4px rgba(255,81,0,0.5))" : "none",
-                }}
-              >
-                {l.flag}
-              </button>
-            ))}
+          {/* ── Language dropdown ─────────────────── */}
+          <div ref={langRef} className="relative">
+            <button
+              onClick={() => setLangOpen((v) => !v)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 nav-toggle-btn rounded transition-all hover:bg-white/5"
+              title="Change language"
+            >
+              <span className="text-base leading-none">{LANG_FLAGS[lang]}</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest hidden lg:block">{lang.toUpperCase()}</span>
+              <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className="opacity-40"
+                style={{ transform: langOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>
+                <path d="M1.5 3l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </button>
+
+            {langOpen && (
+              <div className="absolute right-0 top-full mt-1 w-44 nav-surface border nav-border shadow-2xl z-50 overflow-hidden">
+                {LANG_ORDER.map((code) => (
+                  <button
+                    key={code}
+                    onClick={() => selectLang(code)}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all hover:bg-white/5"
+                    style={{
+                      backgroundColor: lang === code ? `${accent}12` : undefined,
+                      borderLeft: lang === code ? `2px solid ${accent}` : "2px solid transparent",
+                    }}
+                  >
+                    <span className="text-base leading-none">{LANG_FLAGS[code]}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">
+                      {LANG_NAMES[code]}
+                    </span>
+                    {lang === code && (
+                      <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className="ml-auto shrink-0" style={{ color: accent }}>
+                        <path d="M1.5 4.5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Divider */}
           <span className="w-px h-5 nav-divider mx-2" />
 
           {/* Theme toggle */}
@@ -125,7 +145,6 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
             aria-label="Toggle theme"
           >
             {theme === "dark" ? (
-              /* Sun icon */
               <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
                 <circle cx="7.5" cy="7.5" r="3"/>
                 <line x1="7.5" y1="1"   x2="7.5" y2="2.5"/>
@@ -138,7 +157,6 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
                 <line x1="3.2" y1="10.8" x2="4.2" y2="11.8"/>
               </svg>
             ) : (
-              /* Moon icon */
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
                 <path d="M12 9.33A5.33 5.33 0 0 1 4.67 2a5.33 5.33 0 1 0 7.33 7.33z"/>
               </svg>
@@ -158,23 +176,37 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               (e.currentTarget as HTMLElement).style.color = accent;
             }}
           >
-            Get advisory
+            {t("nav.getAdvisory")}
           </Link>
         </div>
 
         {/* Mobile right */}
         <div className="md:hidden flex items-center gap-2">
-          {/* Compact flags */}
-          <div className="flex items-center gap-0.5">
-            {LANGUAGES.map((l) => (
-              <button key={l.code} onClick={() => setLanguage(l.code)}
-                className="w-6 h-6 flex items-center justify-center text-sm leading-none"
-                style={{ opacity: lang === l.code ? 1 : 0.3 }}>
-                {l.flag}
-              </button>
-            ))}
+          {/* Compact lang dropdown */}
+          <div ref={undefined} className="relative">
+            <button onClick={() => setLangOpen((v) => !v)}
+              className="flex items-center gap-1 nav-toggle-btn px-2 py-1.5 rounded">
+              <span className="text-base leading-none">{LANG_FLAGS[lang]}</span>
+              <svg width="8" height="8" viewBox="0 0 9 9" fill="none" className="opacity-40"
+                style={{ transform: langOpen ? "rotate(180deg)" : undefined, transition: "transform .2s" }}>
+                <path d="M1.5 3l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </button>
+            {langOpen && (
+              <div className="absolute right-0 top-full mt-1 w-40 nav-surface border nav-border shadow-2xl z-50">
+                {LANG_ORDER.map((code) => (
+                  <button key={code} onClick={() => selectLang(code)}
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 transition"
+                    style={{ borderLeft: lang === code ? `2px solid ${accent}` : "2px solid transparent" }}>
+                    <span className="text-sm">{LANG_FLAGS[code]}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">{LANG_NAMES[code]}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {/* Theme toggle mobile */}
+
+          {/* Theme toggle */}
           <button onClick={toggleTheme} className="nav-toggle-btn p-1.5 rounded-full transition-all">
             {theme === "dark" ? (
               <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
@@ -190,6 +222,7 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               </svg>
             )}
           </button>
+
           {/* Hamburger */}
           <button className="nav-toggle-btn p-1" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
             <div className="flex flex-col gap-1.5">
@@ -204,7 +237,7 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t nav-border nav-surface px-6 py-4 flex flex-col gap-1">
-          {links.map((l) => (
+          {NAV_LINKS.map((l) => (
             <Link key={l.to} to={l.to} onClick={() => setMobileOpen(false)}
               activeOptions={{ exact: true }}
               activeProps={{ className: "text-brand-accent" }}

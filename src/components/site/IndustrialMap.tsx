@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLang } from "@/lib/i18n";
 import "leaflet/dist/leaflet.css";
 import {
   CORRIDORS,
@@ -103,6 +104,7 @@ interface IndustrialMapProps {
 /* ── Main export ────────────────────────────────────────── */
 export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [mods, setMods] = useState<{ rl: RL; L: L } | null>(null);
+  const { t } = useLang();
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
   const [selected, setSelected] = useState<MapSite | null>(null);
   const [query, setQuery] = useState("");
@@ -163,11 +165,11 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
     if (raw.includes("maps.google") || raw.includes("goo.gl") || raw.includes("maps.app")) {
       coords = parseGoogleMapsUrl(raw);
-      if (!coords) setLocError("Could not extract coordinates from URL.");
+      if (!coords) setLocError(t("map.badUrl"));
     } else {
       coords = parseCoords(raw);
       if (!coords) coords = await geocodePlace(raw);
-      if (!coords) setLocError(`No results for "${raw}" in Cambodia.`);
+      if (!coords) setLocError(t("map.noResults"));
     }
 
     if (coords) {
@@ -193,7 +195,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
   /* ── Full map ───────────────────────────────────────────── */
   return (
-    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black">
+    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black" data-theme="dark">
       {/* Basemap */}
       <div className="absolute inset-0">
         {mods ? (
@@ -225,7 +227,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           <input
             value={locationInput}
             onChange={(e) => { setLocationInput(e.target.value); setLocError(""); }}
-            placeholder="Paste Google Maps link or place name…"
+            placeholder={t("map.searchPlaceholder")}
             className="flex-1 px-3 py-2.5 text-[11px] text-white bg-transparent placeholder:text-white/25 focus:outline-none font-mono"
           />
           {locationInput && (
@@ -234,7 +236,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           )}
           <button type="submit" disabled={locSearching}
             className="px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest bg-[#ff5100] text-black hover:brightness-110 transition-all disabled:opacity-50 shrink-0 border-l border-white/10">
-            {locSearching ? "…" : "Go"}
+            {locSearching ? "…" : t("map.go")}
           </button>
         </form>
         {locError && (
@@ -257,7 +259,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
           </svg>
-          <span className="font-mono text-[10px] uppercase tracking-widest">Layers</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest">{t("map.layersBtn")}</span>
           <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
             {active.size}
           </span>
@@ -275,7 +277,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
                 Cambodia Industrial Map
               </p>
-              <p className="font-extrabold text-sm uppercase tracking-tight mt-0.5">Layer Control</p>
+              <p className="font-extrabold text-sm uppercase tracking-tight mt-0.5">{t("map.layerControl")}</p>
             </div>
 
             {/* Search */}
@@ -283,7 +285,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search site or province…"
+                placeholder={t("map.searchSite")}
                 className="w-full px-4 py-2.5 bg-transparent text-xs placeholder:text-white/30 focus:outline-none"
               />
             </div>
@@ -540,7 +542,7 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
 
         {site.recommendation && (
           <div className="px-4 py-3 border-t border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: "#ff5100" }}>{t("map.advisory")}</p>
             <p className="text-[11px] text-white/80 leading-relaxed">{site.recommendation}</p>
           </div>
         )}
@@ -550,7 +552,7 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
         )}
 
         <div className="px-4 py-3 border-t border-white/10 font-mono text-[9px] uppercase tracking-widest text-white/30">
-          Data illustrative · Verify before investment decision
+          {t("map.disclaimer")}
         </div>
       </div>
     </aside>

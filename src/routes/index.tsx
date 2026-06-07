@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { useReveal } from "@/components/site/Counter";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
+import { useLang } from "@/lib/i18n";
 
 // Lazy-load map (Leaflet is browser-only)
 const IndustrialMap = lazy(() =>
@@ -179,6 +180,7 @@ function Index() {
   useReveal();
   const [cfg, setCfg] = useState<SiteConfig>(() => loadConfig());
   const [openStage, setOpenStage] = useState<string | null>(null);
+  const { t, ta, to } = useLang();
 
   useEffect(() => {
     const handler = (e: Event) => setCfg((e as CustomEvent<SiteConfig>).detail);
@@ -188,6 +190,10 @@ function Index() {
 
   const accent = cfg.accentColor;
   const ticker = cfg.ticker?.length ? cfg.ticker : DEFAULT_TICKER;
+  const stageTitles    = ta("stageTitles");
+  const stageStats     = ta("stageStats");
+  const stageProcess   = ta("stageProcess");
+  const stageImplication = ta("stageImplication");
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans overflow-x-hidden">
@@ -214,19 +220,19 @@ function Index() {
           <div className="flex items-center gap-3 mb-8 reveal">
             <span className="w-1.5 h-1.5 rounded-full pulse-dot" style={{ backgroundColor: accent }} />
             <p className="font-mono text-[11px] uppercase tracking-[0.22em]" style={{ color: accent }}>
-              Industrial Intelligence · Cambodia
+              {t("hero.eyebrow")}
             </p>
           </div>
 
           <h1 className="font-extrabold uppercase leading-[0.88] tracking-tighter text-[clamp(2.6rem,6.5vw,5.5rem)] max-w-4xl reveal reveal-delay-1">
-            What does it<br />
-            actually take to<br />
-            develop <span className="text-gradient">industrial</span><br />
-            land in Cambodia?
+            {t("hero.h1a")}<br />
+            {t("hero.h1b")}<br />
+            {t("hero.h1c")} <span className="text-gradient">{t("hero.h1d").split(" ")[0]}</span>{" "}
+            {t("hero.h1d").split(" ").slice(1).join(" ")}
           </h1>
 
           <p className="text-white/50 text-lg max-w-lg mt-8 leading-relaxed reveal reveal-delay-2">
-            9 stages. 110+ sites mapped. One free platform built from $500M+ of delivered projects.
+            {t("hero.sub")}
           </p>
 
           <div className="flex flex-wrap gap-4 mt-10 reveal reveal-delay-3">
@@ -235,7 +241,7 @@ function Index() {
               className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
               style={{ backgroundColor: accent, color: "#000", boxShadow: `0 0 28px ${accent}55` }}
             >
-              Explore the map
+              {t("hero.cta1")}
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
@@ -244,12 +250,12 @@ function Index() {
               to="/about"
               className="inline-flex items-center gap-2 px-8 py-4 rounded-full border border-white/15 text-white font-bold text-sm uppercase tracking-wider hover:border-white/40 hover:bg-white/5 transition-all"
             >
-              About the platform
+              {t("hero.cta2")}
             </Link>
           </div>
 
           <div className="flex flex-wrap gap-6 mt-14 reveal reveal-delay-4">
-            {["9-Stage GIDF", "110+ Sites", "Free Access", "CDC · EDC · MPWT Data"].map((b) => (
+            {ta("hero.tags").map((b) => (
               <span key={b} className="font-mono text-[10px] uppercase tracking-widest text-white/20">{b}</span>
             ))}
           </div>
@@ -266,20 +272,24 @@ function Index() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
             <div className="reveal">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] mb-4" style={{ color: accent }}>
-                The Framework · GIDF
+                {t("gidf.eyebrow")}
               </p>
               <h2 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter leading-[0.92]">
-                GentryLab Industrial<br />Development Framework
+                {t("gidf.title1")}<br />{t("gidf.title2")}
               </h2>
             </div>
             <p className="text-white/35 text-sm max-w-xs leading-relaxed reveal reveal-delay-2">
-              Touch any stage to reveal what really happens on the ground in Cambodia.
+              {t("gidf.sub")}
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-white/8 border border-white/8">
             {GIDF_STAGES.map((stage, i) => {
-              const isOpen = openStage === stage.n;
+              const isOpen  = openStage === stage.n;
+              const title   = stageTitles[i]   ?? stage.title;
+              const stat    = stageStats[i]    ?? stage.stat;
+              const process = stageProcess[i]  ?? stage.process;
+              const impl    = stageImplication[i] ?? stage.implication;
               return (
                 <div
                   key={stage.n}
@@ -295,60 +305,46 @@ function Index() {
                 >
                   {/* Stage header */}
                   <div className={`p-7 transition-colors ${isOpen ? "bg-[#111113]" : ""}`}>
-                    <span className="absolute top-4 right-5 font-extrabold text-[42px] tracking-tighter leading-none text-white/4 select-none">
+                    <span className="absolute top-4 right-5 font-extrabold text-[42px] tracking-tighter leading-none select-none" style={{ color: "rgba(255,255,255,0.04)" }}>
                       {stage.n}
                     </span>
                     <div className="relative z-10">
-                      {/* Professional SVG icon */}
-                      <span
-                        className="mb-4 block transition-colors"
-                        style={{ color: isOpen ? accent : "rgba(255,255,255,0.4)" }}
-                      >
+                      <span className="mb-4 block transition-colors" style={{ color: isOpen ? accent : "rgba(255,255,255,0.4)" }}>
                         {STAGE_ICONS[stage.n]}
                       </span>
                       <span className="font-mono text-[10px] uppercase tracking-widest mb-2 block" style={{ color: accent }}>
-                        Stage {stage.n}
+                        {t("gidf.stageLabel") || "Stage"} {stage.n}
                       </span>
                       <h3 className="font-extrabold uppercase text-sm tracking-tight mb-1 group-hover:text-white transition-colors">
-                        {stage.title}
+                        {title}
                       </h3>
-                      {/* Hint arrow */}
-                      <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-white/20 mt-2">
-                        <span>{isOpen ? "▲ hide" : "▼ cambodia intel"}</span>
+                      <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest mt-2" style={{ color: "rgba(255,255,255,0.2)" }}>
+                        {isOpen ? t("gidf.hintClose") : t("gidf.hintOpen")}
                       </span>
                     </div>
                   </div>
 
                   {/* Intelligence tooltip panel */}
-                  <div
-                    className="overflow-hidden transition-all duration-300 ease-in-out"
-                    style={{ maxHeight: isOpen ? "360px" : "0px" }}
-                  >
-                    <div
-                      className="px-7 pb-7 border-t"
-                      style={{ borderColor: `${accent}25`, backgroundColor: "#111113" }}
-                    >
+                  <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: isOpen ? "400px" : "0px" }}>
+                    <div className="px-7 pb-7 border-t" style={{ borderColor: `${accent}25`, backgroundColor: "#111113" }}>
                       {/* Stat hook */}
                       <div className="pt-5 pb-3 border-b border-white/8">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">Key insight</p>
-                        <p className="font-bold text-sm leading-tight" style={{ color: accent }}>
-                          {stage.stat}
-                        </p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest mb-1.5 gidf-label">{t("gidf.labelStat")}</p>
+                        <p className="font-bold text-sm leading-tight" style={{ color: accent }}>{stat}</p>
                       </div>
                       {/* Process */}
                       <div className="pt-3 pb-3 border-b border-white/8">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">What actually happens</p>
-                        <p className="text-[12px] text-white/65 leading-relaxed">{stage.process}</p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest mb-1.5 gidf-label">{t("gidf.labelProcess")}</p>
+                        <p className="text-[12px] leading-relaxed gidf-body">{process}</p>
                       </div>
                       {/* Implication */}
                       <div className="pt-3">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">Investor implication</p>
-                        <p className="text-[12px] text-white/80 leading-relaxed">{stage.implication}</p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest mb-1.5 gidf-label">{t("gidf.labelImplication")}</p>
+                        <p className="text-[12px] leading-relaxed gidf-body-strong">{impl}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Bottom accent line */}
                   <div className="absolute bottom-0 left-0 right-0 h-px scale-x-0 group-hover:scale-x-100 transition-transform origin-left" style={{ backgroundColor: accent }} />
                 </div>
               );
@@ -365,21 +361,16 @@ function Index() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="reveal">
               <p className="font-mono text-[11px] uppercase tracking-[0.22em] mb-5" style={{ color: accent }}>
-                Free Intelligence Platform
+                {t("mapSection.eyebrow")}
               </p>
               <h2 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter leading-[0.92] mb-6">
-                Every SEZ, corridor &<br />risk zone — mapped.
+                {t("mapSection.title1")}<br />{t("mapSection.title2")}
               </h2>
               <p className="text-white/50 leading-relaxed mb-8">
-                Our interactive intelligence map layers 110+ industrial sites, 9 development corridors, EDC substation data, flood risk zones, and labour catchments across Cambodia — all free.
+                {t("mapSection.desc")}
               </p>
               <div className="grid grid-cols-2 gap-4 mb-10">
-                {[
-                  { n: "110+", label: "Industrial sites" },
-                  { n: "9",    label: "Dev corridors"   },
-                  { n: "6",    label: "Data layers"     },
-                  { n: "Free", label: "Always"          },
-                ].map((s) => (
+                {to("mapSection.stats").map((s: { n: string; label: string }) => (
                   <div key={s.label} className="rounded-lg border border-white/8 px-4 py-3 bg-[#0a0a0b]">
                     <p className="text-xl font-extrabold tracking-tighter" style={{ color: accent }}>{s.n}</p>
                     <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mt-0.5">{s.label}</p>
@@ -391,7 +382,7 @@ function Index() {
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
                 style={{ backgroundColor: accent, color: "#000", boxShadow: `0 0 20px ${accent}44` }}
               >
-                Open the map
+                {t("mapSection.cta")}
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -465,10 +456,10 @@ function Index() {
                 {/* ── Layer 6: top eyebrow label ── */}
                 <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
                   <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 bg-black/60 border border-white/10" style={{ color: accent }}>
-                    ● Live Intelligence · Cambodia
+                    {t("mapSection.liveBadge")}
                   </span>
                   <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 bg-black/60 border border-white/10 text-white/30">
-                    6 layers active
+                    {t("mapSection.layersBadge")}
                   </span>
                 </div>
 
@@ -488,9 +479,9 @@ function Index() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
                 <div className="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none">
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-white/50 mb-1">9 corridors · 110+ sites</p>
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-white/50 mb-1">{t("mapSection.corridorLabel")}</p>
                     <p className="font-extrabold text-sm uppercase tracking-tight text-white group-hover:text-[#ff5100] transition-colors">
-                      Launch interactive map →
+                      {t("mapSection.launchCta")}
                     </p>
                   </div>
                   <div
@@ -535,7 +526,7 @@ function Index() {
       <footer className="px-6 md:px-12 py-8 font-mono text-[10px] uppercase tracking-widest text-white/20 flex flex-col sm:flex-row justify-between gap-2 max-w-7xl mx-auto">
         <p>{cfg.footerLeft}</p>
         <div className="flex gap-6 items-center">
-          <Link to="/dashboard" className="hover:text-white/50 transition-colors">Dashboard</Link>
+          <Link to="/dashboard" className="hover:text-white/50 transition-colors">{t("footer.dashboard")}</Link>
           <p>{cfg.footerRight}</p>
         </div>
       </footer>
