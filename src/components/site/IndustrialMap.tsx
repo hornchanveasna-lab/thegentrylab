@@ -23,23 +23,38 @@ const ALL_LAYERS: LayerGroup[] = [
 ];
 
 const STATUS_COLOR: Record<string, string> = {
-  Operational:        "#34d399",
+  Operational:         "#34d399",
   "Under Construction":"#fbbf24",
-  Planned:            "#94a3b8",
+  Planned:             "#94a3b8",
 };
 
-/* Investment sub-kinds */
-const INV_KINDS: { label: string; value: SiteKind | "all" }[] = [
-  { label: "All",          value: "all"      },
-  { label: "SEZ",          value: "sez"      },
-  { label: "Park",         value: "park"     },
-  { label: "Factory",      value: "factory"  },
-  { label: "Logistics",    value: "logistics" },
-];
+/* ── Sub-kind chips per layer ───────────────────────────── */
+const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKind | "all" }[]>> = {
+  investment: [
+    { label: "All",      value: "all"      },
+    { label: "SEZ",      value: "sez"      },
+    { label: "Park",     value: "park"     },
+    { label: "Factory",  value: "factory"  },
+    { label: "Logistics",value: "logistics"},
+  ],
+  infrastructure: [
+    { label: "All",     value: "all"     },
+    { label: "Port",    value: "port"    },
+    { label: "Airport", value: "airport" },
+  ],
+  utilities: [
+    { label: "All",        value: "all"        },
+    { label: "Substation", value: "substation" },
+  ],
+  labor: [
+    { label: "All",        value: "all"        },
+    { label: "University", value: "university" },
+    { label: "TVET",       value: "tvet"       },
+  ],
+};
 
-/* ── parseLocation ─────────────────────────────────────── */
+/* ── Google Maps URL parser ─────────────────────────────── */
 function parseGoogleMapsUrl(url: string): [number, number] | null {
-  // @lat,lng,zoom  or  !3dlat!4dlng
   let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return [parseFloat(m[1]), parseFloat(m[2])];
   m = url.match(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/);
@@ -55,7 +70,6 @@ function parseCoords(text: string): [number, number] | null {
   return null;
 }
 
-/* ── Nominatim geocode ─────────────────────────────────── */
 async function geocodePlace(query: string): Promise<[number, number] | null> {
   try {
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=kh&format=json&limit=1`;
@@ -66,12 +80,14 @@ async function geocodePlace(query: string): Promise<[number, number] | null> {
   return null;
 }
 
-/* ── FlyToPin controller ────────────────────────────────── */
-function FlyToController({ target, L }: {
+/* ── FlyController (must be rendered inside MapContainer) ── */
+function FlyController({
+  useMap,
+  target,
+}: {
+  useMap: RL["useMap"];
   target: { lat: number; lng: number; zoom: number } | null;
-  L: L;
 }) {
-  const { useMap } = require("react-leaflet") as RL;
   const map = useMap();
   useEffect(() => {
     if (target) map.flyTo([target.lat, target.lng], target.zoom, { duration: 1.2 });
@@ -79,22 +95,21 @@ function FlyToController({ target, L }: {
   return null;
 }
 
-/* ── Main export ────────────────────────────────────────── */
+/* ── Props ──────────────────────────────────────────────── */
 interface IndustrialMapProps {
-  /** Preview mode: corridors only, no controls, no click, pointer-events off */
   previewMode?: boolean;
 }
 
+/* ── Main export ────────────────────────────────────────── */
 export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [mods, setMods] = useState<{ rl: RL; L: L } | null>(null);
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
   const [selected, setSelected] = useState<MapSite | null>(null);
   const [query, setQuery] = useState("");
-  const [invKind, setInvKind] = useState<SiteKind | "all">("all");
-  const [panelOpen, setPanelOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
+  const [panelOpen, setPanelOpen] = useState(true); // open by default
 
-  /* Location search state */
+  /* Location search */
   const [locationInput, setLocationInput] = useState("");
   const [pinTarget, setPinTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
   const [pinMarker, setPinMarker] = useState<{ lat: number; lng: number } | null>(null);
@@ -110,35 +125,17 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     return () => { cancel = true; };
   }, []);
 
-  /* Close panel on outside click */
-  useEffect(() => {
-    if (!panelOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setPanelOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [panelOpen]);
-
-  /* Close panel on Esc */
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setPanelOpen(false); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
   const visible = useMemo(() => {
     if (previewMode) return [];
     const q = query.trim().toLowerCase();
     return SITES.filter((s) => {
       if (!active.has(s.layer)) return false;
-      if (s.layer === "investment" && invKind !== "all" && s.kind !== invKind) return false;
+      const subKind = subKinds[s.layer];
+      if (subKind && subKind !== "all" && s.kind !== subKind) return false;
       if (q && !s.name.toLowerCase().includes(q) && !s.province.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [active, query, invKind, previewMode]);
+  }, [active, query, subKinds, previewMode]);
 
   const visibleCorridors = useMemo(
     () => (active.has("corridors") ? CORRIDORS : []),
@@ -153,6 +150,10 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     });
   };
 
+  const setSubKind = (layer: LayerGroup, kind: SiteKind | "all") => {
+    setSubKinds((prev) => ({ ...prev, [layer]: kind }));
+  };
+
   const handleLocationSearch = async () => {
     const raw = locationInput.trim();
     if (!raw) return;
@@ -162,38 +163,35 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
     if (raw.includes("maps.google") || raw.includes("goo.gl") || raw.includes("maps.app")) {
       coords = parseGoogleMapsUrl(raw);
-      if (!coords) setLocError("Could not parse coordinates from that Google Maps URL.");
+      if (!coords) setLocError("Could not extract coordinates from URL.");
     } else {
       coords = parseCoords(raw);
       if (!coords) coords = await geocodePlace(raw);
-      if (!coords) setLocError(`No results found for "${raw}" in Cambodia.`);
+      if (!coords) setLocError(`No results for "${raw}" in Cambodia.`);
     }
 
     if (coords) {
       setPinMarker({ lat: coords[0], lng: coords[1] });
       setPinTarget({ lat: coords[0], lng: coords[1], zoom: 13 });
+      setLocError("");
     }
     setLocSearching(false);
   };
 
-  /* ── Preview mode (homepage card) ──────────────────────── */
+  /* ── Preview mode ───────────────────────────────────────── */
   if (previewMode) {
     return (
       <div className="relative w-full h-full" style={{ pointerEvents: "none" }}>
         {mods ? (
           <PreviewMapView mods={mods} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-[#0a0a0b]">
-            <span className="font-mono text-[10px] text-white/20 uppercase tracking-widest">
-              Loading map…
-            </span>
-          </div>
+          <div className="w-full h-full bg-[#0a0a0b]" />
         )}
       </div>
     );
   }
 
-  /* ── Full interactive map ──────────────────────────────── */
+  /* ── Full map ───────────────────────────────────────────── */
   return (
     <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black">
       {/* Basemap */}
@@ -214,152 +212,137 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         )}
       </div>
 
-      {/* ── Location search bar (top-center) ─────────────── */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[600] w-[min(480px,calc(100vw-8rem))]">
+      {/* ── Search bar (top-center) ────────────────────────── */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[600] w-[min(420px,calc(100vw-340px))]">
         <form
           onSubmit={(e) => { e.preventDefault(); handleLocationSearch(); }}
-          className="flex items-center gap-0 bg-black/90 backdrop-blur border border-white/15 overflow-hidden"
+          className="flex items-center bg-black/90 backdrop-blur border border-white/15 overflow-hidden shadow-xl"
         >
-          <div className="px-3 text-white/30 shrink-0">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.3"/>
-              <path d="M10 10l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-            </svg>
-          </div>
+          <svg className="ml-3 shrink-0 text-white/30" width="13" height="13" viewBox="0 0 13 13" fill="none">
+            <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.3"/>
+            <path d="M9 9l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
           <input
             value={locationInput}
             onChange={(e) => { setLocationInput(e.target.value); setLocError(""); }}
-            placeholder="Paste Google Maps link, coords, or place name…"
-            className="flex-1 py-2.5 text-xs text-white bg-transparent placeholder:text-white/25 focus:outline-none font-mono"
+            placeholder="Paste Google Maps link or place name…"
+            className="flex-1 px-3 py-2.5 text-[11px] text-white bg-transparent placeholder:text-white/25 focus:outline-none font-mono"
           />
-          <button
-            type="submit"
-            disabled={locSearching}
-            className="px-4 py-2.5 text-[10px] font-mono uppercase tracking-widest bg-[#ff5100] text-black hover:brightness-110 transition-all disabled:opacity-50 shrink-0"
-          >
-            {locSearching ? "…" : "Pin"}
+          {locationInput && (
+            <button type="button" onClick={() => { setLocationInput(""); setPinMarker(null); setLocError(""); }}
+              className="text-white/30 hover:text-white px-2 text-base leading-none">✕</button>
+          )}
+          <button type="submit" disabled={locSearching}
+            className="px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest bg-[#ff5100] text-black hover:brightness-110 transition-all disabled:opacity-50 shrink-0 border-l border-white/10">
+            {locSearching ? "…" : "Go"}
           </button>
         </form>
         {locError && (
-          <p className="mt-1 text-[10px] font-mono text-red-400 text-center">{locError}</p>
+          <p className="mt-1 text-[10px] font-mono text-red-400 text-center bg-black/80 px-3 py-1">{locError}</p>
         )}
         {pinMarker && (
-          <p className="mt-1 text-[10px] font-mono text-[#ff5100] text-center">
-            ★ Pinned: {pinMarker.lat.toFixed(5)}, {pinMarker.lng.toFixed(5)}
-            <button onClick={() => { setPinMarker(null); setLocationInput(""); }} className="ml-2 text-white/30 hover:text-white">✕</button>
+          <p className="mt-1 text-[10px] font-mono text-center bg-black/80 px-3 py-1" style={{ color: "#ff5100" }}>
+            ★ {pinMarker.lat.toFixed(5)}, {pinMarker.lng.toFixed(5)}
           </p>
         )}
       </div>
 
-      {/* ── Layers floating button (top-left) ─────────────── */}
-      <div ref={panelRef} className="absolute top-4 left-4 z-[500]">
+      {/* ── Layer panel (left side, open by default) ──────── */}
+      <div className="absolute top-4 left-4 z-[500] flex flex-col gap-2">
+        {/* Toggle button */}
         <button
           onClick={() => setPanelOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-2 bg-black/90 backdrop-blur border border-white/15 text-white hover:border-white/35 transition-all"
-          aria-label="Toggle layer filters"
+          className="flex items-center gap-2 px-3 py-2 bg-black/90 backdrop-blur border border-white/15 text-white hover:border-white/35 transition-all shadow-lg"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
           </svg>
           <span className="font-mono text-[10px] uppercase tracking-widest">Layers</span>
-          <span
-            className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm"
-            style={{ backgroundColor: "#ff510022", color: "#ff5100" }}
-          >
+          <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
             {active.size}
           </span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="text-white/30 transition-transform"
+            style={{ transform: panelOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+            <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
         </button>
 
-        {/* Slide-out panel */}
-        <div
-          className={`absolute top-[calc(100%+6px)] left-0 w-72 bg-black/95 backdrop-blur border border-white/10 text-white transition-all duration-200 origin-top ${
-            panelOpen ? "opacity-100 scale-y-100 pointer-events-auto" : "opacity-0 scale-y-95 pointer-events-none"
-          }`}
-          style={{ maxHeight: "calc(100vh - 8rem)", overflowY: "auto" }}
-        >
-          <div className="px-4 py-3 border-b border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
-              Cambodia Industrial Map
-            </p>
-            <p className="font-extrabold text-sm uppercase tracking-tight mt-0.5">
-              Layer Control
-            </p>
-          </div>
+        {/* Panel */}
+        {panelOpen && (
+          <div className="w-72 bg-black/95 backdrop-blur border border-white/10 text-white shadow-2xl"
+            style={{ maxHeight: "calc(100vh - 7rem)", overflowY: "auto" }}>
+            <div className="px-4 py-3 border-b border-white/10">
+              <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
+                Cambodia Industrial Map
+              </p>
+              <p className="font-extrabold text-sm uppercase tracking-tight mt-0.5">Layer Control</p>
+            </div>
 
-          {/* Search */}
-          <div className="border-b border-white/10">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search site or province…"
-              className="w-full px-4 py-2.5 bg-transparent text-xs placeholder:text-white/30 focus:outline-none"
-            />
-          </div>
+            {/* Search */}
+            <div className="border-b border-white/10">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search site or province…"
+                className="w-full px-4 py-2.5 bg-transparent text-xs placeholder:text-white/30 focus:outline-none"
+              />
+            </div>
 
-          {/* Investment layer + sub-kinds */}
-          <div className="border-b border-white/5">
-            <button
-              onClick={() => toggle("investment")}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition"
-            >
-              <LayerDot color={LAYER_META.investment.color} on={active.has("investment")} />
-              <span className="flex-1">
-                <span className="block text-xs font-bold uppercase tracking-wide">Investment</span>
-                <span className="block text-[10px] text-white/40 mt-0.5">{LAYER_META.investment.description}</span>
-              </span>
-              <span className="font-mono text-[10px] text-white/40">
-                {SITES.filter((s) => s.layer === "investment").length}
-              </span>
-              <Toggle on={active.has("investment")} />
-            </button>
-            {/* Sub-kind chips */}
-            {active.has("investment") && (
-              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                {INV_KINDS.map((k) => (
+            {/* Layers with sub-kind chips */}
+            {ALL_LAYERS.map((g, i) => {
+              const meta    = LAYER_META[g];
+              const on      = active.has(g);
+              const count   = g === "corridors" ? CORRIDORS.length : SITES.filter((s) => s.layer === g).length;
+              const subDefs = LAYER_SUBKINDS[g];
+              const curSub  = subKinds[g] ?? "all";
+              return (
+                <div key={g} className={`${i < ALL_LAYERS.length - 1 ? "border-b border-white/5" : ""}`}>
                   <button
-                    key={k.value}
-                    onClick={() => setInvKind(k.value)}
-                    className="px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest border transition-all"
-                    style={{
-                      backgroundColor: invKind === k.value ? "#ff510022" : "transparent",
-                      borderColor:     invKind === k.value ? "#ff5100" : "rgba(255,255,255,0.12)",
-                      color:           invKind === k.value ? "#ff5100"  : "rgba(255,255,255,0.4)",
-                    }}
+                    onClick={() => toggle(g)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition"
                   >
-                    {k.label}
+                    <span className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: meta.color, opacity: on ? 1 : 0.25,
+                        boxShadow: on ? `0 0 8px ${meta.color}` : "none" }} />
+                    <span className="flex-1">
+                      <span className="block text-xs font-bold uppercase tracking-wide">{meta.label}</span>
+                      <span className="block text-[10px] text-white/40 mt-0.5">{meta.description}</span>
+                    </span>
+                    <span className="font-mono text-[10px] text-white/40">{count}</span>
+                    {/* Toggle */}
+                    <span className={`w-7 h-4 rounded-full relative transition ${on ? "bg-[#ff5100]" : "bg-white/15"}`}>
+                      <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${on ? "left-3.5" : "left-0.5"}`} />
+                    </span>
                   </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* Other layers */}
-          {(["infrastructure", "utilities", "corridors", "labor", "risk"] as LayerGroup[]).map((g) => {
-            const meta = LAYER_META[g];
-            const on = active.has(g);
-            const count = g === "corridors" ? CORRIDORS.length : SITES.filter((s) => s.layer === g).length;
-            return (
-              <div key={g} className="border-b border-white/5 last:border-0">
-                <button
-                  onClick={() => toggle(g)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition"
-                >
-                  <LayerDot color={meta.color} on={on} />
-                  <span className="flex-1">
-                    <span className="block text-xs font-bold uppercase tracking-wide">{meta.label}</span>
-                    <span className="block text-[10px] text-white/40 mt-0.5">{meta.description}</span>
-                  </span>
-                  <span className="font-mono text-[10px] text-white/40">{count}</span>
-                  <Toggle on={on} />
-                </button>
-              </div>
-            );
-          })}
+                  {/* Sub-kind chips */}
+                  {subDefs && on && (
+                    <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                      {subDefs.map((k) => (
+                        <button
+                          key={k.value}
+                          onClick={() => setSubKind(g, k.value)}
+                          className="px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest border transition-all"
+                          style={{
+                            backgroundColor: curSub === k.value ? `${meta.color}22` : "transparent",
+                            borderColor:     curSub === k.value ? meta.color          : "rgba(255,255,255,0.12)",
+                            color:           curSub === k.value ? meta.color          : "rgba(255,255,255,0.4)",
+                          }}
+                        >
+                          {k.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
-          <div className="px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-white/30">
-            {visible.length} sites · {visibleCorridors.length} corridors
+            <div className="px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-white/30">
+              {visible.length} sites · {visibleCorridors.length} corridors
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Inspector */}
@@ -368,37 +351,14 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   );
 }
 
-/* ── Small reusable pieces ──────────────────────────────── */
-function LayerDot({ color, on }: { color: string; on: boolean }) {
-  return (
-    <span
-      className="w-3 h-3 rounded-full shrink-0"
-      style={{ backgroundColor: color, opacity: on ? 1 : 0.25, boxShadow: on ? `0 0 8px ${color}` : "none" }}
-    />
-  );
-}
-function Toggle({ on }: { on: boolean }) {
-  return (
-    <span className={`w-7 h-4 rounded-full relative transition ${on ? "bg-[#ff5100]" : "bg-white/15"}`}>
-      <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${on ? "left-3.5" : "left-0.5"}`} />
-    </span>
-  );
-}
-
-/* ── Preview-only map (homepage) ───────────────────────── */
+/* ── Preview map (homepage background) ─────────────────── */
 function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
   const { MapContainer, TileLayer, Polyline } = mods.rl;
   return (
     <MapContainer
-      center={[12.5, 104.9]}
-      zoom={7}
-      minZoom={6}
-      maxZoom={8}
-      scrollWheelZoom={false}
-      zoomControl={false}
-      dragging={false}
-      doubleClickZoom={false}
-      keyboard={false}
+      center={[12.5, 104.9]} zoom={7} minZoom={6} maxZoom={8}
+      scrollWheelZoom={false} zoomControl={false} dragging={false}
+      doubleClickZoom={false} keyboard={false}
       style={{ height: "100%", width: "100%", background: "#0a0a0b" }}
       attributionControl={false}
     >
@@ -406,19 +366,16 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
         url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
         subdomains={["a", "b", "c", "d"]}
       />
-      {CORRIDORS.map((corridor) => (
-        <Polyline
-          key={corridor.id}
-          positions={corridor.waypoints}
-          pathOptions={{ color: corridor.color, weight: 2, opacity: 0.7,
-            dashArray: corridor.id.includes("ring") ? "6 4" : undefined }}
-        />
+      {CORRIDORS.map((c) => (
+        <Polyline key={c.id} positions={c.waypoints}
+          pathOptions={{ color: c.color, weight: 2, opacity: 0.6,
+            dashArray: c.id.includes("ring") ? "6 4" : undefined }} />
       ))}
     </MapContainer>
   );
 }
 
-/* ── Full map view ─────────────────────────────────────── */
+/* ── Full interactive MapView ───────────────────────────── */
 function MapView({
   mods, sites, corridors, onSelect, pinMarker, pinTarget,
 }: {
@@ -429,10 +386,9 @@ function MapView({
   pinMarker: { lat: number; lng: number } | null;
   pinTarget: { lat: number; lng: number; zoom: number } | null;
 }) {
-  const { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, Marker } = mods.rl;
+  const { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, Marker, useMap } = mods.rl;
   const { L } = mods;
 
-  /* Custom star icon for pinned location */
   const pinIcon = useMemo(() => {
     if (typeof window === "undefined") return undefined;
     return L.divIcon({
@@ -445,37 +401,26 @@ function MapView({
 
   return (
     <MapContainer
-      center={[12.2, 104.9]}
-      zoom={7}
-      minZoom={6}
-      maxZoom={14}
-      scrollWheelZoom
-      zoomControl={false}
+      center={[12.2, 104.9]} zoom={7} minZoom={6} maxZoom={14}
+      scrollWheelZoom zoomControl={false}
       style={{ height: "100%", width: "100%", background: "#0a0a0b" }}
       attributionControl={false}
     >
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
-        subdomains={["a", "b", "c", "d"]}
-      />
-      <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
-        subdomains={["a", "b", "c", "d"]}
-      />
+      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
+        subdomains={["a", "b", "c", "d"]} />
+      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
+        subdomains={["a", "b", "c", "d"]} />
 
-      {pinTarget && <FlyToController target={pinTarget} L={L} />}
+      <FlyController useMap={useMap} target={pinTarget} />
 
-      {corridors.map((corridor) => (
-        <Polyline
-          key={corridor.id}
-          positions={corridor.waypoints}
-          pathOptions={{ color: corridor.color, weight: 3, opacity: 0.75,
-            dashArray: corridor.id.includes("ring") ? "6 4" : undefined }}
-        >
+      {corridors.map((c) => (
+        <Polyline key={c.id} positions={c.waypoints}
+          pathOptions={{ color: c.color, weight: 3, opacity: 0.75,
+            dashArray: c.id.includes("ring") ? "6 4" : undefined }}>
           <Tooltip sticky direction="top" opacity={0.92}>
-            <span style={{ fontFamily: "monospace", fontSize: 10, color: corridor.color }}>{corridor.shortName}</span>
+            <span style={{ fontFamily: "monospace", fontSize: 10, color: c.color }}>{c.shortName}</span>
             <span style={{ fontFamily: "monospace", fontSize: 10, color: "#fff", marginLeft: 6 }}>
-              {corridor.name.split("—")[1]?.trim()}
+              {c.name.split("—")[1]?.trim()}
             </span>
           </Tooltip>
         </Polyline>
@@ -485,13 +430,10 @@ function MapView({
         const color = LAYER_META[s.layer].color;
         const isKey = s.score !== undefined && s.score >= 85;
         return (
-          <CircleMarker
-            key={s.id}
-            center={[s.lat, s.lng]}
+          <CircleMarker key={s.id} center={[s.lat, s.lng]}
             radius={isKey ? 8 : 6}
             pathOptions={{ color, fillColor: color, fillOpacity: 0.85, weight: isKey ? 2 : 1.5 }}
-            eventHandlers={{ click: () => onSelect(s) }}
-          >
+            eventHandlers={{ click: () => onSelect(s) }}>
             <Tooltip direction="top" offset={[0, -6]} opacity={0.92}>
               <span style={{ fontFamily: "monospace", fontSize: 10, color }}>{s.kind.toUpperCase()}</span>
               <span style={{ fontFamily: "monospace", fontSize: 10, color: "#fff", marginLeft: 6 }}>{s.name}</span>
@@ -511,15 +453,14 @@ function MapView({
   );
 }
 
-/* ── Inspector panel ────────────────────────────────────── */
+/* ── Inspector ──────────────────────────────────────────── */
 function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
-  const scoreColor =
-    site.score !== undefined
-      ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
-      : "#94a3b8";
+  const scoreColor = site.score !== undefined
+    ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
+    : "#94a3b8";
 
   return (
-    <aside className="absolute top-4 right-4 z-[400] w-[336px] max-w-[calc(100vw-2rem)] bg-black/95 backdrop-blur border border-white/10 text-white flex flex-col max-h-[calc(100vh-6rem)] overflow-hidden">
+    <aside className="absolute top-4 right-4 z-[400] w-[336px] max-w-[calc(100vw-2rem)] bg-black/95 backdrop-blur border border-white/10 text-white flex flex-col max-h-[calc(100vh-6rem)] overflow-hidden shadow-2xl">
       <div className="flex items-start justify-between px-4 py-3 border-b border-white/10 shrink-0">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
@@ -528,7 +469,7 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
           <h3 className="font-extrabold text-base uppercase tracking-tight leading-tight mt-1">{site.name}</h3>
           <p className="font-mono text-[10px] text-white/40 mt-0.5">{site.province}</p>
         </div>
-        <button onClick={onClose} className="text-white/40 hover:text-white text-xl leading-none ml-4 shrink-0" aria-label="Close">×</button>
+        <button onClick={onClose} className="text-white/40 hover:text-white text-xl leading-none ml-4 shrink-0">×</button>
       </div>
 
       <div className="overflow-y-auto flex-1">
@@ -542,9 +483,9 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
               </dd>
             </>
           )}
-          {site.size      && <Row k="Size"     v={site.size}      />}
+          {site.size      && <Row k="Size"      v={site.size}      />}
           {site.utilities && <Row k="Utilities" v={site.utilities} />}
-          {site.road      && <Row k="Access"   v={site.road}      />}
+          {site.road      && <Row k="Access"    v={site.road}      />}
         </dl>
 
         {site.score !== undefined && (
@@ -560,7 +501,7 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
           </div>
         )}
 
-        {site.targetIndustries?.length && (
+        {!!site.targetIndustries?.length && (
           <div className="px-4 py-3 border-t border-white/10">
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-2">Target Industries</p>
             <div className="flex flex-wrap gap-1.5">
@@ -571,7 +512,7 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
           </div>
         )}
 
-        {site.strengths?.length && (
+        {!!site.strengths?.length && (
           <div className="px-4 py-3 border-t border-white/10">
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-2">Key Strengths</p>
             <ul className="space-y-1">
@@ -584,7 +525,7 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
           </div>
         )}
 
-        {site.constraints?.length && (
+        {!!site.constraints?.length && (
           <div className="px-4 py-3 border-t border-white/10">
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-2">Key Constraints</p>
             <ul className="space-y-1">

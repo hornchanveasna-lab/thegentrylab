@@ -358,7 +358,7 @@ function Index() {
       </section>
 
       {/* ═══════════════════════════════════════════════════
-          MAP PLATFORM PREVIEW — real Cambodia basemap
+          MAP PLATFORM PREVIEW — animated overlay + dim real map
       ═══════════════════════════════════════════════════ */}
       <section className="py-24 border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -398,25 +398,100 @@ function Index() {
               </Link>
             </div>
 
-            {/* Real Cambodia basemap preview */}
+            {/* Animated map preview with dim real Leaflet map behind */}
             <div className="reveal reveal-delay-2">
-              <Link to="/map" className="block relative rounded-2xl overflow-hidden border border-white/10 aspect-[4/3] group">
-                <Suspense fallback={
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0b]">
-                    <span className="font-mono text-[10px] text-white/20 uppercase tracking-widest">Loading map…</span>
-                  </div>
-                }>
-                  <div className="absolute inset-0">
-                    <IndustrialMap previewMode />
-                  </div>
-                </Suspense>
+              <Link to="/map" className="block relative overflow-hidden border border-white/10 aspect-[4/3] group" style={{ borderRadius: "1rem" }}>
 
-                {/* Gradient overlay + CTA */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                {/* ── Layer 1: dim real Cambodia basemap ── */}
+                <div className="absolute inset-0" style={{ opacity: 0.28, pointerEvents: "none" }}>
+                  <Suspense fallback={<div className="w-full h-full bg-[#0a0a0b]" />}>
+                    <IndustrialMap previewMode />
+                  </Suspense>
+                </div>
+
+                {/* ── Layer 2: dark tint so dots pop ── */}
+                <div className="absolute inset-0 bg-[#0a0a0b]/55 pointer-events-none" />
+
+                {/* ── Layer 3: animated grid lines ── */}
+                <div className="absolute inset-0 pointer-events-none" style={{
+                  backgroundImage: `
+                    linear-gradient(rgba(255,81,0,0.06) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,81,0,0.06) 1px, transparent 1px)
+                  `,
+                  backgroundSize: "40px 40px",
+                }}/>
+
+                {/* ── Layer 4: pulse dots (Cambodia major zones) ── */}
+                <div className="absolute inset-0 pointer-events-none">
+                  {/* Phnom Penh SEZ cluster */}
+                  {[
+                    { left: "48%",  top: "60%",  size: 8,  delay: "0s",    color: "#ff5100" },
+                    { left: "43%",  top: "64%",  size: 5,  delay: "0.4s",  color: "#ff5100" },
+                    { left: "53%",  top: "57%",  size: 6,  delay: "0.8s",  color: "#ff5100" },
+                    /* Sihanoukville port */
+                    { left: "33%",  top: "78%",  size: 7,  delay: "0.2s",  color: "#34d399" },
+                    { left: "29%",  top: "82%",  size: 4,  delay: "1.0s",  color: "#34d399" },
+                    /* Kampong Cham / Bavet corridor */
+                    { left: "65%",  top: "55%",  size: 6,  delay: "0.6s",  color: "#fbbf24" },
+                    { left: "72%",  top: "60%",  size: 5,  delay: "1.4s",  color: "#fbbf24" },
+                    /* Siem Reap north */
+                    { left: "40%",  top: "30%",  size: 5,  delay: "1.1s",  color: "#a78bfa" },
+                    { left: "36%",  top: "25%",  size: 4,  delay: "1.8s",  color: "#a78bfa" },
+                    /* Koh Kong west */
+                    { left: "22%",  top: "72%",  size: 4,  delay: "0.9s",  color: "#38bdf8" },
+                    /* Kandal south */
+                    { left: "51%",  top: "68%",  size: 4,  delay: "1.6s",  color: "#ff5100" },
+                    /* Battambang north-west */
+                    { left: "27%",  top: "38%",  size: 4,  delay: "2.1s",  color: "#34d399" },
+                  ].map((d, i) => (
+                    <span
+                      key={i}
+                      className="pulse-dot absolute rounded-full"
+                      style={{
+                        left: d.left, top: d.top,
+                        width: d.size, height: d.size,
+                        backgroundColor: d.color,
+                        animationDelay: d.delay,
+                        boxShadow: `0 0 ${d.size * 2}px ${d.color}99`,
+                        transform: "translate(-50%, -50%)",
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* ── Layer 5: scan line sweep ── */}
+                <div className="scan-line" />
+
+                {/* ── Layer 6: top eyebrow label ── */}
+                <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+                  <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 bg-black/60 border border-white/10" style={{ color: accent }}>
+                    ● Live Intelligence · Cambodia
+                  </span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 bg-black/60 border border-white/10 text-white/30">
+                    6 layers active
+                  </span>
+                </div>
+
+                {/* ── Layer 7: corridor line art overlay ── */}
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 300" preserveAspectRatio="none" fill="none">
+                  {/* NR1 east corridor */}
+                  <path d="M195 182 L290 170 L340 178" stroke="#fbbf24" strokeWidth="1.2" opacity="0.55" strokeDasharray="4 3"/>
+                  {/* Sihanoukville highway */}
+                  <path d="M132 232 L180 200 L195 182" stroke="#34d399" strokeWidth="1.2" opacity="0.55" strokeDasharray="4 3"/>
+                  {/* Northern corridor */}
+                  <path d="M160 90 L195 182 L215 212" stroke="#38bdf8" strokeWidth="1" opacity="0.40" strokeDasharray="3 4"/>
+                  {/* Mekong axis */}
+                  <path d="M195 182 L198 250" stroke="#ff5100" strokeWidth="1" opacity="0.35" strokeDasharray="2 3"/>
+                </svg>
+
+                {/* ── Layer 8: bottom gradient + CTA ── */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
                 <div className="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none">
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-widest text-white/50 mb-1">9 corridors · 110+ sites</p>
-                    <p className="font-extrabold text-sm uppercase tracking-tight text-white">Launch interactive map →</p>
+                    <p className="font-extrabold text-sm uppercase tracking-tight text-white group-hover:text-[#ff5100] transition-colors">
+                      Launch interactive map →
+                    </p>
                   </div>
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-all"
@@ -429,7 +504,7 @@ function Index() {
                 </div>
 
                 {/* Hover glow border */}
-                <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ boxShadow: `inset 0 0 0 1px ${accent}50` }} />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ borderRadius: "1rem", boxShadow: `inset 0 0 0 1px ${accent}50` }} />
               </Link>
             </div>
           </div>
