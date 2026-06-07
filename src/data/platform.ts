@@ -732,6 +732,10 @@ export interface TrackedProject {
   latest_news_headline?: string;
   latest_news_url?:      string;
   latest_news_date?:     string;
+  // CDC registration fields
+  cdc_approval_date?: string;   // e.g. "Jun 2025"
+  investment_usd?:    string;   // e.g. "$32M"
+  planned_finish?:    string;   // e.g. "Q3 2026"
 }
 
 export const PROJECTS: TrackedProject[] = [

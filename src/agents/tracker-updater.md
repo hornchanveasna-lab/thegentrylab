@@ -30,8 +30,9 @@ For each CDC QIP found, extract:
 - Investor company + origin country
 - Sector (Garment / Electronics / Food Processing / Warehousing / Data Center / Automotive / Energy)
 - Province / SEZ location
-- Investment size (USD value or land area)
-- Approval date → use as `updated`
+- Investment size (USD value or land area) → store as `investment_usd` (e.g. "$32M", "$250M")
+- Approval date → store as `updated` (ISO) AND `cdc_approval_date` (e.g. "May 2025")
+- Planned completion / commissioning date → `planned_finish` (e.g. "Q3 2026", "2027")
 - CDC press release URL → `source_url`
 
 ### Secondary: All Other Credible Sources (4-tier search)
@@ -145,18 +146,20 @@ Use Supabase MCP, project ID: `mcxfukjopdnouicwacbn`
 SELECT id, status, latest_news_date FROM projects WHERE name ILIKE '%{name}%';
 ```
 
-**INSERT new (all 18 fields):**
+**INSERT new (all 21 fields):**
 ```sql
 INSERT INTO projects (
   id, name, sector, province, size, investor, origin,
   status, updated, summary,
   lat, lng, maps_url, source_url, image_url,
-  latest_news_headline, latest_news_url, latest_news_date
+  latest_news_headline, latest_news_url, latest_news_date,
+  cdc_approval_date, investment_usd, planned_finish
 ) VALUES (
   '{id}', '{name}', '{sector}', '{province}', '{size}',
   '{investor}', '{origin}', '{status}', '{today}', '{summary}',
   {lat}, {lng}, '{maps_url}', '{source_url}', '{image_url}',
-  '{latest_news_headline}', '{latest_news_url}', '{latest_news_date}'
+  '{latest_news_headline}', '{latest_news_url}', '{latest_news_date}',
+  '{Mon YYYY}', '{$XM}', '{Q? YYYY or YYYY}'
 );
 ```
 

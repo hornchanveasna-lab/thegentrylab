@@ -19,6 +19,18 @@ export const Route = createFileRoute("/tracker")({
 
 const STATUSES = ["Planned", "Under Construction", "Operational"] as const;
 
+/* Convert "Mon YYYY" → "YYYY-MM" for sortable comparison */
+const MONTH_IDX: Record<string, string> = {
+  Jan:"01",Feb:"02",Mar:"03",Apr:"04",May:"05",Jun:"06",
+  Jul:"07",Aug:"08",Sep:"09",Oct:"10",Nov:"11",Dec:"12",
+};
+function cdcSortKey(d: string | undefined, fallback: string): string {
+  if (!d) return fallback;
+  const [mon, yr] = d.split(" ");
+  if (yr && MONTH_IDX[mon]) return `${yr}-${MONTH_IDX[mon]}`;
+  return fallback;
+}
+
 /* ── Photo + visual config per sector ───────────────────── */
 const SECTOR_VISUAL: Record<string, { photo: string; gradient: string; accent: string }> = {
   Garment:         { photo: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80&fit=crop", gradient: "linear-gradient(135deg,#1e1b4b 0%,#4c1d95 100%)", accent: "#a78bfa" },
@@ -326,6 +338,7 @@ function MobileBottomSheet({ project, onClose }: { project: TrackedProject | nul
           transform: isOpen ? "translateY(0)" : "translateY(100%)",
           maxHeight: "88vh",
           overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
           transitionTimingFunction: isOpen ? "cubic-bezier(0.32,0.72,0,1)" : "ease-in",
         }}
       >
@@ -354,7 +367,11 @@ function TrackerPage() {
       (sector   === "All" || p.sector   === sector)  &&
       (province === "All" || p.province === province) &&
       (status   === "All" || p.status   === status),
-    ).sort((a, b) => b.updated.localeCompare(a.updated)),
+    ).sort((a, b) =>
+      cdcSortKey(b.cdc_approval_date, b.updated).localeCompare(
+        cdcSortKey(a.cdc_approval_date, a.updated)
+      )
+    ),
     [projects, sector, province, status],
   );
 
@@ -435,7 +452,7 @@ function TrackerPage() {
                   key={p.id}
                   onClick={() => setSelected(isSelected ? null : p)}
                   className="w-full flex items-stretch text-left transition-all group"
-                  style={{ backgroundColor: isSelected ? `${vis.accent}08` : "transparent" }}
+                  style={{ backgroundColor: isSelected ? `${vis.accent}08` : "transparent", touchAction: "pan-y" }}
                 >
                   {/* Color stripe */}
                   <div className="w-1 shrink-0 transition-all" style={{ background: isSelected ? vis.gradient : "rgba(255,255,255,0.05)" }} />
@@ -457,18 +474,34 @@ function TrackerPage() {
                         </span>
                       </div>
                     </div>
-                    {/* Row 2: meta info */}
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {/* Row 2: CDC subtitle */}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       {/* Mobile: show sector inline */}
                       <span className="md:hidden text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5"
                         style={{ backgroundColor: `${vis.accent}18`, color: vis.accent }}>
                         {p.sector}
                       </span>
-                      <span className="font-mono text-[10px] text-white/35">{p.province}</span>
+                      {p.cdc_approval_date && (
+                        <span className="font-mono text-[10px] font-bold" style={{ color: "#ff5100" }}>
+                          {p.cdc_approval_date}
+                        </span>
+                      )}
+                      {p.cdc_approval_date && <span className="w-0.5 h-0.5 rounded-full bg-white/20" />}
+                      <span className="font-mono text-[10px] text-white/40">{p.province}</span>
+                      {p.investment_usd && (
+                        <>
+                          <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                          <span className="font-mono text-[10px] text-white/55">{p.investment_usd}</span>
+                        </>
+                      )}
+                      {p.planned_finish && (
+                        <>
+                          <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                          <span className="font-mono text-[10px] text-white/35">→ {p.planned_finish}</span>
+                        </>
+                      )}
                       <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                      <span className="font-mono text-[10px] text-white/35">{p.size}</span>
-                      <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                      <span className="font-mono text-[10px] text-white/25">{ORIGIN_FLAG[p.origin] ?? "🌐"} {p.investor}</span>
+                      <span className="font-mono text-[10px]">{ORIGIN_FLAG[p.origin] ?? "🌐"}</span>
                     </div>
                   </div>
 
