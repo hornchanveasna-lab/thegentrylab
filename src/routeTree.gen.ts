@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackerRouteImport } from './routes/tracker'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as MapRouteImport } from './routes/map'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,6 +31,16 @@ const ResearchRoute = ResearchRouteImport.update({
 const NewsRoute = NewsRouteImport.update({
   id: '/news',
   path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -51,6 +63,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
+  '/map': typeof MapRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
@@ -59,6 +73,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
+  '/map': typeof MapRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
@@ -68,20 +84,40 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRoute
+  '/map': typeof MapRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/contact' | '/news' | '/research' | '/tracker'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/contact'
+    | '/dashboard'
+    | '/map'
+    | '/news'
+    | '/research'
+    | '/tracker'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/contact' | '/news' | '/research' | '/tracker'
+  to:
+    | '/'
+    | '/about'
+    | '/contact'
+    | '/dashboard'
+    | '/map'
+    | '/news'
+    | '/research'
+    | '/tracker'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/contact'
+    | '/dashboard'
+    | '/map'
     | '/news'
     | '/research'
     | '/tracker'
@@ -91,6 +127,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   ContactRoute: typeof ContactRoute
+  DashboardRoute: typeof DashboardRoute
+  MapRoute: typeof MapRoute
   NewsRoute: typeof NewsRoute
   ResearchRoute: typeof ResearchRoute
   TrackerRoute: typeof TrackerRoute
@@ -117,6 +155,20 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/news'
       preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -147,6 +199,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   ContactRoute: ContactRoute,
+  DashboardRoute: DashboardRoute,
+  MapRoute: MapRoute,
   NewsRoute: NewsRoute,
   ResearchRoute: ResearchRoute,
   TrackerRoute: TrackerRoute,

@@ -3,7 +3,8 @@ import { useState } from "react";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
 
 const links = [
-  { to: "/",          label: "Map"      },
+  { to: "/",          label: "Home"     },
+  { to: "/map",       label: "Map"      },
   { to: "/tracker",   label: "Tracker"  },
   { to: "/news",      label: "News"     },
   { to: "/research",  label: "Research" },
