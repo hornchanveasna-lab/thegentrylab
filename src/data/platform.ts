@@ -722,6 +722,12 @@ export interface TrackedProject {
   status: "Planned" | "Under Construction" | "Operational";
   updated: string;
   summary: string;
+  // enriched fields (populated by AI agent / Supabase)
+  lat?:        number;
+  lng?:        number;
+  maps_url?:   string;
+  source_url?: string;
+  image_url?:  string;
 }
 
 export const PROJECTS: TrackedProject[] = [

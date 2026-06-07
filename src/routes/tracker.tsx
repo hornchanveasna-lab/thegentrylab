@@ -58,12 +58,22 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
       {/* ── Cover photo ── */}
       <div className="relative overflow-hidden flex-shrink-0" style={{ height: 200 }}>
         <div className="absolute inset-0" style={{ background: vis.gradient }} />
+        {/* Sector fallback photo */}
         <img
           src={vis.photo} alt=""
           className="absolute inset-0 w-full h-full object-cover"
           style={{ opacity: 0.3, mixBlendMode: "luminosity" }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
         />
+        {/* Real project OG image (from agent) — plain overlay, no blend mode */}
+        {project.image_url && (
+          <img
+            src={project.image_url} alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: 0.35 }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
         {/* Grid overlay */}
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: `linear-gradient(${vis.accent}08 1px,transparent 1px),linear-gradient(90deg,${vis.accent}08 1px,transparent 1px)`,
@@ -146,6 +156,27 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
             <p className="text-[12px] font-bold text-white/85 leading-snug">{row.value}</p>
           </div>
         ))}
+        {/* Google Maps location row */}
+        {project.lat && (
+          <a
+            href={project.maps_url ?? `https://www.google.com/maps/search/?api=1&query=${project.lat},${project.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="col-span-2 bg-[#0d0d0e] px-4 py-3 flex items-center gap-3 hover:bg-white/5 transition group"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+              className="text-white/25 group-hover:text-[#ff5100] transition shrink-0">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+              <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+            <div className="min-w-0">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-0.5">Location</p>
+              <p className="text-[12px] font-bold text-white/85 group-hover:text-white transition truncate">
+                {project.province} · View on Google Maps ↗
+              </p>
+            </div>
+          </a>
+        )}
       </div>
 
       {/* ── Summary ── */}
@@ -153,6 +184,21 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
         <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-2">Summary</p>
         <p className="text-[12px] text-white/65 leading-relaxed">{project.summary}</p>
       </div>
+
+      {/* ── Source link ── */}
+      {project.source_url && (
+        <div className="px-5 py-3 border-b border-white/8">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1">Source</p>
+          <a
+            href={project.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[10px] text-white/40 hover:text-white/70 transition"
+          >
+            {(() => { try { return new URL(project.source_url).hostname; } catch { return project.source_url; } })()} ↗
+          </a>
+        </div>
+      )}
 
       {/* ── Advisory CTA ── */}
       <div className="px-5 py-4 bg-[#0e0e10]">
