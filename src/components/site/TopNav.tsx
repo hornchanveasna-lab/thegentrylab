@@ -19,18 +19,31 @@ export function TopNav() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 group">
           {/* G mark */}
+          {/*
+            G mark — 6 rects tracing the double-step nested-G shape from the reference logo.
+            Outer C: left bar (full height) + outer top bar (61% width) + bottom bar (full width)
+            Inner C: inner shelf (right 67%) + inner left bar + inner crossbar (right 67%)
+          */}
           <svg
-            width="32"
-            height="36"
-            viewBox="0 0 90 100"
+            width="34"
+            height="32"
+            viewBox="0 0 100 95"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             className="shrink-0 transition-[filter] group-hover:drop-shadow-[0_0_10px_rgba(255,81,0,0.7)]"
           >
-            <rect x="0"  y="0"  width="90" height="18" fill="#ff5100" />
-            <rect x="0"  y="0"  width="18" height="100" fill="#ff5100" />
-            <rect x="0"  y="82" width="90" height="18" fill="#ff5100" />
-            <rect x="42" y="41" width="48" height="18" fill="#ff5100" />
+            {/* 1. Outer left bar — full height */}
+            <rect x="0"  y="0"  width="17" height="95" fill="#ff5100" />
+            {/* 2. Outer top bar — stops at 61% width, creating the top-right opening */}
+            <rect x="0"  y="0"  width="61" height="17" fill="#ff5100" />
+            {/* 3. Inner shelf — from x=33 to right edge, below outer top bar */}
+            <rect x="33" y="17" width="67" height="17" fill="#ff5100" />
+            {/* 4. Inner left bar — connects shelf to crossbar */}
+            <rect x="33" y="34" width="17" height="25" fill="#ff5100" />
+            {/* 5. Inner crossbar — from x=33 to right edge */}
+            <rect x="33" y="59" width="67" height="17" fill="#ff5100" />
+            {/* 6. Bottom bar — full width */}
+            <rect x="0"  y="78" width="100" height="17" fill="#ff5100" />
           </svg>
           {/* Wordmark */}
           <div className="flex flex-col leading-none">
