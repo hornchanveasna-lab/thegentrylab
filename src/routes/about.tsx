@@ -8,6 +8,131 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
+/* ── Roadmap card metadata ───────────────────────────────── */
+const ROADMAP_META: Record<string, {
+  icon: React.ReactNode;
+  preview: React.ReactNode;
+}> = {
+  "01": {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="9" r="7"/>
+        <circle cx="9" cy="9" r="3"/>
+        <line x1="9" y1="2" x2="9" y2="4"/><line x1="9" y1="14" x2="9" y2="16"/>
+        <line x1="2" y1="9" x2="4" y2="9"/><line x1="14" y1="9" x2="16" y2="9"/>
+      </svg>
+    ),
+    preview: (
+      <div className="w-full flex flex-col gap-1.5 mb-1">
+        {[85,62,91,44,77].map((v,i) => (
+          <div key={i} className="flex items-center gap-2">
+            <div className="w-14 h-1.5 rounded-full bg-white/8 overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${v}%`, backgroundColor: "currentColor", opacity: 0.6 }} />
+            </div>
+            <span className="font-mono text-[8px] opacity-50">{v}</span>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  "02": {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 2L2 6v10h14V6L9 2z"/>
+        <path d="M6 16v-5h6v5"/>
+        <circle cx="9" cy="8" r="1.5"/>
+      </svg>
+    ),
+    preview: (
+      <div className="w-full flex items-center gap-1.5 mb-1">
+        {["MoE","MIH","CDC","EDC","Fire"].map((s,i,a) => (
+          <div key={s} className="flex items-center gap-1.5">
+            <div className="px-1.5 py-0.5 border text-[7px] font-mono font-bold" style={{ borderColor: "currentColor", opacity: i < 3 ? 0.8 : 0.3 }}>
+              {s}
+            </div>
+            {i < a.length-1 && <div className="w-2 h-px" style={{ backgroundColor: "currentColor", opacity: 0.25 }} />}
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  "03": {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 9l6-6 6 6v6H3V9z"/>
+        <path d="M1 9l8-8 8 8"/><line x1="7" y1="15" x2="7" y2="11"/><line x1="11" y1="15" x2="11" y2="11"/>
+      </svg>
+    ),
+    preview: (
+      <div className="w-full grid grid-cols-6 gap-0.5 mb-1">
+        {[...Array(18)].map((_, i) => {
+          const v = [0.8,0.4,0.9,0.3,0.6,0.2,0.7,0.5,0.95,0.1,0.85,0.45,0.65,0.35,0.75,0.55,0.3,0.7][i];
+          return <div key={i} className="h-3 rounded-sm" style={{ backgroundColor: "currentColor", opacity: v * 0.7 }} />;
+        })}
+      </div>
+    ),
+  },
+  "04": {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="2" width="14" height="14" rx="1"/>
+        <rect x="5" y="9" width="2" height="6"/>
+        <rect x="8" y="6" width="2" height="9"/>
+        <rect x="11" y="3" width="2" height="12"/>
+      </svg>
+    ),
+    preview: (
+      <div className="w-full flex items-end gap-1 h-10 mb-1">
+        {[30,55,40,80,60,90,45,70].map((h,i) => (
+          <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, backgroundColor: "currentColor", opacity: 0.15 + (h/100)*0.55 }} />
+        ))}
+      </div>
+    ),
+  },
+  "05": {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="9" r="7"/>
+        <polyline points="6,9 8,11 12,7"/>
+      </svg>
+    ),
+    preview: (
+      <div className="w-full flex flex-col gap-1 mb-1">
+        {["Available","Pending","Restricted"].map((s,i) => (
+          <div key={s} className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ["#4ade80","#fbbf24","#f87171"][i], opacity: 0.9 }} />
+            <span className="text-[8px] font-mono opacity-50">{s}</span>
+            <div className="flex-1 h-px" style={{ backgroundColor: "currentColor", opacity: 0.1 }} />
+            <span className="text-[8px] font-mono opacity-40">{[24,8,3][i]}</span>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  "06": {
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="9" r="3"/>
+        <path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.5 3.5l1.4 1.4M13.1 13.1l1.4 1.4M3.5 14.5l1.4-1.4M13.1 4.9l1.4-1.4"/>
+      </svg>
+    ),
+    preview: (
+      <div className="w-full mb-1">
+        <div className="flex gap-1 flex-wrap">
+          {["Site score","EDC","Title","Labour","Permits"].map((tag) => (
+            <span key={tag} className="px-1.5 py-0.5 text-[7px] font-mono border rounded-full" style={{ borderColor: "currentColor", opacity: 0.5 }}>
+              {tag}
+            </span>
+          ))}
+        </div>
+        <div className="mt-2 h-1 rounded-full bg-white/8 overflow-hidden">
+          <div className="h-full w-3/4 rounded-full" style={{ backgroundColor: "currentColor", opacity: 0.5 }} />
+        </div>
+      </div>
+    ),
+  },
+};
+
 /* ── Case studies ────────────────────────────────────────── */
 const CASE_STUDIES = [
   {
@@ -255,7 +380,7 @@ function AboutPage() {
       {/* ═══════════════════════════════════════════════════
           ROADMAP
       ═══════════════════════════════════════════════════ */}
-      <section className="py-24 border-b border-white/8 px-6 md:px-12">
+      <section className="py-24 border-b border-white/8 px-6 md:px-12 bg-[#0d0d0e] overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
             <div className="reveal">
@@ -265,22 +390,85 @@ function AboutPage() {
               <h2 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter leading-[0.92]">
                 Coming next to<br />the platform
               </h2>
+              <p className="text-white/35 text-sm max-w-sm mt-4 leading-relaxed">
+                Phase 01 is live. These six tools are in active development — built on the same ground-level data.
+              </p>
             </div>
             <Link to="/research" className="font-mono text-[11px] uppercase tracking-widest text-white/35 hover:text-white transition-colors reveal reveal-delay-2">
               View intelligence research →
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-white/8 border border-white/8">
-            {cfg.roadmap.map((r, i) => (
-              <div
-                key={r.n}
-                className={`bg-[#0a0a0b] p-8 group hover:bg-[#111113] hover-glow border border-transparent transition-all cursor-default reveal reveal-delay-${Math.min(i + 1, 6)}`}
-              >
-                <span className="font-mono text-xs" style={{ color: accent }}>{r.n}</span>
-                <h3 className="font-extrabold uppercase text-sm tracking-tight mt-3 mb-2">{r.title}</h3>
-                <p className="text-[12px] text-white/35 leading-relaxed">{r.desc}</p>
-              </div>
-            ))}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {cfg.roadmap.map((r, i) => {
+              const meta = ROADMAP_META[r.n] ?? ROADMAP_META["01"];
+              const phase = parseInt(r.n) <= 3 ? "02" : "03";
+              const isPhase2 = phase === "02";
+              return (
+                <div
+                  key={r.n}
+                  className={`group relative overflow-hidden border border-white/8 hover:border-white/20 transition-all cursor-default flex flex-col reveal reveal-delay-${Math.min(i + 1, 6)}`}
+                  style={{ background: "#0a0a0b" }}
+                >
+                  {/* Top accent bar */}
+                  <div className="h-px w-full" style={{ background: `linear-gradient(90deg, ${accent}60 0%, transparent 100%)` }} />
+
+                  {/* Visual preview area */}
+                  <div className="relative px-6 pt-6 pb-2 overflow-hidden" style={{ minHeight: 130 }}>
+                    {/* Background glow */}
+                    <div className="absolute inset-0 pointer-events-none" style={{
+                      background: `radial-gradient(ellipse 80% 80% at 20% 50%, ${accent}10 0%, transparent 65%)`,
+                    }} />
+                    {/* Grid */}
+                    <div className="absolute inset-0 pointer-events-none" style={{
+                      backgroundImage: `linear-gradient(${accent}06 1px,transparent 1px),linear-gradient(90deg,${accent}06 1px,transparent 1px)`,
+                      backgroundSize: "24px 24px",
+                    }} />
+
+                    {/* Phase + number row */}
+                    <div className="relative z-10 flex items-center justify-between mb-4">
+                      <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border"
+                        style={{ borderColor: `${accent}40`, color: accent, backgroundColor: `${accent}10` }}>
+                        Phase {phase}
+                      </span>
+                      <span className="font-extrabold text-[42px] leading-none tracking-tighter select-none"
+                        style={{ color: `${accent}08` }}>
+                        {r.n}
+                      </span>
+                    </div>
+
+                    {/* Abstract preview illustration */}
+                    <div className="relative z-10 flex items-end gap-1" style={{ color: accent }}>
+                      {meta.preview}
+                    </div>
+                  </div>
+
+                  {/* Icon + content */}
+                  <div className="px-6 pb-6 flex flex-col flex-1">
+                    <div className="mb-3 mt-1 p-2.5 self-start border border-white/8 group-hover:border-white/20 transition-all"
+                      style={{ color: accent }}>
+                      {meta.icon}
+                    </div>
+                    <h3 className="font-extrabold uppercase text-sm tracking-tight mb-2 leading-tight group-hover:text-white transition-colors">
+                      {r.title}
+                    </h3>
+                    <p className="text-[12px] text-white/40 leading-relaxed flex-1 group-hover:text-white/60 transition-colors">
+                      {r.desc}
+                    </p>
+
+                    {/* Status tag */}
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/6">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: isPhase2 ? "#fbbf24" : "#94a3b8" }} />
+                      <span className="font-mono text-[9px] uppercase tracking-widest"
+                        style={{ color: isPhase2 ? "#fbbf24" : "#94a3b8" }}>
+                        {isPhase2 ? "In development" : "Planned"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

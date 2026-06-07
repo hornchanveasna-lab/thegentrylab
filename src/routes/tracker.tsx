@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { PROJECTS, SECTORS, type Sector, type TrackedProject } from "@/data/platform";
@@ -201,6 +201,54 @@ function EmptyPanel() {
   );
 }
 
+/* ── Mobile bottom sheet ────────────────────────────────── */
+function MobileBottomSheet({ project, onClose }: { project: TrackedProject | null; onClose: () => void }) {
+  const isOpen = !!project;
+
+  /* Lock body scroll while open */
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [isOpen]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="lg:hidden fixed inset-0 z-40 transition-all duration-300"
+        style={{
+          backgroundColor: isOpen ? "rgba(0,0,0,0.75)" : "rgba(0,0,0,0)",
+          pointerEvents: isOpen ? "auto" : "none",
+          backdropFilter: isOpen ? "blur(2px)" : "none",
+        }}
+        onClick={onClose}
+      />
+
+      {/* Sheet */}
+      <div
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 transition-transform duration-400"
+        style={{
+          transform: isOpen ? "translateY(0)" : "translateY(100%)",
+          maxHeight: "88vh",
+          overflowY: "auto",
+          transitionTimingFunction: isOpen ? "cubic-bezier(0.32,0.72,0,1)" : "ease-in",
+        }}
+      >
+        {/* Drag handle bar */}
+        <div className="bg-[#0d0d0e] border-t border-white/10 flex justify-center pt-3 pb-1 sticky top-0 z-10">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
+        {project && <ProjectDetail project={project} onClose={onClose} />}
+      </div>
+    </>
+  );
+}
+
 /* ── Page ─────────────────────────────────────────────────── */
 function TrackerPage() {
   const provinces = useMemo(() => Array.from(new Set(PROJECTS.map((p) => p.province))).sort(), []);
@@ -245,19 +293,19 @@ function TrackerPage() {
               </p>
             </div>
             {/* Status summary chips */}
-            <div className="flex gap-4 shrink-0">
+            <div className="flex gap-3 shrink-0">
               {(["Operational", "Under Construction", "Planned"] as const).map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatus(status === s ? "All" : s)}
-                  className="flex flex-col items-center border px-4 py-3 transition-all hover:border-white/25"
+                  className="flex flex-col items-center border px-3 py-2.5 md:px-4 md:py-3 transition-all hover:border-white/25"
                   style={{
                     borderColor: status === s ? STATUS_COLOR[s] : "rgba(255,255,255,0.1)",
                     backgroundColor: status === s ? `${STATUS_COLOR[s]}10` : "transparent",
                   }}
                 >
-                  <span className="text-2xl font-extrabold tabular-nums" style={{ color: STATUS_COLOR[s] }}>{counts[s]}</span>
-                  <span className="font-mono text-[8px] uppercase tracking-widest text-white/35 mt-1 whitespace-nowrap">{s}</span>
+                  <span className="text-xl md:text-2xl font-extrabold tabular-nums" style={{ color: STATUS_COLOR[s] }}>{counts[s]}</span>
+                  <span className="font-mono text-[7px] md:text-[8px] uppercase tracking-widest text-white/35 mt-1 whitespace-nowrap">{s}</span>
                 </button>
               ))}
             </div>
@@ -265,9 +313,9 @@ function TrackerPage() {
         </div>
       </div>
 
-      <main className="flex-1 max-w-7xl mx-auto px-6 md:px-12 py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 md:px-12 py-6 md:py-8 w-full">
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-6 font-mono text-[11px] uppercase tracking-widest">
+        <div className="flex flex-wrap gap-2 md:gap-3 mb-5 md:mb-6 font-mono text-[11px] uppercase tracking-widest">
           <Select label="Sector"   value={sector}   onChange={(v) => setSector(v as Sector | "All")} options={["All", ...SECTORS]} />
           <Select label="Province" value={province} onChange={setProvince} options={["All", ...provinces]} />
           <Select label="Status"   value={status}   onChange={setStatus}   options={["All", ...STATUSES]} />
@@ -276,7 +324,12 @@ function TrackerPage() {
           </div>
         </div>
 
-        {/* Two-col layout */}
+        {/* Mobile tap hint */}
+        <p className="lg:hidden font-mono text-[9px] uppercase tracking-widest text-white/25 mb-3 text-center">
+          Tap a project to view full details ↓
+        </p>
+
+        {/* Two-col layout: list always full-width on mobile; side panel only lg+ */}
         <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
 
           {/* Project list */}
@@ -295,39 +348,50 @@ function TrackerPage() {
                   {/* Color stripe */}
                   <div className="w-1 shrink-0 transition-all" style={{ background: isSelected ? vis.gradient : "rgba(255,255,255,0.05)" }} />
 
-                  <div className="flex-1 px-4 py-4 grid grid-cols-12 gap-2 items-center">
-                    {/* Name + investor */}
-                    <div className="col-span-12 md:col-span-5">
-                      <p className="font-bold text-[13px] group-hover:text-white transition"
+                  {/* Mobile layout: 2-line compact */}
+                  <div className="flex-1 px-3 py-3 md:px-4 md:py-4">
+                    {/* Row 1: name + status dot */}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-bold text-[13px] group-hover:text-white transition leading-snug"
                         style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.85)" }}>
                         {p.name}
                       </p>
-                      <p className="font-mono text-[10px] text-white/35 mt-0.5">
-                        {ORIGIN_FLAG[p.origin] ?? "🌐"} {p.investor}
-                      </p>
+                      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
+                        {/* On md+: show sector badge */}
+                        <span className="hidden md:inline-block px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest"
+                          style={{ backgroundColor: `${vis.accent}18`, color: vis.accent }}>
+                          {p.sector}
+                        </span>
+                      </div>
                     </div>
-                    {/* Sector */}
-                    <div className="col-span-6 md:col-span-2">
-                      <span className="inline-block px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest"
+                    {/* Row 2: meta info */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {/* Mobile: show sector inline */}
+                      <span className="md:hidden text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5"
                         style={{ backgroundColor: `${vis.accent}18`, color: vis.accent }}>
                         {p.sector}
                       </span>
-                    </div>
-                    {/* Province */}
-                    <div className="col-span-6 md:col-span-2 font-mono text-[11px] text-white/50">{p.province}</div>
-                    {/* Size */}
-                    <div className="col-span-6 md:col-span-2 font-mono text-[11px] text-white/50">{p.size}</div>
-                    {/* Status */}
-                    <div className="col-span-6 md:col-span-1 flex items-center justify-end gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: sc }} />
+                      <span className="font-mono text-[10px] text-white/35">{p.province}</span>
+                      <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                      <span className="font-mono text-[10px] text-white/35">{p.size}</span>
+                      <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                      <span className="font-mono text-[10px] text-white/25">{ORIGIN_FLAG[p.origin] ?? "🌐"} {p.investor}</span>
                     </div>
                   </div>
 
-                  {/* Selected indicator arrow */}
-                  <div className="w-6 flex items-center justify-center shrink-0">
+                  {/* Arrow indicator (desktop only) */}
+                  <div className="hidden lg:flex w-6 items-center justify-center shrink-0">
                     <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
                       className="transition-all"
                       style={{ opacity: isSelected ? 1 : 0, color: vis.accent }}>
+                      <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+
+                  {/* Mobile chevron */}
+                  <div className="lg:hidden flex w-8 items-center justify-center shrink-0">
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ color: "rgba(255,255,255,0.2)" }}>
                       <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                   </div>
@@ -342,8 +406,8 @@ function TrackerPage() {
             )}
           </div>
 
-          {/* Detail panel */}
-          <div className="sticky top-[4.5rem]">
+          {/* Detail panel — desktop only (lg+) */}
+          <div className="hidden lg:block sticky top-[4.5rem]">
             {selected
               ? <ProjectDetail project={selected} onClose={() => setSelected(null)} />
               : <EmptyPanel />
@@ -351,6 +415,9 @@ function TrackerPage() {
           </div>
         </div>
       </main>
+
+      {/* Mobile bottom sheet */}
+      <MobileBottomSheet project={selected} onClose={() => setSelected(null)} />
 
       <Footer />
     </div>

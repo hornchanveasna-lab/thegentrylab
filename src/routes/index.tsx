@@ -304,21 +304,21 @@ function Index() {
                   aria-expanded={isOpen}
                 >
                   {/* Stage header */}
-                  <div className={`p-7 transition-colors ${isOpen ? "bg-[#111113]" : ""}`}>
+                  <div className={`p-7 transition-colors ${isOpen ? "gidf-card-open bg-[#111113]" : ""}`}>
                     <span className="absolute top-4 right-5 font-extrabold text-[42px] tracking-tighter leading-none select-none" style={{ color: "rgba(255,255,255,0.04)" }}>
                       {stage.n}
                     </span>
                     <div className="relative z-10">
-                      <span className="mb-4 block transition-colors" style={{ color: isOpen ? accent : "rgba(255,255,255,0.4)" }}>
+                      <span className="mb-4 block transition-colors gidf-icon" style={isOpen ? { color: accent } : {}}>
                         {STAGE_ICONS[stage.n]}
                       </span>
                       <span className="font-mono text-[10px] uppercase tracking-widest mb-2 block" style={{ color: accent }}>
-                        {t("gidf.stageLabel") || "Stage"} {stage.n}
+                        Stage {stage.n}
                       </span>
-                      <h3 className="font-extrabold uppercase text-sm tracking-tight mb-1 group-hover:text-white transition-colors">
+                      <h3 className="font-extrabold uppercase text-sm tracking-tight mb-1 gidf-title group-hover:text-white transition-colors">
                         {title}
                       </h3>
-                      <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest mt-2" style={{ color: "rgba(255,255,255,0.2)" }}>
+                      <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest mt-2 gidf-hint">
                         {isOpen ? t("gidf.hintClose") : t("gidf.hintOpen")}
                       </span>
                     </div>
@@ -326,7 +326,7 @@ function Index() {
 
                   {/* Intelligence tooltip panel */}
                   <div className="overflow-hidden transition-all duration-300 ease-in-out" style={{ maxHeight: isOpen ? "400px" : "0px" }}>
-                    <div className="px-7 pb-7 border-t" style={{ borderColor: `${accent}25`, backgroundColor: "#111113" }}>
+                    <div className="gidf-tooltip-panel px-7 pb-7 border-t" style={{ borderColor: `${accent}25`, backgroundColor: "#111113" }}>
                       {/* Stat hook */}
                       <div className="pt-5 pb-3 border-b border-white/8">
                         <p className="font-mono text-[9px] uppercase tracking-widest mb-1.5 gidf-label">{t("gidf.labelStat")}</p>

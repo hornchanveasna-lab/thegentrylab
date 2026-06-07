@@ -129,14 +129,31 @@
 .gidf-label       { color: rgba(255,255,255,0.30); }
 .gidf-body        { color: rgba(255,255,255,0.65); }
 .gidf-body-strong { color: rgba(255,255,255,0.80); }
+/* GIDF stage card icon (rest state = muted white, swap on light) */
+.gidf-icon        { color: rgba(255,255,255,0.40); transition: color 0.2s; }
+/* GIDF stage title (always readable on its bg) */
+.gidf-title       { color: rgba(255,255,255,0.85); }
+/* GIDF hint text */
+.gidf-hint        { color: rgba(255,255,255,0.22); }
+
 [data-theme="light"] .gidf-label       { color: rgba(0,0,0,0.45) !important; }
 [data-theme="light"] .gidf-body        { color: rgba(0,0,0,0.72) !important; }
 [data-theme="light"] .gidf-body-strong { color: rgba(0,0,0,0.88) !important; }
+[data-theme="light"] .gidf-icon        { color: rgba(0,0,0,0.35) !important; }
+[data-theme="light"] .gidf-title       { color: rgba(0,0,0,0.88) !important; }
+[data-theme="light"] .gidf-hint        { color: rgba(0,0,0,0.30) !important; }
 [data-theme="light"] .bg-\[\#111113\]  { background-color: #e8e6e0 !important; }
 [data-theme="light"] .text-white\/65   { color: rgba(0,0,0,0.65) !important; }
+[data-theme="light"] .text-white\/85   { color: rgba(0,0,0,0.85) !important; }
 [data-theme="light"] .text-white\/15   { color: rgba(0,0,0,0.15) !important; }
 [data-theme="light"] .text-white\/10   { color: rgba(0,0,0,0.10) !important; }
 [data-theme="light"] .text-white\/4    { color: rgba(0,0,0,0.06) !important; }
+/* GIDF card hover: title should go fully dark not white in light mode */
+[data-theme="light"] .group:hover .group-hover\:text-white { color: rgba(0,0,0,0.95) !important; }
+/* Tooltip panel background in light mode — override the #111113 inner panel */
+[data-theme="light"] .gidf-tooltip-panel { background-color: var(--surface-3) !important; border-color: rgba(0,0,0,0.10) !important; }
+/* GIDF card open state background */
+[data-theme="light"] .gidf-card-open  { background-color: var(--surface-2) !important; }
 
 /* ── Nav surface dropdown light mode ────────────────────── */
 [data-theme="light"] .nav-surface { background-color: var(--background) !important; border-color: var(--border) !important; }
