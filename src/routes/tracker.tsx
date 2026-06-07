@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { PROJECTS, SECTORS, type Sector, type TrackedProject } from "@/data/platform";
@@ -307,15 +307,37 @@ function EmptyPanel() {
 /* ── Mobile bottom sheet ────────────────────────────────── */
 function MobileBottomSheet({ project, onClose }: { project: TrackedProject | null; onClose: () => void }) {
   const isOpen = !!project;
+  const savedScrollY = useRef(0);
 
-  /* Lock body scroll while open */
+  /*
+   * iOS-safe body scroll lock.
+   * Simple `overflow:hidden` doesn't prevent rubber-band scrolling on Safari.
+   * The reliable technique: pin the body with position:fixed at the current
+   * scroll offset, then restore on unlock.
+   */
   useEffect(() => {
     if (isOpen) {
+      savedScrollY.current = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${savedScrollY.current}px`;
+      document.body.style.left = "0";
+      document.body.style.right = "0";
       document.body.style.overflow = "hidden";
     } else {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
       document.body.style.overflow = "";
+      window.scrollTo(0, savedScrollY.current);
     }
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
 
   return (
@@ -331,18 +353,23 @@ function MobileBottomSheet({ project, onClose }: { project: TrackedProject | nul
         onClick={onClose}
       />
 
-      {/* Sheet */}
+      {/* Sheet
+          - position:fixed so it sits above the locked body
+          - overflowY:auto + WebkitOverflowScrolling for momentum scroll inside
+          - overscrollBehavior:contain stops inner scroll from propagating to body
+      */}
       <div
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 transition-transform duration-400"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 transition-transform duration-[400ms]"
         style={{
           transform: isOpen ? "translateY(0)" : "translateY(100%)",
-          maxHeight: "88vh",
-          overflowY: "auto",
+          maxHeight: "88svh",
+          overflowY: isOpen ? "auto" : "hidden",
+          overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
           transitionTimingFunction: isOpen ? "cubic-bezier(0.32,0.72,0,1)" : "ease-in",
         }}
       >
-        {/* Drag handle bar */}
+        {/* Drag handle — sticky so it stays visible while scrolling content */}
         <div className="bg-[#0d0d0e] border-t border-white/10 flex justify-center pt-3 pb-1 sticky top-0 z-10">
           <div className="w-10 h-1 rounded-full bg-white/20" />
         </div>
@@ -441,18 +468,35 @@ function TrackerPage() {
         {/* Two-col layout: list always full-width on mobile; side panel only lg+ */}
         <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
 
-          {/* Project list */}
-          <div className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e]">
+          {/* Project list — independent scroll on desktop */}
+          <div
+            className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e] lg:overflow-y-auto"
+            style={{ maxHeight: "calc(100vh - 13rem)" } as React.CSSProperties}
+          >
             {filtered.map((p) => {
               const vis = SECTOR_VISUAL[p.sector] ?? DEFAULT_VISUAL;
               const sc  = STATUS_COLOR[p.status] ?? "#94a3b8";
               const isSelected = selected?.id === p.id;
+              /* Tap-vs-scroll detection: only select if pointer moved < 8px */
+              let _startY = 0, _startX = 0;
               return (
                 <button
                   key={p.id}
-                  onClick={() => setSelected(isSelected ? null : p)}
+                  /* Remove onClick — handled via pointer events below */
+                  onPointerDown={(e) => { _startY = e.clientY; _startX = e.clientX; }}
+                  onPointerUp={(e) => {
+                    if (
+                      Math.abs(e.clientY - _startY) < 8 &&
+                      Math.abs(e.clientX - _startX) < 8
+                    ) {
+                      setSelected(isSelected ? null : p);
+                    }
+                  }}
                   className="w-full flex items-stretch text-left transition-all group"
-                  style={{ backgroundColor: isSelected ? `${vis.accent}08` : "transparent", touchAction: "pan-y" }}
+                  style={{
+                    backgroundColor: isSelected ? `${vis.accent}08` : "transparent",
+                    touchAction: "pan-y",   /* browser handles vertical scroll, not button */
+                  }}
                 >
                   {/* Color stripe */}
                   <div className="w-1 shrink-0 transition-all" style={{ background: isSelected ? vis.gradient : "rgba(255,255,255,0.05)" }} />
@@ -532,7 +576,10 @@ function TrackerPage() {
           </div>
 
           {/* Detail panel — desktop only (lg+) */}
-          <div className="hidden lg:block sticky top-[4.5rem]">
+          <div
+            className="hidden lg:block sticky top-[4.5rem] overflow-y-auto"
+            style={{ maxHeight: "calc(100vh - 5rem)" }}
+          >
             {selected
               ? <ProjectDetail project={selected} onClose={() => setSelected(null)} />
               : <EmptyPanel />
