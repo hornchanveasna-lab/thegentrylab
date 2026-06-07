@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest hello-world --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(Test-Path \"D:\\\\Claude Ai\\\\TheGentryLab\\\\hello-world\\\\package.json\")"
+    ]
+  }
+}
