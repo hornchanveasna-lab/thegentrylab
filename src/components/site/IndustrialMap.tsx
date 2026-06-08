@@ -197,7 +197,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
   /* ── Full map ───────────────────────────────────────────── */
   return (
-    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black" data-theme="dark">
+    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black">
       {/* Basemap */}
       <div className="absolute inset-0">
         {mods ? (
@@ -329,8 +329,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
                           className="px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest border transition-all"
                           style={{
                             backgroundColor: curSub === k.value ? `${meta.color}22` : "transparent",
-                            borderColor:     curSub === k.value ? meta.color          : "rgba(255,255,255,0.12)",
-                            color:           curSub === k.value ? meta.color          : "rgba(255,255,255,0.4)",
+                            borderColor:     curSub === k.value ? meta.color          : "var(--map-subchip-border)",
+                            color:           curSub === k.value ? meta.color          : "var(--map-subchip-text)",
                           }}
                         >
                           {k.label}
