@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { PROJECTS, SECTORS, type Sector, type TrackedProject } from "@/data/platform";
@@ -310,12 +310,25 @@ function MobileBottomSheet({ project, onClose }: { project: TrackedProject | nul
   const savedScrollY = useRef(0);
 
   /*
-   * iOS-safe body scroll lock.
-   * Simple `overflow:hidden` doesn't prevent rubber-band scrolling on Safari.
-   * The reliable technique: pin the body with position:fixed at the current
-   * scroll offset, then restore on unlock.
+   * iOS-safe body scroll lock — MOBILE ONLY.
+   * The sheet is lg:hidden so on desktop this effect must be a no-op,
+   * otherwise selecting a project locks the body and breaks desktop scroll.
+   *
+   * Technique: position:fixed + saved scrollY (prevents iOS rubber-band).
+   * Simple overflow:hidden does NOT stop Safari overscroll.
    */
   useEffect(() => {
+    // Never lock the body on desktop — the sheet is hidden there anyway
+    if (window.innerWidth >= 1024) return;
+
+    const unlock = () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.overflow = "";
+    };
+
     if (isOpen) {
       savedScrollY.current = window.scrollY;
       document.body.style.position = "fixed";
@@ -324,20 +337,10 @@ function MobileBottomSheet({ project, onClose }: { project: TrackedProject | nul
       document.body.style.right = "0";
       document.body.style.overflow = "hidden";
     } else {
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.right = "";
-      document.body.style.overflow = "";
+      unlock();
       window.scrollTo(0, savedScrollY.current);
     }
-    return () => {
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.right = "";
-      document.body.style.overflow = "";
-    };
+    return unlock;
   }, [isOpen]);
 
   return (
@@ -468,61 +471,68 @@ function TrackerPage() {
         {/* Two-col layout: list always full-width on mobile; side panel only lg+ */}
         <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
 
-          {/* Project list — independent scroll on desktop */}
-          <div
-            className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e] lg:overflow-y-auto"
-            style={{ maxHeight: "calc(100vh - 13rem)" } as React.CSSProperties}
-          >
+          {/* Project list
+              Desktop: constrained height + independent scroll so both columns
+              are visible simultaneously without scrolling the page.
+              Mobile: unconstrained — page scrolls naturally, sheet handles detail. */}
+          <div className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e] lg:max-h-[calc(100vh-13rem)] lg:overflow-y-auto">
             {filtered.map((p) => {
               const vis = SECTOR_VISUAL[p.sector] ?? DEFAULT_VISUAL;
               const sc  = STATUS_COLOR[p.status] ?? "#94a3b8";
               const isSelected = selected?.id === p.id;
-              /* Tap-vs-scroll detection: only select if pointer moved < 8px */
-              let _startY = 0, _startX = 0;
               return (
                 <button
                   key={p.id}
-                  /* Remove onClick — handled via pointer events below */
-                  onPointerDown={(e) => { _startY = e.clientY; _startX = e.clientX; }}
-                  onPointerUp={(e) => {
-                    if (
-                      Math.abs(e.clientY - _startY) < 8 &&
-                      Math.abs(e.clientX - _startX) < 8
-                    ) {
-                      setSelected(isSelected ? null : p);
-                    }
-                  }}
-                  className="w-full flex items-stretch text-left transition-all group"
+                  onClick={() => setSelected(isSelected ? null : p)}
+                  className="w-full flex items-stretch text-left transition-colors duration-150 group cursor-pointer hover:bg-white/[0.03]"
                   style={{
-                    backgroundColor: isSelected ? `${vis.accent}08` : "transparent",
-                    touchAction: "pan-y",   /* browser handles vertical scroll, not button */
+                    /* Only apply accent bg when selected — lets hover:bg work when unselected */
+                    ...(isSelected ? { backgroundColor: `${vis.accent}0d` } : {}),
+                    touchAction: "pan-y",
                   }}
                 >
-                  {/* Color stripe */}
-                  <div className="w-1 shrink-0 transition-all" style={{ background: isSelected ? vis.gradient : "rgba(255,255,255,0.05)" }} />
+                  {/* Sector thread — always visible at low opacity, brightens on hover, full gradient when selected */}
+                  <div
+                    className={`w-1 shrink-0 transition-all duration-200 ${
+                      isSelected
+                        ? "opacity-100"
+                        : "opacity-[0.18] group-hover:opacity-75"
+                    }`}
+                    style={{ background: isSelected ? vis.gradient : vis.accent }}
+                  />
 
-                  {/* Mobile layout: 2-line compact */}
+                  {/* Row content */}
                   <div className="flex-1 px-3 py-3 md:px-4 md:py-4">
-                    {/* Row 1: name + status dot */}
+                    {/* Row 1: name + status */}
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-bold text-[13px] group-hover:text-white transition leading-snug"
-                        style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.85)" }}>
+                      <p
+                        className="font-bold text-[13px] transition-colors duration-150 leading-snug group-hover:text-white"
+                        style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.72)" }}
+                      >
                         {p.name}
                       </p>
                       <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
-                        {/* On md+: show sector badge */}
-                        <span className="hidden md:inline-block px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest"
-                          style={{ backgroundColor: `${vis.accent}18`, color: vis.accent }}>
+                        <span className="w-1.5 h-1.5 rounded-full transition-transform duration-150 group-hover:scale-125" style={{ backgroundColor: sc }} />
+                        {/* md+: sector badge */}
+                        <span
+                          className="hidden md:inline-block px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest transition-colors duration-150"
+                          style={{
+                            backgroundColor: isSelected ? `${vis.accent}28` : `${vis.accent}14`,
+                            color: vis.accent,
+                          }}
+                        >
                           {p.sector}
                         </span>
                       </div>
                     </div>
+
                     {/* Row 2: CDC subtitle */}
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      {/* Mobile: show sector inline */}
-                      <span className="md:hidden text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5"
-                        style={{ backgroundColor: `${vis.accent}18`, color: vis.accent }}>
+                      {/* Mobile: sector badge */}
+                      <span
+                        className="md:hidden text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5"
+                        style={{ backgroundColor: `${vis.accent}14`, color: vis.accent }}
+                      >
                         {p.sector}
                       </span>
                       {p.cdc_approval_date && (
@@ -549,18 +559,28 @@ function TrackerPage() {
                     </div>
                   </div>
 
-                  {/* Arrow indicator (desktop only) */}
+                  {/* Desktop arrow — invisible until hover, accent-coloured when selected */}
                   <div className="hidden lg:flex w-6 items-center justify-center shrink-0">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"
-                      className="transition-all"
-                      style={{ opacity: isSelected ? 1 : 0, color: vis.accent }}>
+                    <svg
+                      width="10" height="10" viewBox="0 0 10 10" fill="none"
+                      className="transition-all duration-150"
+                      style={{
+                        opacity: isSelected ? 1 : 0,
+                        color: vis.accent,
+                        transform: isSelected ? "translateX(1px)" : "translateX(-2px)",
+                      }}
+                    >
                       <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                   </div>
 
-                  {/* Mobile chevron */}
+                  {/* Mobile chevron — brightens on hover */}
                   <div className="lg:hidden flex w-8 items-center justify-center shrink-0">
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ color: "rgba(255,255,255,0.2)" }}>
+                    <svg
+                      width="10" height="10" viewBox="0 0 10 10" fill="none"
+                      className="transition-all duration-150 opacity-20 group-hover:opacity-60"
+                      style={{ color: "rgba(255,255,255,1)" }}
+                    >
                       <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                     </svg>
                   </div>
