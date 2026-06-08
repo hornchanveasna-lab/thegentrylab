@@ -1,5 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
-
 const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — Cambodia's industrial intelligence platform. You help foreign manufacturers, investors, and developers make informed decisions about industrial development in Cambodia.
 
 ## Your expertise:
@@ -79,25 +77,56 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  const client = new Anthropic({ apiKey });
-
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
       try {
-        const stream = client.messages.stream({
-          model: "claude-haiku-4-5",
-          max_tokens: 1024,
-          system: SYSTEM_PROMPT,
-          messages,
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-haiku-4-5",
+            max_tokens: 1024,
+            stream: true,
+            system: SYSTEM_PROMPT,
+            messages,
+          }),
         });
 
-        for await (const chunk of stream) {
-          if (
-            chunk.type === "content_block_delta" &&
-            chunk.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(chunk.delta.text));
+        if (!res.ok || !res.body) {
+          const text = await res.text();
+          controller.enqueue(encoder.encode(`[Error: ${res.status} ${text}]`));
+          controller.close();
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") continue;
+            try {
+              const evt = JSON.parse(data);
+              if (
+                evt.type === "content_block_delta" &&
+                evt.delta?.type === "text_delta"
+              ) {
+                controller.enqueue(encoder.encode(evt.delta.text));
+              }
+            } catch {}
           }
         }
       } catch (err) {
