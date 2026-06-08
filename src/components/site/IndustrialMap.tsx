@@ -460,102 +460,172 @@ function MapView({
 
 /* ── Inspector ──────────────────────────────────────────── */
 function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
+  const layerColor = LAYER_META[site.layer].color;
   const scoreColor = site.score !== undefined
     ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
     : "#94a3b8";
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lng}`;
 
   return (
-    <aside className="absolute top-4 right-4 z-[400] w-[336px] max-w-[calc(100vw-2rem)] bg-black/95 backdrop-blur border border-white/10 text-white flex flex-col max-h-[calc(100vh-6rem)] overflow-hidden shadow-2xl">
-      <div className="flex items-start justify-between px-4 py-3 border-b border-white/10 shrink-0">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
-            {LAYER_META[site.layer].label}{site.kind !== "corridor" && ` · ${site.kind}`}
-          </p>
-          <h3 className="font-extrabold text-base uppercase tracking-tight leading-tight mt-1">{site.name}</h3>
-          <p className="font-mono text-[10px] text-white/40 mt-0.5">{site.province}</p>
+    <aside className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] bg-[#0d0d0e] backdrop-blur border border-white/12 text-white flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl">
+
+      {/* ── Header ── */}
+      <div className="shrink-0 border-b border-white/10">
+        {/* Layer / kind strip */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: layerColor, boxShadow: `0 0 6px ${layerColor}` }} />
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/50">
+              {LAYER_META[site.layer].label}
+            </span>
+            <span className="font-mono text-[9px] text-white/25">·</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: layerColor }}>
+              {site.kind}
+            </span>
+          </div>
+          <button onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white hover:bg-white/8 transition rounded-sm">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M1 1l8 8M9 1L1 9"/>
+            </svg>
+          </button>
         </div>
-        <button onClick={onClose} className="text-white/40 hover:text-white text-xl leading-none ml-4 shrink-0">×</button>
+
+        {/* Name + province */}
+        <div className="px-4 pb-3">
+          <h3 className="font-extrabold text-[15px] uppercase tracking-tight leading-tight text-white">{site.name}</h3>
+          <div className="flex items-center gap-2 mt-1">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/30 shrink-0">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+              <circle cx="12" cy="9" r="2.5"/>
+            </svg>
+            <span className="font-mono text-[10px] text-white/45">{site.province}</span>
+            {site.status && (
+              <>
+                <span className="text-white/20">·</span>
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[site.status] ?? "#94a3b8" }} />
+                <span className="font-mono text-[10px]" style={{ color: STATUS_COLOR[site.status] ?? "#94a3b8" }}>{site.status}</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
+      {/* ── Scrollable body ── */}
       <div className="overflow-y-auto flex-1">
-        <dl className="px-4 py-3 grid grid-cols-3 gap-y-3 text-[11px]">
-          {site.status && (
-            <>
-              <dt className="col-span-1 font-mono text-[10px] uppercase tracking-widest text-white/40">Status</dt>
-              <dd className="col-span-2 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[site.status] ?? "#94a3b8" }} />
-                <span style={{ color: STATUS_COLOR[site.status] ?? "#fff" }}>{site.status}</span>
-              </dd>
-            </>
-          )}
-          {site.size      && <Row k="Size"      v={site.size}      />}
-          {site.utilities && <Row k="Utilities" v={site.utilities} />}
-          {site.road      && <Row k="Access"    v={site.road}      />}
-        </dl>
 
+        {/* Notes — always shown first if present */}
+        {site.notes && (
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="text-[12px] text-white/75 leading-relaxed">{site.notes}</p>
+          </div>
+        )}
+
+        {/* Key facts grid */}
+        {(site.size || site.utilities || site.road) && (
+          <div className="border-b border-white/8">
+            <p className="px-4 pt-3 pb-1.5 font-mono text-[9px] uppercase tracking-widest text-white/35">Details</p>
+            <dl className="px-4 pb-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[11px]">
+              {site.size      && <Row k="Size"       v={site.size}      />}
+              {site.utilities && <Row k="Utilities"  v={site.utilities} />}
+              {site.road      && <Row k="Road Access" v={site.road}     />}
+            </dl>
+          </div>
+        )}
+
+        {/* Suitability score */}
         {site.score !== undefined && (
-          <div className="px-4 py-3 border-t border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-2">Suitability Score</p>
-            <div className="flex items-end gap-3">
-              <span className="text-3xl font-extrabold" style={{ color: scoreColor }}>{site.score}</span>
-              <span className="font-mono text-[10px] text-white/40 mb-1">/ 100</span>
+          <div className="px-4 py-3 border-b border-white/8">
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/35">Suitability Score</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-extrabold leading-none" style={{ color: scoreColor }}>{site.score}</span>
+                <span className="font-mono text-[9px] text-white/30">/100</span>
+              </div>
             </div>
-            <div className="mt-2 h-1 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${site.score}%`, backgroundColor: scoreColor }} />
+            <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all" style={{ width: `${site.score}%`, backgroundColor: scoreColor }} />
             </div>
           </div>
         )}
 
+        {/* Target industries */}
         {!!site.targetIndustries?.length && (
-          <div className="px-4 py-3 border-t border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-2">Target Industries</p>
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Relevant Sectors</p>
             <div className="flex flex-wrap gap-1.5">
               {site.targetIndustries.map((ind) => (
-                <span key={ind} className="px-2 py-0.5 bg-[#ff510018] border border-[#ff510040] text-[#ff5100] font-mono text-[9px] uppercase tracking-wider">{ind}</span>
+                <span key={ind}
+                  className="px-2 py-1 font-mono text-[9px] uppercase tracking-wider border"
+                  style={{ backgroundColor: `${layerColor}12`, borderColor: `${layerColor}35`, color: layerColor }}>
+                  {ind}
+                </span>
               ))}
             </div>
           </div>
         )}
 
+        {/* Strengths */}
         {!!site.strengths?.length && (
-          <div className="px-4 py-3 border-t border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-2">Key Strengths</p>
-            <ul className="space-y-1">
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Strengths</p>
+            <ul className="space-y-1.5">
               {site.strengths.map((s) => (
-                <li key={s} className="flex items-start gap-2 text-[11px] text-white/80">
-                  <span className="text-[#34d399] shrink-0 mt-0.5">+</span>{s}
+                <li key={s} className="flex items-start gap-2 text-[11px] text-white/80 leading-snug">
+                  <span className="text-[#34d399] font-bold shrink-0 mt-0.5 text-[10px]">✓</span>{s}
                 </li>
               ))}
             </ul>
           </div>
         )}
 
+        {/* Constraints */}
         {!!site.constraints?.length && (
-          <div className="px-4 py-3 border-t border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-2">Key Constraints</p>
-            <ul className="space-y-1">
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Constraints</p>
+            <ul className="space-y-1.5">
               {site.constraints.map((c) => (
-                <li key={c} className="flex items-start gap-2 text-[11px] text-white/80">
-                  <span className="text-[#f43f5e] shrink-0 mt-0.5">−</span>{c}
+                <li key={c} className="flex items-start gap-2 text-[11px] text-white/80 leading-snug">
+                  <span className="text-[#f43f5e] font-bold shrink-0 mt-0.5 text-[10px]">!</span>{c}
                 </li>
               ))}
             </ul>
           </div>
         )}
 
+        {/* GentryLab advisory recommendation */}
         {site.recommendation && (
-          <div className="px-4 py-3 border-t border-white/10">
-            <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: "#ff5100" }}>{t("map.advisory")}</p>
-            <p className="text-[11px] text-white/80 leading-relaxed">{site.recommendation}</p>
+          <div className="px-4 py-3 border-b border-white/8 bg-[#ff510008]">
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#ff5100" }}>
+              ◈ GentryLab Advisory
+            </p>
+            <p className="text-[11.5px] text-white/85 leading-relaxed">{site.recommendation}</p>
           </div>
         )}
 
-        {site.notes && !site.recommendation && (
-          <p className="px-4 py-3 border-t border-white/10 text-xs text-white/70 leading-relaxed">{site.notes}</p>
-        )}
+        {/* Location + Google Maps */}
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-3 px-4 py-3 border-b border-white/8 hover:bg-white/5 transition group">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" className="text-white/30 group-hover:text-[#ff5100] shrink-0 transition">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition">
+              Coordinates · Open in Maps ↗
+            </p>
+            <p className="font-mono text-[10px] text-white/55 mt-0.5">
+              {site.lat.toFixed(4)}, {site.lng.toFixed(4)}
+            </p>
+          </div>
+        </a>
 
-        <div className="px-4 py-3 border-t border-white/10 font-mono text-[9px] uppercase tracking-widest text-white/30">
-          {t("map.disclaimer")}
+        {/* Footer disclaimer */}
+        <div className="px-4 py-2.5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/20">
+            {t("map.disclaimer")}
+          </p>
         </div>
       </div>
     </aside>
@@ -565,8 +635,8 @@ function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <>
-      <dt className="col-span-1 font-mono text-[10px] uppercase tracking-widest text-white/40">{k}</dt>
-      <dd className="col-span-2 text-white/90 text-[11px]">{v}</dd>
+      <dt className="font-mono text-[9px] uppercase tracking-widest text-white/35 pt-0.5">{k}</dt>
+      <dd className="text-white/85 text-[11px] leading-snug">{v}</dd>
     </>
   );
 }
