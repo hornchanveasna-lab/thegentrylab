@@ -38,7 +38,7 @@ const T = {
       h1a: "What does it",
       h1b: "actually take to",
       h1c: "develop",
-      h1d: "land in Cambodia?",
+      h1d: "Industrial land in Cambodia?",
       sub: "9 stages. 110+ sites mapped. One free platform built from $500M+ of delivered projects.",
       cta1: "Explore the map",
       cta2: "About the platform",
