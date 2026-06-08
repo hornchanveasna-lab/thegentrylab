@@ -88,6 +88,24 @@
 .nav-toggle-btn   { color: var(--text-muted); }
 .nav-toggle-btn:hover { color: var(--text-primary); }
 
+/* ── News + Research inline-style CSS variables ─────────── */
+:root, [data-theme="dark"] {
+  --news-card-border:         rgba(255,255,255,0.08);
+  --news-headline:            rgba(255,255,255,0.90);
+  --news-dot-inactive:        rgba(255,255,255,0.30);
+  --news-toggle-inactive:     rgba(255,255,255,0.30);
+  --research-filter-inactive: rgba(255,255,255,0.45);
+  --research-hero-bg:         linear-gradient(135deg,#0a0a0b 60%,#1a0a02 100%);
+}
+[data-theme="light"] {
+  --news-card-border:         rgba(0,0,0,0.09);
+  --news-headline:            rgba(0,0,0,0.85);
+  --news-dot-inactive:        rgba(0,0,0,0.20);
+  --news-toggle-inactive:     rgba(0,0,0,0.35);
+  --research-filter-inactive: rgba(0,0,0,0.50);
+  --research-hero-bg:         linear-gradient(135deg,#f0ede8 60%,#f5ece2 100%);
+}
+
 /* ── Tracker inline-style CSS variables ─────────────────── */
 :root, [data-theme="dark"] {
   --tr-name:           rgba(255,255,255,0.72);

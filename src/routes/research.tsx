@@ -99,8 +99,7 @@ function ResearchCard({
 
   return (
     <article
-      className="group relative overflow-hidden border border-white/10 hover:border-white/25 transition-all flex flex-col"
-      style={{ background: "#0d0d0e" }}
+      className="group relative overflow-hidden border border-white/10 hover:border-white/25 transition-all flex flex-col bg-[#0d0d0e]"
     >
       {/* ── Cover ── */}
       <div
@@ -199,7 +198,7 @@ function ResearchPage() {
       <TopNav />
 
       {/* ── Hero strip ── */}
-      <section className="relative border-b border-white/8 overflow-hidden" style={{ background: "linear-gradient(135deg,#0a0a0b 60%,#1a0a02 100%)" }}>
+      <section className="relative border-b border-white/8 overflow-hidden" style={{ background: "var(--research-hero-bg)" }}>
         {/* Background decorative */}
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: "linear-gradient(rgba(255,81,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,81,0,0.04) 1px,transparent 1px)",
@@ -242,8 +241,8 @@ function ResearchPage() {
                 className="px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest border transition-all"
                 style={{
                   backgroundColor: activeCategory === cat ? "#ff5100" : "transparent",
-                  borderColor: activeCategory === cat ? "#ff5100" : "rgba(255,255,255,0.15)",
-                  color: activeCategory === cat ? "#000" : "rgba(255,255,255,0.45)",
+                  borderColor: activeCategory === cat ? "#ff5100" : "var(--news-card-border)",
+                  color: activeCategory === cat ? "#000" : "var(--research-filter-inactive)",
                   fontWeight: activeCategory === cat ? 700 : 400,
                 }}
               >

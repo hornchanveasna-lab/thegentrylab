@@ -193,7 +193,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
             style={{
               width: i === idx ? 20 : 6, height: 6,
               borderRadius: 3,
-              backgroundColor: i === idx ? getAccent(n.sector) : "rgba(255,255,255,0.3)",
+              backgroundColor: i === idx ? getAccent(n.sector) : "var(--news-dot-inactive)",
             }}
           />
         ))}
@@ -212,9 +212,9 @@ function NewsCard({ item }: { item: NewsItem }) {
   const accent = getAccent(item.sector);
   return (
     <article className="group border bg-[#0d0d0e] transition-all overflow-hidden flex flex-col"
-      style={{ borderColor: "rgba(255,255,255,0.08)" }}
+      style={{ borderColor: "var(--news-card-border)" }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${accent}50`)}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--news-card-border)")}
     >
       {/* Photo strip */}
       <div className="relative h-44 overflow-hidden">
@@ -246,7 +246,7 @@ function NewsCard({ item }: { item: NewsItem }) {
         <a {...linkProps(item.url)} className="text-[13px] font-extrabold uppercase tracking-tight leading-snug transition line-clamp-2 mb-3 text-white/90"
           style={{ ["--hover-color" as string]: accent }}
           onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = accent)}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)")}>
+          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--news-headline)")}>
           {item.headline}
         </a>
         <p className="text-[11px] text-white/50 leading-relaxed line-clamp-3 flex-1">{item.summary}</p>
@@ -310,7 +310,7 @@ function NewsPage() {
                 {(["grid", "list"] as const).map((v) => (
                   <button key={v} onClick={() => setView(v)}
                     className="px-3 py-2 transition-all"
-                    style={{ backgroundColor: view === v ? "#ff510020" : "transparent", color: view === v ? "#ff5100" : "rgba(255,255,255,0.3)" }}>
+                    style={{ backgroundColor: view === v ? "#ff510020" : "transparent", color: view === v ? "#ff5100" : "var(--news-toggle-inactive)" }}>
                     {v === "grid"
                       ? <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor"><rect x="0" y="0" width="5.5" height="5.5" rx="0.5"/><rect x="7.5" y="0" width="5.5" height="5.5" rx="0.5"/><rect x="0" y="7.5" width="5.5" height="5.5" rx="0.5"/><rect x="7.5" y="7.5" width="5.5" height="5.5" rx="0.5"/></svg>
                       : <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><line x1="1" y1="2.5" x2="12" y2="2.5"/><line x1="1" y1="6.5" x2="12" y2="6.5"/><line x1="1" y1="10.5" x2="12" y2="10.5"/></svg>
@@ -350,7 +350,7 @@ function NewsPage() {
                   </div>
                   <a {...linkProps(n.url)} className="text-[13px] font-bold leading-snug transition text-white/90"
                     onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = accent)}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.9)")}>
+                    onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--news-headline)")}>
                     {n.headline}
                   </a>
                   <p className="text-[11px] text-white/50 mt-1.5 leading-relaxed line-clamp-2">{n.summary}</p>
