@@ -50,6 +50,14 @@ const STATUS_COLOR: Record<string, string> = {
   Operational: "#34d399",
 };
 
+/* ── "New this week" helper ─────────────────────────────── */
+function isNewThisWeek(updated: string): boolean {
+  try {
+    const diff = Date.now() - new Date(updated).getTime();
+    return diff >= 0 && diff < 7 * 24 * 60 * 60 * 1000;
+  } catch { return false; }
+}
+
 /* ── Origin country flags ───────────────────────────────── */
 const ORIGIN_FLAG: Record<string, string> = {
   China: "🇨🇳", Japan: "🇯🇵", Korea: "🇰🇷", USA: "🇺🇸", Germany: "🇩🇪",
@@ -480,6 +488,7 @@ function TrackerPage() {
               const vis = SECTOR_VISUAL[p.sector] ?? DEFAULT_VISUAL;
               const sc  = STATUS_COLOR[p.status] ?? "#94a3b8";
               const isSelected = selected?.id === p.id;
+              const isNew = isNewThisWeek(p.updated);
               return (
                 <button
                   key={p.id}
@@ -505,12 +514,21 @@ function TrackerPage() {
                   <div className="flex-1 px-3 py-3 md:px-4 md:py-4">
                     {/* Row 1: name + status */}
                     <div className="flex items-start justify-between gap-2">
-                      <p
-                        className="font-bold text-[13px] transition-colors duration-150 leading-snug group-hover:text-white"
-                        style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.72)" }}
-                      >
-                        {p.name}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <p
+                          className="font-bold text-[13px] transition-colors duration-150 leading-snug group-hover:text-white"
+                          style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.72)" }}
+                        >
+                          {p.name}
+                        </p>
+                        {isNew && (
+                          <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest font-bold rounded-sm"
+                            style={{ backgroundColor: "#34d39922", color: "#34d399", border: "1px solid #34d39944" }}>
+                            <span className="w-1 h-1 rounded-full bg-[#34d399] animate-pulse" />
+                            New
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
                         <span className="w-1.5 h-1.5 rounded-full transition-transform duration-150 group-hover:scale-125" style={{ backgroundColor: sc }} />
                         {/* md+: sector badge */}
