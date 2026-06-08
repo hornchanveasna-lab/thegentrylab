@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { NEWS, type NewsItem } from "@/data/platform";
@@ -83,6 +83,42 @@ const linkProps      = (url: string) => isRealUrl(url)
   ? { href: url, target: "_blank", rel: "noopener noreferrer" }
   : { href: "#" };
 
+/* ── Slide background with fade-in (no flash on src change) ── */
+function SliderSlide({ item: n, active }: { item: NewsItem; active: boolean }) {
+  const src = getItemPhoto(n);
+  const [loaded, setLoaded] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src);
+
+  useEffect(() => {
+    if (src !== currentSrc) {
+      setLoaded(false);
+      setCurrentSrc(src);
+    }
+  }, [src]);
+
+  return (
+    <div
+      className="absolute inset-0 transition-opacity duration-700"
+      style={{ opacity: active ? 1 : 0, zIndex: active ? 1 : 0 }}
+    >
+      <div className="absolute inset-0 bg-[#111]" />
+      <img
+        src={currentSrc}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+        style={{ opacity: loaded ? 0.65 : 0 }}
+        onLoad={() => setLoaded(true)}
+        onError={() => { setCurrentSrc(getPhoto(n.sector)); }}
+      />
+      {/* Sector colour wash */}
+      <div className="absolute inset-0" style={{ backgroundColor: getAccent(n.sector), opacity: 0.28 }} />
+      {/* vignette */}
+      <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/30 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+    </div>
+  );
+}
+
 /* ── Slider (auto-advances, keyboard + swipe) ─────────────── */
 function FeaturedSlider({ items }: { items: typeof NEWS }) {
   const [idx, setIdx] = useState(0);
@@ -118,25 +154,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
     >
       {/* Background slides */}
       {items.map((n, i) => (
-        <div
-          key={n.id}
-          className="absolute inset-0 transition-opacity duration-700"
-          style={{ opacity: i === idx ? 1 : 0, zIndex: i === idx ? 1 : 0 }}
-        >
-          <div className="absolute inset-0 bg-[#111]" />
-          <img
-            src={getItemPhoto(n)}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ opacity: 0.65 }}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = getPhoto(n.sector); }}
-          />
-          {/* Sector colour wash — plain overlay */}
-          <div className="absolute inset-0" style={{ backgroundColor: getAccent(n.sector), opacity: 0.28 }} />
-          {/* vignette */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/30 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-        </div>
+        <SliderSlide key={n.id} item={n} active={i === idx} />
       ))}
 
       {/* Grid overlay — tinted to sector accent */}
@@ -210,6 +228,17 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
 /* ── News card (grid layout) ─────────────────────────────── */
 function NewsCard({ item }: { item: NewsItem }) {
   const accent = getAccent(item.sector);
+  const src = getItemPhoto(item);
+  const [imgSrc, setImgSrc] = useState(src);
+  const [imgLoaded, setImgLoaded] = useState(false);
+
+  useEffect(() => {
+    if (src !== imgSrc) {
+      setImgLoaded(false);
+      setImgSrc(src);
+    }
+  }, [src]);
+
   return (
     <article className="group border bg-[#0d0d0e] news-card transition-all overflow-hidden flex flex-col"
       style={{ borderColor: "var(--news-card-border)" }}
@@ -220,11 +249,12 @@ function NewsCard({ item }: { item: NewsItem }) {
       <div className="relative h-44 overflow-hidden">
         <div className="absolute inset-0 bg-[#111]" />
         <img
-          src={getItemPhoto(item)}
+          src={imgSrc}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ opacity: 0.7 }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).src = getPhoto(item.sector); }}
+          style={{ opacity: imgLoaded ? 0.7 : 0, transition: "opacity 0.5s, transform 0.7s" }}
+          onLoad={() => setImgLoaded(true)}
+          onError={() => { setImgSrc(getPhoto(item.sector)); }}
         />
         {/* Sector colour wash — plain overlay, no blend mode */}
         <div className="absolute inset-0" style={{ backgroundColor: getAccent(item.sector), opacity: 0.28 }} />
