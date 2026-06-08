@@ -51,18 +51,30 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 /* ── "New this week" helper ─────────────────────────────── */
-function isNewThisWeek(updated: string): boolean {
+/** Checks latest_news_date first (more meaningful), falls back to updated */
+function isNewThisWeek(p: TrackedProject): boolean {
+  const d = p.latest_news_date || p.updated;
   try {
-    const diff = Date.now() - new Date(updated).getTime();
+    const diff = Date.now() - new Date(d).getTime();
     return diff >= 0 && diff < 7 * 24 * 60 * 60 * 1000;
   } catch { return false; }
 }
 
-/* ── Origin country flags ───────────────────────────────── */
-const ORIGIN_FLAG: Record<string, string> = {
-  China: "🇨🇳", Japan: "🇯🇵", Korea: "🇰🇷", USA: "🇺🇸", Germany: "🇩🇪",
-  Thailand: "🇹🇭", Malaysia: "🇲🇾", Singapore: "🇸🇬", Denmark: "🇩🇰",
-  Cambodia: "🇰🇭", "Cambodia/Singapore": "🇰🇭🇸🇬",
+/** Format ISO date → "Jan 2026" */
+function fmtNewsDate(d: string | null | undefined): string | null {
+  if (!d) return null;
+  try {
+    return new Date(d).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  } catch { return null; }
+}
+
+/* ── Origin country code badges (emoji flags are invisible on Windows) ── */
+const ORIGIN_CODE: Record<string, string> = {
+  China: "CN", Japan: "JP", Korea: "KR", "South Korea": "KR",
+  USA: "US", Germany: "DE", Thailand: "TH", Malaysia: "MY",
+  Singapore: "SG", Denmark: "DK", Cambodia: "KH", France: "FR",
+  Vietnam: "VN", Taiwan: "TW", "Hong Kong": "HK", UK: "UK",
+  "Cambodia/Singapore": "KH·SG", "Cambodia/China": "KH·CN",
 };
 
 /* ── Detail panel ───────────────────────────────────────── */
@@ -400,14 +412,22 @@ function TrackerPage() {
   const [status,   setStatus]   = useState("All");
   const [selected, setSelected] = useState<TrackedProject | null>(null);
 
+  /* Tracker uses hardcoded dark styles — force dark theme while on this page */
+  useEffect(() => {
+    const prev = document.documentElement.getAttribute("data-theme") ?? "dark";
+    document.documentElement.setAttribute("data-theme", "dark");
+    return () => document.documentElement.setAttribute("data-theme", prev);
+  }, []);
+
   const filtered = useMemo(() =>
     projects.filter((p) =>
       (sector   === "All" || p.sector   === sector)  &&
       (province === "All" || p.province === province) &&
       (status   === "All" || p.status   === status),
     ).sort((a, b) =>
-      cdcSortKey(b.cdc_approval_date, b.updated).localeCompare(
-        cdcSortKey(a.cdc_approval_date, a.updated)
+      /* CDC-approved projects first (newest approval → top); no CDC date → bottom */
+      cdcSortKey(b.cdc_approval_date, "0000-00").localeCompare(
+        cdcSortKey(a.cdc_approval_date, "0000-00")
       )
     ),
     [projects, sector, province, status],
@@ -488,7 +508,7 @@ function TrackerPage() {
               const vis = SECTOR_VISUAL[p.sector] ?? DEFAULT_VISUAL;
               const sc  = STATUS_COLOR[p.status] ?? "#94a3b8";
               const isSelected = selected?.id === p.id;
-              const isNew = isNewThisWeek(p.updated);
+              const isNew = isNewThisWeek(p);
               return (
                 <button
                   key={p.id}
@@ -572,8 +592,23 @@ function TrackerPage() {
                           <span className="font-mono text-[10px] text-white/35">→ {p.planned_finish}</span>
                         </>
                       )}
+                      {/* Latest news date */}
+                      {fmtNewsDate(p.latest_news_date) && (
+                        <>
+                          <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                          <span className="font-mono text-[9px] text-white/30">
+                            News {fmtNewsDate(p.latest_news_date)}
+                          </span>
+                        </>
+                      )}
+                      {/* Country code badge — works on all OSes including Windows */}
                       <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                      <span className="font-mono text-[10px]">{ORIGIN_FLAG[p.origin] ?? "🌐"}</span>
+                      <span
+                        className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
+                        style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" }}
+                      >
+                        {ORIGIN_CODE[p.origin] ?? p.origin.slice(0, 2).toUpperCase()}
+                      </span>
                     </div>
                   </div>
 

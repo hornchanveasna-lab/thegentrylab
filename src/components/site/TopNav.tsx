@@ -4,8 +4,18 @@ import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
 import { GentryMark } from "@/components/site/GentryMark";
 import { useLang } from "@/lib/i18n";
 
+/* ── Dark/light helpers ─────────────────────────────────── */
+function getStoredTheme(): "dark" | "light" {
+  try { return (localStorage.getItem("tgl_theme") as "dark" | "light") || "dark"; } catch { return "dark"; }
+}
+function applyTheme(t: "dark" | "light") {
+  document.documentElement.setAttribute("data-theme", t);
+  try { localStorage.setItem("tgl_theme", t); } catch { /* */ }
+}
+
 export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">(getStoredTheme);
 
   // Reactive config — subscribes to dashboard saves so changes reflect immediately
   const [cfg, setCfg] = useState<SiteConfig>(() => cfgProp ?? loadConfig());
@@ -20,11 +30,8 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
   const accent = cfg.accentColor;
   const logoColor = cfg.logoColor || accent;
 
-  /* Always force dark mode — platform is dark-themed by design */
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", "dark");
-    try { localStorage.setItem("tgl_theme", "dark"); } catch { /* */ }
-  }, []);
+  const toggleTheme = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  useEffect(() => { applyTheme(theme); }, [theme]);
 
   // Base link definitions — labels come from cfg.navLinks if set, else i18n
   const NAV_LINK_BASE = [
@@ -84,6 +91,32 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
             </Link>
           ))}
 
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="w-8 h-8 flex items-center justify-center rounded-full nav-toggle-btn transition-all"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? (
+              <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <circle cx="7.5" cy="7.5" r="3"/>
+                <line x1="7.5" y1="1"   x2="7.5" y2="2.5"/>
+                <line x1="7.5" y1="12.5" x2="7.5" y2="14"/>
+                <line x1="1"   y1="7.5" x2="2.5" y2="7.5"/>
+                <line x1="12.5" y1="7.5" x2="14" y2="7.5"/>
+                <line x1="3.2" y1="3.2" x2="4.2" y2="4.2"/>
+                <line x1="10.8" y1="10.8" x2="11.8" y2="11.8"/>
+                <line x1="10.8" y1="3.2" x2="11.8" y2="4.2"/>
+                <line x1="3.2" y1="10.8" x2="4.2" y2="11.8"/>
+              </svg>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <path d="M12 9.33A5.33 5.33 0 0 1 4.67 2a5.33 5.33 0 1 0 7.33 7.33z"/>
+              </svg>
+            )}
+          </button>
+
           {/* Get advisory */}
           <Link to="/contact"
             className="ml-2 px-5 py-2 rounded-full text-[11px] font-mono uppercase tracking-widest transition-all"
@@ -103,6 +136,22 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
 
         {/* Mobile right */}
         <div className="md:hidden flex items-center gap-2">
+          {/* Theme toggle */}
+          <button onClick={toggleTheme} className="nav-toggle-btn p-1.5 rounded-full transition-all" aria-label="Toggle theme">
+            {theme === "dark" ? (
+              <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <circle cx="7.5" cy="7.5" r="3"/>
+                <line x1="7.5" y1="1" x2="7.5" y2="2.5"/>
+                <line x1="7.5" y1="12.5" x2="7.5" y2="14"/>
+                <line x1="1" y1="7.5" x2="2.5" y2="7.5"/>
+                <line x1="12.5" y1="7.5" x2="14" y2="7.5"/>
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <path d="M12 9.33A5.33 5.33 0 0 1 4.67 2a5.33 5.33 0 1 0 7.33 7.33z"/>
+              </svg>
+            )}
+          </button>
           {/* Hamburger */}
           <button className="nav-toggle-btn p-1" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Toggle menu">
             <div className="flex flex-col gap-1.5">
