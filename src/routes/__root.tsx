@@ -6,6 +6,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { AiChat } from "@/components/site/AiChat";
 
 function NotFoundComponent() {
   return (
@@ -79,6 +80,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <AiChat />
     </QueryClientProvider>
   );
 }
