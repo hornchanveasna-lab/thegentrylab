@@ -316,8 +316,7 @@ function AboutPage() {
             {CASE_STUDIES.map((cs, i) => (
               <div
                 key={cs.title}
-                className={`group relative overflow-hidden border border-white/10 hover:border-white/25 transition-all flex flex-col reveal reveal-delay-${i + 1}`}
-                style={{ background: "#0d0d0e" }}
+                className={`group relative overflow-hidden border border-white/10 hover:border-white/25 transition-all flex flex-col reveal reveal-delay-${i + 1} bg-[#0d0d0e]`}
               >
                 {/* Photo cover */}
                 <div className="relative overflow-hidden flex-shrink-0" style={{ height: 220 }}>
@@ -407,8 +406,7 @@ function AboutPage() {
               return (
                 <div
                   key={r.n}
-                  className={`group relative overflow-hidden border border-white/8 hover:border-white/20 transition-all cursor-default flex flex-col reveal reveal-delay-${Math.min(i + 1, 6)}`}
-                  style={{ background: "#0a0a0b" }}
+                  className={`group relative overflow-hidden border border-white/8 hover:border-white/20 transition-all cursor-default flex flex-col reveal reveal-delay-${Math.min(i + 1, 6)} bg-[#0a0a0b]`}
                 >
                   {/* Top accent bar */}
                   <div className="h-px w-full" style={{ background: `linear-gradient(90deg, ${accent}60 0%, transparent 100%)` }} />
