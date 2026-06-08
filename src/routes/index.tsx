@@ -269,7 +269,16 @@ function Index() {
                 {t("gidf.eyebrow")}
               </p>
               <h2 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter leading-[0.92]">
-                {t("gidf.title1")}<br />{t("gidf.title2")}
+                {[t("gidf.title1"), t("gidf.title2")].map((line, li) => (
+                  <span key={li} className={li > 0 ? "block" : "block"}>
+                    {line.split(" ").map((word, wi) => (
+                      <span key={wi}>
+                        {wi > 0 && " "}
+                        <span style={{ color: accent }}>{word[0]}</span>{word.slice(1)}
+                      </span>
+                    ))}
+                  </span>
+                ))}
               </h2>
             </div>
             <p className="text-white/35 text-sm max-w-xs leading-relaxed reveal reveal-delay-2">
