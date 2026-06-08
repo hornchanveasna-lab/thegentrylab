@@ -58,32 +58,32 @@ export const LAYER_META: Record<
   investment: {
     label: "Investment",
     color: "#ff5100",
-    description: "Factories, parks, SEZs, logistics hubs",
+    description: "SEZs · Industrial parks · Factories · Logistics hubs",
   },
   infrastructure: {
     label: "Infrastructure",
     color: "#facc15",
-    description: "Roads, expressways, railways, ports, airports",
+    description: "Ports · Airports · Expressways",
   },
   utilities: {
     label: "Utilities",
     color: "#38bdf8",
-    description: "EDC substations, transmission, water, wastewater",
+    description: "EDC substations · Water treatment plants",
   },
   risk: {
     label: "Risk",
     color: "#f43f5e",
-    description: "Flood zones, environmental & ownership risk",
+    description: "Flood plains · Coastal erosion · Environmental zones",
   },
   labor: {
     label: "Labor",
     color: "#a78bfa",
-    description: "Population density, universities, TVET centers",
+    description: "Universities · TVET centres — 9 provinces",
   },
   corridors: {
     label: "Corridors",
     color: "#34d399",
-    description: "National roads and industrial development corridors",
+    description: "9 national road & industrial development corridors",
   },
 };
 

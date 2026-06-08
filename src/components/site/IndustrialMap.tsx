@@ -33,25 +33,26 @@ const STATUS_COLOR: Record<string, string> = {
 /* ── Sub-kind chips per layer ───────────────────────────── */
 const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKind | "all" }[]>> = {
   investment: [
-    { label: "All",      value: "all"      },
-    { label: "SEZ",      value: "sez"      },
-    { label: "Park",     value: "park"     },
-    { label: "Factory",  value: "factory"  },
-    { label: "Logistics",value: "logistics"},
+    { label: "All",       value: "all"      },
+    { label: "SEZ",       value: "sez"      },
+    { label: "Park",      value: "park"     },
+    { label: "Factory",   value: "factory"  },
+    { label: "Logistics", value: "logistics"},
   ],
   infrastructure: [
-    { label: "All",     value: "all"     },
-    { label: "Port",    value: "port"    },
-    { label: "Airport", value: "airport" },
+    { label: "All",        value: "all"      },
+    { label: "Port",       value: "port"     },
+    { label: "Airport",    value: "airport"  },
+    { label: "Expressway", value: "logistics"},
   ],
   utilities: [
-    { label: "All",        value: "all"        },
-    { label: "Substation", value: "substation" },
+    { label: "All",         value: "all"        },
+    { label: "Substation",  value: "substation" },
   ],
   labor: [
-    { label: "All",        value: "all"        },
-    { label: "University", value: "university" },
-    { label: "TVET",       value: "tvet"       },
+    { label: "All",         value: "all"        },
+    { label: "University",  value: "university" },
+    { label: "TVET",        value: "tvet"       },
   ],
 };
 
