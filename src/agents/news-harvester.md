@@ -148,16 +148,25 @@ Extract:
 **Project ID:** `mcxfukjopdnouicwacbn`
 **MCP:** `mcp__2d9cdc4d-820f-40d1-b353-d5b5fe2deb29`
 
-For each article:
-1. Check duplicate: `SELECT id FROM news WHERE headline ILIKE '%FIRST_5_WORDS%'`
-2. Skip if found
-3. Insert if new:
+### Duplicate check — run BOTH checks, skip if either matches:
+```sql
+-- Check 1: exact URL match (same article re-published or re-found)
+SELECT id FROM news WHERE url = '{article_url}';
+
+-- Check 2: headline similarity (same story, slightly different wording)
+SELECT id FROM news WHERE headline ILIKE '%{first_6_significant_words}%';
+```
+Skip the article if **either** query returns a row.
+
+### Insert only if both checks return empty:
 ```sql
 INSERT INTO news (id, headline, source, date, sector, province, summary, url, image_url)
-VALUES (...);
+VALUES (...)
+ON CONFLICT (url) DO NOTHING;
+-- ON CONFLICT ensures DB-level safety even if the check above missed it
 ```
 
-After all inserts:
+### After all inserts, trim to 100 rows max:
 ```sql
 SELECT COUNT(*) FROM news;
 -- If > 100: DELETE FROM news WHERE id IN (SELECT id FROM news ORDER BY date ASC LIMIT (count - 100))
