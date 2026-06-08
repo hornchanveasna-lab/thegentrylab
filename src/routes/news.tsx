@@ -211,7 +211,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
 function NewsCard({ item }: { item: NewsItem }) {
   const accent = getAccent(item.sector);
   return (
-    <article className="group border bg-[#0d0d0e] transition-all overflow-hidden flex flex-col"
+    <article className="group border bg-[#0d0d0e] news-card transition-all overflow-hidden flex flex-col"
       style={{ borderColor: "var(--news-card-border)" }}
       onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${accent}50`)}
       onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--news-card-border)")}
