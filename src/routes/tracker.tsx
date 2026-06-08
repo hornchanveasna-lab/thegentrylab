@@ -82,7 +82,7 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
   const vis = SECTOR_VISUAL[project.sector] ?? DEFAULT_VISUAL;
   const statusIdx = STATUS_ORDER.indexOf(project.status as typeof STATUS_ORDER[number]);
   const sc = STATUS_COLOR[project.status] ?? "#94a3b8";
-  const flag = ORIGIN_FLAG[project.origin] ?? "🌐";
+  const flag = ORIGIN_CODE[project.origin] ?? project.origin.slice(0, 2).toUpperCase();
 
   return (
     <div className="border border-white/10 overflow-hidden bg-[#0d0d0e] flex flex-col">
@@ -152,7 +152,7 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
         <div className="flex items-center gap-0">
           {STATUS_ORDER.map((s, i) => {
             const done  = i <= statusIdx;
-            const color = done ? STATUS_COLOR[s] : "rgba(255,255,255,0.12)";
+            const color = done ? STATUS_COLOR[s] : "var(--tr-pipeline-dim)";
             const isLast = i === STATUS_ORDER.length - 1;
             return (
               <div key={s} className="flex items-center flex-1">
@@ -162,12 +162,12 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
                     {done && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />}
                   </div>
                   <p className="font-mono text-[8px] uppercase tracking-wider mt-1.5 text-center leading-tight"
-                    style={{ color: done ? color : "rgba(255,255,255,0.2)" }}>
+                    style={{ color: done ? color : "var(--tr-pipeline-label)" }}>
                     {s.replace(" ", "\n")}
                   </p>
                 </div>
                 {!isLast && (
-                  <div className="h-px flex-1 mb-5 -mx-2" style={{ backgroundColor: i < statusIdx ? STATUS_COLOR[STATUS_ORDER[i + 1]] : "rgba(255,255,255,0.1)" }} />
+                  <div className="h-px flex-1 mb-5 -mx-2" style={{ backgroundColor: i < statusIdx ? STATUS_COLOR[STATUS_ORDER[i + 1]] : "var(--tr-pipeline-conn)" }} />
                 )}
               </div>
             );
@@ -301,7 +301,7 @@ function EmptyPanel() {
   return (
     <div className="border border-white/8 bg-[#0d0d0e] flex flex-col items-center justify-center py-16 px-6 text-center gap-4">
       <div className="w-14 h-14 border border-white/10 flex items-center justify-center">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="var(--tr-svg-dim)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
           <rect x="2" y="4" width="18" height="15" rx="1"/>
           <path d="M2 8h18M7 2v6M15 2v6"/>
           <line x1="6" y1="13" x2="10" y2="13"/>
@@ -412,12 +412,6 @@ function TrackerPage() {
   const [status,   setStatus]   = useState("All");
   const [selected, setSelected] = useState<TrackedProject | null>(null);
 
-  /* Tracker uses hardcoded dark styles — force dark theme while on this page */
-  useEffect(() => {
-    const prev = document.documentElement.getAttribute("data-theme") ?? "dark";
-    document.documentElement.setAttribute("data-theme", "dark");
-    return () => document.documentElement.setAttribute("data-theme", prev);
-  }, []);
 
   const filtered = useMemo(() =>
     projects.filter((p) =>
@@ -537,7 +531,7 @@ function TrackerPage() {
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
                         <p
                           className="font-bold text-[13px] transition-colors duration-150 leading-snug group-hover:text-white"
-                          style={{ color: isSelected ? "#fff" : "rgba(255,255,255,0.72)" }}
+                          style={{ color: isSelected ? "var(--tr-name-selected)" : "var(--tr-name)" }}
                         >
                           {p.name}
                         </p>
@@ -605,7 +599,7 @@ function TrackerPage() {
                       <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
                       <span
                         className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
-                        style={{ backgroundColor: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.45)" }}
+                        style={{ backgroundColor: "var(--tr-code-bg)", color: "var(--tr-code-text)" }}
                       >
                         {ORIGIN_CODE[p.origin] ?? p.origin.slice(0, 2).toUpperCase()}
                       </span>
