@@ -513,21 +513,58 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
   );
 }
 
-/* ── Short labels per kind (used inside map pins) ───────── */
-const KIND_LABEL: Record<string, string> = {
-  sez:        "SEZ",
-  park:       "IP",
-  factory:    "MFG",
-  logistics:  "LOG",
-  port:       "PORT",
-  airport:    "AIR",
-  substation: "⚡",
-  university: "EDU",
-  tvet:       "TVET",
-  corridor:   "RD",
+/* ── Icon SVG paths for map pin markers (centered at 0,0 within ±7 units) ── */
+const KIND_ICON_SVG: Record<string, string> = {
+  // Industrial zone grid
+  sez:
+    `<rect x="-5" y="-4" width="10" height="8" rx="1" stroke="white" stroke-width="1.5" fill="rgba(255,255,255,0.2)"/>` +
+    `<line x1="-1.7" y1="-4" x2="-1.7" y2="4" stroke="white" stroke-width="0.9"/>` +
+    `<line x1="1.7" y1="-4" x2="1.7" y2="4" stroke="white" stroke-width="0.9"/>` +
+    `<line x1="-5" y1="0" x2="5" y2="0" stroke="white" stroke-width="0.9"/>`,
+  // Multi-building complex
+  park:
+    `<rect x="-5" y="-1.5" width="4.5" height="5.5" rx="0.7" fill="white"/>` +
+    `<rect x="-1" y="-5" width="6" height="9" rx="0.7" fill="rgba(255,255,255,0.65)"/>` +
+    `<rect x="-1" y="-5" width="6" height="9" rx="0.7" stroke="white" stroke-width="0.6" fill="none"/>`,
+  // Saw-tooth factory roof + door
+  factory:
+    `<path d="M-5,4 L-5,-0.5 L-2,-3.5 L0,-0.5 L2,-3.5 L5,-0.5 L5,4 Z" fill="white" stroke-linejoin="round"/>` +
+    `<rect x="-1.2" y="0.5" width="2.4" height="3.5" rx="0.3" fill="rgba(0,0,0,0.28)"/>`,
+  // Delivery truck side view
+  logistics:
+    `<rect x="-5.5" y="-2.5" width="7" height="5" rx="0.8" stroke="white" stroke-width="1.4" fill="rgba(255,255,255,0.2)"/>` +
+    `<path d="M1.5,-2.5 L1.5,-4.5 L5.5,-0.5 L5.5,2.5 L1.5,2.5" stroke="white" stroke-width="1.4" fill="rgba(255,255,255,0.2)"/>` +
+    `<circle cx="-3" cy="3" r="1.4" fill="white"/>` +
+    `<circle cx="3.5" cy="3" r="1.4" fill="white"/>`,
+  // Anchor
+  port:
+    `<circle cx="0" cy="-3.5" r="1.7" stroke="white" stroke-width="1.3" fill="none"/>` +
+    `<line x1="0" y1="-1.8" x2="0" y2="3.5" stroke="white" stroke-width="1.3"/>` +
+    `<line x1="-4.5" y1="0" x2="4.5" y2="0" stroke="white" stroke-width="1.3"/>` +
+    `<path d="M-4,3.5 Q0,2 4,3.5" stroke="white" stroke-width="1.3" fill="none"/>`,
+  // Airplane top-view
+  airport:
+    `<path d="M0,-5.5 L1.2,-0.5 L6,1.5 L6,3.2 L1.2,1.5 L0.8,5.5 L2.5,6 L2.5,7 L0,6.5 L-2.5,7 L-2.5,6 L-0.8,5.5 L-1.2,1.5 L-6,3.2 L-6,1.5 L-1.2,-0.5 Z" fill="white"/>`,
+  // Lightning bolt
+  substation:
+    `<path d="M2,-6 L-3,0.5 L0.5,0.5 L-2,6 L4,-0.5 L0.5,-0.5 L3,-6 Z" fill="white"/>`,
+  // Graduation mortarboard + staff
+  university:
+    `<path d="M0,-4.5 L-6.5,0 L0,2.5 L6.5,0 Z" fill="white"/>` +
+    `<path d="M-4,1 L-4,5 Q0,7 4,5 L4,1" stroke="white" stroke-width="1.3" fill="none"/>` +
+    `<line x1="6.5" y1="0" x2="6.5" y2="4.5" stroke="white" stroke-width="1.3"/>`,
+  // Wrench
+  tvet:
+    `<path d="M-1,-6 C-3.5,-6 -5.5,-4 -4.5,-1.5 L3.5,5.5 C4.5,7 6.5,6.5 6,4.5 L-1.5,-2.5 C0,-4.5 0.5,-5.5 -1,-6 Z" fill="white"/>` +
+    `<circle cx="-4" cy="-4.8" r="1.5" fill="white"/>` +
+    `<circle cx="4.5" cy="4.8" r="1.5" fill="white"/>`,
+  // Road with center line
+  corridor:
+    `<path d="M-5.5,-2.5 L5.5,-2.5 M-5.5,2.5 L5.5,2.5" stroke="white" stroke-width="1.8"/>` +
+    `<path d="M-2,0 L2,0" stroke="white" stroke-width="0.9" stroke-dasharray="1.5,1.5"/>`,
 };
 
-/* ── KIND_SVG kept for Inspector placeholder only ───────── */
+/* ── KIND_SVG (Inspector placeholder only — currentColor on dark bg) ─── */
 const KIND_SVG: Record<string, string> = {
   sez:        `<path d="M3 19V9l9-6 9 6v10H3z M8 19v-5h3v5 M13 19v-5h3v5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
   park:       `<rect x="2" y="7" width="7" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="11" y="3" width="11" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
@@ -541,44 +578,31 @@ const KIND_SVG: Record<string, string> = {
   corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
 };
 
-/* ── Clean badge marker ─────────────────────────────────── */
+/* ── Teardrop pin marker with category icon ─────────────── */
 function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
-  const label  = KIND_LABEL[kind] ?? "·";
-  const chars  = label.length;
-  // Width scales with label length; key sites slightly larger
-  const pw     = isKey ? Math.max(44, chars * 9 + 18) : Math.max(36, chars * 8 + 14);
-  const ph_body = isKey ? 26 : 22; // pill body height
-  const ph     = ph_body + 8;      // + tail height
-  const rx     = ph_body / 2;      // fully rounded ends
-  const fs     = chars <= 2 ? (isKey ? 12 : 10) :
-                 chars <= 3 ? (isKey ? 10 : 9)  :
-                              (isKey ? 9  : 8);
-  const cx     = pw / 2;
-  const tailW  = isKey ? 7 : 5;
+  // Fixed viewBox 0 0 26 34; width/height scale for key sites
+  const W = isKey ? 32 : 26;
+  const H = isKey ? 42 : 34;
+  const icon = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
 
+  // Teardrop pin: circle center (13,12.5) r≈10.5, tip at (13,32)
   const html = `<svg xmlns="http://www.w3.org/2000/svg"
-      width="${pw}" height="${ph}"
-      viewBox="0 0 ${pw} ${ph}"
-      style="overflow:visible;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.45)) drop-shadow(0 1px 2px rgba(0,0,0,0.3))">
-    <!-- pill body -->
-    <rect x="1" y="1" width="${pw-2}" height="${ph_body-2}" rx="${rx-1}"
-          fill="${color}" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
-    <!-- tail -->
-    <polygon points="${cx-tailW},${ph_body-2} ${cx},${ph-1} ${cx+tailW},${ph_body-2}"
-             fill="${color}"/>
-    <!-- label -->
-    <text x="${cx}" y="${ph_body/2}" text-anchor="middle" dominant-baseline="central"
-          font-family="'Inter','DM Sans','system-ui',sans-serif"
-          font-size="${fs}" font-weight="800" fill="white"
-          letter-spacing="-0.3">${label}</text>
+      width="${W}" height="${H}" viewBox="0 0 26 34"
+      style="overflow:visible;filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.35))">
+    <path d="M13,2 C7.2,2 2.5,6.7 2.5,12.5 C2.5,20.8 13,32 13,32 C13,32 23.5,20.8 23.5,12.5 C23.5,6.7 18.8,2 13,2 Z"
+          fill="${color}" stroke="rgba(255,255,255,0.65)" stroke-width="1.3"/>
+    <circle cx="13" cy="12.5" r="8.5" fill="rgba(255,255,255,0.18)"/>
+    <g transform="translate(13,12.5)" stroke-linecap="round" stroke-linejoin="round">
+      ${icon}
+    </g>
   </svg>`;
 
   return L.divIcon({
-    className: "",
+    className:     "",
     html,
-    iconSize:      [pw, ph],
-    iconAnchor:    [cx, ph],
-    tooltipAnchor: [0, -(ph + 2)],
+    iconSize:      [W, H],
+    iconAnchor:    [W / 2, H],
+    tooltipAnchor: [0, -(H + 2)],
   });
 }
 
