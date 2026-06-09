@@ -564,6 +564,20 @@ const KIND_SVG: Record<string, string> = {
   corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
 };
 
+/* ── Distinct color per site kind ──────────────────────── */
+const KIND_COLOR: Record<string, string> = {
+  sez:        "#f97316", // orange
+  park:       "#fb923c", // amber-orange
+  factory:    "#ef4444", // red
+  logistics:  "#eab308", // yellow
+  port:       "#2563eb", // deep blue
+  airport:    "#0ea5e9", // sky blue
+  substation: "#a855f7", // purple
+  university: "#10b981", // emerald
+  tvet:       "#14b8a6", // teal
+  corridor:   "#64748b", // slate
+};
+
 /* ── Flat icon marker — no pin, just the category symbol ── */
 function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
   const sz   = isKey ? 30 : 24;
@@ -617,7 +631,7 @@ function MapView({
   const siteIcons = useMemo(() => {
     const m = new Map<string, ReturnType<typeof L.divIcon>>();
     sites.forEach((s) => {
-      const color = LAYER_META[s.layer].color;
+      const color = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
       const isKey = s.score !== undefined && s.score >= 85;
       m.set(s.id, makeSiteIcon(L, s.kind, color, isKey));
     });
@@ -658,7 +672,7 @@ function MapView({
       ))}
 
       {sites.map((s) => {
-        const color = LAYER_META[s.layer].color;
+        const color = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
         const icon = siteIcons.get(s.id);
         if (!icon) return null;
         return (
