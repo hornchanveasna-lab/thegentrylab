@@ -861,8 +861,8 @@ export const SITES: MapSite[] = [
     kind: "tvet",
     layer: "labor",
     province: "Phnom Penh",
-    lat: 11.49,
-    lng: 104.85,
+    lat: 11.568, // Coord verified 2026-06-09 — Russian Federation Blvd, Tuol Kork, Phnom Penh
+    lng: 104.902,
     notes: "National Polytechnic Institute of Cambodia (NPIC) is the country's primary technical and vocational education institution under the Ministry of Labour. Offers 2-3 year diploma programs in mechanical engineering, electrical systems, automotive technology, welding, and industrial maintenance. Produces ~1,500 technician-level graduates annually. Major industrial investors (Japanese automotive, Korean electronics) actively recruit from NPIC and sponsor curriculum co-development programs.",
     strengths: ["Primary source of industrial technicians in Cambodia", "Curriculum co-development with Japanese/Korean manufacturers", "1,500 technician graduates/year"],
     constraints: ["Capacity cannot meet growing industrial demand", "Equipment in some labs dated vs. factory floor standards"],

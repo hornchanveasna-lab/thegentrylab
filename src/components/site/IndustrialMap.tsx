@@ -513,55 +513,57 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
   );
 }
 
-/* ── Icon SVG paths for map pin markers (centered at 0,0 within ±7 units) ── */
+/* ── Icon SVG paths — bold clean silhouettes, centered at 0,0 ── */
 const KIND_ICON_SVG: Record<string, string> = {
-  // Industrial zone grid
+  // Industrial zone: bold grid outline
   sez:
-    `<rect x="-5" y="-4" width="10" height="8" rx="1" stroke="white" stroke-width="1.5" fill="rgba(255,255,255,0.2)"/>` +
-    `<line x1="-1.7" y1="-4" x2="-1.7" y2="4" stroke="white" stroke-width="0.9"/>` +
-    `<line x1="1.7" y1="-4" x2="1.7" y2="4" stroke="white" stroke-width="0.9"/>` +
-    `<line x1="-5" y1="0" x2="5" y2="0" stroke="white" stroke-width="0.9"/>`,
-  // Multi-building complex
+    `<g stroke="white" stroke-width="2" fill="none" stroke-linejoin="round">` +
+    `<rect x="-5.5" y="-5" width="11" height="10" rx="1.5"/>` +
+    `<line x1="-1.8" y1="-5" x2="-1.8" y2="5"/>` +
+    `<line x1="1.8" y1="-5" x2="1.8" y2="5"/>` +
+    `</g>`,
+  // Industrial park: two solid building blocks
   park:
-    `<rect x="-5" y="-1.5" width="4.5" height="5.5" rx="0.7" fill="white"/>` +
-    `<rect x="-1" y="-5" width="6" height="9" rx="0.7" fill="rgba(255,255,255,0.65)"/>` +
-    `<rect x="-1" y="-5" width="6" height="9" rx="0.7" stroke="white" stroke-width="0.6" fill="none"/>`,
-  // Saw-tooth factory roof + door
+    `<rect x="-5.5" y="-0.5" width="5" height="6" rx="1" fill="white"/>` +
+    `<rect x="-1.5" y="-5.5" width="7" height="6" rx="1" fill="white"/>`,
+  // Factory: saw-tooth roof silhouette
   factory:
-    `<path d="M-5,4 L-5,-0.5 L-2,-3.5 L0,-0.5 L2,-3.5 L5,-0.5 L5,4 Z" fill="white" stroke-linejoin="round"/>` +
-    `<rect x="-1.2" y="0.5" width="2.4" height="3.5" rx="0.3" fill="rgba(0,0,0,0.28)"/>`,
-  // Delivery truck side view
+    `<path d="M-5.5,5.5 L-5.5,-1 L-2,-4.5 L0,-1 L2,-4.5 L5.5,-1 L5.5,5.5 Z" fill="white" stroke-linejoin="round"/>` +
+    `<rect x="-1.5" y="0.5" width="3" height="5" rx="0.5" fill="rgba(0,0,0,0.3)"/>`,
+  // Truck: cab + body
   logistics:
-    `<rect x="-5.5" y="-2.5" width="7" height="5" rx="0.8" stroke="white" stroke-width="1.4" fill="rgba(255,255,255,0.2)"/>` +
-    `<path d="M1.5,-2.5 L1.5,-4.5 L5.5,-0.5 L5.5,2.5 L1.5,2.5" stroke="white" stroke-width="1.4" fill="rgba(255,255,255,0.2)"/>` +
-    `<circle cx="-3" cy="3" r="1.4" fill="white"/>` +
-    `<circle cx="3.5" cy="3" r="1.4" fill="white"/>`,
-  // Anchor
+    `<path d="M-6.5,3 L-6.5,-3.5 L2,-3.5 L2,-6 L6.5,-1 L6.5,3 Z" fill="white" stroke-linejoin="round"/>` +
+    `<circle cx="-3.5" cy="3" r="2" fill="white"/>` +
+    `<circle cx="3.5" cy="3" r="2" fill="white"/>`,
+  // Anchor: circle + cross + bottom curve
   port:
-    `<circle cx="0" cy="-3.5" r="1.7" stroke="white" stroke-width="1.3" fill="none"/>` +
-    `<line x1="0" y1="-1.8" x2="0" y2="3.5" stroke="white" stroke-width="1.3"/>` +
-    `<line x1="-4.5" y1="0" x2="4.5" y2="0" stroke="white" stroke-width="1.3"/>` +
-    `<path d="M-4,3.5 Q0,2 4,3.5" stroke="white" stroke-width="1.3" fill="none"/>`,
-  // Airplane top-view
+    `<g stroke="white" stroke-width="2" fill="none" stroke-linecap="round">` +
+    `<circle cx="0" cy="-4" r="2.2" fill="none"/>` +
+    `<line x1="0" y1="-1.8" x2="0" y2="5"/>` +
+    `<line x1="-5" y1="0.5" x2="5" y2="0.5"/>` +
+    `<path d="M-4.5,5 Q0,3 4.5,5"/>` +
+    `</g>`,
+  // Airplane: solid top-view silhouette
   airport:
-    `<path d="M0,-5.5 L1.2,-0.5 L6,1.5 L6,3.2 L1.2,1.5 L0.8,5.5 L2.5,6 L2.5,7 L0,6.5 L-2.5,7 L-2.5,6 L-0.8,5.5 L-1.2,1.5 L-6,3.2 L-6,1.5 L-1.2,-0.5 Z" fill="white"/>`,
-  // Lightning bolt
+    `<path d="M0,-6.5 L1.8,0 L7,2.5 L7,4.5 L1.8,2.5 L1.2,7 L3.5,8 L3.5,9 L0,8 L-3.5,9 L-3.5,8 L-1.2,7 L-1.8,2.5 L-7,4.5 L-7,2.5 L-1.8,0 Z" fill="white"/>`,
+  // Lightning bolt: large + bold
   substation:
-    `<path d="M2,-6 L-3,0.5 L0.5,0.5 L-2,6 L4,-0.5 L0.5,-0.5 L3,-6 Z" fill="white"/>`,
-  // Graduation mortarboard + staff
+    `<path d="M2.5,-7 L-4,1.5 L1,1.5 L-2.5,7 L5,-1.5 L0,-1.5 L4,-7 Z" fill="white"/>`,
+  // Mortarboard: diamond cap + arch
   university:
-    `<path d="M0,-4.5 L-6.5,0 L0,2.5 L6.5,0 Z" fill="white"/>` +
-    `<path d="M-4,1 L-4,5 Q0,7 4,5 L4,1" stroke="white" stroke-width="1.3" fill="none"/>` +
-    `<line x1="6.5" y1="0" x2="6.5" y2="4.5" stroke="white" stroke-width="1.3"/>`,
-  // Wrench
+    `<path d="M0,-6 L-7.5,0 L0,3.5 L7.5,0 Z" fill="white"/>` +
+    `<path d="M-5,1.5 L-5,6.5 Q0,9 5,6.5 L5,1.5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>` +
+    `<line x1="7.5" y1="0" x2="7.5" y2="6" stroke="white" stroke-width="2" stroke-linecap="round"/>`,
+  // Wrench: bold single shape
   tvet:
-    `<path d="M-1,-6 C-3.5,-6 -5.5,-4 -4.5,-1.5 L3.5,5.5 C4.5,7 6.5,6.5 6,4.5 L-1.5,-2.5 C0,-4.5 0.5,-5.5 -1,-6 Z" fill="white"/>` +
-    `<circle cx="-4" cy="-4.8" r="1.5" fill="white"/>` +
-    `<circle cx="4.5" cy="4.8" r="1.5" fill="white"/>`,
-  // Road with center line
+    `<path d="M-1.5,-7 C-5,-7 -7,-4.5 -6,-2 L4.5,6.5 C5.5,8 8,7.5 7.5,5.5 L-2,-3 C-0.5,-5.5 0.5,-7 -1.5,-7 Z" fill="white" stroke-linejoin="round"/>`,
+  // Road: two bold parallel lines + center dash
   corridor:
-    `<path d="M-5.5,-2.5 L5.5,-2.5 M-5.5,2.5 L5.5,2.5" stroke="white" stroke-width="1.8"/>` +
-    `<path d="M-2,0 L2,0" stroke="white" stroke-width="0.9" stroke-dasharray="1.5,1.5"/>`,
+    `<g stroke="white" stroke-linecap="round">` +
+    `<line x1="-6.5" y1="-3" x2="6.5" y2="-3" stroke-width="2.5"/>` +
+    `<line x1="-6.5" y1="3" x2="6.5" y2="3" stroke-width="2.5"/>` +
+    `<line x1="-2.5" y1="0" x2="2.5" y2="0" stroke-width="1.5" stroke-dasharray="2,2"/>` +
+    `</g>`,
 };
 
 /* ── KIND_SVG (Inspector placeholder only — currentColor on dark bg) ─── */
@@ -580,19 +582,20 @@ const KIND_SVG: Record<string, string> = {
 
 /* ── Teardrop pin marker with category icon ─────────────── */
 function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
-  // Fixed viewBox 0 0 26 34; width/height scale for key sites
-  const W = isKey ? 32 : 26;
-  const H = isKey ? 42 : 34;
+  // Fixed viewBox 0 0 30 38; width/height scale for key sites
+  const W = isKey ? 36 : 30;
+  const H = isKey ? 46 : 38;
   const icon = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
 
-  // Teardrop pin: circle center (13,12.5) r≈10.5, tip at (13,32)
+  // Teardrop pin: circle center (15,14) r≈12, tip at (15,36)
+  // viewBox 0 0 30 38 gives icon space of ±10 units around (15,14)
   const html = `<svg xmlns="http://www.w3.org/2000/svg"
-      width="${W}" height="${H}" viewBox="0 0 26 34"
+      width="${W}" height="${H}" viewBox="0 0 30 38"
       style="overflow:visible;filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.35))">
-    <path d="M13,2 C7.2,2 2.5,6.7 2.5,12.5 C2.5,20.8 13,32 13,32 C13,32 23.5,20.8 23.5,12.5 C23.5,6.7 18.8,2 13,2 Z"
-          fill="${color}" stroke="rgba(255,255,255,0.65)" stroke-width="1.3"/>
-    <circle cx="13" cy="12.5" r="8.5" fill="rgba(255,255,255,0.18)"/>
-    <g transform="translate(13,12.5)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15,2 C8.4,2 3,7.4 3,14 C3,23 15,37 15,37 C15,37 27,23 27,14 C27,7.4 21.6,2 15,2 Z"
+          fill="${color}" stroke="rgba(255,255,255,0.7)" stroke-width="1.5"/>
+    <circle cx="15" cy="14" r="9.5" fill="rgba(255,255,255,0.18)"/>
+    <g transform="translate(15,14)" stroke-linecap="round" stroke-linejoin="round">
       ${icon}
     </g>
   </svg>`;
