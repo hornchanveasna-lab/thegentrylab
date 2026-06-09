@@ -513,47 +513,72 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
   );
 }
 
-/* ── SVG icon paths per site kind ───────────────────────── */
-const KIND_SVG: Record<string, string> = {
-  sez:        `<path d="M6 13V7l6-4 6 4v6" stroke="white" stroke-width="1.6" stroke-linejoin="round" fill="none"/><rect x="9" y="9" width="6" height="4" rx="0.5" fill="white" opacity="0.9"/><path d="M11 13v-2h2v2" fill="none" stroke="white" stroke-width="1.2"/>`,
-  park:       `<rect x="4" y="8" width="6" height="5" rx="0.5" fill="none" stroke="white" stroke-width="1.5"/><rect x="12" y="5" width="8" height="8" rx="0.5" fill="none" stroke="white" stroke-width="1.5"/><path d="M10 10.5h2" stroke="white" stroke-width="1.3"/>`,
-  factory:    `<path d="M4 14V9l4-3v3l4-3v3l4-3v5" stroke="white" stroke-width="1.6" stroke-linejoin="round" fill="none"/><path d="M4 14h16" stroke="white" stroke-width="1.4" stroke-linecap="round"/><rect x="9" y="11" width="2.5" height="3" fill="white" opacity="0.8"/>`,
-  logistics:  `<rect x="1" y="9" width="13" height="7" rx="1" fill="none" stroke="white" stroke-width="1.5"/><path d="M14 11h4l3 4v1h-7V11z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><circle cx="5.5" cy="17" r="1.8" fill="white"/><circle cx="17.5" cy="17" r="1.8" fill="white"/>`,
-  port:       `<path d="M12 4v12" stroke="white" stroke-width="1.6" stroke-linecap="round"/><path d="M8 8h8" stroke="white" stroke-width="1.5" stroke-linecap="round"/><path d="M6 16c1 1.5 2.5 2.5 6 2.5s5-1 6-2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
-  airport:    `<path d="M12 3L8 10H3l3 2-1 5 7-2 7 2-1-5 3-2h-5L12 3z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
-  substation: `<path d="M13 3L7 13h5l-1 7 7-10h-5l2-7z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
-  university: `<path d="M12 4L3 9l9 5 9-5-9-5z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/><path d="M6 11v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5" stroke="white" stroke-width="1.5" fill="none"/><path d="M21 9v5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>`,
-  tvet:       `<path d="M14 4l6 6-10 10-6-2-2-6 10-10z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/><circle cx="15.5" cy="8.5" r="1.5" fill="white" opacity="0.8"/>`,
-  corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+/* ── Short labels per kind (used inside map pins) ───────── */
+const KIND_LABEL: Record<string, string> = {
+  sez:        "SEZ",
+  park:       "IP",
+  factory:    "MFG",
+  logistics:  "LOG",
+  port:       "PORT",
+  airport:    "AIR",
+  substation: "⚡",
+  university: "EDU",
+  tvet:       "TVET",
+  corridor:   "RD",
 };
 
+/* ── KIND_SVG kept for Inspector placeholder only ───────── */
+const KIND_SVG: Record<string, string> = {
+  sez:        `<path d="M3 19V9l9-6 9 6v10H3z M8 19v-5h3v5 M13 19v-5h3v5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  park:       `<rect x="2" y="7" width="7" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="11" y="3" width="11" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
+  factory:    `<path d="M2 20V12l5-4v4l5-4v4l5-4v12H2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  logistics:  `<rect x="1" y="9" width="14" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M15 12h4l3 4v1h-7V12z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
+  port:       `<path d="M12 3v14M8 7h8M7 17c1 2 2.5 3 5 3s4-1 5-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>`,
+  airport:    `<path d="M12 2l-4 8H2l4 3-2 6 8-2 8 2-2-6 4-3h-6L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  substation: `<path d="M14 2L7 13h6l-2 9 9-12h-6l3-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  university: `<path d="M12 3L2 9l10 6 10-6L12 3z M6 12v5c0 2 2.7 3.5 6 3.5s6-1.5 6-3.5v-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  tvet:       `<path d="M15 4l5 5-9 9-5-2-2-5 9-9z M19 8l-3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+};
+
+/* ── Clean badge marker ─────────────────────────────────── */
 function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
-  const svg = KIND_SVG[kind] ?? KIND_SVG.factory;
-  const size = isKey ? 34 : 28;
-  const half = size / 2;
-  // Pin shape: rounded square with bottom-point
-  const bg = isKey
-    ? `<rect x="1" y="1" width="${size-2}" height="${size-6}" rx="5" fill="${color}" opacity="0.97"/>
-       <polygon points="${half-4},${size-5} ${half},${size-1} ${half+4},${size-5}" fill="${color}" opacity="0.97"/>
-       <rect x="1" y="1" width="${size-2}" height="${size-6}" rx="5" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.3"/>`
-    : `<rect x="1" y="1" width="${size-2}" height="${size-6}" rx="4" fill="${color}" opacity="0.92"/>
-       <polygon points="${half-3},${size-5} ${half},${size-1} ${half+3},${size-5}" fill="${color}" opacity="0.92"/>`;
+  const label  = KIND_LABEL[kind] ?? "·";
+  const chars  = label.length;
+  // Width scales with label length; key sites slightly larger
+  const pw     = isKey ? Math.max(44, chars * 9 + 18) : Math.max(36, chars * 8 + 14);
+  const ph_body = isKey ? 26 : 22; // pill body height
+  const ph     = ph_body + 8;      // + tail height
+  const rx     = ph_body / 2;      // fully rounded ends
+  const fs     = chars <= 2 ? (isKey ? 12 : 10) :
+                 chars <= 3 ? (isKey ? 10 : 9)  :
+                              (isKey ? 9  : 8);
+  const cx     = pw / 2;
+  const tailW  = isKey ? 7 : 5;
 
-  // Scale the kind icon SVG (originally 24x24) to fit inside
-  const iconScale = (size - 10) / 24;
-  const iconOffset = 4;
-
-  const html = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    ${bg}
-    <g transform="translate(${iconOffset},${iconOffset}) scale(${iconScale.toFixed(3)})">${svg}</g>
+  const html = `<svg xmlns="http://www.w3.org/2000/svg"
+      width="${pw}" height="${ph}"
+      viewBox="0 0 ${pw} ${ph}"
+      style="overflow:visible;filter:drop-shadow(0 2px 5px rgba(0,0,0,0.45)) drop-shadow(0 1px 2px rgba(0,0,0,0.3))">
+    <!-- pill body -->
+    <rect x="1" y="1" width="${pw-2}" height="${ph_body-2}" rx="${rx-1}"
+          fill="${color}" stroke="rgba(255,255,255,0.55)" stroke-width="1.2"/>
+    <!-- tail -->
+    <polygon points="${cx-tailW},${ph_body-2} ${cx},${ph-1} ${cx+tailW},${ph_body-2}"
+             fill="${color}"/>
+    <!-- label -->
+    <text x="${cx}" y="${ph_body/2}" text-anchor="middle" dominant-baseline="central"
+          font-family="'Inter','DM Sans','system-ui',sans-serif"
+          font-size="${fs}" font-weight="800" fill="white"
+          letter-spacing="-0.3">${label}</text>
   </svg>`;
 
   return L.divIcon({
     className: "",
     html,
-    iconSize:   [size, size],
-    iconAnchor: [half, size - 1],
-    tooltipAnchor: [0, -size + 4],
+    iconSize:      [pw, ph],
+    iconAnchor:    [cx, ph],
+    tooltipAnchor: [0, -(ph + 2)],
   });
 }
 
