@@ -351,7 +351,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       </div>
 
       {/* Inspector */}
-      {selected && <Inspector site={selected} onClose={() => setSelected(null)} />}
+      {selected && <Inspector site={selected} onClose={() => setSelected(null)} t={t} />}
     </div>
   );
 }
@@ -459,7 +459,7 @@ function MapView({
 }
 
 /* ── Inspector ──────────────────────────────────────────── */
-function Inspector({ site, onClose }: { site: MapSite; onClose: () => void }) {
+function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t: (key: string) => string }) {
   const layerColor = LAYER_META[site.layer].color;
   const scoreColor = site.score !== undefined
     ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
