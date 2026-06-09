@@ -93,13 +93,24 @@ export const CORRIDORS: Corridor[] = [
     name: "National Road 1 — Phnom Penh to Bavet",
     shortName: "NR1",
     color: "#34d399",
+    // Traced: PP → SE along Bassac → Neak Loeung crossing → Prey Veng → Svay Rieng → Bavet border
     waypoints: [
-      [11.57, 104.93],
-      [11.45, 105.10],
-      [11.30, 105.32],
-      [11.17, 105.55],
-      [11.07, 105.80],
-      [11.07, 105.97],
+      [11.557, 104.931],
+      [11.510, 104.959],
+      [11.463, 104.983],
+      [11.420, 105.006],
+      [11.375, 105.022],
+      [11.332, 105.047],
+      [11.319, 105.256], // Neak Loeung Mekong crossing
+      [11.299, 105.282],
+      [11.260, 105.308],
+      [11.210, 105.350],
+      [11.155, 105.428],
+      [11.096, 105.538],
+      [11.088, 105.667],
+      [11.088, 105.800], // Svay Rieng city
+      [11.074, 105.881],
+      [11.062, 106.003], // Bavet border
     ],
     description: "Key corridor to Vietnam border at Bavet; anchors Svay Rieng SEZ cluster.",
   },
@@ -108,12 +119,20 @@ export const CORRIDORS: Corridor[] = [
     name: "National Road 2 — Phnom Penh to Kep",
     shortName: "NR2",
     color: "#60a5fa",
+    // Traced: PP south → Kandal → Takeo city → SW → Kampot → Kep coast
     waypoints: [
-      [11.53, 104.88],
-      [11.25, 104.78],
-      [10.95, 104.60],
-      [10.72, 104.45],
-      [10.48, 104.32],
+      [11.543, 104.917],
+      [11.426, 104.884],
+      [11.300, 104.840],
+      [11.166, 104.818],
+      [10.992, 104.790], // Takeo city
+      [10.882, 104.754],
+      [10.764, 104.690],
+      [10.670, 104.522],
+      [10.617, 104.314],
+      [10.604, 104.180], // Kampot
+      [10.536, 104.230],
+      [10.485, 104.297], // Kep
     ],
     description: "Southern corridor through Takeo, linking PP to Kampot and Kep.",
   },
@@ -122,12 +141,18 @@ export const CORRIDORS: Corridor[] = [
     name: "National Road 3 — Phnom Penh to Kampot",
     shortName: "NR3",
     color: "#f59e0b",
+    // Traced: PP SW → Kampong Speu (western branch) → south through Elephant Mts → Kampot
     waypoints: [
-      [11.55, 104.83],
-      [11.30, 104.65],
-      [11.05, 104.40],
-      [10.80, 104.25],
-      [10.62, 104.18],
+      [11.553, 104.851],
+      [11.473, 104.748],
+      [11.393, 104.660],
+      [11.289, 104.556],
+      [11.188, 104.453],
+      [11.062, 104.315],
+      [10.900, 104.220],
+      [10.770, 104.165],
+      [10.648, 104.145],
+      [10.604, 104.180], // Kampot
     ],
     description: "Connects capital to Kampot province; passes through Kampong Speu industrial belt.",
   },
@@ -136,14 +161,20 @@ export const CORRIDORS: Corridor[] = [
     name: "National Road 4 — Phnom Penh to Sihanoukville",
     shortName: "NR4",
     color: "#e879f9",
+    // Traced: PP SW → Kampong Speu → diverges SW → Phnom Sruoch → Prey Nob → Sihanoukville port
     waypoints: [
-      [11.57, 104.85],
-      [11.50, 104.72],
-      [11.45, 104.55],
-      [11.30, 104.35],
-      [11.10, 104.10],
-      [10.85, 103.90],
-      [10.66, 103.65],
+      [11.560, 104.843],
+      [11.500, 104.744],
+      [11.454, 104.652],
+      [11.454, 104.556], // Chbar Mon / Kampong Speu
+      [11.367, 104.421],
+      [11.226, 104.260],
+      [11.081, 104.118],
+      [10.942, 103.962],
+      [10.816, 103.848],
+      [10.722, 103.743],
+      [10.660, 103.648],
+      [10.626, 103.526], // Sihanoukville
     ],
     description: "Cambodia's premier industrial corridor; links capital to deep-water port at Sihanoukville.",
   },
@@ -152,14 +183,24 @@ export const CORRIDORS: Corridor[] = [
     name: "National Road 5 — Phnom Penh to Poipet",
     shortName: "NR5",
     color: "#fb923c",
+    // Traced: PP NW → Prek Kdam bridge → Kampong Chhnang → Pursat → Battambang → Sisophon → Poipet border
     waypoints: [
-      [11.58, 104.85],
-      [11.80, 104.68],
-      [12.10, 104.55],
-      [12.55, 104.40],
-      [13.00, 103.95],
-      [13.40, 103.50],
-      [13.65, 102.58],
+      [11.558, 104.921],
+      [11.634, 104.889],
+      [11.720, 104.856],
+      [11.828, 104.812],
+      [11.992, 104.750],
+      [12.094, 104.725],
+      [12.251, 104.668], // Kampong Chhnang
+      [12.396, 104.447],
+      [12.534, 103.919], // Pursat
+      [12.712, 103.700],
+      [12.900, 103.487],
+      [13.096, 103.200], // Battambang
+      [13.296, 103.085],
+      [13.485, 102.939],
+      [13.584, 102.979], // Sisophon
+      [13.658, 102.553], // Poipet Thailand border
     ],
     description: "Northwest corridor to Thailand border at Poipet; serves Kampong Chhnang & Pursat.",
   },
@@ -168,13 +209,20 @@ export const CORRIDORS: Corridor[] = [
     name: "National Road 6 — Phnom Penh to Siem Reap",
     shortName: "NR6",
     color: "#a3e635",
+    // Traced: PP north → Prek Dek → Skun junction → NW → Kampong Thom → SW → Siem Reap
     waypoints: [
-      [11.58, 104.90],
-      [11.80, 105.05],
-      [12.20, 105.00],
-      [12.70, 104.90],
-      [13.10, 103.95],
-      [13.36, 103.86],
+      [11.577, 104.919],
+      [11.671, 104.937],
+      [11.806, 104.979],
+      [11.910, 105.053],
+      [12.043, 105.131], // Skun junction (NR6/NR7 split)
+      [12.200, 105.038],
+      [12.452, 104.998],
+      [12.711, 104.889], // Kampong Thom
+      [12.950, 104.625],
+      [13.163, 104.198],
+      [13.268, 103.977],
+      [13.361, 103.861], // Siem Reap
     ],
     description: "Northern corridor connecting capital to Siem Reap tourism and logistics hub.",
   },
@@ -183,18 +231,24 @@ export const CORRIDORS: Corridor[] = [
     name: "Ring Road 3 — Phnom Penh Outer Belt",
     shortName: "RR3",
     color: "#22d3ee",
+    // Traced: Outer ring ~20-25 km from PP centre; closes loop
     waypoints: [
-      [11.70, 104.78],
-      [11.68, 104.95],
-      [11.58, 105.08],
-      [11.45, 105.05],
-      [11.35, 104.95],
-      [11.30, 104.80],
-      [11.35, 104.65],
-      [11.45, 104.58],
-      [11.58, 104.62],
-      [11.68, 104.72],
-      [11.70, 104.78],
+      [11.681, 104.919],
+      [11.675, 104.990],
+      [11.651, 105.038],
+      [11.568, 105.079],
+      [11.455, 105.053],
+      [11.352, 104.988],
+      [11.283, 104.912],
+      [11.300, 104.790],
+      [11.362, 104.668],
+      [11.438, 104.598],
+      [11.549, 104.592],
+      [11.644, 104.645],
+      [11.715, 104.752],
+      [11.732, 104.843],
+      [11.703, 104.919],
+      [11.681, 104.919], // close loop
     ],
     description: "Outer ring road enabling industrial decentralisation from Phnom Penh core.",
   },
@@ -203,11 +257,16 @@ export const CORRIDORS: Corridor[] = [
     name: "Airport Corridor — Techo International",
     shortName: "Airport",
     color: "#f43f5e",
+    // Traced: PP centre → south along expressway → Techo International Airport (under construction)
     waypoints: [
-      [11.57, 104.87],
-      [11.50, 104.87],
-      [11.43, 104.86],
-      [11.336, 104.85],
+      [11.567, 104.918],
+      [11.538, 104.900],
+      [11.509, 104.883],
+      [11.478, 104.866],
+      [11.441, 104.856],
+      [11.402, 104.851],
+      [11.360, 104.851],
+      [11.336, 104.851], // Techo International Airport
     ],
     description: "Dedicated access corridor to Techo International Airport; key for air freight logistics.",
   },
@@ -216,10 +275,14 @@ export const CORRIDORS: Corridor[] = [
     name: "Port Corridor — Sihanoukville",
     shortName: "Port",
     color: "#818cf8",
+    // Traced: Sihanoukville city → NW peninsula → Sihanoukville Autonomous Port (SAP)
     waypoints: [
-      [10.66, 103.65],
-      [10.645, 103.57],
-      [10.625, 103.515],
+      [10.626, 103.526], // Sihanoukville city
+      [10.638, 103.545],
+      [10.648, 103.559],
+      [10.644, 103.578],
+      [10.637, 103.597],
+      [10.625, 103.614], // SAP main gate area
     ],
     description: "Access corridor to Sihanoukville Autonomous Port (SAP); Cambodia's deep-water gateway.",
   },
