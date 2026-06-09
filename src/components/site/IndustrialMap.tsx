@@ -583,9 +583,38 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
     ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
     : "#94a3b8";
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lng}`;
+  // Satellite thumbnail: OpenStreetMap static map centred on site, zoom 15
+  const thumbUrl = site.image_url
+    || `https://staticmap.openstreetmap.de/staticmap.php?center=${site.lat},${site.lng}&zoom=15&size=480x220&maptype=osm&markers=${site.lat},${site.lng},red-pushpin`;
 
   return (
     <aside className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] bg-[#0d0d0e] backdrop-blur border border-white/12 text-white flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl">
+
+      {/* ── Visual header: location image ── */}
+      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="relative shrink-0 block overflow-hidden group">
+        <img
+          src={thumbUrl}
+          alt={site.name}
+          className="w-full h-[130px] object-cover object-center bg-white/5"
+          style={{ filter: "brightness(0.8) contrast(1.1)" }}
+          onError={(e) => {
+            // fallback: hide if static map fails
+            (e.currentTarget.parentElement as HTMLElement).style.display = "none";
+          }}
+        />
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0e] via-[#0d0d0e20] to-transparent" />
+        {/* Maps CTA */}
+        <div className="absolute bottom-2 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/80">Open in Maps ↗</span>
+        </div>
+        {/* Province badge */}
+        <div className="absolute top-2 left-3">
+          <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider bg-black/60 text-white/70 backdrop-blur-sm">
+            {site.province}
+          </span>
+        </div>
+      </a>
 
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-white/10">
@@ -609,23 +638,15 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </button>
         </div>
 
-        {/* Name + province */}
+        {/* Name + status */}
         <div className="px-4 pb-3">
           <h3 className="font-extrabold text-[15px] uppercase tracking-tight leading-tight text-white">{site.name}</h3>
-          <div className="flex items-center gap-2 mt-1">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-white/30 shrink-0">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-              <circle cx="12" cy="9" r="2.5"/>
-            </svg>
-            <span className="font-mono text-[10px] text-white/45">{site.province}</span>
-            {site.status && (
-              <>
-                <span className="text-white/20">·</span>
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[site.status] ?? "#94a3b8" }} />
-                <span className="font-mono text-[10px]" style={{ color: STATUS_COLOR[site.status] ?? "#94a3b8" }}>{site.status}</span>
-              </>
-            )}
-          </div>
+          {site.status && (
+            <div className="flex items-center gap-2 mt-1.5">
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[site.status] ?? "#94a3b8" }} />
+              <span className="font-mono text-[10px]" style={{ color: STATUS_COLOR[site.status] ?? "#94a3b8" }}>{site.status}</span>
+            </div>
+          )}
         </div>
       </div>
 
