@@ -583,9 +583,12 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
     ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
     : "#94a3b8";
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lng}`;
-  // Satellite thumbnail: OpenStreetMap static map centred on site, zoom 15
+  // Satellite thumbnail: Mapbox satellite if token set, else OSM static map
+  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
   const thumbUrl = site.image_url
-    || `https://staticmap.openstreetmap.de/staticmap.php?center=${site.lat},${site.lng}&zoom=15&size=480x220&maptype=osm&markers=${site.lat},${site.lng},red-pushpin`;
+    || (mapboxToken
+      ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/${site.lng},${site.lat},15,0/480x220?access_token=${mapboxToken}`
+      : `https://staticmap.openstreetmap.de/staticmap.php?center=${site.lat},${site.lng}&zoom=15&size=480x220&maptype=osm&markers=${site.lat},${site.lng},red-pushpin`);
 
   return (
     <aside className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] bg-[#0d0d0e] backdrop-blur border border-white/12 text-white flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl">
