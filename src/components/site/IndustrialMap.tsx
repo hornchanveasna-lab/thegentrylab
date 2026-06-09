@@ -513,57 +513,41 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
   );
 }
 
-/* ── Icon SVG paths — bold clean silhouettes, centered at 0,0 ── */
+/* ── Icon SVG — color-agnostic paths, parent g supplies fill/stroke ── */
 const KIND_ICON_SVG: Record<string, string> = {
-  // Industrial zone: bold grid outline
   sez:
-    `<g stroke="white" stroke-width="2" fill="none" stroke-linejoin="round">` +
-    `<rect x="-5.5" y="-5" width="11" height="10" rx="1.5"/>` +
-    `<line x1="-1.8" y1="-5" x2="-1.8" y2="5"/>` +
-    `<line x1="1.8" y1="-5" x2="1.8" y2="5"/>` +
-    `</g>`,
-  // Industrial park: two solid building blocks
+    `<rect x="-5.5" y="-5" width="11" height="10" rx="1.5" fill="none" stroke-width="2"/>` +
+    `<line x1="-1.8" y1="-5" x2="-1.8" y2="5" stroke-width="1.5"/>` +
+    `<line x1="1.8" y1="-5" x2="1.8" y2="5" stroke-width="1.5"/>`,
   park:
-    `<rect x="-5.5" y="-0.5" width="5" height="6" rx="1" fill="white"/>` +
-    `<rect x="-1.5" y="-5.5" width="7" height="6" rx="1" fill="white"/>`,
-  // Factory: saw-tooth roof silhouette
+    `<rect x="-5.5" y="-0.5" width="5" height="6" rx="1" stroke="none"/>` +
+    `<rect x="-1.5" y="-5.5" width="7" height="6" rx="1" stroke="none"/>`,
   factory:
-    `<path d="M-5.5,5.5 L-5.5,-1 L-2,-4.5 L0,-1 L2,-4.5 L5.5,-1 L5.5,5.5 Z" fill="white" stroke-linejoin="round"/>` +
-    `<rect x="-1.5" y="0.5" width="3" height="5" rx="0.5" fill="rgba(0,0,0,0.3)"/>`,
-  // Truck: cab + body
+    `<path d="M-5.5,5.5 L-5.5,-1 L-2,-4.5 L0,-1 L2,-4.5 L5.5,-1 L5.5,5.5 Z" stroke="none"/>` +
+    `<rect x="-1.5" y="0.5" width="3" height="5" rx="0.5" fill="rgba(0,0,0,0.28)" stroke="none"/>`,
   logistics:
-    `<path d="M-6.5,3 L-6.5,-3.5 L2,-3.5 L2,-6 L6.5,-1 L6.5,3 Z" fill="white" stroke-linejoin="round"/>` +
-    `<circle cx="-3.5" cy="3" r="2" fill="white"/>` +
-    `<circle cx="3.5" cy="3" r="2" fill="white"/>`,
-  // Anchor: circle + cross + bottom curve
+    `<path d="M-6.5,2 L-6.5,-3.5 L2,-3.5 L2,-6 L6.5,-1 L6.5,2 Z" stroke="none"/>` +
+    `<circle cx="-3.5" cy="2" r="2" stroke="none"/>` +
+    `<circle cx="3.5" cy="2" r="2" stroke="none"/>`,
   port:
-    `<g stroke="white" stroke-width="2" fill="none" stroke-linecap="round">` +
-    `<circle cx="0" cy="-4" r="2.2" fill="none"/>` +
-    `<line x1="0" y1="-1.8" x2="0" y2="5"/>` +
-    `<line x1="-5" y1="0.5" x2="5" y2="0.5"/>` +
-    `<path d="M-4.5,5 Q0,3 4.5,5"/>` +
-    `</g>`,
-  // Airplane: solid top-view silhouette
+    `<circle cx="0" cy="-4" r="2.2" fill="none" stroke-width="2"/>` +
+    `<line x1="0" y1="-1.8" x2="0" y2="5" stroke-width="2"/>` +
+    `<line x1="-5" y1="0.5" x2="5" y2="0.5" stroke-width="2"/>` +
+    `<path d="M-4.5,5 Q0,3 4.5,5" fill="none" stroke-width="2"/>`,
   airport:
-    `<path d="M0,-6.5 L1.8,0 L7,2.5 L7,4.5 L1.8,2.5 L1.2,7 L3.5,8 L3.5,9 L0,8 L-3.5,9 L-3.5,8 L-1.2,7 L-1.8,2.5 L-7,4.5 L-7,2.5 L-1.8,0 Z" fill="white"/>`,
-  // Lightning bolt: large + bold
+    `<path d="M0,-6.5 L1.8,0 L7,2.5 L7,4.5 L1.8,2.5 L1.2,7 L3.5,8 L3.5,9 L0,8 L-3.5,9 L-3.5,8 L-1.2,7 L-1.8,2.5 L-7,4.5 L-7,2.5 L-1.8,0 Z" stroke="none"/>`,
   substation:
-    `<path d="M2.5,-7 L-4,1.5 L1,1.5 L-2.5,7 L5,-1.5 L0,-1.5 L4,-7 Z" fill="white"/>`,
-  // Mortarboard: diamond cap + arch
+    `<path d="M2.5,-7 L-4,1.5 L1,1.5 L-2.5,7 L5,-1.5 L0,-1.5 L4,-7 Z" stroke="none"/>`,
   university:
-    `<path d="M0,-6 L-7.5,0 L0,3.5 L7.5,0 Z" fill="white"/>` +
-    `<path d="M-5,1.5 L-5,6.5 Q0,9 5,6.5 L5,1.5" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/>` +
-    `<line x1="7.5" y1="0" x2="7.5" y2="6" stroke="white" stroke-width="2" stroke-linecap="round"/>`,
-  // Wrench: bold single shape
+    `<path d="M0,-6 L-7.5,0 L0,3.5 L7.5,0 Z" stroke="none"/>` +
+    `<path d="M-5,1.5 L-5,6.5 Q0,9 5,6.5 L5,1.5" fill="none" stroke-width="2"/>` +
+    `<line x1="7.5" y1="0" x2="7.5" y2="6" stroke-width="2"/>`,
   tvet:
-    `<path d="M-1.5,-7 C-5,-7 -7,-4.5 -6,-2 L4.5,6.5 C5.5,8 8,7.5 7.5,5.5 L-2,-3 C-0.5,-5.5 0.5,-7 -1.5,-7 Z" fill="white" stroke-linejoin="round"/>`,
-  // Road: two bold parallel lines + center dash
+    `<path d="M-1.5,-7 C-5,-7 -7,-4.5 -6,-2 L4.5,6.5 C5.5,8 8,7.5 7.5,5.5 L-2,-3 C-0.5,-5.5 0.5,-7 -1.5,-7 Z" stroke="none"/>`,
   corridor:
-    `<g stroke="white" stroke-linecap="round">` +
     `<line x1="-6.5" y1="-3" x2="6.5" y2="-3" stroke-width="2.5"/>` +
     `<line x1="-6.5" y1="3" x2="6.5" y2="3" stroke-width="2.5"/>` +
-    `<line x1="-2.5" y1="0" x2="2.5" y2="0" stroke-width="1.5" stroke-dasharray="2,2"/>` +
-    `</g>`,
+    `<line x1="-2.5" y1="0" x2="2.5" y2="0" stroke-width="1.5" stroke-dasharray="2,2"/>`,
 };
 
 /* ── KIND_SVG (Inspector placeholder only — currentColor on dark bg) ─── */
@@ -580,22 +564,16 @@ const KIND_SVG: Record<string, string> = {
   corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
 };
 
-/* ── Teardrop pin marker with category icon ─────────────── */
+/* ── Flat icon marker — no pin, just the category symbol ── */
 function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
-  // Fixed viewBox 0 0 30 38; width/height scale for key sites
-  const W = isKey ? 36 : 30;
-  const H = isKey ? 46 : 38;
+  const sz   = isKey ? 30 : 24;
   const icon = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
 
-  // Teardrop pin: circle center (15,14) r≈12, tip at (15,36)
-  // viewBox 0 0 30 38 gives icon space of ±10 units around (15,14)
+  // viewBox -10 -10 20 20: icons fit within ±9 units, centered on coordinate
   const html = `<svg xmlns="http://www.w3.org/2000/svg"
-      width="${W}" height="${H}" viewBox="0 0 30 38"
-      style="overflow:visible;filter:drop-shadow(0 3px 7px rgba(0,0,0,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.35))">
-    <path d="M15,2 C8.4,2 3,7.4 3,14 C3,23 15,37 15,37 C15,37 27,23 27,14 C27,7.4 21.6,2 15,2 Z"
-          fill="${color}" stroke="rgba(255,255,255,0.7)" stroke-width="1.5"/>
-    <circle cx="15" cy="14" r="9.5" fill="rgba(255,255,255,0.18)"/>
-    <g transform="translate(15,14)" stroke-linecap="round" stroke-linejoin="round">
+      width="${sz}" height="${sz}" viewBox="-10 -10 20 20"
+      style="overflow:visible;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.75)) drop-shadow(0 0 2px rgba(0,0,0,0.5))">
+    <g fill="${color}" stroke="${color}" stroke-linecap="round" stroke-linejoin="round">
       ${icon}
     </g>
   </svg>`;
@@ -603,9 +581,9 @@ function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
   return L.divIcon({
     className:     "",
     html,
-    iconSize:      [W, H],
-    iconAnchor:    [W / 2, H],
-    tooltipAnchor: [0, -(H + 2)],
+    iconSize:      [sz, sz],
+    iconAnchor:    [sz / 2, sz / 2],
+    tooltipAnchor: [0, -(sz / 2 + 4)],
   });
 }
 
