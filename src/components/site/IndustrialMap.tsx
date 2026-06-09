@@ -31,16 +31,30 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 /* ── Basemap definitions ────────────────────────────────── */
-type BasemapKey = "dark" | "light" | "atlas" | "satellite" | "topo";
+type BasemapKey = "dark" | "light" | "streets" | "atlas" | "satellite" | "topo";
 interface BasemapDef {
   label: string;
   tiles: string;
   labels?: string;
   subdomains?: string[];
   isDark: boolean;
-  swatch: string; // CSS color for the picker swatch
+  swatch: string;
+  mapbox?: boolean; // requires VITE_MAPBOX_TOKEN
 }
+
+const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+
 const BASEMAPS: Record<BasemapKey, BasemapDef> = {
+  streets: {
+    label: "Streets",
+    tiles: _mbToken
+      ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${_mbToken}`
+      : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    subdomains: ["a","b","c","d"],
+    isDark: false,
+    swatch: "#e8e0d4",
+    mapbox: true,
+  },
   dark: {
     label: "Dark",
     tiles:  "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
@@ -67,11 +81,14 @@ const BASEMAPS: Record<BasemapKey, BasemapDef> = {
   },
   satellite: {
     label: "Satellite",
-    tiles:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    labels: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
+    tiles: _mbToken
+      ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${_mbToken}`
+      : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    labels: _mbToken ? undefined : "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
     subdomains: ["a","b","c","d"],
     isDark: true,
     swatch: "#2a3d1e",
+    mapbox: true,
   },
   topo: {
     label: "Topo",
@@ -88,7 +105,8 @@ function themeBasemap(): BasemapKey {
     const stored = localStorage.getItem("tgl_basemap") as BasemapKey | null;
     if (stored && BASEMAPS[stored]) return stored;
     const theme = document.documentElement.getAttribute("data-theme") ?? localStorage.getItem("tgl_theme") ?? "dark";
-    return theme === "light" ? "light" : "dark";
+    // Default to Streets (Mapbox) if token available, otherwise dark
+    return _mbToken ? "streets" : (theme === "light" ? "light" : "dark");
   } catch { return "dark"; }
 }
 
@@ -495,6 +513,50 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
   );
 }
 
+/* ── SVG icon paths per site kind ───────────────────────── */
+const KIND_SVG: Record<string, string> = {
+  sez:        `<path d="M6 13V7l6-4 6 4v6" stroke="white" stroke-width="1.6" stroke-linejoin="round" fill="none"/><rect x="9" y="9" width="6" height="4" rx="0.5" fill="white" opacity="0.9"/><path d="M11 13v-2h2v2" fill="none" stroke="white" stroke-width="1.2"/>`,
+  park:       `<rect x="4" y="8" width="6" height="5" rx="0.5" fill="none" stroke="white" stroke-width="1.5"/><rect x="12" y="5" width="8" height="8" rx="0.5" fill="none" stroke="white" stroke-width="1.5"/><path d="M10 10.5h2" stroke="white" stroke-width="1.3"/>`,
+  factory:    `<path d="M4 14V9l4-3v3l4-3v3l4-3v5" stroke="white" stroke-width="1.6" stroke-linejoin="round" fill="none"/><path d="M4 14h16" stroke="white" stroke-width="1.4" stroke-linecap="round"/><rect x="9" y="11" width="2.5" height="3" fill="white" opacity="0.8"/>`,
+  logistics:  `<rect x="1" y="9" width="13" height="7" rx="1" fill="none" stroke="white" stroke-width="1.5"/><path d="M14 11h4l3 4v1h-7V11z" fill="none" stroke="white" stroke-width="1.5" stroke-linejoin="round"/><circle cx="5.5" cy="17" r="1.8" fill="white"/><circle cx="17.5" cy="17" r="1.8" fill="white"/>`,
+  port:       `<path d="M12 4v12" stroke="white" stroke-width="1.6" stroke-linecap="round"/><path d="M8 8h8" stroke="white" stroke-width="1.5" stroke-linecap="round"/><path d="M6 16c1 1.5 2.5 2.5 6 2.5s5-1 6-2.5" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
+  airport:    `<path d="M12 3L8 10H3l3 2-1 5 7-2 7 2-1-5 3-2h-5L12 3z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  substation: `<path d="M13 3L7 13h5l-1 7 7-10h-5l2-7z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  university: `<path d="M12 4L3 9l9 5 9-5-9-5z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/><path d="M6 11v5c0 1.5 2.5 3 6 3s6-1.5 6-3v-5" stroke="white" stroke-width="1.5" fill="none"/><path d="M21 9v5" stroke="white" stroke-width="1.5" stroke-linecap="round"/>`,
+  tvet:       `<path d="M14 4l6 6-10 10-6-2-2-6 10-10z" stroke="white" stroke-width="1.5" fill="none" stroke-linejoin="round"/><circle cx="15.5" cy="8.5" r="1.5" fill="white" opacity="0.8"/>`,
+  corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+};
+
+function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
+  const svg = KIND_SVG[kind] ?? KIND_SVG.factory;
+  const size = isKey ? 34 : 28;
+  const half = size / 2;
+  // Pin shape: rounded square with bottom-point
+  const bg = isKey
+    ? `<rect x="1" y="1" width="${size-2}" height="${size-6}" rx="5" fill="${color}" opacity="0.97"/>
+       <polygon points="${half-4},${size-5} ${half},${size-1} ${half+4},${size-5}" fill="${color}" opacity="0.97"/>
+       <rect x="1" y="1" width="${size-2}" height="${size-6}" rx="5" fill="none" stroke="white" stroke-width="1" stroke-opacity="0.3"/>`
+    : `<rect x="1" y="1" width="${size-2}" height="${size-6}" rx="4" fill="${color}" opacity="0.92"/>
+       <polygon points="${half-3},${size-5} ${half},${size-1} ${half+3},${size-5}" fill="${color}" opacity="0.92"/>`;
+
+  // Scale the kind icon SVG (originally 24x24) to fit inside
+  const iconScale = (size - 10) / 24;
+  const iconOffset = 4;
+
+  const html = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${bg}
+    <g transform="translate(${iconOffset},${iconOffset}) scale(${iconScale.toFixed(3)})">${svg}</g>
+  </svg>`;
+
+  return L.divIcon({
+    className: "",
+    html,
+    iconSize:   [size, size],
+    iconAnchor: [half, size - 1],
+    tooltipAnchor: [0, -size + 4],
+  });
+}
+
 /* ── Full interactive MapView ───────────────────────────── */
 function MapView({
   mods, sites, corridors, onSelect, pinMarker, pinTarget, basemap,
@@ -507,28 +569,44 @@ function MapView({
   pinTarget: { lat: number; lng: number; zoom: number } | null;
   basemap: BasemapDef;
 }) {
-  const { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, Marker, useMap } = mods.rl;
+  const { MapContainer, TileLayer, Tooltip, Polyline, Marker, useMap } = mods.rl;
   const { L } = mods;
 
-  const pinIcon = useMemo(() => {
-    if (typeof window === "undefined") return undefined;
-    return L.divIcon({
-      className: "",
-      html: `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:22px;filter:drop-shadow(0 0 6px #ff5100);">★</div>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
+  const pinIcon = useMemo(() => L.divIcon({
+    className: "",
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+      <circle cx="16" cy="14" r="10" fill="#ff5100" opacity="0.95"/>
+      <polygon points="12,22 16,31 20,22" fill="#ff5100" opacity="0.95"/>
+      <text x="16" y="19" text-anchor="middle" font-size="13" fill="white">★</text>
+    </svg>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 31],
+  }), [L]);
+
+  // Pre-build all site icons (memoised by id+score)
+  const siteIcons = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof L.divIcon>>();
+    sites.forEach((s) => {
+      const color = LAYER_META[s.layer].color;
+      const isKey = s.score !== undefined && s.score >= 85;
+      m.set(s.id, makeSiteIcon(L, s.kind, color, isKey));
     });
-  }, [L]);
+    return m;
+  }, [sites, L]);
 
   return (
     <MapContainer
-      center={[12.2, 104.9]} zoom={7} minZoom={6} maxZoom={14}
+      center={[12.2, 104.9]} zoom={7} minZoom={6} maxZoom={17}
       scrollWheelZoom zoomControl={false}
       style={{ height: "100%", width: "100%", background: "#0a0a0b" }}
       attributionControl={false}
     >
       <TileLayer key={basemap.tiles} url={basemap.tiles}
-        subdomains={basemap.subdomains ?? ["a","b","c","d"]} />
+        subdomains={basemap.subdomains ?? ["a","b","c","d"]}
+        tileSize={basemap.mapbox ? 256 : 256}
+        zoomOffset={0}
+        maxZoom={18}
+      />
       {basemap.labels && (
         <TileLayer key={basemap.labels} url={basemap.labels}
           subdomains={["a","b","c","d"]} />
@@ -551,17 +629,16 @@ function MapView({
 
       {sites.map((s) => {
         const color = LAYER_META[s.layer].color;
-        const isKey = s.score !== undefined && s.score >= 85;
+        const icon = siteIcons.get(s.id);
+        if (!icon) return null;
         return (
-          <CircleMarker key={s.id} center={[s.lat, s.lng]}
-            radius={isKey ? 8 : 6}
-            pathOptions={{ color, fillColor: color, fillOpacity: 0.85, weight: isKey ? 2 : 1.5 }}
+          <Marker key={s.id} position={[s.lat, s.lng]} icon={icon}
             eventHandlers={{ click: () => onSelect(s) }}>
-            <Tooltip direction="top" offset={[0, -6]} opacity={0.92}>
+            <Tooltip direction="top" offset={[0, -4]} opacity={0.95}>
               <span style={{ fontFamily: "monospace", fontSize: 10, color }}>{s.kind.toUpperCase()}</span>
               <span style={{ fontFamily: "monospace", fontSize: 10, color: "#fff", marginLeft: 6 }}>{s.name}</span>
             </Tooltip>
-          </CircleMarker>
+          </Marker>
         );
       })}
 
@@ -583,41 +660,52 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
     ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
     : "#94a3b8";
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lng}`;
-  // Satellite thumbnail: Mapbox satellite if token set, else OSM static map
-  const mapboxToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
-  const thumbUrl = site.image_url
-    || (mapboxToken
-      ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/${site.lng},${site.lat},15,0/480x220?access_token=${mapboxToken}`
-      : `https://staticmap.openstreetmap.de/staticmap.php?center=${site.lat},${site.lng}&zoom=15&size=480x220&maptype=osm&markers=${site.lat},${site.lng},red-pushpin`);
+  const kindSvg = KIND_SVG[site.kind] ?? KIND_SVG.factory;
 
   return (
     <aside className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] bg-[#0d0d0e] backdrop-blur border border-white/12 text-white flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl">
 
-      {/* ── Visual header: location image ── */}
-      <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="relative shrink-0 block overflow-hidden group">
-        <img
-          src={thumbUrl}
-          alt={site.name}
-          className="w-full h-[130px] object-cover object-center bg-white/5"
-          style={{ filter: "brightness(0.8) contrast(1.1)" }}
-          onError={(e) => {
-            // fallback: hide if static map fails
-            (e.currentTarget.parentElement as HTMLElement).style.display = "none";
-          }}
-        />
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0e] via-[#0d0d0e20] to-transparent" />
-        {/* Maps CTA */}
-        <div className="absolute bottom-2 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-white/80">Open in Maps ↗</span>
-        </div>
-        {/* Province badge */}
-        <div className="absolute top-2 left-3">
-          <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider bg-black/60 text-white/70 backdrop-blur-sm">
-            {site.province}
-          </span>
-        </div>
-      </a>
+      {/* ── Visual header: news photo OR styled placeholder ── */}
+      {site.image_url ? (
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="relative shrink-0 block overflow-hidden group">
+          <img
+            src={site.image_url}
+            alt={site.name}
+            className="w-full h-[140px] object-cover object-center"
+            style={{ filter: "brightness(0.82) contrast(1.08)" }}
+            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0e] via-[#0d0d0e10] to-transparent" />
+          <div className="absolute bottom-2 right-3 opacity-0 group-hover:opacity-100 transition">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/80">Open in Maps ↗</span>
+          </div>
+          <div className="absolute top-2 left-3">
+            <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider bg-black/60 text-white/70 backdrop-blur-sm">
+              {site.province}
+            </span>
+          </div>
+        </a>
+      ) : (
+        /* Styled placeholder — kind icon + gradient, no map thumbnail */
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="relative shrink-0 flex items-center justify-center h-[90px] overflow-hidden group border-b border-white/8"
+          style={{ background: `linear-gradient(135deg, ${layerColor}22 0%, #0d0d0e 75%)` }}>
+          <div dangerouslySetInnerHTML={{ __html:
+            `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" style="opacity:0.25">
+              <g fill="none" stroke="${layerColor}" stroke-width="1">${kindSvg}</g>
+            </svg>`
+          }} />
+          <div className="absolute top-2 left-3">
+            <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider bg-black/40 text-white/50 backdrop-blur-sm">
+              {site.province}
+            </span>
+          </div>
+          <div className="absolute bottom-2 right-3 opacity-0 group-hover:opacity-100 transition">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/50">Open in Maps ↗</span>
+          </div>
+        </a>
+      )}
 
       {/* ── Header ── */}
       <div className="shrink-0 border-b border-white/10">

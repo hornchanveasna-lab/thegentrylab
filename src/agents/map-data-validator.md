@@ -1,145 +1,143 @@
-# Map Data Validator Agent — TheGentryLab
+# Map Data Validator & Enrichment Agent — TheGentryLab
 
 ## Purpose
-Validate and enrich every site in `src/data/platform.ts` against authoritative sources.
-Run monthly or whenever new sites are added.
+Run monthly. Validate every site coordinate in `src/data/platform.ts`, enrich sparse data,
+and source real news/official **photos** for each site so the Inspector panel shows
+meaningful images instead of map tiles.
 
 ---
 
-## Step 1 — Load current site list
+## Step 1 — Load site list
 
-Read `src/data/platform.ts`. Extract the array of sites from `export const SITES: MapSite[]`.
-For each site, record: `{ id, name, kind, province, lat, lng }`.
+Read `src/data/platform.ts`. Extract `export const SITES: MapSite[]`.
+Record: `{ id, name, kind, province, lat, lng, image_url }` for each site.
 
 ---
 
-## Step 2 — Coordinate validation (per site)
+## Step 2 — Coordinate validation
 
-For EVERY site, run two validation approaches:
+For EVERY site, geocode and calculate Haversine distance vs. stored coords.
 
-### 2a. Nominatim (OpenStreetMap — free, no key)
+### 2a. Nominatim (free, no key)
 ```
 GET https://nominatim.openstreetmap.org/search
   ?q={site.name} {site.province} Cambodia
-  &countrycodes=kh
-  &format=json
-  &limit=1
+  &countrycodes=kh&format=json&limit=1
 User-Agent: TheGentryLab-MapAgent/1.0
 ```
-Wait **1.1 seconds between requests** (Nominatim rate limit).
+Wait **1.1 seconds between requests**.
 
-Extract: `lat`, `lon`, `display_name` from first result.
-
-Calculate distance (Haversine) between stored vs found coordinates.
-
-### 2b. Google Maps Geocoding API (if VITE_GOOGLE_MAPS_KEY is set)
+### 2b. Google Maps Geocoding (if VITE_GOOGLE_MAPS_KEY set)
 ```
 GET https://maps.googleapis.com/maps/api/geocode/json
   ?address={site.name}+{site.province}+Cambodia
   &key={VITE_GOOGLE_MAPS_KEY}
 ```
-Extract: `geometry.location.lat`, `geometry.location.lng`, `formatted_address`.
 
-### 2c. Open Development Cambodia (ODC) cross-reference
-Search: `https://opendevelopmentcambodia.net/profiles/special-economic-zones/`
-Look for exact name match. Extract coordinates from map embed if found.
-
----
-
-## Step 3 — Flag rules
-
+### Flag rules
 | Distance | Action |
 |---|---|
-| < 1 km | ✅ PASS — no change needed |
-| 1–5 km | ⚠️ REVIEW — log for human check |
-| > 5 km | ❌ WRONG — auto-correct with verified source |
+| < 1 km | ✅ PASS |
+| 1–5 km | ⚠️ REVIEW — log |
+| > 5 km | ❌ AUTO-FIX with verified source |
 
-For **❌ WRONG** sites:
-- Use Google Maps result as primary if available (higher accuracy for named places)
-- Fall back to Nominatim if no Google Maps key
-- Write corrected `lat`/`lng` to `src/data/platform.ts`
-- Add a comment: `// Coord verified {DATE} via {SOURCE}`
+For ❌ sites: write corrected lat/lng + add comment `// Coord verified {DATE} via {SOURCE}`
 
 ---
 
-## Step 4 — Data enrichment (per site missing `notes`)
+## Step 3 — News image sourcing (PRIORITY — run for ALL sites missing `image_url`)
 
-For sites with `notes` undefined or under 80 characters:
+For each site where `image_url` is undefined or empty:
 
-1. **Search**: `{site.name} Cambodia {site.kind} investment`
-   - Sources: khmertimeskh.com, phnompenhpost.com, cambodiainvestmentreview.com, cdc.gov.kh, opendevelopmentcambodia.net
-   
-2. **Extract** (from top 3 results):
-   - Operational status (Operational / Under Construction / Planned)
-   - Total area in hectares
-   - Developer/operator name and country of origin
-   - Key tenants or industries
-   - Utility infrastructure (power kV, water capacity)
-   - Road access and distance to nearest port/city
-   - Any recent news (expansion, new tenants, issues)
+### 3a. Search for news coverage
+Query each of these sources:
+```
+khmertimeskh.com: "{site.name}" Cambodia
+phnompenhpost.com: "{site.name}" Cambodia
+cambodiainvestmentreview.com: "{site.name}"
+asia.nikkei.com: "{site.name}" Cambodia
+thebettercambodia.com: "{site.name}"
+cambodianess.com: "{site.name}"
+```
 
-3. **Write** enriched `notes` (2–4 sentences, factual, no marketing language).
+For each article found:
+1. WebFetch the article URL
+2. Extract `<meta property="og:image" content="...">` — this is the article hero photo
+3. Verify the URL ends in .jpg/.jpeg/.png/.webp OR is a CDN URL (wp-content, cloudfront, etc.)
+4. Test: URL must be publicly accessible (no auth redirect)
 
-4. **Update** `status`, `size`, `utilities`, `road` fields if better data found.
+### 3b. Official site images
+If no news image found, try the official developer/operator website:
+- PPSEZ: `https://www.ppsez.com.kh/en/`
+- SSEZ: `http://www.ssez.com/en/`
+- WHA: `https://www.wha-industrialestate.com/en/cambodia`
+- Techo Airport: `https://techo-airport.gov.kh/`
+- SAP Port: `https://www.sihanoukvilleport.com.kh/`
+- For factories: company investor-relations page
 
----
+Extract `<meta property="og:image">` from the fetched page.
 
-## Step 5 — Image URL sourcing (per site missing `image_url`)
+### 3c. Image quality rules
+- Must be a direct image URL (not a redirect, not a search result)
+- Prefer aerial/overview/exterior shots over interior
+- Minimum implied size: 400px wide (check if URL has size params)
+- No watermarked stock photos
 
-For each site:
-1. WebFetch the official SEZ/park website if known (e.g., ppsez.com/en)
-2. Extract `<meta property="og:image">` content
-3. Alternatively, search for news article with aerial/satellite photo:
-   - Query: `{site.name} Cambodia aerial photo site:khmertimeskh.com OR site:cambodiainvestmentreview.com`
-4. Store the first reliable, publicly accessible image URL as `image_url`
-
-**Quality criteria for images:**
-- Must be a direct image URL (ends in .jpg/.png/.webp or is a CDN URL)
-- Must be accessible without authentication
-- Prefer aerial/overview shots over interior factory shots
-- Minimum resolution: 400px wide
-
----
-
-## Step 6 — Corridor validation
-
-For each corridor in `CORRIDORS`, validate the first and last waypoint:
-
-1. Geocode the corridor start city (e.g., "Phnom Penh") — confirm first waypoint is within 3km
-2. Geocode the corridor end city/border (e.g., "Bavet border crossing Cambodia Vietnam") — confirm last waypoint within 3km
-3. If end point is wrong, fetch corrected route from OSRM:
-   ```
-   GET https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}
-     ?overview=full&geometries=geojson
-   ```
-   Apply RDP simplification (ε = 0.001°) and update waypoints array.
+### 3d. Write image_url
+Once found, write to `src/data/platform.ts`:
+```typescript
+image_url: "https://example.com/path/to/image.jpg",
+```
+Add the field directly after the `id:` line of the matching site object.
 
 ---
 
-## Step 7 — Output
+## Step 4 — Data enrichment
 
-### Changes to apply to `src/data/platform.ts`:
-- Updated `lat`/`lng` with verification comments for all ❌ WRONG sites
-- Enriched `notes` for sparse sites
-- New `image_url` where found
-- Updated `status`/`size` where better data found
+For sites with `notes` under 100 characters:
+1. Search: `{site.name} Cambodia investment {current_year}`
+2. Extract from top 3 results:
+   - Operational status, total area, developer/operator
+   - Key tenants, utility details, road access
+   - Recent news (expansion, new tenants)
+3. Write enriched `notes` (2–4 sentences, factual, no marketing language)
+4. Update `status`, `size`, `utilities`, `road` if better data found
 
-### Report to write to `src/agents/last-validation-report.md`:
+---
+
+## Step 5 — Corridor endpoint validation
+
+For each corridor in `CORRIDORS`:
+1. Geocode start city — confirm first waypoint within 3km
+2. Geocode end city/border — confirm last waypoint within 3km
+3. If wrong, re-fetch from OSRM and apply RDP (ε=0.001°):
+```
+GET https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}
+  ?overview=full&geometries=geojson
+```
+
+---
+
+## Step 6 — Output report
+
+Write `src/agents/last-validation-report.md`:
 ```markdown
 # Validation Report — {DATE}
 
 ## Summary
 - Sites checked: {N}
 - Coordinates corrected: {N}
-- Notes enriched: {N}
 - Images added: {N}
+- Notes enriched: {N}
 
-## Corrections
-| Site ID | Old Coords | New Coords | Source | Distance |
-|---------|-----------|-----------|--------|----------|
+## Coordinate Corrections
+| Site ID | Old Coords | New Coords | Source | Distance km |
 
-## Enrichments
-| Site ID | Fields updated |
+## Images Added
+| Site ID | Image URL | Source |
+
+## Still Missing Images
+| Site ID | Name | Why not found |
 
 ## Flagged for Manual Review
 | Site ID | Issue |
@@ -149,15 +147,15 @@ For each corridor in `CORRIDORS`, validate the first and last waypoint:
 
 ## Validation Sources Priority
 
-1. **Google Maps Places API** — most accurate for named industrial zones (requires key)
-2. **Nominatim / OpenStreetMap** — free, good for major sites, Cambodia coverage improving
-3. **Open Development Cambodia (ODC)** — `opendevelopmentcambodia.net` — best for SEZ GIS data
-4. **CDC Cambodia** — `cdc.gov.kh/sez-smart-search/` — official government SEZ registry
-5. **SEZB** — `sezb.gov.kh` — SEZ Board official register
-6. **Khmer Times / PP Post** — for recent coordinates in news articles
-7. **Wikidata** — structured data with coordinates for major infrastructure
+1. Google Maps Places API (highest accuracy — requires key)
+2. Nominatim / OpenStreetMap (free, Cambodia coverage improving)
+3. Open Development Cambodia — `opendevelopmentcambodia.net/profiles/special-economic-zones/`
+4. CDC Cambodia — `cdc.gov.kh/sez-smart-search/`
+5. SEZB — `sezb.gov.kh`
+6. Khmer Times / PP Post — for article coordinates
+7. Wikidata — structured data with coordinates
 
-## Province centroid fallback table (use when no specific data found)
+## Province centroid fallback (when no specific data found)
 ```
 Phnom Penh:      11.5564, 104.9282
 Kandal:          11.2833, 104.9500
@@ -174,3 +172,9 @@ Takeo:           10.9920, 104.7907
 Pursat:          12.5388, 103.9193
 Kampong Chhnang: 12.2508, 104.6681
 ```
+
+## Known tricky sites (extra care required)
+- **ISI SEZ**: Trapeang Kou village, Cheung Kou commune, Prey Nob district, Preah Sihanouk. Along PP-SVK Expressway ~30 min north of SAP port. Nominatim Prey Nob district centroid: 10.7197, 103.7985
+- **Siem Reap Airport**: NEW airport at 13.368, 104.216 (opened Nov 2023) — NOT old airport at 13.40, 103.81
+- **Techo Airport**: New airport at 11.356, 104.932 in Kandal — NOT old PNH at 11.546, 104.848
+- **Bavet SEZ cluster**: All around 106.10–106.12E — NOT 105.94E

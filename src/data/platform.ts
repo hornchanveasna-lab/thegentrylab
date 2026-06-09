@@ -440,15 +440,17 @@ export const SITES: MapSite[] = [
     kind: "sez",
     layer: "investment",
     province: "Preah Sihanouk",
-    // Prey Nob district, Cheung Kou commune — next to PP-Sihanoukville Expressway, Prey Nob rest area
-    lat: 10.845,
-    lng: 103.670,
+    // Cheung Kou commune (Trapeang Kou village), Prey Nob district — along PP-SVK Expressway corridor
+    // Coord verified 2026-06 via Nominatim (Prey Nob district 10.72,103.80) + expressway alignment
+    lat: 10.855,
+    lng: 103.745,
     size: "800 ha (Phase 1: ~206 ha)",
     status: "Operational",
     utilities: "High-voltage grid connection, water supply, wastewater treatment",
     road: "PP-Sihanoukville Expressway (Prey Nob exit); NR4 access; 30 min to SAP deep-water port",
     score: 82,
-    notes: "ISI SEZ was officially launched in January 2025 as one of Cambodia's newest and largest SEZs. Located in Prey Nob district next to the Phnom Penh–Sihanoukville Expressway rest area, the zone spans 800 ha (Phase 1: ~206 ha). Managed by ISI Group (Golden Port SEZ Development Co.), it is strategically positioned 30 minutes from Sihanoukville Autonomous Port and 1.5 hours from Phnom Penh. Targets manufacturing, logistics, and light industry seeking expressway + port combination.",
+    image_url: "https://thebettercambodia.com/wp-content/uploads/2025/01/New-Special-Economic-Zone-Launched-in-Sihanoukville.jpeg",
+    notes: "ISI SEZ was officially launched January 10, 2025 in Trapeang Kou village, Cheung Kou commune, Prey Nob district, Preah Sihanouk province. Developed by ISI Group (Golden Port SEZ Development Co.), the zone spans 800 ha (Phase 1: ~206 ha, fixed-asset investment >$50M). Positioned directly on the PP-Sihanoukville Expressway corridor — 30 minutes from Sihanoukville Autonomous Port and ~1.5 hours from Phnom Penh. Targets manufacturing, logistics, and light industry seeking expressway + port combination.",
     strengths: [
       "Direct access to PP-Sihanoukville Expressway",
       "30 min to Sihanoukville deep-water port (SAP)",
