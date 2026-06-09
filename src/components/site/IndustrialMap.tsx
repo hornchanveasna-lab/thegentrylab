@@ -30,6 +30,68 @@ const STATUS_COLOR: Record<string, string> = {
   Planned:             "#94a3b8",
 };
 
+/* ── Basemap definitions ────────────────────────────────── */
+type BasemapKey = "dark" | "light" | "atlas" | "satellite" | "topo";
+interface BasemapDef {
+  label: string;
+  tiles: string;
+  labels?: string;
+  subdomains?: string[];
+  isDark: boolean;
+  swatch: string; // CSS color for the picker swatch
+}
+const BASEMAPS: Record<BasemapKey, BasemapDef> = {
+  dark: {
+    label: "Dark",
+    tiles:  "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
+    labels: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
+    subdomains: ["a","b","c","d"],
+    isDark: true,
+    swatch: "#1a1a2e",
+  },
+  light: {
+    label: "Light",
+    tiles:  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+    labels: "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+    subdomains: ["a","b","c","d"],
+    isDark: false,
+    swatch: "#dde8ef",
+  },
+  atlas: {
+    label: "Atlas",
+    tiles:  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+    labels: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png",
+    subdomains: ["a","b","c","d"],
+    isDark: false,
+    swatch: "#b8cfc8",
+  },
+  satellite: {
+    label: "Satellite",
+    tiles:  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    labels: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
+    subdomains: ["a","b","c","d"],
+    isDark: true,
+    swatch: "#2a3d1e",
+  },
+  topo: {
+    label: "Topo",
+    tiles:  "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    subdomains: ["a","b","c"],
+    isDark: false,
+    swatch: "#c8d8b0",
+  },
+};
+
+/* Theme → default basemap */
+function themeBasemap(): BasemapKey {
+  try {
+    const stored = localStorage.getItem("tgl_basemap") as BasemapKey | null;
+    if (stored && BASEMAPS[stored]) return stored;
+    const theme = document.documentElement.getAttribute("data-theme") ?? localStorage.getItem("tgl_theme") ?? "dark";
+    return theme === "light" ? "light" : "dark";
+  } catch { return "dark"; }
+}
+
 /* ── Sub-kind chips per layer ───────────────────────────── */
 const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKind | "all" }[]>> = {
   investment: [
@@ -113,6 +175,25 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [query, setQuery] = useState("");
   const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
   const [panelOpen, setPanelOpen] = useState(true); // open by default
+  const [basemap, setBasemap] = useState<BasemapKey>(themeBasemap);
+  const basemapUserPicked = useRef(false);
+
+  /* Sync basemap with theme toggle (unless user manually picked one) */
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      if (basemapUserPicked.current) return;
+      const theme = document.documentElement.getAttribute("data-theme") ?? "dark";
+      setBasemap(theme === "light" ? "light" : "dark");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  const pickBasemap = (key: BasemapKey) => {
+    basemapUserPicked.current = true;
+    setBasemap(key);
+    try { localStorage.setItem("tgl_basemap", key); } catch { /* */ }
+  };
 
   /* Location search */
   const [locationInput, setLocationInput] = useState("");
@@ -209,6 +290,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             onSelect={setSelected}
             pinMarker={pinMarker}
             pinTarget={pinTarget}
+            basemap={BASEMAPS[basemap]}
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-white/40 font-mono text-xs uppercase tracking-widest">
@@ -343,7 +425,39 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               );
             })}
 
-            <div className="px-4 py-3 font-mono text-[10px] uppercase tracking-widest text-white/30">
+            {/* Basemap picker */}
+            <div className="border-t border-white/10 px-4 py-3">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Base Map</p>
+              <div className="grid grid-cols-5 gap-1.5">
+                {(Object.entries(BASEMAPS) as [BasemapKey, BasemapDef][]).map(([key, bm]) => {
+                  const active = basemap === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => pickBasemap(key)}
+                      className="flex flex-col items-center gap-1 group"
+                    >
+                      <span
+                        className="w-full aspect-square border-2 transition-all"
+                        style={{
+                          backgroundColor: bm.swatch,
+                          borderColor: active ? "#ff5100" : "transparent",
+                          boxShadow: active ? "0 0 0 1px #ff5100" : "none",
+                        }}
+                      />
+                      <span
+                        className="font-mono text-[8px] uppercase tracking-wider leading-none"
+                        style={{ color: active ? "#ff5100" : "rgba(255,255,255,0.35)" }}
+                      >
+                        {bm.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-white/30 border-t border-white/8">
               {visible.length} sites · {visibleCorridors.length} corridors
             </div>
           </div>
@@ -359,6 +473,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 /* ── Preview map (homepage background) ─────────────────── */
 function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
   const { MapContainer, TileLayer, Polyline } = mods.rl;
+  const bm = BASEMAPS[themeBasemap()];
   return (
     <MapContainer
       center={[12.5, 104.9]} zoom={7} minZoom={6} maxZoom={8}
@@ -368,8 +483,8 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
       attributionControl={false}
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
-        subdomains={["a", "b", "c", "d"]}
+        url={bm.tiles}
+        subdomains={bm.subdomains ?? ["a","b","c","d"]}
       />
       {CORRIDORS.map((c) => (
         <Polyline key={c.id} positions={c.waypoints}
@@ -382,7 +497,7 @@ function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
 
 /* ── Full interactive MapView ───────────────────────────── */
 function MapView({
-  mods, sites, corridors, onSelect, pinMarker, pinTarget,
+  mods, sites, corridors, onSelect, pinMarker, pinTarget, basemap,
 }: {
   mods: { rl: RL; L: L };
   sites: MapSite[];
@@ -390,6 +505,7 @@ function MapView({
   onSelect: (s: MapSite) => void;
   pinMarker: { lat: number; lng: number } | null;
   pinTarget: { lat: number; lng: number; zoom: number } | null;
+  basemap: BasemapDef;
 }) {
   const { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, Marker, useMap } = mods.rl;
   const { L } = mods;
@@ -411,10 +527,12 @@ function MapView({
       style={{ height: "100%", width: "100%", background: "#0a0a0b" }}
       attributionControl={false}
     >
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
-        subdomains={["a", "b", "c", "d"]} />
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png"
-        subdomains={["a", "b", "c", "d"]} />
+      <TileLayer key={basemap.tiles} url={basemap.tiles}
+        subdomains={basemap.subdomains ?? ["a","b","c","d"]} />
+      {basemap.labels && (
+        <TileLayer key={basemap.labels} url={basemap.labels}
+          subdomains={["a","b","c","d"]} />
+      )}
 
       <FlyController useMap={useMap} target={pinTarget} />
 
