@@ -39,6 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function signInWithGoogle() {
     if (!supabase) return;
 
+    // Open popup synchronously (required to avoid browser popup blocker)
+    const left = Math.round(window.screenX + (window.outerWidth - 500) / 2);
+    const top  = Math.round(window.screenY + (window.outerHeight - 600) / 2);
+    const popup = window.open("", "google-signin", `width=500,height=600,left=${left},top=${top}`);
+
     const { data } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -47,16 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    if (!data?.url) return;
-
-    const popup = window.open(
-      data.url,
-      "google-signin",
-      "width=500,height=600,left=" +
-        Math.round(window.screenX + (window.outerWidth - 500) / 2) +
-        ",top=" +
-        Math.round(window.screenY + (window.outerHeight - 600) / 2)
-    );
+    if (data?.url && popup) {
+      popup.location.href = data.url;
+    } else {
+      popup?.close();
+      return;
+    }
 
     // Poll until popup closes, then refresh session
     const timer = setInterval(() => {
