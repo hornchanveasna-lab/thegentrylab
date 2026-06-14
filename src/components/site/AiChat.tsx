@@ -14,7 +14,7 @@ interface Message {
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 const ANON_CREDITS  = 5;
-const DAILY_CREDITS = 20;
+const DAILY_CREDITS = 100;
 const STORAGE_KEY   = "tgl_anon";
 
 function getAnonUsed(): number {
@@ -75,9 +75,13 @@ function ChatBubble({ msg }: { msg: Message }) {
       <div
         className={`max-w-[82%] px-3.5 py-2.5 text-[12.5px] leading-relaxed ${
           isUser
-            ? "bg-[#ff5100] text-white rounded-2xl rounded-tr-sm"
-            : "bg-white/8 text-white/90 rounded-2xl rounded-tl-sm border border-white/8"
+            ? "rounded-2xl rounded-tr-sm"
+            : "rounded-2xl rounded-tl-sm"
         }`}
+        style={isUser
+          ? { backgroundColor: "#ff5100", color: "#ffffff" }
+          : { backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.90)", border: "1px solid rgba(255,255,255,0.08)" }
+        }
       >
         {msg.pending ? (
           <span className="flex items-center gap-1">
@@ -300,13 +304,13 @@ export function AiChat() {
       {/* Chat panel */}
       <div
         className={`fixed bottom-24 right-5 z-[9999] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col
-          shadow-2xl border border-white/10 bg-[#0d0d0e] overflow-hidden
+          shadow-2xl overflow-hidden
           transition-all duration-300 origin-bottom-right
           ${open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}`}
-        style={{ height: "min(560px, calc(100vh - 8rem))", borderRadius: 12 }}
+        style={{ height: "min(560px, calc(100vh - 8rem))", borderRadius: 12, backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/8 bg-[#111] shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3.5 shrink-0" style={{ backgroundColor: "#111111", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           {user && avatarUrl ? (
             <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
           ) : (
@@ -387,7 +391,7 @@ export function AiChat() {
         {showLoginWall && !user ? (
           <LoginWall />
         ) : outOfCredits ? null : (
-          <div className="border-t border-white/8 px-3 py-3 flex gap-2 shrink-0 bg-[#0d0d0e]">
+          <div className="px-3 py-3 flex gap-2 shrink-0" style={{ backgroundColor: "#0d0d0e", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             <input
               ref={inputRef}
               value={input}
@@ -395,9 +399,8 @@ export function AiChat() {
               onKeyDown={handleKey}
               placeholder="Ask about SEZs, permits, costs…"
               disabled={streaming}
-              className="flex-1 bg-white/5 border border-white/10 text-white text-[12.5px] placeholder-white/25
-                px-3 py-2 outline-none focus:border-[#ff5100]/50 transition disabled:opacity-50"
-              style={{ borderRadius: 6 }}
+              className="flex-1 text-[12.5px] px-3 py-2 outline-none transition disabled:opacity-50"
+              style={{ borderRadius: 6, backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
             />
             <button
               onClick={() => send()}
