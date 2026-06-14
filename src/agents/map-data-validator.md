@@ -102,6 +102,11 @@ If no news image found after all tiers, try the official developer/operator webs
 - ITC: `https://itc.edu.kh/`
 - RUPP: `https://www.rupp.edu.kh/`
 - NPIC: `https://www.npic.edu.kh/`
+- **All substations** — EDC (Électricité du Cambodge) official website: `https://www.edc.com.kh/`
+  - Primary source for substation locations, voltage levels, capacity specs, and official photos
+  - Check EDC Photo Gallery and News sections for substation imagery
+  - WebSearch: `site:edc.com.kh "{substation name}" OR "{province} substation"`
+  - Also try: `site:edc.com.kh "230kV" OR "115kV" OR "substation"` for technical details
 - For factories: search `{company name} investor relations Cambodia` — look for press release with photo
 
 Extract `<meta property="og:image">` from the fetched page.
@@ -178,11 +183,15 @@ Write `src/agents/last-validation-report.md`:
 
 1. Google Maps Places API (highest accuracy — requires key)
 2. Nominatim / OpenStreetMap (free, Cambodia coverage improving)
-3. Open Development Cambodia — `opendevelopmentcambodia.net/profiles/special-economic-zones/`
-4. CDC Cambodia — `cdc.gov.kh/sez-smart-search/`
-5. SEZB — `sezb.gov.kh`
-6. Khmer Times / PP Post — for article coordinates
-7. Wikidata — structured data with coordinates
+3. **EDC (Électricité du Cambodge)** — `https://www.edc.com.kh/` — **primary source for all substation sites**
+   - Official substation locations, voltage (115kV / 230kV), capacity (MVA), operational status
+   - Search: `site:edc.com.kh "{substation name}"` for press releases, project announcements
+   - EDC news and photo gallery contain aerial/exterior substation photos with location context
+4. Open Development Cambodia — `opendevelopmentcambodia.net/profiles/special-economic-zones/`
+5. CDC Cambodia — `cdc.gov.kh/sez-smart-search/`
+6. SEZB — `sezb.gov.kh`
+7. Khmer Times / PP Post — for article coordinates
+8. Wikidata — structured data with coordinates
 
 ## Province centroid fallback (when no specific data found)
 ```
