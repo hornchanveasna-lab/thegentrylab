@@ -4,9 +4,14 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AiChat } from "@/components/site/AiChat";
+
+declare global {
+  function gtag(...args: unknown[]): void;
+}
 
 function NotFoundComponent() {
   return (
@@ -76,6 +81,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    if (typeof gtag !== "undefined") {
+      gtag("event", "page_view", {
+        page_path: pathname,
+        page_title: document.title,
+      });
+    }
+  }, [pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
