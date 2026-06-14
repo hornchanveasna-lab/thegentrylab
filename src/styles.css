@@ -88,6 +88,40 @@
 .nav-toggle-btn   { color: var(--text-muted); }
 .nav-toggle-btn:hover { color: var(--text-primary); }
 
+/* ── Chat panel CSS variables ───────────────────────────── */
+:root, [data-theme="dark"] {
+  --chat-bg:          #0d0d0e;
+  --chat-header-bg:   #111111;
+  --chat-border:      rgba(255,255,255,0.10);
+  --chat-inner-border:rgba(255,255,255,0.08);
+  --chat-text:        #ffffff;
+  --chat-text-muted:  rgba(255,255,255,0.40);
+  --chat-text-subtle: rgba(255,255,255,0.25);
+  --chat-bubble-bg:   rgba(255,255,255,0.08);
+  --chat-bubble-text: rgba(255,255,255,0.90);
+  --chat-bubble-border:rgba(255,255,255,0.08);
+  --chat-input-bg:    rgba(255,255,255,0.05);
+  --chat-input-border:rgba(255,255,255,0.10);
+  --chat-chip-border: rgba(255,255,255,0.12);
+  --chat-chip-text:   rgba(255,255,255,0.50);
+}
+[data-theme="light"] {
+  --chat-bg:          #ffffff;
+  --chat-header-bg:   #f5f4f0;
+  --chat-border:      rgba(0,0,0,0.10);
+  --chat-inner-border:rgba(0,0,0,0.08);
+  --chat-text:        #111110;
+  --chat-text-muted:  rgba(0,0,0,0.45);
+  --chat-text-subtle: rgba(0,0,0,0.30);
+  --chat-bubble-bg:   rgba(0,0,0,0.05);
+  --chat-bubble-text: rgba(0,0,0,0.85);
+  --chat-bubble-border:rgba(0,0,0,0.08);
+  --chat-input-bg:    rgba(0,0,0,0.04);
+  --chat-input-border:rgba(0,0,0,0.12);
+  --chat-chip-border: rgba(0,0,0,0.12);
+  --chat-chip-text:   rgba(0,0,0,0.50);
+}
+
 /* ── News + Research + Map inline-style CSS variables ────── */
 :root, [data-theme="dark"] {
   --news-card-border:         rgba(255,255,255,0.08);

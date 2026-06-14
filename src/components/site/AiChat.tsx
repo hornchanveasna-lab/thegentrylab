@@ -80,7 +80,7 @@ function ChatBubble({ msg }: { msg: Message }) {
         }`}
         style={isUser
           ? { backgroundColor: "#ff5100", color: "#ffffff" }
-          : { backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.90)", border: "1px solid rgba(255,255,255,0.08)" }
+          : { backgroundColor: "var(--chat-bubble-bg)", color: "var(--chat-bubble-text)", border: "1px solid var(--chat-bubble-border)" }
         }
       >
         {msg.pending ? (
@@ -307,10 +307,10 @@ export function AiChat() {
           shadow-2xl overflow-hidden
           transition-all duration-300 origin-bottom-right
           ${open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}`}
-        style={{ height: "min(560px, calc(100vh - 8rem))", borderRadius: 12, backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
+        style={{ height: "min(560px, calc(100vh - 8rem))", borderRadius: 12, backgroundColor: "var(--chat-bg)", border: "1px solid var(--chat-border)", color: "var(--chat-text)" }}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3.5 shrink-0" style={{ backgroundColor: "#111111", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div className="flex items-center gap-3 px-4 py-3.5 shrink-0" style={{ backgroundColor: "var(--chat-header-bg)", borderBottom: "1px solid var(--chat-inner-border)" }}>
           {user && avatarUrl ? (
             <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
           ) : (
@@ -323,10 +323,10 @@ export function AiChat() {
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold text-white leading-none truncate">
+            <p className="text-[13px] font-bold leading-none truncate" style={{ color: "var(--chat-text)" }}>
               {user ? displayName.split(" ")[0] || "GentryBot" : "GentryBot"}
             </p>
-            <p className="text-[10px] text-white/40 mt-0.5 font-mono uppercase tracking-widest">
+            <p className="text-[10px] mt-0.5 font-mono uppercase tracking-widest" style={{ color: "var(--chat-text-muted)" }}>
               {user
                 ? `${DAILY_CREDITS - creditsUsed} credits remaining`
                 : "Cambodia Industrial AI"}
@@ -335,16 +335,16 @@ export function AiChat() {
           <div className="flex items-center gap-2">
             {user && (
               <button onClick={signOut}
-                className="text-[9px] font-mono uppercase tracking-widest text-white/25 hover:text-white/60 transition">
+                className="text-[9px] font-mono uppercase tracking-widest transition" style={{ color: "var(--chat-text-subtle)" }}>
                 Sign out
               </button>
             )}
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[9px] font-mono uppercase tracking-widest text-white/30">Online</span>
+              <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "var(--chat-text-subtle)" }}>Online</span>
             </div>
             <button onClick={() => setOpen(false)}
-              className="ml-1 w-6 h-6 flex items-center justify-center text-white/30 hover:text-white transition">
+              className="ml-1 w-6 h-6 flex items-center justify-center transition" style={{ color: "var(--chat-text-subtle)" }}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                 <path d="M2 2l8 8M10 2l-8 8"/>
               </svg>
@@ -379,8 +379,8 @@ export function AiChat() {
           <div className="px-4 pb-3 flex flex-wrap gap-1.5 shrink-0">
             {SUGGESTED.map((s) => (
               <button key={s} onClick={() => send(s)}
-                className="text-[10.5px] font-mono px-2.5 py-1.5 border border-white/12 text-white/50
-                  hover:border-[#ff5100]/60 hover:text-white/80 transition rounded-sm">
+                className="text-[10.5px] font-mono px-2.5 py-1.5 transition rounded-sm"
+                style={{ border: "1px solid var(--chat-chip-border)", color: "var(--chat-chip-text)" }}>
                 {s}
               </button>
             ))}
@@ -391,7 +391,7 @@ export function AiChat() {
         {showLoginWall && !user ? (
           <LoginWall />
         ) : outOfCredits ? null : (
-          <div className="px-3 py-3 flex gap-2 shrink-0" style={{ backgroundColor: "#0d0d0e", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="px-3 py-3 flex gap-2 shrink-0" style={{ backgroundColor: "var(--chat-bg)", borderTop: "1px solid var(--chat-inner-border)" }}>
             <input
               ref={inputRef}
               value={input}
@@ -400,7 +400,7 @@ export function AiChat() {
               placeholder="Ask about SEZs, permits, costs…"
               disabled={streaming}
               className="flex-1 text-[12.5px] px-3 py-2 outline-none transition disabled:opacity-50"
-              style={{ borderRadius: 6, backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
+              style={{ borderRadius: 6, backgroundColor: "var(--chat-input-bg)", border: "1px solid var(--chat-input-border)", color: "var(--chat-text)" }}
             />
             <button
               onClick={() => send()}
