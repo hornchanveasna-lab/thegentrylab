@@ -147,17 +147,17 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               )}
             </div>
           ) : (
-            <button
-              onClick={signInWithGoogle}
+            <Link
+              to="/login"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full nav-toggle-btn font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary transition-all"
-              aria-label="Sign in with Google"
+              aria-label="Sign in"
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
               </svg>
               Sign in
-            </button>
+            </Link>
           )}
 
           {/* Theme toggle */}
@@ -266,14 +266,14 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               </button>
             </div>
           ) : (
-            <button onClick={() => { signInWithGoogle(); setMobileOpen(false); }}
+            <Link to="/login" onClick={() => setMobileOpen(false)}
               className="mt-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary transition-colors">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
               </svg>
-              Sign in with Google
-            </button>
+              Sign in
+            </Link>
           )}
         </div>
       )}
