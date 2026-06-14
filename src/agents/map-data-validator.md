@@ -50,30 +50,59 @@ For ❌ sites: write corrected lat/lng + add comment `// Coord verified {DATE} v
 For each site where `image_url` is undefined or empty:
 
 ### 3a. Search for news coverage
-Query each of these sources:
+
+Work through sources in **tier order** — stop as soon as a valid image is found for each site.
+
+**Tier 1 — Cambodia-specialist (highest hit rate):**
 ```
-khmertimeskh.com: "{site.name}" Cambodia
-phnompenhpost.com: "{site.name}" Cambodia
-cambodiainvestmentreview.com: "{site.name}"
-asia.nikkei.com: "{site.name}" Cambodia
 thebettercambodia.com: "{site.name}"
-cambodianess.com: "{site.name}"
+cambodiainvestmentreview.com: "{site.name}"
+phnompenhpost.com: "{site.name}" Cambodia
 ```
+
+**Tier 2 — Regional English-language media:**
+```
+asia.nikkei.com: "{site.name}" Cambodia
+aseanbriefing.com: "{site.name}" Cambodia
+bangkokpost.com: "{site.name}" Cambodia
+reuters.com: "{site.name}" Cambodia
+```
+
+**Tier 3 — Trade & investment sources:**
+```
+investasean.com: "{site.name}" Cambodia
+jetro.go.jp: "{site.name}" Cambodia
+china-briefing.com: "{site.name}" Cambodia
+vietnam-briefing.com: "{site.name}" Cambodia
+```
+
+**Tier 4 — General web search fallback:**
+```
+WebSearch: site:thebettercambodia.com OR site:phnompenhpost.com OR site:reuters.com "{site.name}" Cambodia
+WebSearch: "{site.name}" Cambodia factory OR SEZ OR port OR airport photo
+```
+
+> **Skip known-blocked sources:** `khmertimeskh.com` and `cambodianess.com` both return HTTP 403
+> on automated fetches — do not attempt these.
 
 For each article found:
 1. WebFetch the article URL
 2. Extract `<meta property="og:image" content="...">` — this is the article hero photo
-3. Verify the URL ends in .jpg/.jpeg/.png/.webp OR is a CDN URL (wp-content, cloudfront, etc.)
-4. Test: URL must be publicly accessible (no auth redirect)
+3. Verify the URL ends in .jpg/.jpeg/.png/.webp OR is a CDN URL (wp-content, cloudfront, imgix, etc.)
+4. Confirm URL is publicly accessible (no auth redirect, no login wall)
 
 ### 3b. Official site images
-If no news image found, try the official developer/operator website:
+If no news image found after all tiers, try the official developer/operator website:
 - PPSEZ: `https://www.ppsez.com.kh/en/`
 - SSEZ: `http://www.ssez.com/en/`
 - WHA: `https://www.wha-industrialestate.com/en/cambodia`
 - Techo Airport: `https://techo-airport.gov.kh/`
 - SAP Port: `https://www.sihanoukvilleport.com.kh/`
-- For factories: company investor-relations page
+- Siem Reap Airport: `https://siemreapairport.com/`
+- ITC: `https://itc.edu.kh/`
+- RUPP: `https://www.rupp.edu.kh/`
+- NPIC: `https://www.npic.edu.kh/`
+- For factories: search `{company name} investor relations Cambodia` — look for press release with photo
 
 Extract `<meta property="og:image">` from the fetched page.
 
