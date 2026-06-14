@@ -173,15 +173,15 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
             style={{ backgroundColor: getAccent(item.sector), color: "#000" }}>
             {item.sector}
           </span>
-          <span className="font-mono text-[11px] uppercase tracking-widest text-white/50">{item.province}</span>
-          <span className="ml-auto font-mono text-[10px] text-white/30">{item.date}</span>
+          <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.55)" }}>{item.province}</span>
+          <span className="ml-auto font-mono text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{item.date}</span>
         </div>
 
         <h2 className="font-extrabold uppercase tracking-tighter leading-[0.95]"
           style={{ fontSize: "clamp(1.4rem, 3.5vw, 2.4rem)", maxWidth: "68%", color: "#ffffff" }}>
           {item.headline}
         </h2>
-        <p className="text-white/60 text-sm mt-3 leading-relaxed max-w-xl line-clamp-2">{item.summary}</p>
+        <p className="text-sm mt-3 leading-relaxed max-w-xl line-clamp-2" style={{ color: "rgba(255,255,255,0.60)" }}>{item.summary}</p>
 
         <div className="flex items-center gap-3 mt-5">
           <a {...linkProps(item.url)} className="inline-flex items-center gap-2 px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest hover:brightness-110 transition shrink-0 font-bold"
@@ -189,7 +189,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
             Read more
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1 5.5h9M6.5 2l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </a>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-white/30">Source · {item.source}</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>Source · {item.source}</span>
         </div>
       </div>
 
