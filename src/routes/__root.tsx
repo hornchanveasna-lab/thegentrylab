@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { AiChat } from "@/components/site/AiChat";
+import { AuthProvider } from "@/lib/auth";
 
 declare global {
   function gtag(...args: unknown[]): void;
@@ -93,9 +94,11 @@ function RootComponent() {
   }, [pathname]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <AiChat />
-    </QueryClientProvider>
+    <AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <AiChat />
+      </QueryClientProvider>
+    </AuthProvider>
   );
 }

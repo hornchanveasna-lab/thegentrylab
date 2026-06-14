@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/lib/supabase";
 
 /* ── Types ────────────────────────────────────────────────── */
 interface Message {
@@ -11,6 +13,26 @@ interface Message {
 /* ── Helpers ──────────────────────────────────────────────── */
 const uid = () => Math.random().toString(36).slice(2, 9);
 
+const ANON_LIMIT  = 5;
+const STORAGE_KEY = "tgl_anon";
+
+function getAnonCount(): number {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}").count ?? 0; }
+  catch { return 0; }
+}
+function incAnonCount() {
+  const count = getAnonCount() + 1;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ count }));
+  return count;
+}
+
+/* Browser-session ID for chat history grouping */
+function getSessionId(): string {
+  let sid = sessionStorage.getItem("tgl_sid");
+  if (!sid) { sid = uid() + uid(); sessionStorage.setItem("tgl_sid", sid); }
+  return sid;
+}
+
 const SUGGESTED: string[] = [
   "What SEZs are near Phnom Penh?",
   "How long does a QIP permit take?",
@@ -20,7 +42,6 @@ const SUGGESTED: string[] = [
 
 /* ── Simple markdown-lite renderer ───────────────────────── */
 function MdText({ text }: { text: string }) {
-  // Bold **text**, inline code `code`, line breaks
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\n)/g);
   return (
     <>
@@ -71,59 +92,139 @@ function ChatBubble({ msg }: { msg: Message }) {
   );
 }
 
+/* ── Google sign-in wall ──────────────────────────────────── */
+function LoginWall({ onSignIn }: { onSignIn: () => void }) {
+  return (
+    <div className="border-t border-white/8 px-4 py-5 flex flex-col items-center gap-3 shrink-0 bg-[#0d0d0e]">
+      <p className="text-[11.5px] text-white/60 text-center leading-relaxed">
+        You've used your <span className="text-white font-semibold">5 free questions</span>.<br />
+        Sign in to continue — 20 questions per day, free.
+      </p>
+      <button
+        onClick={onSignIn}
+        className="flex items-center gap-2.5 px-4 py-2.5 bg-white text-[#1a1a1a] text-[12.5px] font-semibold
+          rounded-md hover:bg-white/90 transition w-full justify-center"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Continue with Google
+      </button>
+    </div>
+  );
+}
+
 /* ── Main widget ──────────────────────────────────────────── */
 export function AiChat() {
-  const [open, setOpen]       = useState(false);
+  const { user, session, signInWithGoogle, signOut } = useAuth();
+
+  const [open, setOpen]         = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput]     = useState("");
+  const [input, setInput]       = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [unread, setUnread]   = useState(false);
-  const [greeted, setGreeted] = useState(false);
+  const [unread, setUnread]     = useState(false);
+  const [greeted, setGreeted]   = useState(false);
+  const [showLoginWall, setShowLoginWall] = useState(false);
+  const [dailyLimitHit, setDailyLimitHit] = useState(false);
+
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
 
-  /* Auto-scroll to bottom on new messages */
+  /* Auto-scroll */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* Focus input when opened */
+  /* On open: greet + load history if logged in */
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 150);
-      setUnread(false);
-      if (!greeted) {
-        setGreeted(true);
-        setMessages([{
-          id: uid(),
-          role: "assistant",
-          content: "Hi! I'm GentryBot — your Cambodia industrial intelligence assistant.\n\nAsk me anything about SEZs, factory costs, permits, or sector opportunities.",
-        }]);
-      }
+    if (!open) return;
+    setTimeout(() => inputRef.current?.focus(), 150);
+    setUnread(false);
+
+    if (!greeted) {
+      setGreeted(true);
+      setMessages([{
+        id: uid(), role: "assistant",
+        content: "Hi! I'm GentryBot — your Cambodia industrial intelligence assistant.\n\nAsk me anything about SEZs, factory costs, permits, or sector opportunities.",
+      }]);
     }
   }, [open]);
+
+  /* Load chat history when user logs in */
+  useEffect(() => {
+    if (!user || !supabase) return;
+    setShowLoginWall(false);
+    setDailyLimitHit(false);
+
+    supabase
+      .from("chat_messages")
+      .select("role, content, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (!data?.length) return;
+        const history: Message[] = data
+          .reverse()
+          .map((r) => ({ id: uid(), role: r.role as "user" | "assistant", content: r.content }));
+        setMessages((prev) => {
+          /* Keep greeting, append history after it */
+          const greeting = prev.find((m) => m.role === "assistant");
+          return greeting ? [greeting, ...history] : history;
+        });
+      });
+  }, [user]);
+
+  /* Save a pair of messages to Supabase */
+  async function saveMessages(userContent: string, assistantContent: string) {
+    if (!user || !supabase) return;
+    const sessionId = getSessionId();
+    await supabase.from("chat_messages").insert([
+      { user_id: user.id, session_id: sessionId, role: "user",      content: userContent },
+      { user_id: user.id, session_id: sessionId, role: "assistant", content: assistantContent },
+    ]);
+  }
 
   /* Send a message */
   async function send(text?: string) {
     const content = (text ?? input).trim();
     if (!content || streaming) return;
+
+    /* Anon gate */
+    if (!user) {
+      const count = incAnonCount();
+      if (count > ANON_LIMIT) {
+        setShowLoginWall(true);
+        return;
+      }
+    }
+
     setInput("");
-
-    const userMsg: Message = { id: uid(), role: "user", content };
+    const userMsg: Message     = { id: uid(), role: "user", content };
     const thinkingMsg: Message = { id: uid(), role: "assistant", content: "", pending: true };
-
     setMessages((prev) => [...prev, userMsg, thinkingMsg]);
     setStreaming(true);
 
-    /* Build history for API (exclude the thinking placeholder) */
     const history = [...messages, userMsg].map(({ role, content }) => ({ role, content }));
 
     try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) headers["Authorization"] = `Bearer ${session.access_token}`;
+
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ messages: history }),
       });
+
+      if (res.status === 429) {
+        setDailyLimitHit(true);
+        setMessages((prev) => prev.filter((m) => m.id !== thinkingMsg.id));
+        return;
+      }
 
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
 
@@ -131,7 +232,6 @@ export function AiChat() {
       const decoder = new TextDecoder();
       let accumulated = "";
 
-      /* Replace thinking bubble with streaming text */
       setMessages((prev) =>
         prev.map((m) => m.id === thinkingMsg.id ? { ...m, pending: false, content: "" } : m)
       );
@@ -146,8 +246,11 @@ export function AiChat() {
         );
       }
 
+      /* Persist for logged-in users */
+      if (user) saveMessages(content, accumulated);
+
       if (!open) setUnread(true);
-    } catch (err) {
+    } catch {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === thinkingMsg.id
@@ -165,6 +268,9 @@ export function AiChat() {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
   }
 
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const displayName = (user?.user_metadata?.full_name ?? user?.email ?? "") as string;
+
   /* ── Render ── */
   return (
     <>
@@ -178,37 +284,64 @@ export function AiChat() {
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/8 bg-[#111] shrink-0">
-          <div className="w-8 h-8 rounded-full bg-[#ff5100] flex items-center justify-center">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-              <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
-              <circle cx="9" cy="13" r="1" fill="white" stroke="none"/>
-              <circle cx="15" cy="13" r="1" fill="white" stroke="none"/>
-            </svg>
-          </div>
+          {user && avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-[#ff5100] flex items-center justify-center shrink-0">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
+                <circle cx="9" cy="13" r="1" fill="white" stroke="none"/>
+                <circle cx="15" cy="13" r="1" fill="white" stroke="none"/>
+              </svg>
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-bold text-white leading-none">GentryBot</p>
-            <p className="text-[10px] text-white/40 mt-0.5 font-mono uppercase tracking-widest">Cambodia Industrial AI</p>
+            <p className="text-[13px] font-bold text-white leading-none truncate">
+              {user ? displayName.split(" ")[0] || "GentryBot" : "GentryBot"}
+            </p>
+            <p className="text-[10px] text-white/40 mt-0.5 font-mono uppercase tracking-widest">
+              {user ? "Signed in · 20 questions/day" : "Cambodia Industrial AI"}
+            </p>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[9px] font-mono uppercase tracking-widest text-white/30">Online</span>
+          <div className="flex items-center gap-2">
+            {user && (
+              <button onClick={signOut}
+                className="text-[9px] font-mono uppercase tracking-widest text-white/25 hover:text-white/60 transition">
+                Sign out
+              </button>
+            )}
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-[9px] font-mono uppercase tracking-widest text-white/30">Online</span>
+            </div>
+            <button onClick={() => setOpen(false)}
+              className="ml-1 w-6 h-6 flex items-center justify-center text-white/30 hover:text-white transition">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M2 2l8 8M10 2l-8 8"/>
+              </svg>
+            </button>
           </div>
-          <button onClick={() => setOpen(false)}
-            className="ml-2 w-6 h-6 flex items-center justify-center text-white/30 hover:text-white transition">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M2 2l8 8M10 2l-8 8"/>
-            </svg>
-          </button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 scrollbar-thin">
           {messages.map((m) => <ChatBubble key={m.id} msg={m} />)}
+
+          {/* Daily limit message */}
+          {dailyLimitHit && (
+            <div className="text-center py-2">
+              <p className="text-[11.5px] text-white/40 leading-relaxed">
+                You've reached your <span className="text-white/70 font-semibold">20 daily questions</span>.<br />
+                Come back tomorrow — your limit resets at midnight.
+              </p>
+            </div>
+          )}
+
           <div ref={bottomRef} />
         </div>
 
-        {/* Suggestions (shown before first user message) */}
-        {messages.length <= 1 && (
+        {/* Suggestions */}
+        {messages.length <= 1 && !showLoginWall && (
           <div className="px-4 pb-3 flex flex-wrap gap-1.5 shrink-0">
             {SUGGESTED.map((s) => (
               <button key={s} onClick={() => send(s)}
@@ -220,39 +353,43 @@ export function AiChat() {
           </div>
         )}
 
-        {/* Input */}
-        <div className="border-t border-white/8 px-3 py-3 flex gap-2 shrink-0 bg-[#0d0d0e]">
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKey}
-            placeholder="Ask about SEZs, permits, costs…"
-            disabled={streaming}
-            className="flex-1 bg-white/5 border border-white/10 text-white text-[12.5px] placeholder-white/25
-              px-3 py-2 outline-none focus:border-[#ff5100]/50 transition disabled:opacity-50"
-            style={{ borderRadius: 6 }}
-          />
-          <button
-            onClick={() => send()}
-            disabled={!input.trim() || streaming}
-            className="w-9 h-9 flex items-center justify-center bg-[#ff5100] text-white
-              hover:bg-[#e64a00] transition disabled:opacity-35 disabled:cursor-not-allowed shrink-0"
-            style={{ borderRadius: 6 }}
-          >
-            {streaming ? (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-              </svg>
-            ) : (
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12.5 7H1.5M8.5 3L12.5 7l-4 4"/>
-              </svg>
-            )}
-          </button>
-        </div>
+        {/* Login wall OR input */}
+        {showLoginWall && !user ? (
+          <LoginWall onSignIn={signInWithGoogle} />
+        ) : dailyLimitHit ? null : (
+          <div className="border-t border-white/8 px-3 py-3 flex gap-2 shrink-0 bg-[#0d0d0e]">
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder="Ask about SEZs, permits, costs…"
+              disabled={streaming}
+              className="flex-1 bg-white/5 border border-white/10 text-white text-[12.5px] placeholder-white/25
+                px-3 py-2 outline-none focus:border-[#ff5100]/50 transition disabled:opacity-50"
+              style={{ borderRadius: 6 }}
+            />
+            <button
+              onClick={() => send()}
+              disabled={!input.trim() || streaming}
+              className="w-9 h-9 flex items-center justify-center bg-[#ff5100] text-white
+                hover:bg-[#e64a00] transition disabled:opacity-35 disabled:cursor-not-allowed shrink-0"
+              style={{ borderRadius: 6 }}
+            >
+              {streaming ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12.5 7H1.5M8.5 3L12.5 7l-4 4"/>
+                </svg>
+              )}
+            </button>
+          </div>
+        )}
 
-        {/* Powered-by footer */}
+        {/* Footer */}
         <div className="px-4 py-1.5 border-t border-white/5 text-center shrink-0">
           <span className="font-mono text-[9px] uppercase tracking-widest text-white/18">
             Powered by Claude AI · TheGentryLab
@@ -268,11 +405,9 @@ export function AiChat() {
           ${open ? "bg-[#1a1a1b] border border-white/15" : "bg-[#ff5100] hover:bg-[#e64a00] hover:scale-105"}`}
         aria-label="Open GentryBot chat"
       >
-        {/* Unread badge */}
         {unread && !open && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-[#0a0a0b]" />
         )}
-
         {open ? (
           <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round">
             <path d="M3 3l12 12M15 3L3 15"/>

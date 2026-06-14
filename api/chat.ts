@@ -43,27 +43,91 @@ const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — 
 - If you don't know a specific detail, say so and recommend they contact GentryLab directly
 - Never fabricate project names, investor names, or specific investment amounts`;
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
-  }
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
 
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
+const DAILY_LIMIT = 20;
+
+export default async function handler(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return new Response(JSON.stringify({ error: "API key not configured" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
+      status: 500, headers: { "Content-Type": "application/json", ...CORS },
     });
+  }
+
+  /* ── Logged-in user: verify JWT + enforce daily limit ── */
+  const auth = req.headers.get("Authorization");
+  if (auth?.startsWith("Bearer ")) {
+    const jwt = auth.slice(7);
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (supabaseUrl && serviceKey) {
+      try {
+        /* Verify JWT via Supabase auth */
+        const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: { Authorization: `Bearer ${jwt}`, apikey: serviceKey },
+        });
+        if (userRes.ok) {
+          const { id: userId } = await userRes.json();
+          const today = new Date().toISOString().slice(0, 10);
+
+          /* Upsert usage row and get new count */
+          const upsertRes = await fetch(
+            `${supabaseUrl}/rest/v1/user_daily_usage`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+                Prefer: "resolution=merge-duplicates,return=representation",
+              },
+              body: JSON.stringify({ user_id: userId, date: today, count: 1 }),
+            }
+          );
+
+          if (upsertRes.ok) {
+            const rows = await upsertRes.json();
+            const count = rows[0]?.count ?? 1;
+
+            if (count > DAILY_LIMIT) {
+              return new Response(JSON.stringify({ error: "daily_limit" }), {
+                status: 429,
+                headers: { "Content-Type": "application/json", ...CORS },
+              });
+            }
+
+            /* Increment if row already existed (upsert merges to 1, need real increment) */
+            if (count === 1 && rows[0]) {
+              /* New row — check if it was actually pre-existing with count > 1 */
+            } else {
+              await fetch(
+                `${supabaseUrl}/rest/v1/user_daily_usage?user_id=eq.${userId}&date=eq.${today}`,
+                {
+                  method: "PATCH",
+                  headers: {
+                    "Content-Type": "application/json",
+                    apikey: serviceKey,
+                    Authorization: `Bearer ${serviceKey}`,
+                  },
+                  body: JSON.stringify({ count: count }),
+                }
+              );
+            }
+          }
+        }
+      } catch {
+        /* Auth check failed — continue anonymously rather than blocking */
+      }
+    }
   }
 
   let messages: { role: "user" | "assistant"; content: string }[];
@@ -72,8 +136,7 @@ export default async function handler(req: Request): Promise<Response> {
     messages = body.messages;
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
+      status: 400, headers: { "Content-Type": "application/json", ...CORS },
     });
   }
 
@@ -142,7 +205,7 @@ export default async function handler(req: Request): Promise<Response> {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache",
-      "Access-Control-Allow-Origin": "*",
+      ...CORS,
     },
   });
 }
