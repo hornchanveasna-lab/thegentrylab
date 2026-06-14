@@ -12,7 +12,10 @@ function AuthStart() {
     supabase.auth
       .signInWithOAuth({
         provider: "google",
-        options: { redirectTo: `${window.location.origin}/auth/callback` },
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: { prompt: "select_account" },
+        },
       })
       .then(({ data }) => {
         if (data?.url) window.location.href = data.url;
