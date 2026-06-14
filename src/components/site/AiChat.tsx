@@ -126,7 +126,7 @@ export function AiChat() {
   const [input, setInput]       = useState("");
   const [streaming, setStreaming] = useState(false);
   const [unread, setUnread]     = useState(false);
-  const [greeted, setGreeted]   = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [showLoginWall, setShowLoginWall] = useState(false);
   const [dailyLimitHit, setDailyLimitHit] = useState(false);
 
@@ -138,19 +138,18 @@ export function AiChat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  /* On open: greet + load history if logged in */
+  const GREETING: Message = {
+    id: "greeting",
+    role: "assistant",
+    content: "Hi! I'm GentryBot — your Cambodia industrial intelligence assistant.\n\nAsk me anything about SEZs, factory costs, permits, or sector opportunities.",
+  };
+
+  /* On open: show greeting only if no messages yet */
   useEffect(() => {
     if (!open) return;
     setTimeout(() => inputRef.current?.focus(), 150);
     setUnread(false);
-
-    if (!greeted) {
-      setGreeted(true);
-      setMessages([{
-        id: uid(), role: "assistant",
-        content: "Hi! I'm GentryBot — your Cambodia industrial intelligence assistant.\n\nAsk me anything about SEZs, factory costs, permits, or sector opportunities.",
-      }]);
-    }
+    setMessages((prev) => prev.length === 0 ? [GREETING] : prev);
   }, [open]);
 
   /* Load chat history when user logs in */
@@ -164,17 +163,14 @@ export function AiChat() {
       .select("role, content, created_at")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(20)
+      .limit(40)
       .then(({ data }) => {
+        setHistoryLoaded(true);
         if (!data?.length) return;
         const history: Message[] = data
           .reverse()
           .map((r) => ({ id: uid(), role: r.role as "user" | "assistant", content: r.content }));
-        setMessages((prev) => {
-          /* Keep greeting, append history after it */
-          const greeting = prev.find((m) => m.role === "assistant");
-          return greeting ? [greeting, ...history] : history;
-        });
+        setMessages(history);
       });
   }, [user]);
 
