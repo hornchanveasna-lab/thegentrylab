@@ -11,16 +11,16 @@ const BENEFITS = [
   {
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
       </svg>
     ),
-    title: "20 AI credits per day",
-    desc: "Ask GentryBot about SEZs, permits, factory costs, and investment zones — 20 credits daily, free.",
+    title: "100 AI credits per day",
+    desc: "Ask GentryBot anything about Cambodia's industrial landscape — 100 credits daily, completely free.",
   },
   {
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     ),
     title: "Chat history saved",
@@ -33,16 +33,16 @@ const BENEFITS = [
       </svg>
     ),
     title: "Save favourite sites",
-    desc: "Bookmark industrial zones and projects from the map. Coming soon.",
+    desc: "Bookmark industrial zones and projects from the map for quick access. Coming soon.",
   },
   {
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
       </svg>
     ),
     title: "Project watchlist",
-    desc: "Track active investments and get notified on status changes. Coming soon.",
+    desc: "Track active investments and get alerts on status changes. Coming soon.",
   },
 ];
 
@@ -50,47 +50,71 @@ export default function LoginPage() {
   const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) navigate({ to: "/" });
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0b] flex flex-col relative overflow-hidden">
+
+      {/* Background accent lines */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] opacity-[0.03]"
+          style={{ background: "radial-gradient(circle at 80% 20%, #ff5100, transparent 60%)" }} />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] opacity-[0.03]"
+          style={{ background: "radial-gradient(circle at 20% 80%, #ff5100, transparent 60%)" }} />
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-white/[0.04]" />
+      </div>
+
       {/* Top bar */}
-      <div className="px-6 py-5">
+      <div className="relative px-6 py-5 flex items-center justify-between">
         <a href="/" className="inline-flex items-center gap-3 group">
-          <GentryMark color="#ff5100" size={28} />
+          <GentryMark color="#ff5100" size={30} className="transition group-hover:drop-shadow-[0_0_8px_rgba(255,81,0,0.6)]" />
           <div className="leading-none">
-            <p className="font-extrabold text-[9px] uppercase tracking-[0.18em] text-white/40">The</p>
-            <p className="font-extrabold text-[13px] uppercase tracking-tight text-white">Gentry Lab</p>
+            <p className="font-extrabold text-[8px] uppercase tracking-[0.22em] text-white/35">The</p>
+            <p className="font-extrabold text-[14px] uppercase tracking-tight text-white leading-tight">Gentry Lab</p>
+            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight text-[#ff5100]">IO</p>
           </div>
+        </a>
+        <a href="/" className="font-mono text-[10px] uppercase tracking-widest text-white/25 hover:text-white/50 transition">
+          ← Back
         </a>
       </div>
 
       {/* Main */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-md">
+      <div className="relative flex-1 flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-[420px]">
 
-          {/* Headline */}
-          <div className="mb-10 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#ff5100] mb-3">
+          {/* Headline block */}
+          <div className="mb-8 text-center">
+            <span className="inline-block font-mono text-[9px] uppercase tracking-[0.25em] text-[#ff5100] border border-[#ff5100]/30 px-3 py-1 rounded-full mb-5">
               Cambodia Industrial Intelligence
-            </p>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight leading-snug">
-              Sign in to<br />TheGentryLab
+            </span>
+            <h1 className="text-[32px] font-extrabold text-white tracking-tight leading-tight">
+              Your free platform<br />for industrial Cambodia
             </h1>
-            <p className="mt-3 text-[13px] text-white/45 leading-relaxed">
-              Free access to Cambodia's industrial intelligence platform —<br className="hidden sm:block" />
-              SEZ maps, project tracker, AI research assistant.
+            <p className="mt-3 text-[13px] text-white/40 leading-relaxed max-w-sm mx-auto">
+              110+ sites mapped · AI research assistant · Live project tracker
+            </p>
+          </div>
+
+          {/* Credit highlight */}
+          <div className="mb-6 flex items-center justify-center gap-3 bg-[#ff5100]/8 border border-[#ff5100]/20 rounded-xl px-5 py-4">
+            <div className="text-center">
+              <p className="text-[36px] font-extrabold text-[#ff5100] leading-none">100</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-[#ff5100]/70 mt-1">Credits / Day</p>
+            </div>
+            <div className="w-px h-10 bg-white/10" />
+            <p className="text-[12px] text-white/50 leading-relaxed">
+              Ask GentryBot 100 questions daily about SEZs, permits, costs, and opportunities — free.
             </p>
           </div>
 
           {/* Google button */}
           <button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white text-[#1a1a1a]
-              text-[14px] font-semibold rounded-lg hover:bg-white/90 active:scale-[0.98] transition-all shadow-lg"
+            className="w-full flex items-center justify-center gap-3 px-5 py-4 bg-white text-[#1a1a1a]
+              text-[14px] font-bold rounded-xl hover:bg-white/92 active:scale-[0.98] transition-all shadow-xl"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -101,40 +125,37 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          {/* Trust note */}
-          <p className="mt-3 text-center text-[11px] text-white/25 leading-relaxed">
-            We only use your name and email to identify you.<br />
-            No password stored. No spam.
+          <p className="mt-3 text-center text-[11px] text-white/20 leading-relaxed">
+            Your name and email only. No password. No spam. Free forever.
           </p>
 
           {/* Divider */}
-          <div className="my-8 flex items-center gap-3">
-            <div className="flex-1 h-px bg-white/8" />
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/20">What you get</span>
-            <div className="flex-1 h-px bg-white/8" />
+          <div className="my-7 flex items-center gap-3">
+            <div className="flex-1 h-px bg-white/6" />
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/15">Everything included</span>
+            <div className="flex-1 h-px bg-white/6" />
           </div>
 
-          {/* Benefits */}
-          <div className="space-y-4">
+          {/* Benefits grid */}
+          <div className="grid grid-cols-2 gap-3">
             {BENEFITS.map((b) => (
-              <div key={b.title} className="flex items-start gap-4">
-                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/8 flex items-center justify-center shrink-0 text-[#ff5100]">
+              <div key={b.title}
+                className="flex flex-col gap-2.5 p-3.5 rounded-xl bg-white/[0.03] border border-white/6 hover:border-white/12 transition">
+                <div className="w-8 h-8 rounded-lg bg-[#ff5100]/10 flex items-center justify-center text-[#ff5100] shrink-0">
                   {b.icon}
                 </div>
                 <div>
-                  <p className="text-[13px] font-semibold text-white">{b.title}</p>
-                  <p className="text-[11.5px] text-white/40 mt-0.5 leading-relaxed">{b.desc}</p>
+                  <p className="text-[12px] font-semibold text-white leading-snug">{b.title}</p>
+                  <p className="text-[10.5px] text-white/35 mt-1 leading-relaxed">{b.desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Back link */}
-          <div className="mt-10 text-center">
-            <a href="/" className="font-mono text-[10px] uppercase tracking-widest text-white/25 hover:text-white/50 transition">
-              ← Back to platform
-            </a>
-          </div>
+          {/* Footer note */}
+          <p className="mt-8 text-center text-[10px] text-white/15 font-mono uppercase tracking-widest">
+            © 2026 The Gentry Lab · Phnom Penh
+          </p>
         </div>
       </div>
     </div>
