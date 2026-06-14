@@ -13,15 +13,16 @@ interface Message {
 /* ── Helpers ──────────────────────────────────────────────── */
 const uid = () => Math.random().toString(36).slice(2, 9);
 
-const ANON_LIMIT  = 5;
-const STORAGE_KEY = "tgl_anon";
+const ANON_CREDITS  = 5;
+const DAILY_CREDITS = 20;
+const STORAGE_KEY   = "tgl_anon";
 
-function getAnonCount(): number {
+function getAnonUsed(): number {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}").count ?? 0; }
   catch { return 0; }
 }
-function incAnonCount() {
-  const count = getAnonCount() + 1;
+function incAnonUsed() {
+  const count = getAnonUsed() + 1;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ count }));
   return count;
 }
@@ -97,8 +98,8 @@ function LoginWall() {
   return (
     <div className="border-t border-white/8 px-4 py-5 flex flex-col items-center gap-3 shrink-0 bg-[#0d0d0e]">
       <p className="text-[11.5px] text-white/60 text-center leading-relaxed">
-        You've used your <span className="text-white font-semibold">5 free questions</span>.<br />
-        Sign in to continue — 20 questions per day, free.
+        You've used your <span className="text-white font-semibold">5 free credits</span>.<br />
+        Sign in to continue — 20 credits per day, free.
       </p>
       <a
         href="/login"
@@ -121,14 +122,15 @@ function LoginWall() {
 export function AiChat() {
   const { user, session, signInWithGoogle, signOut } = useAuth();
 
-  const [open, setOpen]         = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput]       = useState("");
+  const [open, setOpen]           = useState(false);
+  const [messages, setMessages]   = useState<Message[]>([]);
+  const [input, setInput]         = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [unread, setUnread]     = useState(false);
-  const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [showLoginWall, setShowLoginWall] = useState(false);
-  const [dailyLimitHit, setDailyLimitHit] = useState(false);
+  const [unread, setUnread]       = useState(false);
+  const [historyLoaded, setHistoryLoaded]   = useState(false);
+  const [showLoginWall, setShowLoginWall]   = useState(false);
+  const [creditsUsed, setCreditsUsed]       = useState(0);   // for logged-in daily tracking
+  const [outOfCredits, setOutOfCredits]     = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
@@ -152,11 +154,27 @@ export function AiChat() {
     setMessages((prev) => prev.length === 0 ? [GREETING] : prev);
   }, [open]);
 
-  /* Load chat history when user logs in */
+  /* Load today's credit usage when user logs in */
   useEffect(() => {
     if (!user || !supabase) return;
     setShowLoginWall(false);
-    setDailyLimitHit(false);
+    setOutOfCredits(false);
+
+    const today = new Date().toISOString().slice(0, 10);
+    supabase
+      .from("user_daily_usage")
+      .select("count")
+      .eq("user_id", user.id)
+      .eq("date", today)
+      .single()
+      .then(({ data }) => {
+        setCreditsUsed(data?.count ?? 0);
+      });
+  }, [user]);
+
+  /* Load chat history when user logs in */
+  useEffect(() => {
+    if (!user || !supabase) return;
 
     supabase
       .from("chat_messages")
@@ -189,13 +207,19 @@ export function AiChat() {
     const content = (text ?? input).trim();
     if (!content || streaming) return;
 
-    /* Anon gate */
+    /* Anon credit gate */
     if (!user) {
-      const count = incAnonCount();
-      if (count > ANON_LIMIT) {
+      const used = incAnonUsed();
+      if (used > ANON_CREDITS) {
         setShowLoginWall(true);
         return;
       }
+    }
+
+    /* Logged-in credit gate */
+    if (user && creditsUsed >= DAILY_CREDITS) {
+      setOutOfCredits(true);
+      return;
     }
 
     setInput("");
@@ -217,7 +241,7 @@ export function AiChat() {
       });
 
       if (res.status === 429) {
-        setDailyLimitHit(true);
+        setOutOfCredits(true);
         setMessages((prev) => prev.filter((m) => m.id !== thinkingMsg.id));
         return;
       }
@@ -242,8 +266,11 @@ export function AiChat() {
         );
       }
 
-      /* Persist for logged-in users */
-      if (user) saveMessages(content, accumulated);
+      /* Persist + update credit count for logged-in users */
+      if (user) {
+        saveMessages(content, accumulated);
+        setCreditsUsed((c) => c + 1);
+      }
 
       if (!open) setUnread(true);
     } catch {
@@ -296,7 +323,9 @@ export function AiChat() {
               {user ? displayName.split(" ")[0] || "GentryBot" : "GentryBot"}
             </p>
             <p className="text-[10px] text-white/40 mt-0.5 font-mono uppercase tracking-widest">
-              {user ? "Signed in · 20 questions/day" : "Cambodia Industrial AI"}
+              {user
+                ? `${DAILY_CREDITS - creditsUsed} credits remaining`
+                : "Cambodia Industrial AI"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -323,13 +352,18 @@ export function AiChat() {
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3.5 scrollbar-thin">
           {messages.map((m) => <ChatBubble key={m.id} msg={m} />)}
 
-          {/* Daily limit message */}
-          {dailyLimitHit && (
-            <div className="text-center py-2">
-              <p className="text-[11.5px] text-white/40 leading-relaxed">
-                You've reached your <span className="text-white/70 font-semibold">20 daily questions</span>.<br />
-                Come back tomorrow — your limit resets at midnight.
-              </p>
+          {/* Out of credits message */}
+          {outOfCredits && (
+            <div className="text-center py-3 px-2">
+              <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-4 py-3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p className="text-[11.5px] text-white/50 leading-relaxed text-left">
+                  <span className="text-white/80 font-semibold">0 credits remaining.</span><br />
+                  {user ? "Resets at midnight." : <a href="/login" className="text-[#ff5100] hover:underline">Sign in for 20 credits/day →</a>}
+                </p>
+              </div>
             </div>
           )}
 
@@ -352,7 +386,7 @@ export function AiChat() {
         {/* Login wall OR input */}
         {showLoginWall && !user ? (
           <LoginWall />
-        ) : dailyLimitHit ? null : (
+        ) : outOfCredits ? null : (
           <div className="border-t border-white/8 px-3 py-3 flex gap-2 shrink-0 bg-[#0d0d0e]">
             <input
               ref={inputRef}

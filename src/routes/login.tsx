@@ -14,8 +14,8 @@ const BENEFITS = [
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
     ),
-    title: "20 AI questions per day",
-    desc: "Ask GentryBot about SEZs, permits, factory costs, and investment zones — 20 questions daily, free.",
+    title: "20 AI credits per day",
+    desc: "Ask GentryBot about SEZs, permits, factory costs, and investment zones — 20 credits daily, free.",
   },
   {
     icon: (
