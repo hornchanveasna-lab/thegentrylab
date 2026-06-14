@@ -135,6 +135,9 @@
 /* ── News card: white bg in light mode for headline contrast */
 [data-theme="light"] .news-card { background-color: #ffffff !important; border-color: rgba(0,0,0,0.08) !important; }
 
+/* ── News hero slider title: always white (sits on dark photo bg) */
+[data-theme="light"] .news-hero-title { color: #ffffff !important; }
+
 /* ── Theme-aware page backgrounds ───────────────────────── */
 [data-theme="light"] .min-h-screen { background-color: var(--background) !important; }
 [data-theme="light"] .bg-\[\#0a0a0b\] { background-color: var(--background) !important; }

@@ -177,7 +177,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
           <span className="ml-auto font-mono text-[10px] text-white/30">{item.date}</span>
         </div>
 
-        <h2 className="font-extrabold uppercase tracking-tighter leading-[0.95] text-white"
+        <h2 className="news-hero-title font-extrabold uppercase tracking-tighter leading-[0.95] text-white"
           style={{ fontSize: "clamp(1.4rem, 3.5vw, 2.4rem)", maxWidth: "68%" }}>
           {item.headline}
         </h2>
