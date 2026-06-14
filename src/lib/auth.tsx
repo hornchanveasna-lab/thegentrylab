@@ -38,10 +38,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signInWithGoogle() {
     if (!supabase) return;
-    await supabase.auth.signInWithOAuth({
+
+    const { data } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        skipBrowserRedirect: true,
+      },
     });
+
+    if (!data?.url) return;
+
+    const popup = window.open(
+      data.url,
+      "google-signin",
+      "width=500,height=600,left=" +
+        Math.round(window.screenX + (window.outerWidth - 500) / 2) +
+        ",top=" +
+        Math.round(window.screenY + (window.outerHeight - 600) / 2)
+    );
+
+    // Poll until popup closes, then refresh session
+    const timer = setInterval(() => {
+      if (!popup || popup.closed) {
+        clearInterval(timer);
+        supabase!.auth.getSession().then(({ data }) => {
+          setSession(data.session);
+          setUser(data.session?.user ?? null);
+        });
+      }
+    }, 500);
   }
 
   async function signOut() {

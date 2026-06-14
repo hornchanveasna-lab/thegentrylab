@@ -15,21 +15,21 @@ function AuthCallback() {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        navigate({ to: "/" });
+    const code = new URLSearchParams(window.location.search).get("code");
+
+    const finish = () => {
+      if (window.opener) {
+        window.close();
       } else {
-        // Exchange code for session (PKCE flow)
-        const code = new URLSearchParams(window.location.search).get("code");
-        if (code) {
-          supabase.auth.exchangeCodeForSession(code).then(() => {
-            navigate({ to: "/" });
-          });
-        } else {
-          navigate({ to: "/" });
-        }
+        navigate({ to: "/" });
       }
-    });
+    };
+
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(finish);
+    } else {
+      supabase.auth.getSession().then(finish);
+    }
   }, [navigate]);
 
   return (
