@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
 import { GentryMark } from "@/components/site/GentryMark";
 import { useLang } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 
 /* ── Dark/light helpers ─────────────────────────────────── */
 function getStoredTheme(): "dark" | "light" {
@@ -16,6 +17,19 @@ function applyTheme(t: "dark" | "light") {
 export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">(getStoredTheme);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const { user, signInWithGoogle, signOut } = useAuth();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Reactive config — subscribes to dashboard saves so changes reflect immediately
   const [cfg, setCfg] = useState<SiteConfig>(() => cfgProp ?? loadConfig());
@@ -90,6 +104,61 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               <span className="absolute bottom-0 left-3 right-3 h-px scale-x-0 group-hover:scale-x-100 transition-transform origin-left" style={{ backgroundColor: accent }} />
             </Link>
           ))}
+
+          {/* Auth — sign in / user menu */}
+          {user ? (
+            <div ref={userMenuRef} className="relative">
+              <button
+                onClick={() => setUserMenuOpen((v) => !v)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-full nav-toggle-btn transition-all"
+                aria-label="User menu"
+              >
+                {user.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt={user.user_metadata?.full_name ?? "User"}
+                    className="w-6 h-6 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center text-[9px] font-bold text-black">
+                    {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
+                  </span>
+                )}
+                <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted max-w-[80px] truncate">
+                  {user.user_metadata?.full_name?.split(" ")[0] ?? "Account"}
+                </span>
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" className="nav-text-muted opacity-50">
+                  <path d="M0 2l4 4 4-4H0z"/>
+                </svg>
+              </button>
+              {userMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 nav-surface border nav-border rounded-lg shadow-xl overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b nav-border">
+                    <p className="font-mono text-[9px] uppercase tracking-widest nav-text-muted">Signed in as</p>
+                    <p className="text-[11px] nav-text-primary font-semibold truncate mt-0.5">{user.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { signOut(); setUserMenuOpen(false); }}
+                    className="w-full text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary hover:bg-white/5 transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={signInWithGoogle}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full nav-toggle-btn font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary transition-all"
+              aria-label="Sign in with Google"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Sign in
+            </button>
+          )}
 
           {/* Theme toggle */}
           <button
@@ -176,6 +245,36 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               {l.label}
             </Link>
           ))}
+          {/* Mobile auth */}
+          {user ? (
+            <div className="pt-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {user.user_metadata?.avatar_url ? (
+                  <img src={user.user_metadata.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                ) : (
+                  <span className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center text-[9px] font-bold text-black">
+                    {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
+                  </span>
+                )}
+                <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted truncate max-w-[140px]">
+                  {user.user_metadata?.full_name ?? user.email}
+                </span>
+              </div>
+              <button onClick={() => { signOut(); setMobileOpen(false); }}
+                className="font-mono text-[10px] uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-colors">
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => { signInWithGoogle(); setMobileOpen(false); }}
+              className="mt-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary transition-colors">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Sign in with Google
+            </button>
+          )}
         </div>
       )}
     </nav>
