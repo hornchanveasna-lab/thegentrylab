@@ -55,15 +55,16 @@ export default function LoginPage() {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] flex flex-col relative overflow-hidden">
+    <div className="min-h-screen flex flex-col relative overflow-hidden"
+      style={{ backgroundColor: "#0a0a0b", color: "#ffffff" }}>
 
-      {/* Background accent lines */}
+      {/* Background accent glows */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] opacity-[0.03]"
-          style={{ background: "radial-gradient(circle at 80% 20%, #ff5100, transparent 60%)" }} />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] opacity-[0.03]"
-          style={{ background: "radial-gradient(circle at 20% 80%, #ff5100, transparent 60%)" }} />
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-white/[0.04]" />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px]"
+          style={{ background: "radial-gradient(circle at 80% 20%, #ff5100, transparent 60%)", opacity: 0.04 }} />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px]"
+          style={{ background: "radial-gradient(circle at 20% 80%, #ff5100, transparent 60%)", opacity: 0.03 }} />
+        <div className="absolute top-1/2 left-0 right-0 h-px" style={{ backgroundColor: "rgba(255,255,255,0.04)" }} />
       </div>
 
       {/* Top bar */}
@@ -71,12 +72,13 @@ export default function LoginPage() {
         <a href="/" className="inline-flex items-center gap-3 group">
           <GentryMark color="#ff5100" size={30} className="transition group-hover:drop-shadow-[0_0_8px_rgba(255,81,0,0.6)]" />
           <div className="leading-none">
-            <p className="font-extrabold text-[8px] uppercase tracking-[0.22em] text-white/35">The</p>
-            <p className="font-extrabold text-[14px] uppercase tracking-tight text-white leading-tight">Gentry Lab</p>
-            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight text-[#ff5100]">IO</p>
+            <p className="font-extrabold text-[8px] uppercase tracking-[0.22em]" style={{ color: "rgba(255,255,255,0.35)" }}>The</p>
+            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight" style={{ color: "#ffffff" }}>Gentry Lab</p>
+            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight" style={{ color: "#ff5100" }}>IO</p>
           </div>
         </a>
-        <a href="/" className="font-mono text-[10px] uppercase tracking-widest text-white/25 hover:text-white/50 transition">
+        <a href="/" className="font-mono text-[10px] uppercase tracking-widest transition"
+          style={{ color: "rgba(255,255,255,0.25)" }}>
           ← Back
         </a>
       </div>
@@ -87,25 +89,27 @@ export default function LoginPage() {
 
           {/* Headline block */}
           <div className="mb-8 text-center">
-            <span className="inline-block font-mono text-[9px] uppercase tracking-[0.25em] text-[#ff5100] border border-[#ff5100]/30 px-3 py-1 rounded-full mb-5">
+            <span className="inline-block font-mono text-[9px] uppercase tracking-[0.25em] px-3 py-1 rounded-full mb-5"
+              style={{ color: "#ff5100", border: "1px solid rgba(255,81,0,0.30)" }}>
               Cambodia Industrial Intelligence
             </span>
-            <h1 className="text-[32px] font-extrabold text-white tracking-tight leading-tight">
+            <h1 className="text-[32px] font-extrabold tracking-tight leading-tight" style={{ color: "#ffffff" }}>
               Your free platform<br />for industrial Cambodia
             </h1>
-            <p className="mt-3 text-[13px] text-white/40 leading-relaxed max-w-sm mx-auto">
+            <p className="mt-3 text-[13px] leading-relaxed max-w-sm mx-auto" style={{ color: "rgba(255,255,255,0.40)" }}>
               110+ sites mapped · AI research assistant · Live project tracker
             </p>
           </div>
 
           {/* Credit highlight */}
-          <div className="mb-6 flex items-center justify-center gap-3 bg-[#ff5100]/8 border border-[#ff5100]/20 rounded-xl px-5 py-4">
+          <div className="mb-6 flex items-center justify-center gap-3 rounded-xl px-5 py-4"
+            style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.20)" }}>
             <div className="text-center">
-              <p className="text-[36px] font-extrabold text-[#ff5100] leading-none">100</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-[#ff5100]/70 mt-1">Credits / Day</p>
+              <p className="text-[36px] font-extrabold leading-none" style={{ color: "#ff5100" }}>100</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,81,0,0.70)" }}>Credits / Day</p>
             </div>
-            <div className="w-px h-10 bg-white/10" />
-            <p className="text-[12px] text-white/50 leading-relaxed">
+            <div className="w-px h-10" style={{ backgroundColor: "rgba(255,255,255,0.10)" }} />
+            <p className="text-[12px] leading-relaxed" style={{ color: "rgba(255,255,255,0.50)" }}>
               Ask GentryBot 100 questions daily about SEZs, permits, costs, and opportunities — free.
             </p>
           </div>
@@ -113,8 +117,8 @@ export default function LoginPage() {
           {/* Google button */}
           <button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 px-5 py-4 bg-white text-[#1a1a1a]
-              text-[14px] font-bold rounded-xl hover:bg-white/92 active:scale-[0.98] transition-all shadow-xl"
+            className="w-full flex items-center justify-center gap-3 px-5 py-4 text-[14px] font-bold rounded-xl active:scale-[0.98] transition-all shadow-xl"
+            style={{ backgroundColor: "#ffffff", color: "#1a1a1a" }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -125,35 +129,36 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <p className="mt-3 text-center text-[11px] text-white/20 leading-relaxed">
+          <p className="mt-3 text-center text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.20)" }}>
             Your name and email only. No password. No spam. Free forever.
           </p>
 
           {/* Divider */}
           <div className="my-7 flex items-center gap-3">
-            <div className="flex-1 h-px bg-white/6" />
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/15">Everything included</span>
-            <div className="flex-1 h-px bg-white/6" />
+            <div className="flex-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
+            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.15)" }}>Everything included</span>
+            <div className="flex-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
           </div>
 
           {/* Benefits grid */}
           <div className="grid grid-cols-2 gap-3">
             {BENEFITS.map((b) => (
-              <div key={b.title}
-                className="flex flex-col gap-2.5 p-3.5 rounded-xl bg-white/[0.03] border border-white/6 hover:border-white/12 transition">
-                <div className="w-8 h-8 rounded-lg bg-[#ff5100]/10 flex items-center justify-center text-[#ff5100] shrink-0">
+              <div key={b.title} className="flex flex-col gap-2.5 p-3.5 rounded-xl transition"
+                style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: "rgba(255,81,0,0.10)", color: "#ff5100" }}>
                   {b.icon}
                 </div>
                 <div>
-                  <p className="text-[12px] font-semibold text-white leading-snug">{b.title}</p>
-                  <p className="text-[10.5px] text-white/35 mt-1 leading-relaxed">{b.desc}</p>
+                  <p className="text-[12px] font-semibold leading-snug" style={{ color: "#ffffff" }}>{b.title}</p>
+                  <p className="text-[10.5px] mt-1 leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>{b.desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Footer note */}
-          <p className="mt-8 text-center text-[10px] text-white/15 font-mono uppercase tracking-widest">
+          <p className="mt-8 text-center text-[10px] font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.15)" }}>
             © 2026 The Gentry Lab · Phnom Penh
           </p>
         </div>
