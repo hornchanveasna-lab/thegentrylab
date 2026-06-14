@@ -147,7 +147,7 @@ function FeaturedSlider({ items }: { items: typeof NEWS }) {
 
   return (
     <div
-      className="relative overflow-hidden"
+      className="relative overflow-hidden text-white"
       style={{ height: "min(520px, 55vw)", minHeight: 320 }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
