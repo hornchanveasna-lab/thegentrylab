@@ -391,7 +391,10 @@
 /* ── Advisor print report ──────────────────────────────── */
 /* Font: DM Sans — loaded via Google Fonts in index.html   */
 .advisor-screen { display: block; }
+/* advisor-print is shown via React state (isPrinting) — not just @media print.
+   This makes Save as PDF work on Android mobile where @media print is unreliable. */
 .advisor-print  { display: none; }
+.advisor-print-wrapper .advisor-print { display: block; }
 
 /* ── Print component base styles (always on, scoped) ── */
 /* CSS table trick: thead/tfoot repeat on every printed page.

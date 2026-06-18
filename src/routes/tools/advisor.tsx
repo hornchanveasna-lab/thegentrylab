@@ -2995,17 +2995,31 @@ export default function AdvisorPage() {
     if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
   }, [output]);
 
-  // Only mount PrintReport DOM when actually printing — avoids heavy hidden DOM degrading scroll perf
+  // Print flow — works on desktop and Android mobile
   useEffect(() => {
     if (!isPrinting || !selectedBrief || !output) return;
     const timer = setTimeout(() => {
       const prev = document.title;
       const slug = selectedBrief.title.replace(/[^a-zA-Z0-9 \-–—]/g, "").replace(/\s+/g, "_").slice(0, 80);
       document.title = `TGL_${slug}_${new Date().toISOString().slice(0, 10)}`;
+
+      const cleanup = () => {
+        document.title = prev;
+        setIsPrinting(false);
+      };
+
+      // afterprint fires on desktop + modern Android; fallback timeout for older mobile
+      window.addEventListener("afterprint", cleanup, { once: true });
+      const fallback = setTimeout(() => {
+        window.removeEventListener("afterprint", cleanup);
+        cleanup();
+      }, 8000);
+
       window.print();
-      document.title = prev;
-      setIsPrinting(false);
-    }, 600); // allow images to start loading
+
+      // If afterprint fired synchronously (some browsers), cancel fallback
+      clearTimeout(fallback);
+    }, 800); // slightly longer delay so images start loading on mobile
     return () => clearTimeout(timer);
   }, [isPrinting]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -3448,22 +3462,24 @@ export default function AdvisorPage() {
   /* ── Render ── */
   return (
     <>
-      {/* Print report — only mounted during print, never in normal DOM */}
+      {/* Print report — mounted + made visible via state so @media print not required on mobile */}
       {isPrinting && selectedBrief && output && (
-        <PrintReport
-          brief={selectedBrief}
-          form={form}
-          output={output}
-          savedBriefId={savedBriefId}
-          generatedAt={generatedAt}
-          chartData={chartData}
-          reportType={reportType}
-          user={user}
-        />
+        <div style={{ display: "block" }} className="advisor-print-wrapper">
+          <PrintReport
+            brief={selectedBrief}
+            form={form}
+            output={output}
+            savedBriefId={savedBriefId}
+            generatedAt={generatedAt}
+            chartData={chartData}
+            reportType={reportType}
+            user={user}
+          />
+        </div>
       )}
 
-      {/* Screen content */}
-      <div className="advisor-screen min-h-screen" style={{ backgroundColor: "var(--adv-page-bg)", color: "var(--adv-text-hi)" }}>
+      {/* Screen content — hidden while printing so only print content is in viewport */}
+      <div className="advisor-screen min-h-screen" style={{ display: isPrinting ? "none" : undefined, backgroundColor: "var(--adv-page-bg)", color: "var(--adv-text-hi)" }}>
         <TopNav />
 
         {/* Hero */}
