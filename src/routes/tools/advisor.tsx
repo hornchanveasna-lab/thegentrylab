@@ -1275,7 +1275,7 @@ function PrintTable({ rows }: { rows: string[] }) {
 }
 
 /* ── SVG Print Charts ────────────────────────────────────── */
-const PF = { body: "'Inter','Helvetica Neue',Arial,sans-serif", head: "'Inter','Helvetica Neue',Arial,sans-serif" } as const;
+const PF = { body: "'DM Sans','Helvetica Neue',Arial,sans-serif", head: "'DM Sans','Helvetica Neue',Arial,sans-serif" } as const;
 const PCOLS = ["#cc3300", "#1a5c9e", "#217a4b", "#7b3fa0", "#b86e00"] as const;
 
 function SvgHorizBar({ label, value, max, color, width = 460 }: { label: string; value: number; max: number; color: string; width?: number }) {
@@ -1435,18 +1435,20 @@ function SvgKeyStats({ stats, zones }: { stats: SiteSelectionChartData["key_stat
 
 function SvgGenericMetrics({ metrics }: { metrics: GenericChartData["key_metrics"] }) {
   const cols = Math.min(metrics.length, 4);
-  const boxW = Math.floor(540 / cols) - 4;
+  const gap = 6;
+  const boxW = Math.floor((540 - gap * (cols - 1)) / cols);
   return (
-    <svg width="100%" viewBox={`0 0 540 70`} style={{ display: "block", marginBottom: "8pt" }}>
+    <svg width="100%" viewBox="0 0 540 95" style={{ display: "block", marginBottom: "10pt" }}>
       {metrics.slice(0, 4).map((m, i) => {
-        const x = i * (boxW + 4);
+        const x = i * (boxW + gap);
+        const col = PCOLS[i % PCOLS.length];
         return (
           <g key={m.label} transform={`translate(${x},0)`}>
-            <rect x="0" y="0" width={boxW} height="65" fill={i % 2 === 0 ? "#fff8f6" : "#f5f5f5"} rx="4" />
-            <rect x="0" y="0" width="4" height="65" fill={PCOLS[i % PCOLS.length]} rx="2" />
-            <text x="10" y="15" style={{ fontFamily: PF.head, fontSize: "6.5pt", fill: "#888" }}>{m.label}</text>
-            <text x="10" y="42" style={{ fontFamily: PF.head, fontSize: "14pt", fontWeight: "bold", fill: PCOLS[i % PCOLS.length] }}>{m.value}</text>
-            <text x="10" y="57" style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#888" }}>{m.unit}</text>
+            <rect x="0" y="0" width={boxW} height="90" fill={i % 2 === 0 ? "#fff8f6" : "#f7f7f7"} rx="5" />
+            <rect x="0" y="0" width="5" height="90" fill={col} rx="3" />
+            <text x="14" y="20" style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 600, fill: "#999", letterSpacing: "0.5" }}>{m.label.toUpperCase()}</text>
+            <text x="14" y="58" style={{ fontFamily: PF.head, fontSize: "22pt", fontWeight: "bold", fill: col }}>{m.value}</text>
+            <text x="14" y="78" style={{ fontFamily: PF.body, fontSize: "9.5pt", fill: "#777" }}>{m.unit}</text>
           </g>
         );
       })}
@@ -1456,25 +1458,35 @@ function SvgGenericMetrics({ metrics }: { metrics: GenericChartData["key_metrics
 
 function SvgGenericTimeline({ items }: { items: GenericChartData["timeline_items"] }) {
   const total = items.reduce((s, t) => s + t.weeks, 0);
-  const W = 380, H = items.length * 22 + 50;
+  const labelW = 160, W = 370, rowH = 28, headerH = 30;
+  const H = items.length * rowH + headerH + 10;
   let off = 0;
   return (
-    <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "8pt" }}>
-      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>
-        TIMELINE · TOTAL {total} WEEKS
+    <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "10pt" }}>
+      {/* Header */}
+      <text x="0" y="14" style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 700, fill: "#333", letterSpacing: "0.5" }}>
+        PROJECT TIMELINE
+      </text>
+      <text x="0" y="26" style={{ fontFamily: PF.body, fontSize: "8pt", fill: "#aaa" }}>
+        Total {total} weeks
       </text>
       {items.map((item, i) => {
-        const x = 145 + Math.round((off / total) * W);
-        const w = Math.max(2, Math.round((item.weeks / total) * W));
-        const y = 20 + i * 22;
+        const xBar = labelW + 5 + Math.round((off / total) * W);
+        const wBar = Math.max(4, Math.round((item.weeks / total) * W));
+        const y = headerH + i * rowH;
         off += item.weeks;
         const col = PCOLS[i % PCOLS.length];
         return (
           <g key={i}>
-            <text x="140" y={y + 12} textAnchor="end" style={{ fontFamily: PF.body, fontSize: "7.5pt", fill: "#555" }}>{item.label}</text>
-            <rect x="145" y={y} width={W} height="15" fill="#ebebeb" rx="2" />
-            <rect x={x} y={y} width={w} height="15" fill={col} rx="2" />
-            {w > 22 && <text x={x + w / 2} y={y + 11} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "6.5pt", fontWeight: "bold", fill: "#fff" }}>{item.weeks}w</text>}
+            <text x={labelW} y={y + rowH * 0.68} textAnchor="end" style={{ fontFamily: PF.body, fontSize: "9pt", fill: "#444" }}>{item.label}</text>
+            <rect x={labelW + 5} y={y + 4} width={W} height={rowH - 8} fill="#f0f0f0" rx="3" />
+            <rect x={xBar} y={y + 4} width={wBar} height={rowH - 8} fill={col} rx="3" />
+            {wBar > 28 && (
+              <text x={xBar + wBar / 2} y={y + rowH * 0.68} textAnchor="middle"
+                style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: "bold", fill: "#fff" }}>
+                {item.weeks}w
+              </text>
+            )}
           </g>
         );
       })}
@@ -1485,7 +1497,10 @@ function SvgGenericTimeline({ items }: { items: GenericChartData["timeline_items
 /* ── SVG Pie Chart ──────────────────────────────────────── */
 function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
   const total = slices.reduce((s, p) => s + p.value, 0);
-  const cx = 100, cy = 90, r = 78;
+  const cx = 110, cy = 105, r = 88;
+  const legendX = 230;
+  const legendRowH = 26;
+  const svgH = Math.max(220, slices.length * legendRowH + 50);
   let angle = -Math.PI / 2;
   const paths: React.ReactNode[] = [];
   const legends: React.ReactNode[] = [];
@@ -1496,33 +1511,36 @@ function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
     const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
     const large = frac > 0.5 ? 1 : 0;
     const mid = (a0 + a1) / 2;
-    const lx = cx + (r + 14) * Math.cos(mid), ly = cy + (r + 14) * Math.sin(mid);
+    const lx = cx + (r * 0.65) * Math.cos(mid);
+    const ly = cy + (r * 0.65) * Math.sin(mid);
     const col = PCOLS[i % PCOLS.length];
     paths.push(
       <path key={i} d={`M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} Z`}
-        fill={col} stroke="#fff" strokeWidth="1.5" />
+        fill={col} stroke="#fff" strokeWidth="2" />
     );
-    if (frac > 0.05) {
+    if (frac > 0.06) {
       paths.push(
-        <text key={`l${i}`} x={lx} y={ly} textAnchor="middle"
-          style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: "bold", fill: col }}>
+        <text key={`l${i}`} x={lx} y={ly + 4} textAnchor="middle"
+          style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: "bold", fill: "#fff" }}>
           {Math.round(frac * 100)}%
         </text>
       );
     }
     legends.push(
-      <g key={i} transform={`translate(210, ${10 + i * 22})`}>
-        <rect x="0" y="2" width="10" height="10" fill={col} rx="2" />
-        <text x="15" y="12" style={{ fontFamily: PF.body, fontSize: "8.5pt", fill: "#333" }}>{sl.label}</text>
-        <text x="290" y="12" textAnchor="end" style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: "bold", fill: col }}>{sl.value}%</text>
+      <g key={i} transform={`translate(${legendX}, ${28 + i * legendRowH})`}>
+        <rect x="0" y="0" width="13" height="13" fill={col} rx="3" />
+        <text x="20" y="11" style={{ fontFamily: PF.body, fontSize: "10pt", fill: "#333" }}>{sl.label}</text>
+        <text x="300" y="11" textAnchor="end" style={{ fontFamily: PF.head, fontSize: "10pt", fontWeight: "bold", fill: col }}>{sl.value}%</text>
       </g>
     );
     angle = a1;
   });
   return (
-    <svg width="100%" viewBox="0 0 540 190" style={{ display: "block", marginBottom: "8pt" }}>
-      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>{title.toUpperCase()}</text>
-      <g transform="translate(0,18)">{paths}</g>
+    <svg width="100%" viewBox={`0 0 540 ${svgH}`} style={{ display: "block", marginBottom: "10pt" }}>
+      <text x="0" y="16" style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 700, fill: "#333", letterSpacing: "0.5" }}>
+        {title.toUpperCase()}
+      </text>
+      <g transform="translate(0,20)">{paths}</g>
       <g transform="translate(0,10)">{legends}</g>
     </svg>
   );
@@ -2250,18 +2268,16 @@ function PrintReport({
         {gd && (
           <>
             {gd.key_metrics?.length > 0 && (
-              <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures</div>
+              <div style={{ marginBottom: "18pt" }}>
                 <SvgGenericMetrics metrics={gd.key_metrics} />
               </div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12pt", marginBottom: "14pt" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16pt", marginBottom: "18pt" }}>
               {gd.pie_data && gd.pie_data.length > 0 && (
                 <div><SvgPieChart slices={gd.pie_data} title="Distribution Breakdown" /></div>
               )}
               {gd.timeline_items?.length > 0 && (
                 <div>
-                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Project Timeline</div>
                   <SvgGenericTimeline items={gd.timeline_items} />
                 </div>
               )}
