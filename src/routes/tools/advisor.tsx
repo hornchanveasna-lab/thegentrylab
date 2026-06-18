@@ -717,6 +717,98 @@ function extractPrintKeyStats(text: string): { value: string; label: string }[] 
   return stats.slice(0, 6);
 }
 
+/* ── Report content parser for screen viz ─────────────────── */
+interface ReportVizData {
+  overallScore: { score: number; max: number } | null;
+  keyStats: { value: string; label: string }[];
+  scores: { label: string; score: number; max: number }[];
+  strengths: string[];
+  risks: string[];
+  recommendations: string[];
+  keyFindings: string[];
+  sections: { title: string; summary: string }[];
+}
+
+function stripEmojis(s: string): string {
+  return s.replace(/[\u{1F300}-\u{1FFFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{FE00}-\u{FE0F}]/gu, "").trim();
+}
+
+function parseReportForViz(text: string): ReportVizData {
+  const lines = text.split("\n");
+
+  // Overall score
+  const sm = text.match(/(?:composite|overall|bankability)\s+score[:\s]+([0-9.]+)\s*\/\s*([0-9.]+)/i);
+  const overallScore = sm ? { score: parseFloat(sm[1]), max: parseFloat(sm[2]) } : null;
+
+  // Key stats
+  const keyStats = extractPrintKeyStats(text);
+
+  // Score tables
+  const allCharts = parsePrintCharts(text);
+  const scores = allCharts.flatMap(c => c.rows).slice(0, 10);
+
+  // Section-level parse
+  const strengths: string[] = [];
+  const risks: string[] = [];
+  const recommendations: string[] = [];
+  const keyFindings: string[] = [];
+  const sections: { title: string; summary: string }[] = [];
+
+  let inSection = "";
+  let sectionTitle = "";
+  let sectionFirstLine = "";
+
+  const isBullet = (l: string) => /^[-*]\s/.test(l);
+  const isNum    = (l: string) => /^\d+\.\s/.test(l);
+  const isHead   = (l: string) => /^#{1,4}\s/.test(l);
+
+  const cleanLine = (l: string) =>
+    l.replace(/^[-*\d.]+\s*/, "").replace(/\*\*/g, "").replace(/`[^`]*`/g, "").trim();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    if (isHead(line)) {
+      const raw = stripEmojis(line.replace(/^#{1,4}\s+/, "").trim());
+      // Push previous section summary
+      if (sectionTitle && sectionFirstLine) sections.push({ title: sectionTitle, summary: sectionFirstLine });
+      sectionTitle = raw;
+      sectionFirstLine = "";
+      const low = raw.toLowerCase();
+      if (/strength|advantage|opportunit/i.test(low)) inSection = "strengths";
+      else if (/risk|challeng|concern|weakness|flag|obstacle/i.test(low)) inSection = "risks";
+      else if (/recommend|action|next step|pathway|roadmap|step/i.test(low)) inSection = "recs";
+      else if (/executive|summary|finding|key result|conclusion/i.test(low)) inSection = "findings";
+      else inSection = "other";
+      continue;
+    }
+
+    const txt = cleanLine(line);
+    if (txt.length < 12) continue;
+
+    // Capture first meaningful line per section
+    if (!sectionFirstLine && (isBullet(line) || isNum(line) || (!isHead(line) && txt.length > 20))) {
+      sectionFirstLine = txt.slice(0, 120);
+    }
+
+    if (isBullet(line) || isNum(line)) {
+      const trimmed = txt.slice(0, 140);
+      if (inSection === "strengths" && strengths.length < 5) strengths.push(trimmed);
+      else if (inSection === "risks" && risks.length < 5) risks.push(trimmed);
+      else if (inSection === "recs" && recommendations.length < 6) recommendations.push(trimmed);
+      else if (inSection === "findings" && keyFindings.length < 5) keyFindings.push(trimmed);
+    }
+    // Also pick up plain sentences in findings/exec summary sections
+    else if (inSection === "findings" && keyFindings.length < 5 && txt.length > 30 && !isHead(line)) {
+      keyFindings.push(txt.slice(0, 140));
+    }
+  }
+  if (sectionTitle && sectionFirstLine) sections.push({ title: sectionTitle, summary: sectionFirstLine });
+
+  return { overallScore, keyStats, scores, strengths, risks, recommendations, keyFindings, sections: sections.slice(0, 8) };
+}
+
 function SvgParsedBarChart({ title, rows, catColor }: { title: string; rows: PChartRow[]; catColor: string }) {
   const rowH = 26;
   const labelW = 155;
@@ -3429,137 +3521,183 @@ export default function AdvisorPage() {
                 </div>
               )}
 
-              {/* Fallback visualisation panel — Finance, Bankability, etc. (no structured chartData) */}
+              {/* Report Summary Visualisation — parsed from AI output */}
               {!streaming && output && !chartData && (() => {
-                const charts = parsePrintCharts(output);
-                const stats = extractPrintKeyStats(output);
-                const scoreMatch = output.match(/(?:composite|overall|bankability)\s+score[:\s]+([0-9.]+)\s*\/\s*([0-9.]+)/i);
-                const gaugeScore = scoreMatch ? parseFloat(scoreMatch[1]) : null;
-                const gaugeMax = scoreMatch ? parseFloat(scoreMatch[2]) : 10;
+                const viz = parseReportForViz(output);
                 const col = activeCat.color;
-                const hasContent = charts.length > 0 || stats.length > 0 || gaugeScore !== null;
-                if (!hasContent) return null;
+                const hasAny = viz.overallScore || viz.keyStats.length > 0 || viz.scores.length > 0
+                  || viz.strengths.length > 0 || viz.risks.length > 0
+                  || viz.recommendations.length > 0 || viz.keyFindings.length > 0;
+                if (!hasAny) return null;
 
-                const scoreColor = gaugeScore !== null
-                  ? (gaugeScore / gaugeMax >= 0.7 ? "#10b981" : gaugeScore / gaugeMax >= 0.4 ? col : "#ef4444")
+                const scoreColor = viz.overallScore
+                  ? (viz.overallScore.score / viz.overallScore.max >= 0.7 ? "#10b981"
+                    : viz.overallScore.score / viz.overallScore.max >= 0.4 ? col : "#ef4444")
                   : col;
 
-                const flowSteps = [
-                  { label: "Due Diligence", icon: "🔍" },
-                  { label: "Environmental EIA", icon: "🌿" },
-                  { label: "MIH Licence", icon: "📋" },
-                  { label: "CDC / QIP", icon: "🏆" },
-                  { label: "Construction", icon: "🏗️" },
-                  { label: "Utilities", icon: "⚡" },
-                  { label: "Operations", icon: "⚙️" },
-                ];
+                const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+                  <div className={`rounded-2xl overflow-hidden ${className}`} style={{ border: "1px solid var(--adv-border)" }}>{children}</div>
+                );
+                const CardHead = ({ label }: { label: string }) => (
+                  <div className="px-5 py-3 flex items-center gap-2" style={{ backgroundColor: "var(--adv-card)", borderBottom: "1px solid var(--adv-border)" }}>
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: col }} />
+                    <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: col }}>{label}</span>
+                  </div>
+                );
 
                 return (
                   <div className="mt-6 space-y-3">
-                    {/* Header */}
+                    {/* Section label */}
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: col }}>Data Visualisation</span>
-                      <div className="flex-1 h-px" style={{ backgroundColor: `${col}25` }} />
+                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: col }}>Report Summary</span>
+                      <div className="flex-1 h-px" style={{ backgroundColor: `${col}20` }} />
+                      <span className="font-mono text-[8px]" style={{ color: "var(--adv-text-ghost)" }}>Extracted from AI output</span>
                     </div>
 
-                    {/* Row 1: Score hero + stat cards */}
-                    <div className="grid gap-3" style={{ gridTemplateColumns: gaugeScore !== null ? "auto 1fr" : "1fr" }}>
-                      {/* Score gauge card */}
-                      {gaugeScore !== null && (
-                        <div className="rounded-2xl p-5 flex flex-col items-center justify-center min-w-[160px]"
-                          style={{ background: `linear-gradient(135deg, ${scoreColor}12 0%, ${scoreColor}06 100%)`, border: `1.5px solid ${scoreColor}30` }}>
-                          <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: scoreColor }}>Overall Score</div>
-                          {/* Arc gauge */}
-                          <div className="relative flex items-center justify-center" style={{ width: 120, height: 72 }}>
-                            <svg width="120" height="72" viewBox="0 0 120 72">
-                              <path d="M10,65 A50,50 0 0,1 110,65" fill="none" stroke={`${scoreColor}20`} strokeWidth="10" strokeLinecap="round" />
-                              <path d="M10,65 A50,50 0 0,1 110,65" fill="none" stroke={scoreColor} strokeWidth="10" strokeLinecap="round"
-                                strokeDasharray={`${Math.PI * 50 * (gaugeScore / gaugeMax)} ${Math.PI * 50}`} />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
-                              <span className="font-bold text-[26px] leading-none" style={{ color: scoreColor }}>{gaugeScore}</span>
-                              <span className="font-mono text-[9px]" style={{ color: "var(--adv-text-dim)" }}>/ {gaugeMax}</span>
+                    {/* ── Row 1: Score gauge + key stat cards ── */}
+                    {(viz.overallScore || viz.keyStats.length > 0) && (
+                      <div className="flex gap-3 flex-wrap">
+                        {/* Score gauge */}
+                        {viz.overallScore && (
+                          <div className="rounded-2xl p-5 flex flex-col items-center shrink-0"
+                            style={{ background: `linear-gradient(160deg, ${scoreColor}14 0%, ${scoreColor}05 100%)`, border: `1.5px solid ${scoreColor}35`, minWidth: 160 }}>
+                            <div className="font-mono text-[8px] uppercase tracking-widest mb-3 self-start" style={{ color: scoreColor }}>
+                              Overall Score
+                            </div>
+                            <div className="relative" style={{ width: 120, height: 76 }}>
+                              <svg width="120" height="76" viewBox="0 0 120 76">
+                                <path d="M10,68 A52,52 0 0,1 110,68" fill="none" stroke={`${scoreColor}20`} strokeWidth="11" strokeLinecap="round" />
+                                <path d="M10,68 A52,52 0 0,1 110,68" fill="none" stroke={scoreColor} strokeWidth="11" strokeLinecap="round"
+                                  strokeDasharray={`${Math.PI * 52 * (viz.overallScore.score / viz.overallScore.max)} ${Math.PI * 52 * 2}`} />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-end pb-0">
+                                <span className="font-bold leading-none" style={{ fontSize: 30, color: scoreColor }}>{viz.overallScore.score}</span>
+                                <span className="font-mono text-[9px]" style={{ color: "var(--adv-text-dim)" }}>out of {viz.overallScore.max}</span>
+                              </div>
+                            </div>
+                            <div className="mt-3 font-mono text-[9px] px-3 py-1 rounded-full text-center"
+                              style={{ backgroundColor: `${scoreColor}18`, color: scoreColor, border: `1px solid ${scoreColor}30` }}>
+                              {viz.overallScore.score / viz.overallScore.max >= 0.7
+                                ? "✓ Viable" : viz.overallScore.score / viz.overallScore.max >= 0.4
+                                ? "⚡ Conditional" : "✗ Needs Restructuring"}
                             </div>
                           </div>
-                          <div className="mt-2 text-center font-mono text-[9px] px-3 py-1 rounded-full" style={{ backgroundColor: `${scoreColor}18`, color: scoreColor }}>
-                            {gaugeScore / gaugeMax >= 0.7 ? "Viable" : gaugeScore / gaugeMax >= 0.4 ? "Conditional" : "Needs Restructuring"}
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Stat cards grid */}
-                      {stats.length > 0 && (
-                        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-                          {stats.map((s, i) => (
+                        {/* Stat cards */}
+                        <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))" }}>
+                          {viz.keyStats.map((s, i) => (
                             <div key={i} className="rounded-xl p-4 flex flex-col justify-between"
                               style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)", borderLeft: `3px solid ${col}` }}>
-                              <div className="font-mono text-[8px] uppercase tracking-widest mb-2" style={{ color: "var(--adv-text-dim)" }}>{s.label}</div>
-                              <div className="font-bold text-[18px] leading-none" style={{ color: col }}>{s.value}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Row 2: Score breakdown bar charts */}
-                    {charts.length > 0 && (
-                      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--adv-border)" }}>
-                        <div className="px-5 py-3 flex items-center gap-2" style={{ backgroundColor: "var(--adv-card)", borderBottom: "1px solid var(--adv-border)" }}>
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
-                          <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: col }}>Score Breakdown</span>
-                        </div>
-                        <div className="p-5 space-y-4" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
-                          {charts.map((chart, ci) => (
-                            <div key={ci}>
-                              {chart.title && <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: "var(--adv-text-dim)", borderLeft: `2px solid ${col}`, paddingLeft: "8px" }}>{chart.title}</div>}
-                              <div className="space-y-2">
-                                {chart.rows.map((row, ri) => {
-                                  const pct = row.score / row.max;
-                                  const barCol = pct >= 0.7 ? "#10b981" : pct >= 0.4 ? col : "#ef4444";
-                                  const suffix = row.max === 100 ? "%" : `/${row.max}`;
-                                  return (
-                                    <div key={ri} className="flex items-center gap-3">
-                                      <div className="font-mono text-[10px] shrink-0 text-right" style={{ width: "160px", color: "var(--adv-text-body)" }}>{row.label}</div>
-                                      <div className="flex-1 rounded-full h-[8px] overflow-hidden" style={{ backgroundColor: `${barCol}18` }}>
-                                        <div className="h-full rounded-full transition-all" style={{ width: `${pct * 100}%`, backgroundColor: barCol, boxShadow: `0 0 6px ${barCol}60` }} />
-                                      </div>
-                                      <div className="font-mono text-[11px] font-bold shrink-0" style={{ width: "40px", color: barCol }}>{row.score}{suffix}</div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              <div className="font-mono text-[8px] uppercase tracking-widest mb-2 leading-tight" style={{ color: "var(--adv-text-dim)" }}>{s.label}</div>
+                              <div className="font-bold leading-none" style={{ fontSize: "clamp(14px,2vw,20px)", color: col }}>{s.value}</div>
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Row 3: Process flow */}
-                    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--adv-border)" }}>
-                      <div className="px-5 py-3 flex items-center gap-2" style={{ backgroundColor: "var(--adv-card)", borderBottom: "1px solid var(--adv-border)" }}>
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
-                        <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: col }}>Advisory Process Flow</span>
-                      </div>
-                      <div className="p-5" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
-                        <div className="flex flex-wrap gap-2 items-center">
-                          {flowSteps.map((step, i) => (
-                            <div key={i} className="flex items-center gap-2">
-                              <div className="flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 text-center"
-                                style={{ backgroundColor: "var(--adv-card)", border: `1px solid ${col}30`, minWidth: "80px" }}>
-                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                                  style={{ backgroundColor: col, color: "#fff" }}>{i + 1}</div>
-                                <div className="text-[10px] leading-tight font-medium" style={{ color: "var(--adv-text-body)" }}>{step.label}</div>
+                    {/* ── Row 2: Score breakdown ── */}
+                    {viz.scores.length > 0 && (
+                      <Card>
+                        <CardHead label="Score Breakdown" />
+                        <div className="p-5 space-y-3" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                          {viz.scores.map((row, ri) => {
+                            const pct = row.score / row.max;
+                            const bc = pct >= 0.7 ? "#10b981" : pct >= 0.4 ? col : "#ef4444";
+                            const suffix = row.max === 100 ? "%" : `/${row.max}`;
+                            return (
+                              <div key={ri} className="flex items-center gap-3">
+                                <div className="text-[11px] shrink-0 text-right" style={{ width: 170, color: "var(--adv-text-body)" }}>{row.label}</div>
+                                <div className="flex-1 rounded-full overflow-hidden" style={{ height: 8, backgroundColor: `${bc}18` }}>
+                                  <div className="h-full rounded-full" style={{ width: `${pct * 100}%`, backgroundColor: bc, boxShadow: `0 0 8px ${bc}50` }} />
+                                </div>
+                                <div className="font-mono font-bold text-[11px] shrink-0 text-right" style={{ width: 36, color: bc }}>{row.score}{suffix}</div>
                               </div>
-                              {i < flowSteps.length - 1 && (
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeOpacity="0.4" style={{ flexShrink: 0 }}>
-                                  <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-                                </svg>
-                              )}
+                            );
+                          })}
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* ── Row 3: Strengths vs Risks ── */}
+                    {(viz.strengths.length > 0 || viz.risks.length > 0) && (
+                      <div className="grid md:grid-cols-2 gap-3">
+                        {viz.strengths.length > 0 && (
+                          <Card>
+                            <CardHead label={`✓ Strengths (${viz.strengths.length})`} />
+                            <div className="p-4 space-y-2" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                              {viz.strengths.map((s, i) => (
+                                <div key={i} className="flex gap-2.5 text-[11.5px] leading-snug" style={{ color: "var(--adv-text-body)" }}>
+                                  <span className="shrink-0 mt-0.5 text-[10px]" style={{ color: "#10b981" }}>✓</span>
+                                  <span>{s}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+                        )}
+                        {viz.risks.length > 0 && (
+                          <Card>
+                            <CardHead label={`⚠ Risks (${viz.risks.length})`} />
+                            <div className="p-4 space-y-2" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                              {viz.risks.map((r, i) => (
+                                <div key={i} className="flex gap-2.5 text-[11.5px] leading-snug" style={{ color: "var(--adv-text-body)" }}>
+                                  <span className="shrink-0 mt-0.5 text-[10px]" style={{ color: "#ef4444" }}>⚠</span>
+                                  <span>{r}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ── Row 4: Key findings ── */}
+                    {viz.keyFindings.length > 0 && (
+                      <Card>
+                        <CardHead label="Key Findings" />
+                        <div className="p-4 grid sm:grid-cols-2 gap-3" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                          {viz.keyFindings.map((f, i) => (
+                            <div key={i} className="flex gap-3 p-3 rounded-xl" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                                style={{ backgroundColor: `${col}18`, color: col, border: `1px solid ${col}30` }}>{i + 1}</div>
+                              <div className="text-[11.5px] leading-snug" style={{ color: "var(--adv-text-body)" }}>{f}</div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    </div>
+                      </Card>
+                    )}
+
+                    {/* ── Row 5: Recommendations ── */}
+                    {viz.recommendations.length > 0 && (
+                      <Card>
+                        <CardHead label="Recommendations" />
+                        <div className="p-4 space-y-2" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                          {viz.recommendations.map((r, i) => (
+                            <div key={i} className="flex gap-3 items-start">
+                              <div className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold shrink-0 mt-0.5"
+                                style={{ backgroundColor: col, color: "#fff" }}>{i + 1}</div>
+                              <div className="text-[12px] leading-snug" style={{ color: "var(--adv-text-body)" }}>{r}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
+
+                    {/* ── Row 6: Section overview grid ── */}
+                    {viz.sections.length > 3 && (
+                      <Card>
+                        <CardHead label="Report Sections" />
+                        <div className="p-4 grid sm:grid-cols-2 md:grid-cols-3 gap-2" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                          {viz.sections.map((s, i) => (
+                            <div key={i} className="p-3 rounded-xl" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
+                              <div className="font-semibold text-[11px] mb-1" style={{ color: col }}>{s.title}</div>
+                              <div className="text-[10.5px] leading-snug line-clamp-2" style={{ color: "var(--adv-text-dim)" }}>{s.summary}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
                   </div>
                 );
               })()}
