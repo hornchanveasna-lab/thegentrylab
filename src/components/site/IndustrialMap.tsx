@@ -192,7 +192,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [selected, setSelected] = useState<MapSite | null>(null);
   const [query, setQuery] = useState("");
   const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
-  const [panelOpen, setPanelOpen] = useState(true); // open by default
+  const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap] = useState<BasemapKey>(themeBasemap);
   const basemapUserPicked = useRef(false);
 
