@@ -14,7 +14,7 @@ export const Route = createFileRoute("/tools/advisor")({
   component: AdvisorPage,
 });
 
-/* â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Types â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 type Category = "INVEST" | "DEVELOP" | "FINANCE" | "COMPLY" | "PLAN";
 type Step = "select" | "form" | "generating" | "result" | "history";
 
@@ -82,7 +82,7 @@ function extractChartData(text: string): { chartData: ChartData | null; cleanTex
   }
 }
 
-/* â”€â”€ Chart: Zone Scoring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Chart: Zone Scoring â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function ZoneScoringChart({ zones }: { zones: ZoneData[] }) {
   const data = zones.map(z => ({
     subject: z.name.length > 22 ? z.name.slice(0, 20) + "..." : z.name,
@@ -113,7 +113,7 @@ function ZoneScoringChart({ zones }: { zones: ZoneData[] }) {
   );
 }
 
-/* â”€â”€ Chart: Cost Comparison â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Chart: Cost Comparison â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function CostComparisonChart({ costs }: { costs: CostData[] }) {
   const data = costs.map(c => ({
     zone: c.zone.length > 20 ? c.zone.slice(0, 18) + "..." : c.zone,
@@ -143,7 +143,7 @@ function CostComparisonChart({ costs }: { costs: CostData[] }) {
   );
 }
 
-/* â”€â”€ Chart: Timeline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Chart: Timeline â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timeline_weeks"] }) {
   const phases = [
     { label: "Land Due Diligence",   weeks: timeline.due_diligence,  color: "#3b82f6" },
@@ -181,7 +181,7 @@ function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timelin
   );
 }
 
-/* â”€â”€ Chart: Key Stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Chart: Key Stats â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function KeyStatsPanel({ stats, zones }: { stats: SiteSelectionChartData["key_stats"]; zones: ZoneData[] }) {
   return (
     <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -189,7 +189,7 @@ function KeyStatsPanel({ stats, zones }: { stats: SiteSelectionChartData["key_st
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Min. Wage", value: `$${stats.min_wage_usd}`, unit: "/month" },
-          { label: "Power Tariff", value: `$${stats.power_min}"“$${stats.power_max}`, unit: "/kWh" },
+          { label: "Power Tariff", value: `$${stats.power_min}–$${stats.power_max}`, unit: "/kWh" },
           { label: "SEZ Permits", value: `${stats.sez_permit_months}`, unit: "months" },
           { label: "Outside SEZ", value: `${stats.outside_permit_months}`, unit: "months" },
         ].map(s => (
@@ -218,7 +218,7 @@ function KeyStatsPanel({ stats, zones }: { stats: SiteSelectionChartData["key_st
   );
 }
 
-/* â”€â”€ Generic chart panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Generic chart panel â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function GenericChartsPanel({ data }: { data: GenericChartData }) {
   return (
     <div className="space-y-4">
@@ -266,7 +266,7 @@ function GenericChartsPanel({ data }: { data: GenericChartData }) {
   );
 }
 
-/* â”€â”€ Category config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Category config â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 const CATEGORIES: { id: Category; label: string; color: string; desc: string; icon: React.ReactNode }[] = [
   {
     id: "INVEST", label: "Invest", color: "#ff5100", desc: "International manufacturers & investors",
@@ -292,15 +292,15 @@ const CATEGORIES: { id: Category; label: string; color: string; desc: string; ic
 
 const SECTORS = ["Garment & Textiles","Electronics & PCB","Food Processing","Warehousing & Logistics","Automotive / EV","Data Center","Energy / Solar","Pharmaceutical","Furniture","Footwear"];
 const PROVINCES = ["Phnom Penh","Kandal","Kampong Speu","Sihanoukville","Svay Rieng","Kampong Cham","Kampot","Siem Reap","Battambang","Other / Recommend best"];
-const BUDGET_RANGES = ["Under USD 1M","USD 1M "“ 5M","USD 5M "“ 20M","USD 20M "“ 50M","USD 50M "“ 100M","Over USD 100M"];
-const FACTORY_SIZES = ["Under 1,000 m²","1,000 "“ 3,000 m²","3,000 "“ 10,000 m²","10,000 "“ 30,000 m²","30,000 "“ 65,000 m²","Over 65,000 m²"];
+const BUDGET_RANGES = ["Under USD 1M","USD 1M – 5M","USD 5M – 20M","USD 20M – 50M","USD 50M – 100M","Over USD 100M"];
+const FACTORY_SIZES = ["Under 1,000 m²","1,000 – 3,000 m²","3,000 – 10,000 m²","10,000 – 30,000 m²","30,000 – 65,000 m²","Over 65,000 m²"];
 
-/* â”€â”€ Brief definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Brief definitions â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 const BRIEFS: BriefType[] = [
   /* INVEST */
   {
     id: "site-selection", category: "INVEST", title: "Site Selection Brief",
-    desc: "Top 3 zone recommendations scored across 14 criteria "” utilities, labour, cost, permits, risk.",
+    desc: "Top 3 zone recommendations scored across 14 criteria — utilities, labour, cost, permits, risk.",
     audience: "Manufacturer evaluating Cambodia entry",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
     fields: [
@@ -321,7 +321,7 @@ const BRIEFS: BriefType[] = [
       { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
       { id: "factory_size", label: "Factory / Facility Size", type: "select", options: FACTORY_SIZES, required: true },
       { id: "location", label: "Target Location", type: "select", options: PROVINCES, required: true },
-      { id: "inside_sez", label: "Inside SEZ or Outside?", type: "select", options: ["Inside SEZ","Outside SEZ / greenfield","Not sure "” advise me"], required: true },
+      { id: "inside_sez", label: "Inside SEZ or Outside?", type: "select", options: ["Inside SEZ","Outside SEZ / greenfield","Not sure — advise me"], required: true },
       { id: "export_market", label: "Primary Export Market", type: "select", options: ["European Union","United States","ASEAN region","China","Japan / South Korea","Multiple markets"], required: true },
       { id: "production", label: "What will you produce?", type: "text", placeholder: "e.g. garment cutting & sewing, PCB assembly", required: true },
     ],
@@ -335,7 +335,7 @@ const BRIEFS: BriefType[] = [
       { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
       { id: "origin_country", label: "Investor Country of Origin", type: "text", placeholder: "e.g. South Korea", required: true },
       { id: "investment_size", label: "Investment Size (USD)", type: "select", options: BUDGET_RANGES, required: true },
-      { id: "export_pct", label: "Export Percentage", type: "select", options: ["Over 80% export","50"“80% export","Under 50% export","Domestic market only"], required: true },
+      { id: "export_pct", label: "Export Percentage", type: "select", options: ["Over 80% export","50–80% export","Under 50% export","Domestic market only"], required: true },
       { id: "project_type", label: "Project Type", type: "select", options: ["New greenfield investment","Expansion of existing facility","Relocation from another country","Joint venture with local partner"], required: true },
     ],
   },
@@ -363,7 +363,7 @@ const BRIEFS: BriefType[] = [
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "land_size", label: "Land Size (hectares)", type: "text", placeholder: "e.g. 12.5 ha", required: true },
       { id: "title_type", label: "Land Title Type", type: "select", options: ["Hard title (LMAP)","Soft title","Unclear / under investigation","Inside SEZ / developer-managed"], required: true },
-      { id: "distance_nr", label: "Distance to Nearest National Road", type: "select", options: ["On national road","Under 2 km","2"“10 km","Over 10 km","Unknown"], required: true },
+      { id: "distance_nr", label: "Distance to Nearest National Road", type: "select", options: ["On national road","Under 2 km","2–10 km","Over 10 km","Unknown"], required: true },
       { id: "current_use", label: "Current Land Use", type: "select", options: ["Farmland / rice field","Scrubland / vacant","Existing structure (low-value)","Operating facility","Other"], required: true },
       { id: "development_goal", label: "Your Goal", type: "select", options: ["Sell the land","Lease to a factory tenant","Develop an industrial park / SEZ","Develop for own use"], required: true },
     ],
@@ -390,7 +390,7 @@ const BRIEFS: BriefType[] = [
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "land_size", label: "Total Land Area (ha)", type: "text", placeholder: "e.g. 50 ha", required: true },
       { id: "target_sector", label: "Target Tenant Sector", type: "select", options: [...SECTORS, "Mixed / multi-sector"], required: true },
-      { id: "development_budget", label: "Development Budget", type: "select", options: ["Under USD 5M","USD 5M "“ 20M","USD 20M "“ 50M","Over USD 50M","Unknown "” advise me"], required: true },
+      { id: "development_budget", label: "Development Budget", type: "select", options: ["Under USD 5M","USD 5M – 20M","USD 20M – 50M","Over USD 50M","Unknown — advise me"], required: true },
       { id: "utilities_status", label: "Utilities Status", type: "select", options: ["EDC power nearby (under 5km)","EDC power available on site","Water source available","All utilities available","Need to develop from scratch"], required: true },
     ],
   },
@@ -412,7 +412,7 @@ const BRIEFS: BriefType[] = [
   },
   {
     id: "cost-benchmark", category: "FINANCE", title: "Cost Benchmark",
-    desc: "Market rate line-item cost breakdown "” is the budget realistic vs what GentryLab has seen delivered?",
+    desc: "Market rate line-item cost breakdown — is the budget realistic vs what GentryLab has seen delivered?",
     audience: "Bank / investor stress-testing a project budget",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
     fields: [
@@ -420,7 +420,7 @@ const BRIEFS: BriefType[] = [
       { id: "size", label: "Total Built Area (m²)", type: "text", placeholder: "e.g. 12,000", required: true },
       { id: "province", label: "Province", type: "select", options: PROVINCES, required: true },
       { id: "spec_level", label: "Specification Level", type: "select", options: ["Basic (minimum spec)","Standard (market norm)","High-spec (international standard)","Premium / pharma-grade"], required: true },
-      { id: "include_utilities", label: "Include Utility Connection Cost?", type: "select", options: ["Yes "” include EDC + water connection","No "” building only","Not sure "” include both scenarios"], required: true },
+      { id: "include_utilities", label: "Include Utility Connection Cost?", type: "select", options: ["Yes — include EDC + water connection","No — building only","Not sure — include both scenarios"], required: true },
     ],
   },
   {
@@ -432,7 +432,7 @@ const BRIEFS: BriefType[] = [
       { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "investment_size", label: "Exposure / Investment Size", type: "select", options: BUDGET_RANGES, required: true },
-      { id: "horizon", label: "Investment Horizon", type: "select", options: ["1"“3 years","3"“5 years","5"“10 years","Over 10 years"], required: true },
+      { id: "horizon", label: "Investment Horizon", type: "select", options: ["1–3 years","3–5 years","5–10 years","Over 10 years"], required: true },
       { id: "concern", label: "Primary Risk Concern", type: "select", options: ["Market demand / vacancy","Regulatory / political","FX / currency","Borrower default","Environmental","All risks"], required: true },
     ],
   },
@@ -449,7 +449,7 @@ const BRIEFS: BriefType[] = [
       { id: "inside_sez", label: "Inside SEZ or Outside?", type: "select", options: ["Inside SEZ","Outside SEZ","Not decided yet"], required: true },
       { id: "entity_type", label: "Entity Type", type: "select", options: ["100% foreign-owned","Cambodian-owned","JV (foreign + local)","Cambodian subsidiary of foreign company"], required: true },
       { id: "building_type", label: "Facility Type", type: "select", options: ["Factory / production","Warehouse","Office + factory","Food processing","Cold storage","Data center"], required: true },
-      { id: "timeline_goal", label: "Target Timeline to Start Production", type: "select", options: ["As fast as possible (under 12 months)","12"“18 months","18"“24 months","Over 24 months / flexible"], required: true },
+      { id: "timeline_goal", label: "Target Timeline to Start Production", type: "select", options: ["As fast as possible (under 12 months)","12–18 months","18–24 months","Over 24 months / flexible"], required: true },
     ],
   },
   {
@@ -461,7 +461,7 @@ const BRIEFS: BriefType[] = [
       { id: "product", label: "Product / HS Code", type: "text", placeholder: "e.g. garments HS 6203, PCB HS 8534", required: true },
       { id: "export_market", label: "Target Export Market", type: "select", options: ["European Union (EBA)","United States (GSP)","United Kingdom","Japan (EPA)","ASEAN (RCEP)","Multiple markets"], required: true },
       { id: "origin_country", label: "Investor Origin Country", type: "text", placeholder: "e.g. South Korea", required: true },
-      { id: "local_content", label: "Estimated Local (Cambodia) Content %", type: "select", options: ["Under 20%","20"“40%","40"“60%","Over 60%","Not sure"], required: true },
+      { id: "local_content", label: "Estimated Local (Cambodia) Content %", type: "select", options: ["Under 20%","20–40%","40–60%","Over 60%","Not sure"], required: true },
     ],
   },
   {
@@ -487,13 +487,13 @@ const BRIEFS: BriefType[] = [
       { id: "building_type", label: "Building Type", type: "select", options: ["Standard factory","Warehouse / logistics","Food processing","Clean room / electronics","Multi-building industrial campus"], required: true },
       { id: "factory_size", label: "Total Built Area", type: "select", options: FACTORY_SIZES, required: true },
       { id: "province", label: "Province", type: "select", options: PROVINCES, required: true },
-      { id: "start_timing", label: "Planned Start Month", type: "select", options: ["November "“ February (dry season start)","March "“ May (late dry)","June "“ October (wet season)","Flexible "” advise best window"], required: true },
+      { id: "start_timing", label: "Planned Start Month", type: "select", options: ["November – February (dry season start)","March – May (late dry)","June – October (wet season)","Flexible — advise best window"], required: true },
       { id: "complexity", label: "Project Complexity", type: "select", options: ["Simple shell building","Standard with full MEP","High-spec with clean room / cold chain","Complex multi-building campus"], required: true },
     ],
   },
   {
     id: "epc-budget", category: "PLAN", title: "EPC Budget Builder",
-    desc: "Line-item cost estimate for civil, structural, MEP, and utilities "” with low/mid/high ranges.",
+    desc: "Line-item cost estimate for civil, structural, MEP, and utilities — with low/mid/high ranges.",
     audience: "Developer or CFO building a project budget",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
     fields: [
@@ -501,13 +501,13 @@ const BRIEFS: BriefType[] = [
       { id: "size", label: "Total Built Area (m²)", type: "text", placeholder: "e.g. 15,000", required: true },
       { id: "province", label: "Province", type: "select", options: PROVINCES, required: true },
       { id: "spec_level", label: "Specification Level", type: "select", options: ["Basic (minimum viable)","Standard (market norm)","High-spec (international)","Premium / pharma-grade"], required: true },
-      { id: "include_site", label: "Include Site Works?", type: "select", options: ["Yes (earthworks, roads, drainage)","Building only","Full package incl. utilities","Not sure "” include everything"], required: true },
+      { id: "include_site", label: "Include Site Works?", type: "select", options: ["Yes (earthworks, roads, drainage)","Building only","Full package incl. utilities","Not sure — include everything"], required: true },
       { id: "procurement", label: "Procurement Approach", type: "select", options: ["Full turnkey EPC contractor","Design-bid-build (separate)","Owner-managed packages","Not decided yet"], required: true },
     ],
   },
 ];
 
-/* â”€â”€ Screen markdown renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Screen markdown renderer â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function renderMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
@@ -577,7 +577,7 @@ function ScreenTable({ rows }: { rows: string[] }) {
   );
 }
 
-/* â”€â”€ Print markdown renderer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Print markdown renderer â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function renderPrintMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
@@ -639,7 +639,7 @@ function PrintTable({ rows }: { rows: string[] }) {
   );
 }
 
-/* â”€â”€ SVG Print Charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ SVG Print Charts â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 const PF = { body: "'Inter','Helvetica Neue',Arial,sans-serif", head: "'Inter','Helvetica Neue',Arial,sans-serif" } as const;
 const PCOLS = ["#cc3300", "#1a5c9e", "#217a4b", "#7b3fa0", "#b86e00"] as const;
 
@@ -667,7 +667,7 @@ function SvgZoneScoringChart({ zones }: { zones: ZoneData[] }) {
   const totalH = zones.length * groupH + 40;
   return (
     <svg width="100%" viewBox={`0 0 540 ${totalH}`} style={{ display: "block", marginBottom: "8pt" }}>
-      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>ZONE SCORING "” CRITERIA BREAKDOWN (out of 10)</text>
+      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>ZONE SCORING — CRITERIA BREAKDOWN (out of 10)</text>
       {zones.map((zone, zi) => {
         const gy = 22 + zi * groupH;
         return (
@@ -776,7 +776,7 @@ function SvgTimeline({ timeline }: { timeline: SiteSelectionChartData["timeline_
 function SvgKeyStats({ stats, zones }: { stats: SiteSelectionChartData["key_stats"]; zones: ZoneData[] }) {
   const items = [
     { label: "Min. Wage", value: `$${stats.min_wage_usd}`, unit: "/month" },
-    { label: "Power Tariff", value: `$${stats.power_min}"“$${stats.power_max}`, unit: "/kWh" },
+    { label: "Power Tariff", value: `$${stats.power_min}–$${stats.power_max}`, unit: "/kWh" },
     { label: "SEZ Permits", value: `${stats.sez_permit_months}mo`, unit: "inside SEZ" },
     { label: "Outside SEZ", value: `${stats.outside_permit_months}mo`, unit: "permit time" },
   ];
@@ -847,7 +847,7 @@ function SvgGenericTimeline({ items }: { items: GenericChartData["timeline_items
   );
 }
 
-/* â”€â”€ SVG Pie Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ SVG Pie Chart â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
   const total = slices.reduce((s, p) => s + p.value, 0);
   const cx = 100, cy = 90, r = 78;
@@ -893,9 +893,9 @@ function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
   );
 }
 
-/* â”€â”€ SVG Cambodia Province Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ SVG Cambodia Province Map â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 // Converts lat/lng to SVG x/y within a 400Ã—300 viewport
-// Cambodia bounds: lat 10.4"“14.7, lng 102.35"“107.62
+// Cambodia bounds: lat 10.4–14.7, lng 102.35–107.62
 function latLngToSvg(lat: number, lng: number): [number, number] {
   const x = ((lng - 102.35) / (107.62 - 102.35)) * 400;
   const y = ((14.7 - lat) / (14.7 - 10.4)) * 300;
@@ -919,7 +919,7 @@ function SvgCambodiaMap({ zones }: { zones: ZoneData[] }) {
   return (
     <svg width="100%" viewBox="0 0 540 330" style={{ display: "block", marginBottom: "8pt" }}>
       <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>
-        ZONE LOCATIONS "” CAMBODIA MAP
+        ZONE LOCATIONS — CAMBODIA MAP
       </text>
       <g transform="translate(60,18)">
         {/* Country fill */}
@@ -962,7 +962,7 @@ function SvgCambodiaMap({ zones }: { zones: ZoneData[] }) {
   );
 }
 
-/* â”€â”€ SVG Labour Pool Bar Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ SVG Labour Pool Bar Chart â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function SvgLabourPoolChart({ labour }: { labour: SiteSelectionChartData["labour_pool"] }) {
   const max = Math.max(...labour.map(l => l.available));
   const H = labour.length * 28 + 30;
@@ -987,7 +987,7 @@ function SvgLabourPoolChart({ labour }: { labour: SiteSelectionChartData["labour
   );
 }
 
-/* â”€â”€ Print Report component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Print Report component â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function PrintReport({
   brief, form, output, savedBriefId, generatedAt, chartData, reportType,
 }: {
@@ -1019,14 +1019,14 @@ function PrintReport({
     <div className="advisor-print pr-root" style={{ backgroundColor: "#ffffff", color: "#000000" }}>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          PAGE 1 "” MINIMAL COVER
+          PAGE 1 — MINIMAL COVER
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ pageBreakAfter: "always", minHeight: "270mm", display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
 
         {/* Thin top accent line */}
         <div style={{ height: "4pt", backgroundColor: "#cc3300" }} />
 
-        {/* Cover body "” centred, lots of white space */}
+        {/* Cover body — centred, lots of white space */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 48pt" }}>
 
           {/* Brand wordmark */}
@@ -1068,7 +1068,7 @@ function PrintReport({
       </div>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          PAGE 2 "” INFOGRAPHIC / DATA VISUALISATION
+          PAGE 2 — INFOGRAPHIC / DATA VISUALISATION
           (all reports get this page)
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ pageBreakAfter: "always", backgroundColor: "#ffffff" }}>
@@ -1098,7 +1098,7 @@ function PrintReport({
           </div>
         )}
 
-        {/* â”€â”€ Site Selection visualisations â”€â”€ */}
+        {/* â─â─ Site Selection visualisations â─â─ */}
         {ssd && (
           <>
             {/* Row 1: Key stats infographic + Pie chart */}
@@ -1121,13 +1121,13 @@ function PrintReport({
 
             {/* Zone scoring chart */}
             <div style={{ marginBottom: "14pt" }}>
-              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Scoring "” Criteria Breakdown</div>
+              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Scoring — Criteria Breakdown</div>
               <SvgZoneScoringChart zones={ssd.zones} />
             </div>
 
             {/* Gantt chart / timeline */}
             <div style={{ marginBottom: "14pt" }}>
-              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Project Timeline "” Gantt Chart</div>
+              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Project Timeline — Gantt Chart</div>
               <SvgTimeline timeline={ssd.timeline_weeks} />
             </div>
 
@@ -1186,13 +1186,13 @@ function PrintReport({
           </>
         )}
 
-        {/* â”€â”€ Generic brief visualisations â”€â”€ */}
+        {/* â─â─ Generic brief visualisations â─â─ */}
         {gd && (
           <>
             {/* Key metrics infographic */}
             {gd.key_metrics?.length > 0 && (
               <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures "” Infographic</div>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures — Infographic</div>
                 <SvgGenericMetrics metrics={gd.key_metrics} />
               </div>
             )}
@@ -1227,7 +1227,7 @@ function PrintReport({
       </div>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          PAGE 3+ "” BRIEF CONTENT
+          PAGE 3+ — BRIEF CONTENT
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ backgroundColor: "#ffffff" }}>
 
@@ -1249,7 +1249,7 @@ function PrintReport({
       </div>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          LAST PAGE "” DISCLAIMER + METADATA
+          LAST PAGE — DISCLAIMER + METADATA
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ pageBreakBefore: "always", backgroundColor: "#ffffff", color: "#000000" }}>
 
@@ -1264,23 +1264,23 @@ function PrintReport({
           </div>
         </div>
 
-        {/* Data sources "” compact */}
+        {/* Data sources — compact */}
         <div style={{ marginBottom: "18pt" }}>
           <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.15em", borderBottom: "1pt solid #eee", paddingBottom: "4pt", marginBottom: "10pt" }}>
             Data Sources
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4pt 24pt" }}>
             {[
-              { ref: "1", src: "CDC Cambodia "” QIP Registry", url: "cdc.gov.kh" },
-              { ref: "2", src: "SEZB "” SEZ Directory", url: "sezb.gov.kh" },
+              { ref: "1", src: "CDC Cambodia — QIP Registry", url: "cdc.gov.kh" },
+              { ref: "2", src: "SEZB — SEZ Directory", url: "sezb.gov.kh" },
               { ref: "3", src: "Ministry of Industry (MIH)", url: "mih.gov.kh" },
               { ref: "4", src: "Ministry of Environment (MoE)", url: "moe.gov.kh" },
               { ref: "5", src: "Ã‰lectricitÃ© du Cambodge (EDC)", url: "edc.com.kh" },
-              { ref: "6", src: "MoLVT "” Minimum Wage Orders", url: "molvt.gov.kh" },
-              { ref: "7", src: "GDCE "” Customs & Duty Schedule", url: "customs.gov.kh" },
-              { ref: "8", src: "World Bank "” Cambodia Monitor", url: "worldbank.org/cambodia" },
-              { ref: "9", src: "ADB "” Cambodia Portfolio", url: "adb.org/cambodia" },
-              { ref: "10", src: "IFC "” Doing Business in Cambodia", url: "ifc.org" },
+              { ref: "6", src: "MoLVT — Minimum Wage Orders", url: "molvt.gov.kh" },
+              { ref: "7", src: "GDCE — Customs & Duty Schedule", url: "customs.gov.kh" },
+              { ref: "8", src: "World Bank — Cambodia Monitor", url: "worldbank.org/cambodia" },
+              { ref: "9", src: "ADB — Cambodia Portfolio", url: "adb.org/cambodia" },
+              { ref: "10", src: "IFC — Doing Business in Cambodia", url: "ifc.org" },
               { ref: "11", src: "Open Development Cambodia (ODC)", url: "opendevelopmentcambodia.net" },
               { ref: "12", src: "JETRO Cambodia Investment Survey", url: "jetro.go.jp/cambodia" },
               { ref: "13", src: "GentryLab Site Intelligence DB", url: "thegentrylab.io" },
@@ -1361,7 +1361,7 @@ function PrintReport({
   );
 }
 
-/* â”€â”€ Saved Briefs history component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Saved Briefs history component â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 function HistoryView({
   briefs, loading, onOpen, onNew,
 }: {
@@ -1442,7 +1442,7 @@ function HistoryView({
   );
 }
 
-/* â”€â”€ Main page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â─â─ Main page â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
 export default function AdvisorPage() {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>("select");
@@ -1532,7 +1532,7 @@ export default function AdvisorPage() {
     const RED = "CC3300", DARK = "111111", GRAY = "666666", LGRAY = "AAAAAA", WHITE = "FFFFFF";
     const cat = CATEGORIES.find(c => c.id === selectedBrief.category)!;
 
-    // â”€â”€ Slide 1: Cover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â─â─ Slide 1: Cover â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
     const s1 = pptx.addSlide();
     s1.background = { color: WHITE };
     s1.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
@@ -1545,7 +1545,7 @@ export default function AdvisorPage() {
     s1.addText(`REF #${refId}  ·  AI INDUSTRIAL ADVISOR  ·  CAMBODIA`, { x: 0.6, y: 7.15, w: 9, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial" });
     s1.addText("thegentrylab.io", { x: 10.5, y: 7.15, w: 2.5, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial", align: "right" });
 
-    // â”€â”€ Slide 2: Analysis Parameters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â─â─ Slide 2: Analysis Parameters â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
     const labelMap2: Record<string, string> = {};
     selectedBrief.fields.forEach(f => { labelMap2[f.id] = f.label; });
     const inputPairs2 = Object.entries(form).filter(([, v]) => v).map(([k, v]) => ({ key: labelMap2[k] ?? k, val: v }));
@@ -1553,7 +1553,7 @@ export default function AdvisorPage() {
       const s2 = pptx.addSlide();
       s2.background = { color: WHITE };
       s2.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
-      s2.addText("THE GENTRY LAB  "”  Analysis Parameters", { x: 0.4, y: 0.2, w: 12, h: 0.35, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
+      s2.addText("THE GENTRY LAB  —  Analysis Parameters", { x: 0.4, y: 0.2, w: 12, h: 0.35, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
       s2.addText(selectedBrief.title, { x: 0.4, y: 0.55, w: 12, h: 0.35, fontSize: 14, color: DARK, bold: true, fontFace: "Arial" });
       const rows: string[][] = inputPairs2.map(p => [p.key, p.val]);
       s2.addTable([
@@ -1563,7 +1563,7 @@ export default function AdvisorPage() {
       ], { x: 0.4, y: 1.0, w: 12.5, colW: [3.5, 9], border: { type: "solid", color: "EEEEEE" } as const });
     }
 
-    // â”€â”€ Slide 3: Key Statistics Infographic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â─â─ Slide 3: Key Statistics Infographic â─â─â─â─â─â─â─â─â─â─â─â─â─â─
     const ssd2 = chartData?.type === "site_selection" ? chartData as SiteSelectionChartData : null;
     const gd2 = chartData?.type === "generic" ? chartData as GenericChartData : null;
     if (ssd2) {
@@ -1574,7 +1574,7 @@ export default function AdvisorPage() {
       const stats = ssd2.key_stats;
       const statItems = [
         { label: "Min. Wage", val: `$${stats.min_wage_usd}`, unit: "/ month" },
-        { label: "Power Tariff", val: `$${stats.power_min}"“$${stats.power_max}`, unit: "/ kWh" },
+        { label: "Power Tariff", val: `$${stats.power_min}–$${stats.power_max}`, unit: "/ kWh" },
         { label: "SEZ Permits", val: `${stats.sez_permit_months} mo`, unit: "inside SEZ" },
         { label: "Outside SEZ", val: `${stats.outside_permit_months} mo`, unit: "permit time" },
       ];
@@ -1600,7 +1600,7 @@ export default function AdvisorPage() {
       ], { x: 0.4, y: 2.65, w: 12.5, colW: [0.6, 2.2, 1.5, 1.3, 0.7, 0.8, 0.7, 0.8, 0.7], border: { type: "solid", color: "EEEEEE" } as const });
     }
 
-    // â”€â”€ Slide 4: Charts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â─â─ Slide 4: Charts â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
     if (ssd2) {
       const s4 = pptx.addSlide();
       s4.background = { color: WHITE };
@@ -1677,7 +1677,7 @@ export default function AdvisorPage() {
       }
     }
 
-    // â”€â”€ Content slides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â─â─ Content slides â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
     const lines = output.split("\n").filter(l => l.trim());
     const LINES_PER_SLIDE = 22;
     for (let i = 0; i < lines.length; i += LINES_PER_SLIDE) {
@@ -1690,14 +1690,14 @@ export default function AdvisorPage() {
       const textRuns = chunk.map(line => {
         const isH2 = line.startsWith("## ");
         const isH3 = line.startsWith("### ");
-        const isBullet = line.startsWith("- ") || line.startsWith(""¢ ");
-        const clean = line.replace(/^#{1,3}\s+/, "").replace(/^[-"¢]\s+/, "").replace(/\*\*(.*?)\*\*/g, "$1");
-        return { text: (isBullet ? "  "¢ " : "") + clean, options: { fontSize: isH2 ? 13 : isH3 ? 11 : 10, bold: isH2 || isH3, color: isH2 ? RED : DARK, breakLine: true, fontFace: "Arial" } };
+        const isBullet = line.startsWith("- ") || line.startsWith("• ");
+        const clean = line.replace(/^#{1,3}\s+/, "").replace(/^[-"•]\s+/, "").replace(/\*\*(.*?)\*\*/g, "$1");
+        return { text: (isBullet ? "  • " : "") + clean, options: { fontSize: isH2 ? 13 : isH3 ? 11 : 10, bold: isH2 || isH3, color: isH2 ? RED : DARK, breakLine: true, fontFace: "Arial" } };
       });
       sc.addText(textRuns, { x: 0.4, y: 0.55, w: 12.5, h: 6.8, valign: "top" });
     }
 
-    // â”€â”€ Last slide: Disclaimer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // â─â─ Last slide: Disclaimer â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
     const sLast = pptx.addSlide();
     sLast.background = { color: WHITE };
     sLast.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
@@ -1885,7 +1885,7 @@ export default function AdvisorPage() {
 
   const allFilled = selectedBrief?.fields.filter(f => f.required).every(f => form[f.id]?.trim());
 
-  /* â”€â”€ Render â”€â”€ */
+  /* â─â─ Render â─â─ */
   return (
     <>
       {/* Print report (hidden on screen, shown on print) */}
@@ -1920,7 +1920,7 @@ export default function AdvisorPage() {
                   AI Industrial Advisor
                 </h1>
                 <p className="mt-2 text-[13px] leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.40)" }}>
-                  Generate structured investment briefs "” site selection, feasibility, permits, finance, and more "” powered by Cambodia ground-level data.
+                  Generate structured investment briefs — site selection, feasibility, permits, finance, and more — powered by Cambodia ground-level data.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -1958,7 +1958,7 @@ export default function AdvisorPage() {
                       <div className="flex items-center gap-1.5">
                         <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all"
                           style={{ backgroundColor: isActive ? "#ff5100" : isDone ? "rgba(255,81,0,0.30)" : "rgba(255,255,255,0.08)", color: isActive || isDone ? "#fff" : "rgba(255,255,255,0.30)" }}>
-                          {isDone ? "âœ“" : i + 1}
+                          {isDone ? "âœ–" : i + 1}
                         </div>
                         <span className="font-mono text-[10px] uppercase tracking-wider hidden sm:block"
                           style={{ color: isActive ? "#ff5100" : "rgba(255,255,255,0.25)" }}>{labels[i]}</span>
@@ -1974,7 +1974,7 @@ export default function AdvisorPage() {
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-12 py-6 sm:py-10">
 
-          {/* â”€â”€ Auth gate â”€â”€ */}
+          {/* â─â─ Auth gate â─â─ */}
           {!user && (
             <div className="max-w-md mx-auto text-center py-16">
               <div className="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
@@ -1989,7 +1989,7 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {/* â”€â”€ History â”€â”€ */}
+          {/* â─â─ History â─â─ */}
           {user && step === "history" && (
             <HistoryView
               briefs={savedBriefs}
@@ -1999,7 +1999,7 @@ export default function AdvisorPage() {
             />
           )}
 
-          {/* â”€â”€ Step 1: Select â”€â”€ */}
+          {/* â─â─ Step 1: Select â─â─ */}
           {user && step === "select" && (
             <div>
               <div className="flex flex-wrap gap-2 mb-8">
@@ -2041,7 +2041,7 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {/* â”€â”€ Step 2: Form â”€â”€ */}
+          {/* â─â─ Step 2: Form â─â─ */}
           {user && step === "form" && selectedBrief && (
             <div className="max-w-2xl">
               <div className="flex items-center gap-3 mb-6">
@@ -2114,7 +2114,7 @@ export default function AdvisorPage() {
                   <textarea
                     value={userNotes}
                     onChange={e => setUserNotes(e.target.value)}
-                    placeholder="Add any specific focus areas, constraints, or context for the AI "” e.g. 'Focus on garment sector', 'Budget under $5M', 'Priority is fast permit timeline'..."
+                    placeholder="Add any specific focus areas, constraints, or context for the AI — e.g. 'Focus on garment sector', 'Budget under $5M', 'Priority is fast permit timeline'..."
                     rows={3}
                     className="w-full text-[12px] leading-relaxed outline-none resize-none transition"
                     style={{ backgroundColor: "transparent", color: "#ffffff", border: "none", padding: 0 }}
@@ -2151,7 +2151,7 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {/* â”€â”€ Generating animation â”€â”€ */}
+          {/* â─â─ Generating animation â─â─ */}
           {step === "generating" && (
             <div className="flex flex-col items-center justify-center py-24 gap-5">
               <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
@@ -2166,7 +2166,7 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {/* â”€â”€ Step 3: Result â”€â”€ */}
+          {/* â─â─ Step 3: Result â─â─ */}
           {user && step === "result" && selectedBrief && (
             <div className="max-w-3xl">
               {/* Actions bar */}
@@ -2270,7 +2270,7 @@ export default function AdvisorPage() {
                     </div>
                     <div>
                       <p className="font-bold text-[13px]" style={{ color: "#ffffff" }}>Refine this report</p>
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Tell the AI what to adjust, expand, or focus on "” it will regenerate using your inputs</p>
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Tell the AI what to adjust, expand, or focus on — it will regenerate using your inputs</p>
                     </div>
                   </div>
 
@@ -2301,7 +2301,7 @@ export default function AdvisorPage() {
                     <textarea
                       value={refinePrompt}
                       onChange={e => setRefinePrompt(e.target.value)}
-                      placeholder="Or type your own instruction "” e.g. 'Add a section on logistics corridors', 'Focus only on Sihanoukville', 'Expand the financial model'..."
+                      placeholder="Or type your own instruction — e.g. 'Add a section on logistics corridors', 'Focus only on Sihanoukville', 'Expand the financial model'..."
                       rows={3}
                       className="w-full px-4 py-3 rounded-xl text-[12px] leading-relaxed outline-none resize-none transition"
                       style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
