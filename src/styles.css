@@ -418,6 +418,9 @@
 .advisor-print .pr-content-body {
   padding: 22pt 20mm 10pt;
   vertical-align: top;
+  /* Force each content page to fill a full A4 body height on screen.
+     297mm − header(16mm) − footer(14mm) − padding(11mm) ≈ 256mm */
+  min-height: 256mm;
 }
 
 @media print {
