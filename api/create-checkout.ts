@@ -1,10 +1,5 @@
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
-
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
 
 const PACKAGES = {
   starter:  { credits: 1_000,  price_cents:  299,  label: "Starter"  },
@@ -12,24 +7,24 @@ const PACKAGES = {
   business: { credits: 20_000, price_cents: 2999,  label: "Business" },
 } as const;
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") return res.status(200).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   const stripeKey   = process.env.STRIPE_SECRET_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!stripeKey || !supabaseUrl || !serviceKey)
-    return new Response(JSON.stringify({ error: "Server not configured" }), {
-      status: 500, headers: { "Content-Type": "application/json", ...CORS },
-    });
+    return res.status(500).json({ error: "Server not configured" });
 
-  const auth = req.headers.get("Authorization");
+  const auth = req.headers["authorization"] as string | undefined;
   if (!auth?.startsWith("Bearer "))
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { "Content-Type": "application/json", ...CORS },
-    });
+    return res.status(401).json({ error: "Unauthorized" });
 
   let userId: string, userEmail: string;
   try {
@@ -44,23 +39,15 @@ export default async function handler(req: Request): Promise<Response> {
     const { id, email } = await r.json();
     userId = id; userEmail = email;
   } catch {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { "Content-Type": "application/json", ...CORS },
-    });
+    return res.status(401).json({ error: "Unauthorized" });
   }
 
-  let packageId: string;
-  try { ({ packageId } = await req.json()); }
-  catch { return new Response(JSON.stringify({ error: "Invalid JSON" }), { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }); }
-
+  const { packageId } = req.body ?? {};
   const pkg = PACKAGES[packageId as keyof typeof PACKAGES];
-  if (!pkg)
-    return new Response(JSON.stringify({ error: "Invalid package" }), {
-      status: 400, headers: { "Content-Type": "application/json", ...CORS },
-    });
+  if (!pkg) return res.status(400).json({ error: "Invalid package" });
 
   const stripe = new Stripe(stripeKey);
-  const origin = req.headers.get("origin") ?? "https://thegentrylab.io";
+  const origin = (req.headers["origin"] as string) ?? "https://thegentrylab.io";
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
@@ -71,7 +58,6 @@ export default async function handler(req: Request): Promise<Response> {
         product_data: {
           name: `GentryLab ${pkg.label} Credits`,
           description: `${pkg.credits.toLocaleString()} AI credits for GentryLab Industrial Advisor & Chat`,
-          images: [],
         },
         unit_amount: pkg.price_cents,
       },
@@ -83,9 +69,5 @@ export default async function handler(req: Request): Promise<Response> {
     cancel_url:  `${origin}/credits?cancelled=1`,
   });
 
-  return new Response(JSON.stringify({ url: session.url }), {
-    headers: { "Content-Type": "application/json", ...CORS },
-  });
+  return res.status(200).json({ url: session.url });
 }
-
-// Node.js runtime is default for Vercel Functions — no declaration needed
