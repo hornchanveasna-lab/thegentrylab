@@ -315,7 +315,7 @@ export function AiChat() {
 
   /* ── Render ── */
   return (
-    <>
+    <div className="ai-chat-no-print">
       {/* Chat panel */}
       <div
         ref={panelRef}
@@ -475,6 +475,6 @@ export function AiChat() {
           </svg>
         )}
       </button>
-    </>
+    </div>
   );
 }
