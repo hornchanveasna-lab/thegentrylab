@@ -2313,12 +2313,27 @@ export default function AdvisorPage() {
   const [refinePrompt, setRefinePrompt] = useState("");
   const [refining, setRefining] = useState(false);
   const [actualCost, setActualCost] = useState<number | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
   const { credits, refresh: refreshCredits } = useCredits();
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
   }, [output]);
+
+  // Only mount PrintReport DOM when actually printing — avoids heavy hidden DOM degrading scroll perf
+  useEffect(() => {
+    if (!isPrinting || !selectedBrief || !output) return;
+    const timer = setTimeout(() => {
+      const prev = document.title;
+      const slug = selectedBrief.title.replace(/[^a-zA-Z0-9 \-–—]/g, "").replace(/\s+/g, "_").slice(0, 80);
+      document.title = `TGL_${slug}_${new Date().toISOString().slice(0, 10)}`;
+      window.print();
+      document.title = prev;
+      setIsPrinting(false);
+    }, 600); // allow images to start loading
+    return () => clearTimeout(timer);
+  }, [isPrinting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const catBriefs = BRIEFS.filter(b => b.category === category);
   const activeCat = CATEGORIES.find(c => c.id === category)!;
@@ -2759,8 +2774,8 @@ export default function AdvisorPage() {
   /* ── Render ── */
   return (
     <>
-      {/* Print report (hidden on screen, shown on print) */}
-      {selectedBrief && output && (
+      {/* Print report — only mounted during print, never in normal DOM */}
+      {isPrinting && selectedBrief && output && (
         <PrintReport
           brief={selectedBrief}
           form={form}
@@ -3230,13 +3245,7 @@ export default function AdvisorPage() {
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Edit &amp; Regen
                   </button>
-                  <button onClick={() => {
-                    const prev = document.title;
-                    const slug = selectedBrief.title.replace(/[^a-zA-Z0-9 \-–—]/g, "").replace(/\s+/g, "_").slice(0, 80);
-                    document.title = `TGL_${slug}_${new Date().toISOString().slice(0, 10)}`;
-                    window.print();
-                    setTimeout(() => { document.title = prev; }, 3000);
-                  }} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
+                  <button onClick={() => setIsPrinting(true)} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
                     style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)", backgroundColor: "var(--adv-card)" }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                     Print / PDF
