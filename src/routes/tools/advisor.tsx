@@ -992,10 +992,29 @@ function SvgLabourPoolChart({ labour }: { labour: SiteSelectionChartData["labour
 
 /* ── Print Report component ─────────────────────────────── */
 
+/* TGL G-mark inline SVG — exact logo geometry, used in print header */
+function TGLMark({ size = 16, color = "#cc3300" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 22 22" style={{ flexShrink: 0 }}>
+      <g transform="translate(2 2) scale(0.01233)">
+        <rect x="143" y="2"    width="1285" height="283" fill={color}/>
+        <rect x="0"   y="143"  width="287"  height="857" fill={color}/>
+        <circle cx="143" cy="143" r="143"               fill={color}/>
+        <rect x="558" y="572"  width="870"  height="288" fill={color}/>
+        <rect x="1141" y="572" width="287"  height="890" fill={color}/>
+        <rect x="0"   y="1146" width="1428" height="316" fill={color}/>
+      </g>
+    </svg>
+  );
+}
+
 function PRHeader({ title, refId, dateStr }: { title: string; refId: string; dateStr: string }) {
   return (
     <header className="pr-running-header">
-      <div className="pr-rh-logo">THE GENTRY LAB<span>AI Industrial Advisor</span></div>
+      <div className="pr-rh-logo">
+        <TGLMark size={14} color="#cc3300" />
+        THE GENTRY LAB<span>AI Industrial Advisor</span>
+      </div>
       <div className="pr-rh-title">{title} · Ref #{refId} · {dateStr}</div>
     </header>
   );
@@ -1011,12 +1030,12 @@ function PRFooter({ pageNum, refId, year }: { pageNum: number; refId: string; ye
   );
 }
 
-function ContentPage({ title, refId, dateStr, pageNum, year, children }: {
+function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClass = "" }: {
   title: string; refId: string; dateStr: string; pageNum: number; year: number;
-  children: React.ReactNode;
+  children: React.ReactNode; extraClass?: string;
 }) {
   return (
-    <div className="pr-content-page pr-page-break">
+    <div className={`pr-content-page pr-page-break${extraClass ? " " + extraClass : ""}`}>
       <PRHeader title={title} refId={refId} dateStr={dateStr} />
       <div className="pr-content-body">{children}</div>
       <PRFooter pageNum={pageNum} refId={refId} year={year} />
@@ -1168,25 +1187,14 @@ function PrintReport({
           <div style={{ width: "100%", height: "0.75pt", backgroundColor: "rgba(255,255,255,0.2)", marginBottom: "16pt" }} />
 
           {/* Bottom branding — like "World Bank Group" */}
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "16pt" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 800, letterSpacing: "0.2em", textTransform: "uppercase", color: "#ffffff" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12pt" }}>
+            <TGLMark size={28} color="#ff5100" />
+            <div>
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "9pt", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#ffffff" }}>
                 THE GENTRY LAB
               </div>
-              <div style={{ fontFamily: PF.head, fontSize: "6.5pt", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginTop: "1pt" }}>
-                thegentrylab.io · AI Industrial Advisor
-              </div>
-              <div style={{ fontFamily: "monospace", fontSize: "6pt", color: "rgba(255,255,255,0.35)", marginTop: "5pt" }}>
-                Ref #{refId} · © {year} The Gentry Lab
-              </div>
-            </div>
-            {/* QR code — scan to visit site */}
-            <div style={{ textAlign: "center", flexShrink: 0 }}>
-              <div style={{ backgroundColor: "#ffffff", padding: "5pt", display: "inline-block", lineHeight: 0 }}>
-                <QRCodeSVG value={reportUrl} size={52} bgColor="#ffffff" fgColor="#0a0a0b" level="M" />
-              </div>
-              <div style={{ fontFamily: PF.head, fontSize: "5.5pt", color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", textTransform: "uppercase", marginTop: "4pt" }}>
-                Scan to visit
+              <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "6.5pt", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginTop: "2pt" }}>
+                thegentrylab.io · AI Industrial Advisor · Ref #{refId}
               </div>
             </div>
           </div>
@@ -1225,6 +1233,15 @@ function PrintReport({
       <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={3} year={year}>
         <div className="pr-section-number">Section I</div>
         <div className="pr-h1">Acknowledgements</div>
+
+        {/* Section photo */}
+        <div className="pr-figure" style={{ marginBottom: "12pt" }}>
+          <img src={heroBlueprintImg} alt="Industrial development, Cambodia"
+            style={{ width: "100%", height: "100pt", objectFit: "cover", objectPosition: "center 60%", display: "block" }} />
+          <div className="pr-figure-caption">
+            <strong>Figure I.1</strong> — Industrial development corridor, Kingdom of Cambodia. Source: TheGentryLab.io
+          </div>
+        </div>
 
         <p className="pr-p">
           This report was produced using the GentryLab AI Industrial Advisor — a proprietary intelligence platform developed by The Gentry Lab to support foreign investors, development finance institutions, and government agencies engaged in industrial development across the Kingdom of Cambodia.
@@ -1328,6 +1345,21 @@ function PrintReport({
       <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={6} year={year}>
         <div className="pr-section-number">Section IV</div>
         <div className="pr-h1">Executive Summary</div>
+
+        {/* Two-column photo strip */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8pt", marginBottom: "12pt" }}>
+          <div className="pr-figure" style={{ margin: 0 }}>
+            <img src={heroBlueprintImg} alt="Special Economic Zone, Cambodia"
+              style={{ width: "100%", height: "72pt", objectFit: "cover", objectPosition: "center 30%", display: "block" }} />
+            <div className="pr-figure-caption">SEZ infrastructure, Phnom Penh corridor</div>
+          </div>
+          <div className="pr-figure" style={{ margin: 0 }}>
+            <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&h=150&fit=crop&auto=format&q=80"
+              alt="Manufacturing facility" style={{ width: "100%", height: "72pt", objectFit: "cover", display: "block" }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+            <div className="pr-figure-caption">Manufacturing facility, Southeast Asia</div>
+          </div>
+        </div>
 
         <div className="pr-exec-box">
           <div className="pr-exec-box-title">Key Findings at a Glance</div>
@@ -1508,6 +1540,15 @@ function PrintReport({
       <div className="pr-page-break pr-content-page">
         <PRHeader title={brief.title} refId={refId} dateStr={dateStr} />
         <div className="pr-content-body">
+          {/* Inline photo — analysis section opener */}
+          <div className="pr-figure" style={{ marginBottom: "12pt" }}>
+            <img src={heroBlueprintImg} alt="Industrial analysis, Cambodia"
+              style={{ width: "100%", height: "90pt", objectFit: "cover", objectPosition: "center 40%", display: "block" }}
+            />
+            <div className="pr-figure-caption">
+              <strong>Figure VI.1</strong> — Industrial zone planning and site analysis context, Kingdom of Cambodia.
+            </div>
+          </div>
           {renderPrintMarkdown(output)}
         </div>
         <PRFooter pageNum={9} refId={refId} year={year} />
@@ -1537,9 +1578,9 @@ function PrintReport({
       </ContentPage>
 
       {/* ══════════════════════════════════════════════
-          DISCLAIMER PAGE (standalone)
+          DISCLAIMER PAGE (standalone — small, understated)
       ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={13} year={year}>
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={13} year={year} extraClass="pr-disclaimer-page">
         <div className="pr-section-number">Important Notice</div>
         <div className="pr-h1">Disclaimer</div>
 
