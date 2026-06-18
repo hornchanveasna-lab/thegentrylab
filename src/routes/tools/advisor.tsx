@@ -648,6 +648,147 @@ function ScreenTable({ rows }: { rows: string[] }) {
 }
 
 /* ── Print markdown renderer ─────────────────────────────── */
+/* ── Chart data parsing from AI output text ── */
+interface PChartRow { label: string; score: number; max: number }
+interface ParsedChartSpec { title: string; rows: PChartRow[] }
+
+function parsePrintCharts(text: string): ParsedChartSpec[] {
+  const charts: ParsedChartSpec[] = [];
+  const lines = text.split('\n');
+  let lastHeading = '';
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (/^#{1,4}\s/.test(line)) {
+      const raw = line.replace(/^#{1,4}\s+/, '');
+      const parsed = stripSectionEmoji(raw);
+      lastHeading = parsed ? parsed.clean : raw;
+    }
+    if (line.startsWith('|') && !line.match(/^[\|\s\-:]+$/)) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].startsWith('|')) { tableLines.push(lines[i]); i++; }
+      const allRows = tableLines.map(r => r.split('|').map(c => c.trim()).filter(Boolean));
+      const dataRows = allRows.filter((_, idx) => idx >= 2);
+      const rows: PChartRow[] = [];
+      for (const row of dataRows) {
+        if (!row[0] || !row[1]) continue;
+        const label = row[0].replace(/\*\*/g, '').trim().slice(0, 40);
+        const val = row[1].replace(/\*\*/g, '').trim();
+        const frac = val.match(/^([0-9.]+)\s*\/\s*([0-9.]+)/);
+        if (frac) { rows.push({ label, score: parseFloat(frac[1]), max: parseFloat(frac[2]) }); continue; }
+        const pct = val.match(/^([0-9.]+)\s*%/);
+        if (pct && parseFloat(pct[1]) <= 100) { rows.push({ label, score: parseFloat(pct[1]), max: 100 }); }
+      }
+      if (rows.length >= 3) {
+        charts.push({ title: lastHeading || 'Key Metrics', rows });
+        lastHeading = '';
+      }
+      continue;
+    }
+    i++;
+  }
+  return charts;
+}
+
+function extractPrintKeyStats(text: string): { value: string; label: string }[] {
+  const stats: { value: string; label: string }[] = [];
+  const patterns: [RegExp, (m: RegExpMatchArray) => { value: string; label: string }][] = [
+    [/(?:composite|overall|bankability)\s+score[:\s]+([0-9.]+)\s*\/\s*([0-9.]+)/i,
+      m => ({ value: `${m[1]}/${m[2]}`, label: 'Overall Score' })],
+    [/(?:total project cost|project cost|total cost)[:\s]+USD\s*([\d,]+(?:\.\d+)?(?:\s*[KMB])?)/i,
+      m => ({ value: `USD ${m[1]}`, label: 'Project Value' })],
+    [/(?:maximum lendable|max loan|loan amount)[^\n]*?USD\s*([\d,]+(?:,\d{3})*)/i,
+      m => ({ value: `USD ${m[1]}`, label: 'Max Lendable' })],
+    [/(?:land area|site area|total area)[:\s]+([\d,]+\s*(?:ha|hectares?|m²|sqm|acres?))/i,
+      m => ({ value: m[1], label: 'Site Area' })],
+    [/(?:labour|labor)\s+pool[:\s]+([\d,]+\+?)/i,
+      m => ({ value: m[1], label: 'Labour Pool' })],
+    [/([0-9.]+)\s*%\s+(?:p\.a\.|per annum|annual|growth)/i,
+      m => ({ value: `${m[1]}%`, label: 'Growth Rate' })],
+    [/(?:minimum wage|wage)[:\s]+USD\s*([\d,]+)/i,
+      m => ({ value: `USD ${m[1]}`, label: 'Min. Wage /mo' })],
+    [/(?:tax holiday|tax exemption)[^0-9]*([0-9]+)\s*(?:year|yr)/i,
+      m => ({ value: `${m[1]} yr`, label: 'Tax Holiday' })],
+  ];
+  for (const [re, fn] of patterns) {
+    const m = text.match(re);
+    if (m) { const s = fn(m); if (!stats.find(x => x.label === s.label)) stats.push(s); }
+  }
+  return stats.slice(0, 6);
+}
+
+function SvgParsedBarChart({ title, rows, catColor }: { title: string; rows: PChartRow[]; catColor: string }) {
+  const rowH = 26;
+  const labelW = 155;
+  const barMaxW = 310;
+  const totalH = rows.length * rowH + 24;
+  const barColor = (s: number, m: number) => {
+    const p = s / m;
+    return p >= 0.7 ? "#217a4b" : p >= 0.4 ? catColor : "#cc3300";
+  };
+  return (
+    <div style={{ marginBottom: "16pt", breakInside: "avoid" }}>
+      <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8pt", borderLeft: `3pt solid ${catColor}`, paddingLeft: "6pt" }}>{title}</div>
+      <svg width="100%" viewBox={`0 0 ${labelW + barMaxW + 60} ${totalH}`} style={{ display: "block" }}>
+        {rows.map((row, i) => {
+          const barW = Math.max(4, Math.round((row.score / row.max) * barMaxW));
+          const y = 10 + i * rowH;
+          const col = barColor(row.score, row.max);
+          const suffix = row.max === 100 ? "%" : `/${row.max}`;
+          const short = row.label.length > 24 ? row.label.slice(0, 24) + '…' : row.label;
+          return (
+            <g key={i}>
+              <text x="0" y={y + 10} style={{ fontFamily: PF.body, fontSize: "8pt", fill: "#444" }}>{short}</text>
+              <rect x={labelW} y={y} width={barMaxW} height="16" fill="#f0f0f0" rx="3" />
+              <rect x={labelW} y={y} width={barW} height="16" fill={col} rx="3" opacity="0.9" />
+              <text x={labelW + barW + 6} y={y + 11} style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: "bold", fill: col }}>
+                {row.score}{suffix}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function PrintFallbackViz({ output, catColor }: { output: string; catColor: string }) {
+  const charts = parsePrintCharts(output);
+  const stats = extractPrintKeyStats(output);
+  return (
+    <>
+      {stats.length > 0 && (
+        <div className="pr-stat-grid" style={{ marginBottom: "18pt" }}>
+          {stats.map((s, idx) => (
+            <div key={idx} className="pr-stat-cell">
+              <div className="pr-stat-value" style={{ color: catColor, fontSize: "18pt" }}>{s.value}</div>
+              <div className="pr-stat-label">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {charts.map((c, idx) => <SvgParsedBarChart key={idx} title={c.title} rows={c.rows} catColor={catColor} />)}
+      {charts.length === 0 && stats.length === 0 && (
+        <p className="pr-p" style={{ color: "#999", fontStyle: "italic" }}>
+          Structured chart data will appear here for site selection and industrial park briefs. See the Analysis &amp; Findings section for the full advisory report.
+        </p>
+      )}
+    </>
+  );
+}
+
+/* ── Category-specific analysis images ── */
+const CAT_ANALYSIS_IMAGES: Record<string, string> = {
+  industrial_park: "https://images.unsplash.com/photo-1565598993988-b70c0e16f5b3?w=1400&h=500&fit=crop&auto=format&q=80",
+  food_processing: "https://images.unsplash.com/photo-1565598993988-b70c0e16f5b3?w=1400&h=500&fit=crop&auto=format&q=80",
+  epc: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1400&h=500&fit=crop&auto=format&q=80",
+  finance: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1400&h=500&fit=crop&auto=format&q=80",
+  garment: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1400&h=500&fit=crop&auto=format&q=80",
+  logistics: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1400&h=500&fit=crop&auto=format&q=80",
+  environmental: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1400&h=500&fit=crop&auto=format&q=80",
+  energy: "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=1400&h=500&fit=crop&auto=format&q=80",
+};
+
 function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
@@ -1134,11 +1275,22 @@ function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClas
   children: React.ReactNode; extraClass?: string; bottomAlign?: boolean;
 }) {
   return (
-    <div className={`pr-content-page pr-page-break${extraClass ? " " + extraClass : ""}`}>
-      <PRHeader title={title} refId={refId} dateStr={dateStr} />
-      <div className="pr-content-body" style={bottomAlign ? { display: "flex", flexDirection: "column", justifyContent: "flex-end" } : undefined}>{children}</div>
-      <PRFooter pageNum={pageNum} refId={refId} year={year} />
-    </div>
+    <table className={`pr-cpage-table pr-page-break${extraClass ? " " + extraClass : ""}`}
+      style={{ borderCollapse: "collapse", width: "100%", background: "#fff" }}>
+      <thead className="pr-cpage-thead">
+        <tr><td style={{ padding: 0 }}><PRHeader title={title} refId={refId} dateStr={dateStr} /></td></tr>
+      </thead>
+      <tfoot className="pr-cpage-tfoot">
+        <tr><td style={{ padding: 0 }}><PRFooter pageNum={pageNum} refId={refId} year={year} /></td></tr>
+      </tfoot>
+      <tbody className="pr-cpage-tbody">
+        <tr>
+          <td className="pr-content-body" style={{ verticalAlign: bottomAlign ? "bottom" : "top" }}>
+            {children}
+          </td>
+        </tr>
+      </tbody>
+    </table>
   );
 }
 
@@ -1240,6 +1392,7 @@ function PrintReport({
   const exportedEmail = user?.email || "—";
   const exportedId = user?.email ? user.email.replace(/[^a-z0-9]/gi, "").slice(0, 12).toUpperCase() : "GUEST";
   const coverImageUrl = getCoverImageUrl(form);
+  const analysisImageUrl = CAT_ANALYSIS_IMAGES[brief.category] ?? coverImageUrl;
 
   const labelMap: Record<string, string> = {};
   brief.fields.forEach(f => { labelMap[f.id] = f.label; });
@@ -1525,18 +1678,19 @@ function PrintReport({
         <div className="pr-section-number">Section IV</div>
         <div className="pr-h1">Executive Summary</div>
 
-        {/* Two-column photo strip */}
+        {/* Two-column photo strip — satellite + category image */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8pt", marginBottom: "12pt" }}>
           <div className="pr-figure" style={{ margin: 0 }}>
-            <img src={heroBlueprintImg} alt="Special Economic Zone, Cambodia"
-              style={{ width: "100%", height: "72pt", objectFit: "cover", objectPosition: "center 30%", display: "block" }} />
-            <div className="pr-figure-caption">SEZ infrastructure, Phnom Penh corridor</div>
+            <img src={coverImageUrl} alt="Province satellite view"
+              style={{ width: "100%", height: "80pt", objectFit: "cover", objectPosition: "center", display: "block" }}
+              onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }} />
+            <div className="pr-figure-caption">Aerial view — {form.province_preference || form.location || form.province || form.target_province || "Kingdom of Cambodia"}</div>
           </div>
           <div className="pr-figure" style={{ margin: 0 }}>
-            <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=600&h=150&fit=crop&auto=format&q=80"
-              alt="Manufacturing facility" style={{ width: "100%", height: "72pt", objectFit: "cover", display: "block" }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-            <div className="pr-figure-caption">Manufacturing facility, Southeast Asia</div>
+            <img src={analysisImageUrl} alt={brief.title}
+              style={{ width: "100%", height: "80pt", objectFit: "cover", objectPosition: "center", display: "block" }}
+              onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }} />
+            <div className="pr-figure-caption">{cat.label} — Cambodia industrial sector</div>
           </div>
         </div>
 
@@ -1563,21 +1717,29 @@ function PrintReport({
           This document should be read in conjunction with primary source verification from the applicable Cambodian government ministries, and where investment commitment is intended, supplemented by independent legal and financial due diligence from qualified practitioners operating within the Kingdom of Cambodia.
         </p>
 
-        {/* Stat boxes */}
-        <div className="pr-stat-grid" style={{ marginTop: "16pt" }}>
-          <div className="pr-stat-cell">
-            <div className="pr-stat-value">43</div>
-            <div className="pr-stat-label">Active SEZs &amp; Industrial Parks</div>
-          </div>
-          <div className="pr-stat-cell">
-            <div className="pr-stat-value">9yr</div>
-            <div className="pr-stat-label">Max Corporate Tax Holiday (QIP)</div>
-          </div>
-          <div className="pr-stat-cell">
-            <div className="pr-stat-value">$204</div>
-            <div className="pr-stat-label">Monthly Minimum Wage (2024)</div>
-          </div>
-        </div>
+        {/* Stat boxes — dynamic from output + Cambodia context */}
+        {(() => {
+          const dynStats = extractPrintKeyStats(output);
+          const baseStats = [
+            { value: "43", label: "Active SEZs & Industrial Parks" },
+            { value: "9yr", label: "Max Corporate Tax Holiday (QIP)" },
+            { value: "$204", label: "Monthly Minimum Wage (2024)" },
+            { value: "8–12%", label: "Annual Investment Growth Rate" },
+            { value: "25+", label: "Cambodia Provinces Covered" },
+            { value: "60+", label: "TGL Delivered Projects" },
+          ];
+          const allStats = [...dynStats, ...baseStats.filter(b => !dynStats.find(d => d.label === b.label))].slice(0, 6);
+          return (
+            <div className="pr-stat-grid" style={{ marginTop: "16pt" }}>
+              {allStats.map((s, i) => (
+                <div key={i} className="pr-stat-cell">
+                  <div className="pr-stat-value" style={{ color: catColor }}>{s.value}</div>
+                  <div className="pr-stat-label">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </ContentPage>
 
       {/* ══════════════════════════════════════════════
@@ -1696,6 +1858,8 @@ function PrintReport({
             )}
           </>
         )}
+        {/* ── Fallback when no structured chart data (Finance, Bankability, etc.) ── */}
+        {!ssd && !gd && <PrintFallbackViz output={output} catColor={catColor} />}
       </ContentPage>
 
       {/* ══════════════════════════════════════════════
@@ -1717,23 +1881,23 @@ function PrintReport({
           CONTENT PAGES — Brief body (renderPrintMarkdown)
       ══════════════════════════════════════════════ */}
       {/* CSS table trick: thead/tfoot repeat on every printed page */}
-      <table className="pr-analysis-table" style={{ borderCollapse: "collapse", width: "100%", pageBreakBefore: "always" }}>
-        <thead className="pr-analysis-thead">
+      <table className="pr-cpage-table pr-page-break" style={{ borderCollapse: "collapse", width: "100%", background: "#fff" }}>
+        <thead className="pr-cpage-thead">
           <tr><td style={{ padding: 0 }}><PRHeader title={brief.title} refId={refId} dateStr={dateStr} /></td></tr>
         </thead>
-        <tfoot className="pr-analysis-tfoot">
+        <tfoot className="pr-cpage-tfoot">
           <tr><td style={{ padding: 0 }}><PRFooter pageNum={9} refId={refId} year={year} /></td></tr>
         </tfoot>
-        <tbody className="pr-analysis-tbody">
+        <tbody className="pr-cpage-tbody">
           <tr><td style={{ padding: "14pt 20mm 10pt", verticalAlign: "top" }}>
-            {/* Inline photo — analysis section opener */}
-            <div className="pr-figure" style={{ marginBottom: "12pt" }}>
-              <img src={coverImageUrl} alt="Industrial analysis, Cambodia"
-                style={{ width: "100%", height: "90pt", objectFit: "cover", objectPosition: "center 40%", display: "block" }}
-                onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
+            {/* Analysis section opener — category-relevant hero image */}
+            <div className="pr-figure" style={{ marginBottom: "14pt" }}>
+              <img src={analysisImageUrl} alt={brief.title}
+                style={{ width: "100%", height: "140pt", objectFit: "cover", objectPosition: "center", display: "block" }}
+                onError={(e) => { (e.target as HTMLImageElement).src = coverImageUrl; (e.target as HTMLImageElement).onerror = () => { (e.target as HTMLImageElement).src = heroBlueprintImg; }; }}
               />
               <div className="pr-figure-caption">
-                <strong>Figure VI.1</strong> — Aerial / satellite view. Source: ESRI World Imagery · TheGentryLab.io
+                <strong>Figure VI.1</strong> — {brief.title}. Source: TheGentryLab.io · ESRI World Imagery
               </div>
             </div>
             {renderPrintMarkdown(output, catColor)}

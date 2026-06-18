@@ -394,22 +394,17 @@
 .advisor-print  { display: none; }
 
 /* ── Print component base styles (always on, scoped) ── */
-/* These must live outside @media print so the flex layout
-   renders correctly when Chromium builds the print PDF.  */
-.advisor-print .pr-content-page {
-  display: flex !important;
-  flex-direction: column !important;
-  background: #ffffff;
-}
-.advisor-print .pr-analysis-table {
-  background: #ffffff;
+/* CSS table trick: thead/tfoot repeat on every printed page.
+   Applied to ALL content pages for universal header/footer repeat. */
+.advisor-print .pr-cpage-table {
+  border-collapse: collapse;
   width: 100%;
+  background: #ffffff;
 }
 .advisor-print .pr-running-header {
   display: flex !important;
   align-items: center;
   justify-content: space-between;
-  flex-shrink: 0;
   padding: 9pt 20mm 7pt;
   border-bottom: 0.75pt solid #e0e0e0;
 }
@@ -417,13 +412,12 @@
   display: flex !important;
   align-items: center;
   justify-content: space-between;
-  flex-shrink: 0;
   padding: 6pt 20mm 9pt;
   border-top: 0.75pt solid #e0e0e0;
 }
 .advisor-print .pr-content-body {
-  flex: 1;
   padding: 14pt 20mm 10pt;
+  vertical-align: top;
 }
 
 @media print {
@@ -442,14 +436,11 @@
   .pr-page-break { page-break-before: always; break-before: page; }
   .pr-avoid-break { page-break-inside: avoid; break-inside: avoid; }
 
-  /* ── Content page — exact A4 per page ── */
-  .pr-content-page { height: 297mm; overflow: hidden; page-break-after: always; }
-
-  /* ── Analysis content page — CSS table trick for repeating header/footer ── */
-  .pr-analysis-table { display: table !important; width: 100%; }
-  .pr-analysis-thead { display: table-header-group !important; }
-  .pr-analysis-tfoot { display: table-footer-group !important; }
-  .pr-analysis-tbody { display: table-row-group !important; }
+  /* ── Unified CSS table approach — header/footer repeats on every page ── */
+  .pr-cpage-table { display: table !important; width: 100%; page-break-before: always; }
+  .pr-cpage-thead { display: table-header-group !important; }
+  .pr-cpage-tfoot { display: table-footer-group !important; }
+  .pr-cpage-tbody { display: table-row-group !important; }
 
   /* ── Disclaimer + Metadata — smaller body text ── */
   .pr-disclaimer-page .pr-p,
