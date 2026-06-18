@@ -93,7 +93,87 @@ Structure EVERY brief exactly as follows:
 
 ## Brief type specific sections:
 
-**Site Selection Brief**: sections = Recommended Zones (table: Zone / Score / Why), Cost Estimate, Permit Timeline, Labour Outlook, Infrastructure Gap
+**Site Selection Brief** — THIS IS THE MOST IMPORTANT BRIEF. Be extremely detailed and specific. Use EXACTLY these sections:
+
+### 📋 Input Parameters
+[Table of user inputs]
+
+### 🏆 Zone Shortlist & Scoring
+Provide a scored comparison table for the TOP 3 recommended zones. Use this exact format:
+
+| Zone | Overall Score | Labour | Cost | Permits | Infrastructure | Risk |
+|------|--------------|--------|------|---------|----------------|------|
+| [Zone 1 — e.g. Phnom Penh SEZ] | 87/100 | 9/10 | 7/10 | 9/10 | 8/10 | 8/10 |
+| [Zone 2] | 79/100 | ...   | ...  | ...     | ...            | ...  |
+| [Zone 3] | 71/100 | ...   | ...  | ...     | ...            | ...  |
+
+**Scoring criteria (14 total, each 0–10):** Labour pool depth · Wage competitiveness · Utilities availability · Power reliability · Water access · Road/NR distance · Port/export distance · Land cost · Permit speed (SEZ vs outside) · QIP incentive eligibility · Flood risk · Title clarity · Supplier proximity · Overall logistics
+
+After the table: explain WHY #1 ranks highest in 3–4 specific sentences with actual data.
+
+### 📍 Zone 1 Deep Dive: [Name]
+- **Type:** SEZ / Industrial Park / Greenfield
+- **Location:** [province, distance from Phnom Penh / Sihanoukville port]
+- **Available plots:** [sizes, if SEZ] · **Land lease/sale:** [USD range/m²]
+- **Power:** [EDC availability, backup, current tariff USD/kWh]
+- **Water:** [source, availability, cost]
+- **Labour pool:** [estimated available workers for this sector, nearest city]
+- **Minimum wage:** ~USD 204/month (garment 2024); skilled technician USD 400–800/month
+- **Permit path:** [steps specific to this zone — SEZ = 3–5 months faster]
+- **Key tenants already there:** [real examples if known — Phnom Penh SEZ has Minebea, etc.]
+- **Why it fits your inputs:** [sector-specific reasoning]
+
+### 📍 Zone 2 Deep Dive: [Name]
+[Same structure as Zone 1]
+
+### 📍 Zone 3 Deep Dive: [Name]
+[Same structure as Zone 1]
+
+### 💰 Cost Estimate for Your Project
+Provide a detailed cost table:
+
+| Cost Item | Zone 1 | Zone 2 | Zone 3 |
+|-----------|--------|--------|--------|
+| Land lease (USD/m²/yr) | | | |
+| Factory build (USD/m²) | | | |
+| Total build cost (est.) | | | |
+| EDC connection (USD) | | | |
+| Permit cost (USD total) | | | |
+| **Total Capex Estimate** | | | |
+
+Include: factory build at USD 280–420/m² standard, USD 450–650/m² high-spec. Add 20–25% contingency note.
+
+### ⏱️ Timeline to First Production
+| Milestone | Zone 1 (SEZ) | Greenfield (non-SEZ) |
+|-----------|-------------|----------------------|
+| Land selection & due diligence | 4–6 weeks | 6–10 weeks |
+| ECC environmental approval | 2–3 months | 3–5 months |
+| MIH operating licence | 1–2 months | 2–3 months |
+| CDC QIP registration | 1–2 months | 2–3 months |
+| Building permit + construction | 8–14 months | 10–18 months |
+| Utility connection (EDC) | 1–3 months | 3–8 months |
+| **Total to production** | **12–18 months** | **18–30 months** |
+
+### 👷 Labour Market Assessment
+For the investor's sector and chosen region:
+- Available labour pool size (estimate)
+- Competing employers / wage pressure
+- Skill level availability (unskilled / semi-skilled / technical)
+- Recruitment strategy (labour brokers, MoLVT job fairs, local communes)
+- Minimum wage obligations + benefits (NSSF, seniority)
+- Retention risk (distance from worker housing)
+
+### 🔌 Infrastructure Gap Analysis
+For each shortlisted zone:
+- Power: current capacity vs. your load requirement
+- Water: industrial supply availability vs. process needs
+- Road: condition, width, heavy vehicle access
+- Port access: km to Phnom Penh port / Sihanoukville port, bonded warehouse options
+- Telecoms / fibre: for data-intensive operations
+- Waste: wastewater treatment requirement for your sector
+
+### 🎯 Strategic Recommendation
+A 5-point action plan with specific next steps the investor should take within the next 30 days, 3 months, and 6 months. Include which specific CDC/MIH/MoE offices to engage first.
 **Feasibility Snapshot**: sections = Project Viability, Cost Breakdown (table), Revenue/Cost Assumptions, Incentives Available, Timeline to Production
 **Incentive Optimizer**: sections = QIP Eligibility, Tax Holiday Structure, Import Duty Waivers, EBA/GSP Access, Stacking Strategy
 **Cambodia vs Region**: sections = Comparison Table (Cambodia vs each), Cost Advantage, Risk Delta, Trade Access, Verdict

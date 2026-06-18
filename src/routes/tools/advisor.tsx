@@ -10,7 +10,7 @@ export const Route = createFileRoute("/tools/advisor")({
 
 /* ── Types ─────────────────────────────────────────────── */
 type Category = "INVEST" | "DEVELOP" | "FINANCE" | "COMPLY" | "PLAN";
-type Step = "select" | "form" | "generating" | "result";
+type Step = "select" | "form" | "generating" | "result" | "history";
 
 interface Field {
   id: string;
@@ -29,6 +29,16 @@ interface BriefType {
   audience: string;
   fields: Field[];
   icon: React.ReactNode;
+}
+
+interface SavedBrief {
+  id: string;
+  brief_type: string;
+  brief_title: string;
+  category: Category;
+  fields: Record<string, string>;
+  output: string;
+  created_at: string;
 }
 
 /* ── Category config ────────────────────────────────────── */
@@ -272,12 +282,11 @@ const BRIEFS: BriefType[] = [
   },
 ];
 
-/* ── Markdown renderer ──────────────────────────────────── */
+/* ── Screen markdown renderer ────────────────────────────── */
 function renderMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
   let i = 0;
-
   while (i < lines.length) {
     const line = lines[i];
     if (line.startsWith("## ")) {
@@ -287,60 +296,34 @@ function renderMarkdown(text: string) {
     } else if (line.startsWith("#### ")) {
       elements.push(<h4 key={i} className="text-[12px] font-semibold mt-3 mb-1" style={{ color: "rgba(255,255,255,0.75)" }}>{line.slice(5)}</h4>);
     } else if (line.startsWith("> ")) {
-      elements.push(
-        <div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(255,81,0,0.08)", borderLeft: "3px solid #ff5100", color: "rgba(255,255,255,0.80)" }}>
-          {inlineMarkdown(line.slice(2))}
-        </div>
-      );
+      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(255,81,0,0.08)", borderLeft: "3px solid #ff5100", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line.slice(2))}</div>);
     } else if (line.startsWith("⚠️")) {
-      elements.push(
-        <div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(245,158,11,0.08)", borderLeft: "3px solid #f59e0b", color: "rgba(255,255,255,0.80)" }}>
-          {inlineMarkdown(line)}
-        </div>
-      );
+      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(245,158,11,0.08)", borderLeft: "3px solid #f59e0b", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line)}</div>);
     } else if (line.startsWith("✅")) {
-      elements.push(
-        <div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(16,185,129,0.08)", borderLeft: "3px solid #10b981", color: "rgba(255,255,255,0.80)" }}>
-          {inlineMarkdown(line)}
-        </div>
-      );
+      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(16,185,129,0.08)", borderLeft: "3px solid #10b981", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line)}</div>);
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      elements.push(
-        <div key={i} className="flex gap-2 text-[12.5px] my-0.5" style={{ color: "rgba(255,255,255,0.70)" }}>
-          <span style={{ color: "#ff5100" }} className="shrink-0 mt-0.5">·</span>
-          <span>{inlineMarkdown(line.slice(2))}</span>
-        </div>
-      );
+      elements.push(<div key={i} className="flex gap-2 text-[12.5px] my-0.5" style={{ color: "rgba(255,255,255,0.70)" }}><span style={{ color: "#ff5100" }} className="shrink-0 mt-0.5">·</span><span>{inlineMd(line.slice(2))}</span></div>);
     } else if (/^\d+\./.test(line)) {
       const num = line.match(/^(\d+)\./)?.[1];
-      elements.push(
-        <div key={i} className="flex gap-2.5 text-[12.5px] my-1" style={{ color: "rgba(255,255,255,0.70)" }}>
-          <span className="font-mono text-[10px] font-bold shrink-0 mt-0.5 w-4" style={{ color: "#ff5100" }}>{num}.</span>
-          <span>{inlineMarkdown(line.replace(/^\d+\.\s*/, ""))}</span>
-        </div>
-      );
+      elements.push(<div key={i} className="flex gap-2.5 text-[12.5px] my-1" style={{ color: "rgba(255,255,255,0.70)" }}><span className="font-mono text-[10px] font-bold shrink-0 mt-0.5 w-4" style={{ color: "#ff5100" }}>{num}.</span><span>{inlineMd(line.replace(/^\d+\.\s*/, ""))}</span></div>);
     } else if (line.startsWith("|")) {
-      // Table
       const tableLines: string[] = [];
-      while (i < lines.length && lines[i].startsWith("|")) {
-        tableLines.push(lines[i]);
-        i++;
-      }
-      elements.push(<TableBlock key={`t-${i}`} rows={tableLines} />);
+      while (i < lines.length && lines[i].startsWith("|")) { tableLines.push(lines[i]); i++; }
+      elements.push(<ScreenTable key={`t-${i}`} rows={tableLines} />);
       continue;
     } else if (line.startsWith("---")) {
       elements.push(<hr key={i} className="my-4" style={{ borderColor: "rgba(255,255,255,0.08)" }} />);
     } else if (line.trim() === "") {
       elements.push(<div key={i} className="h-1" />);
     } else {
-      elements.push(<p key={i} className="text-[12.5px] leading-relaxed my-1" style={{ color: "rgba(255,255,255,0.65)" }}>{inlineMarkdown(line)}</p>);
+      elements.push(<p key={i} className="text-[12.5px] leading-relaxed my-1" style={{ color: "rgba(255,255,255,0.65)" }}>{inlineMd(line)}</p>);
     }
     i++;
   }
   return elements;
 }
 
-function inlineMarkdown(text: string): React.ReactNode {
+function inlineMd(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((p, i) => {
     if (p.startsWith("**") && p.endsWith("**")) return <strong key={i} style={{ color: "#ffffff" }}>{p.slice(2, -2)}</strong>;
@@ -349,26 +332,267 @@ function inlineMarkdown(text: string): React.ReactNode {
   });
 }
 
-function TableBlock({ rows }: { rows: string[] }) {
+function ScreenTable({ rows }: { rows: string[] }) {
   const parsed = rows.map(r => r.split("|").map(c => c.trim()).filter(Boolean));
   const headers = parsed[0] ?? [];
   const body = parsed.filter((_, i) => i !== 1).slice(1);
   return (
     <div className="my-3 overflow-x-auto">
       <table className="w-full text-[11.5px]" style={{ borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ borderBottom: "1px solid rgba(255,81,0,0.30)" }}>
-            {headers.map((h, i) => <th key={i} className="text-left py-2 px-3 font-mono uppercase tracking-wider text-[10px]" style={{ color: "#ff5100" }}>{h}</th>)}
+        <thead><tr style={{ borderBottom: "1px solid rgba(255,81,0,0.30)" }}>
+          {headers.map((h, i) => <th key={i} className="text-left py-2 px-3 font-mono uppercase tracking-wider text-[10px]" style={{ color: "#ff5100" }}>{h}</th>)}
+        </tr></thead>
+        <tbody>{body.map((row, ri) => (
+          <tr key={ri} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            {row.map((cell, ci) => <td key={ci} className="py-2 px-3" style={{ color: "rgba(255,255,255,0.65)" }}>{inlineMd(cell)}</td>)}
           </tr>
-        </thead>
-        <tbody>
-          {body.map((row, ri) => (
-            <tr key={ri} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              {row.map((cell, ci) => <td key={ci} className="py-2 px-3" style={{ color: "rgba(255,255,255,0.65)" }}>{inlineMarkdown(cell)}</td>)}
-            </tr>
-          ))}
-        </tbody>
+        ))}</tbody>
       </table>
+    </div>
+  );
+}
+
+/* ── Print markdown renderer ─────────────────────────────── */
+function renderPrintMarkdown(text: string) {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.startsWith("## ")) {
+      elements.push(<div key={i} className="pr-h2">{line.slice(3)}</div>);
+    } else if (line.startsWith("### ")) {
+      elements.push(<div key={i} className="pr-h3">{line.slice(4)}</div>);
+    } else if (line.startsWith("#### ")) {
+      elements.push(<div key={i} className="pr-h4">{line.slice(5)}</div>);
+    } else if (line.startsWith("> ")) {
+      elements.push(<div key={i} className="pr-blockquote">{printInline(line.slice(2))}</div>);
+    } else if (line.startsWith("⚠️")) {
+      elements.push(<div key={i} className="pr-warn">{printInline(line)}</div>);
+    } else if (line.startsWith("✅")) {
+      elements.push(<div key={i} className="pr-good">{printInline(line)}</div>);
+    } else if (line.startsWith("- ") || line.startsWith("* ")) {
+      elements.push(<div key={i} className="pr-li"><span className="pr-li-dot">·</span><span>{printInline(line.slice(2))}</span></div>);
+    } else if (/^\d+\./.test(line)) {
+      const num = line.match(/^(\d+)\./)?.[1];
+      elements.push(<div key={i} className="pr-ol"><span className="pr-ol-num">{num}.</span><span>{printInline(line.replace(/^\d+\.\s*/, ""))}</span></div>);
+    } else if (line.startsWith("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].startsWith("|")) { tableLines.push(lines[i]); i++; }
+      elements.push(<PrintTable key={`pt-${i}`} rows={tableLines} />);
+      continue;
+    } else if (line.startsWith("---")) {
+      elements.push(<hr key={i} className="pr-divider" />);
+    } else if (line.trim() === "") {
+      elements.push(<div key={i} style={{ height: "4pt" }} />);
+    } else {
+      elements.push(<div key={i} className="pr-p">{printInline(line)}</div>);
+    }
+    i++;
+  }
+  return elements;
+}
+
+function printInline(text: string): React.ReactNode {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+  return parts.map((p, j) => {
+    if (p.startsWith("**") && p.endsWith("**")) return <strong key={j}>{p.slice(2, -2)}</strong>;
+    if (p.startsWith("`") && p.endsWith("`")) return <code key={j} style={{ fontFamily: "monospace", background: "#fff3ee", color: "#cc3300", padding: "0 3pt", borderRadius: "2pt", fontSize: "8.5pt" }}>{p.slice(1, -1)}</code>;
+    return p;
+  });
+}
+
+function PrintTable({ rows }: { rows: string[] }) {
+  const parsed = rows.map(r => r.split("|").map(c => c.trim()).filter(Boolean));
+  const headers = parsed[0] ?? [];
+  const body = parsed.filter((_, i) => i !== 1).slice(1);
+  return (
+    <table className="pr-table">
+      <thead><tr>{headers.map((h, i) => <th key={i}>{h}</th>)}</tr></thead>
+      <tbody>{body.map((row, ri) => <tr key={ri}>{row.map((cell, ci) => <td key={ci}>{printInline(cell)}</td>)}</tr>)}</tbody>
+    </table>
+  );
+}
+
+/* ── Print Report component ─────────────────────────────── */
+function PrintReport({
+  brief, form, output, savedBriefId, generatedAt,
+}: {
+  brief: BriefType; form: Record<string, string>; output: string;
+  savedBriefId: string | null; generatedAt: Date;
+}) {
+  const cat = CATEGORIES.find(c => c.id === brief.category)!;
+  const refId = savedBriefId ? savedBriefId.slice(0, 8).toUpperCase() : "DRAFT";
+  const dateStr = generatedAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const timeStr = generatedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  const labelMap: Record<string, string> = {};
+  brief.fields.forEach(f => { labelMap[f.id] = f.label; });
+
+  const inputPairs = Object.entries(form).filter(([, v]) => v).map(([k, v]) => ({
+    key: labelMap[k] ?? k, val: v,
+  }));
+  const half = Math.ceil(inputPairs.length / 2);
+  const col1 = inputPairs.slice(0, half);
+  const col2 = inputPairs.slice(half);
+
+  return (
+    <div className="advisor-print pr-root">
+      {/* Header */}
+      <div className="pr-header">
+        <div>
+          <div className="pr-brand-name">THE GENTRY LAB</div>
+          <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
+          <div className="pr-brand-city">thegentrylab.io · Phnom Penh</div>
+        </div>
+        <div className="pr-meta-block">
+          <div className="pr-meta-text">
+            <div className="pr-meta-cat" style={{ backgroundColor: cat.color }}>{cat.label}</div>
+            <div className="pr-meta-label">Brief Type</div>
+            <div className="pr-meta-value">{brief.title}</div>
+            <div className="pr-meta-label">Generated</div>
+            <div className="pr-meta-value" style={{ marginBottom: "4pt" }}>{dateStr} · {timeStr}</div>
+            <div className="pr-meta-label">Reference</div>
+            <div style={{ fontFamily: "monospace", fontSize: "8pt", fontWeight: 700, color: "#555", letterSpacing: "0.08em" }}>#{refId}</div>
+          </div>
+          <div className="pr-meta-qr">
+            <img
+              src="https://api.qrserver.com/v1/create-qr-code/?size=124x124&data=https://thegentrylab.io&bgcolor=ffffff&color=111111&format=png&margin=2"
+              alt="thegentrylab.io"
+            />
+            <div style={{ fontFamily: "monospace", fontSize: "6pt", color: "#aaa", marginTop: "2pt", textAlign: "center" }}>thegentrylab.io</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Title */}
+      <div className="pr-title-section">
+        <div className="pr-title">{brief.title}</div>
+        <div className="pr-subtitle">{brief.desc} · For: {brief.audience}</div>
+      </div>
+
+      {/* Input parameters */}
+      {inputPairs.length > 0 && (
+        <div className="pr-inputs">
+          <div className="pr-inputs-title">Input Parameters</div>
+          <div className="pr-inputs-grid">
+            <div>{col1.map((p, i) => (
+              <div key={i} className="pr-input-row">
+                <span className="pr-input-key">{p.key}</span>
+                <span className="pr-input-val">{p.val}</span>
+              </div>
+            ))}</div>
+            <div>{col2.map((p, i) => (
+              <div key={i} className="pr-input-row">
+                <span className="pr-input-key">{p.key}</span>
+                <span className="pr-input-val">{p.val}</span>
+              </div>
+            ))}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Brief content */}
+      <div style={{ marginBottom: "16pt" }}>
+        {renderPrintMarkdown(output)}
+      </div>
+
+      {/* Footer */}
+      <div className="pr-footer">
+        <div>
+          <div className="pr-footer-left">
+            <span className="pr-footer-brand">THE GENTRY LAB</span> · AI Industrial Advisor · Ref #{refId}
+          </div>
+          <div className="pr-disclaimer">
+            AI-generated brief for advisory purposes only. Verify all data before making investment decisions. © {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd.
+          </div>
+        </div>
+        <div className="pr-footer-right">
+          advisory@thegentrylab.io<br />
+          thegentrylab.io
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Saved Briefs history component ─────────────────────── */
+function HistoryView({
+  briefs, loading, onOpen, onNew,
+}: {
+  briefs: SavedBrief[];
+  loading: boolean;
+  onOpen: (b: SavedBrief) => void;
+  onNew: () => void;
+}) {
+  const catColors: Record<string, string> = {
+    INVEST: "#ff5100", DEVELOP: "#10b981", FINANCE: "#3b82f6", COMPLY: "#f59e0b", PLAN: "#8b5cf6",
+  };
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-[16px] font-bold" style={{ color: "#ffffff" }}>Saved Briefs</h2>
+          <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Reopen any brief to view, edit inputs, or regenerate</p>
+        </div>
+        <button onClick={onNew} className="px-4 py-2 rounded-lg font-bold text-[12px]" style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
+          + New Brief
+        </button>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 py-12 justify-center" style={{ color: "rgba(255,255,255,0.30)" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="animate-spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <span className="font-mono text-[10px] uppercase tracking-widest">Loading briefs…</span>
+        </div>
+      )}
+
+      {!loading && briefs.length === 0 && (
+        <div className="text-center py-16">
+          <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.40)" }}>No saved briefs yet.</p>
+          <p className="text-[11px] mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>Generate your first brief to see it here.</p>
+          <button onClick={onNew} className="mt-5 px-5 py-2.5 rounded-lg font-bold text-[12px]" style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.25)" }}>
+            Generate a Brief →
+          </button>
+        </div>
+      )}
+
+      {!loading && briefs.length > 0 && (
+        <div className="space-y-2">
+          {briefs.map(b => {
+            const color = catColors[b.category] ?? "#ff5100";
+            const date = new Date(b.created_at);
+            const preview = b.output?.replace(/[#>*`|]/g, "").replace(/\n/g, " ").slice(0, 120) ?? "";
+            return (
+              <button key={b.id} onClick={() => onOpen(b)} className="w-full text-left p-4 rounded-xl transition-all group"
+                style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = `${color}40`)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)")}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>
+                      {b.category}
+                    </span>
+                    <span className="text-[13px] font-semibold truncate" style={{ color: "#ffffff" }}>{b.brief_title}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono text-[9px]" style={{ color: "rgba(255,255,255,0.25)" }}>
+                      {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
+                    </span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>Open →</span>
+                  </div>
+                </div>
+                {preview && (
+                  <p className="text-[11px] mt-2 leading-relaxed line-clamp-2" style={{ color: "rgba(255,255,255,0.30)" }}>{preview}…</p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -383,6 +607,11 @@ export default function AdvisorPage() {
   const [output, setOutput] = useState("");
   const [streaming, setStreaming] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedBriefId, setSavedBriefId] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<Date>(new Date());
+  const [savedBriefs, setSavedBriefs] = useState<SavedBrief[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -392,9 +621,49 @@ export default function AdvisorPage() {
   const catBriefs = BRIEFS.filter(b => b.category === category);
   const activeCat = CATEGORIES.find(c => c.id === category)!;
 
+  async function loadBriefs() {
+    if (!user || !supabase) return;
+    setHistoryLoading(true);
+    const { data } = await supabase
+      .from("advisor_briefs")
+      .select("id, brief_type, brief_title, category, fields, output, created_at")
+      .order("created_at", { ascending: false })
+      .limit(30);
+    setSavedBriefs((data as SavedBrief[]) ?? []);
+    setHistoryLoading(false);
+  }
+
+  function openHistory() {
+    loadBriefs();
+    setStep("history");
+  }
+
+  function reopenBrief(b: SavedBrief) {
+    const briefDef = BRIEFS.find(def => def.id === b.brief_type);
+    if (!briefDef) return;
+    setSelectedBrief(briefDef);
+    setCategory(briefDef.category);
+    setForm(b.fields ?? {});
+    setOutput(b.output ?? "");
+    setSaved(true);
+    setSavedBriefId(b.id);
+    setGeneratedAt(new Date(b.created_at));
+    setIsEditMode(false);
+    setStep("result");
+  }
+
   function selectBrief(b: BriefType) {
     setSelectedBrief(b);
     setForm({});
+    setOutput("");
+    setSaved(false);
+    setSavedBriefId(null);
+    setIsEditMode(false);
+    setStep("form");
+  }
+
+  function editAndRegenerate() {
+    setIsEditMode(true);
     setStep("form");
   }
 
@@ -404,8 +673,10 @@ export default function AdvisorPage() {
     setOutput("");
     setStreaming(true);
     setSaved(false);
+    setSavedBriefId(null);
+    const now = new Date();
+    setGeneratedAt(now);
 
-    // small delay for animation
     await new Promise(r => setTimeout(r, 600));
     setStep("result");
 
@@ -435,17 +706,19 @@ export default function AdvisorPage() {
         setOutput(accumulated);
       }
 
-      // Save to Supabase
+      // Auto-save to Supabase
       if (user && supabase) {
-        await supabase.from("advisor_briefs").insert({
+        const { data: inserted } = await supabase.from("advisor_briefs").insert({
           user_id: user.id,
           brief_type: selectedBrief.id,
           brief_title: selectedBrief.title,
           category: selectedBrief.category,
           fields: form,
           output: accumulated,
-        });
+        }).select("id").single();
+        if (inserted?.id) setSavedBriefId(inserted.id);
         setSaved(true);
+        setIsEditMode(false);
       }
     } catch (e) {
       setOutput("[Error: " + (e instanceof Error ? e.message : "Unknown error") + "]");
@@ -454,274 +727,328 @@ export default function AdvisorPage() {
     }
   }
 
-  function reset() { setStep("select"); setSelectedBrief(null); setOutput(""); setForm({}); setSaved(false); }
+  function reset() {
+    setStep("select");
+    setSelectedBrief(null);
+    setOutput("");
+    setForm({});
+    setSaved(false);
+    setSavedBriefId(null);
+    setIsEditMode(false);
+  }
 
   const allFilled = selectedBrief?.fields.filter(f => f.required).every(f => form[f.id]?.trim());
 
   /* ── Render ── */
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0a0a0b", color: "#ffffff" }}>
-      <TopNav />
+    <>
+      {/* Print report (hidden on screen, shown on print) */}
+      {selectedBrief && output && (
+        <PrintReport
+          brief={selectedBrief}
+          form={form}
+          output={output}
+          savedBriefId={savedBriefId}
+          generatedAt={generatedAt}
+        />
+      )}
 
-      {/* Hero */}
-      <div className="border-b" style={{ borderColor: "rgba(255,255,255,0.06)", backgroundColor: "#0d0d0e" }}>
-        <div className="max-w-6xl mx-auto px-6 md:px-12 py-10">
-          <div className="flex items-start justify-between gap-6 flex-wrap">
-            <div>
-              <div className="flex items-center gap-3 mb-3">
-                <span className="font-mono text-[9px] uppercase tracking-[0.25em] px-2.5 py-1 rounded" style={{ color: "#ff5100", backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
-                  AI Tool · Beta
-                </span>
-                {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.25)" }}>Logged in · Credits active</span>}
+      {/* Screen content */}
+      <div className="advisor-screen min-h-screen" style={{ backgroundColor: "#0a0a0b", color: "#ffffff" }}>
+        <TopNav />
+
+        {/* Hero */}
+        <div className="border-b" style={{ borderColor: "rgba(255,255,255,0.06)", backgroundColor: "#0d0d0e" }}>
+          <div className="max-w-6xl mx-auto px-6 md:px-12 py-10">
+            <div className="flex items-start justify-between gap-6 flex-wrap">
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="font-mono text-[9px] uppercase tracking-[0.25em] px-2.5 py-1 rounded" style={{ color: "#ff5100", backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
+                    AI Tool · Beta
+                  </span>
+                  {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.25)" }}>Logged in · Credits active</span>}
+                </div>
+                <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight leading-tight" style={{ color: "#ffffff" }}>
+                  AI Industrial Advisor
+                </h1>
+                <p className="mt-2 text-[13px] leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.40)" }}>
+                  Generate structured investment briefs — site selection, feasibility, permits, finance, and more — powered by Cambodia ground-level data.
+                </p>
               </div>
-              <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight leading-tight" style={{ color: "#ffffff" }}>
-                AI Industrial Advisor
-              </h1>
-              <p className="mt-2 text-[13px] leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.40)" }}>
-                Generate structured investment briefs — site selection, feasibility, permits, finance, and more — powered by Cambodia ground-level data.
-              </p>
+              <div className="flex items-center gap-2">
+                {user && step !== "history" && (
+                  <button onClick={openHistory} className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
+                    style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.50)" }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    My Briefs
+                  </button>
+                )}
+                {step !== "select" && step !== "history" && (
+                  <button onClick={reset} className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest rounded transition"
+                    style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
+                    ← New Brief
+                  </button>
+                )}
+                {step === "history" && (
+                  <button onClick={reset} className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest rounded transition"
+                    style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
+                    ← Back
+                  </button>
+                )}
+              </div>
             </div>
-            {step !== "select" && (
-              <button onClick={reset} className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded transition"
-                style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
-                ← New Brief
-              </button>
+
+            {/* Step indicator */}
+            {step !== "history" && (
+              <div className="flex items-center gap-2 mt-8">
+                {(["select","form","result"] as Step[]).map((s, i) => {
+                  const labels = ["Select Brief","Fill Details","Your Brief"];
+                  const isActive = step === s || (step === "generating" && s === "result");
+                  const isDone = (step === "form" && i === 0) || (step === "generating" && i < 2) || (step === "result" && i < 2);
+                  return (
+                    <div key={s} className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all"
+                          style={{ backgroundColor: isActive ? "#ff5100" : isDone ? "rgba(255,81,0,0.30)" : "rgba(255,255,255,0.08)", color: isActive || isDone ? "#fff" : "rgba(255,255,255,0.30)" }}>
+                          {isDone ? "✓" : i + 1}
+                        </div>
+                        <span className="font-mono text-[10px] uppercase tracking-wider hidden sm:block"
+                          style={{ color: isActive ? "#ff5100" : "rgba(255,255,255,0.25)" }}>{labels[i]}</span>
+                      </div>
+                      {i < 2 && <div className="w-8 h-px" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />}
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
-
-          {/* Step indicator */}
-          <div className="flex items-center gap-2 mt-8">
-            {(["select","form","result"] as Step[]).map((s, i) => {
-              const labels = ["Select Brief","Fill Details","Your Brief"];
-              const isActive = step === s || (step === "generating" && s === "result");
-              const isDone = (step === "form" && i === 0) || (step === "generating" && i < 2) || (step === "result" && i < 2);
-              return (
-                <div key={s} className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all"
-                      style={{ backgroundColor: isActive ? "#ff5100" : isDone ? "rgba(255,81,0,0.30)" : "rgba(255,255,255,0.08)", color: isActive || isDone ? "#fff" : "rgba(255,255,255,0.30)" }}>
-                      {isDone ? "✓" : i + 1}
-                    </div>
-                    <span className="font-mono text-[10px] uppercase tracking-wider hidden sm:block"
-                      style={{ color: isActive ? "#ff5100" : "rgba(255,255,255,0.25)" }}>{labels[i]}</span>
-                  </div>
-                  {i < 2 && <div className="w-8 h-px" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />}
-                </div>
-              );
-            })}
-          </div>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-6 md:px-12 py-10">
+        <div className="max-w-6xl mx-auto px-6 md:px-12 py-10">
 
-        {/* ── Auth gate ── */}
-        {!user && (
-          <div className="max-w-md mx-auto text-center py-16">
-            <div className="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <h2 className="text-[18px] font-bold mb-2" style={{ color: "#ffffff" }}>Sign in to use the Advisor</h2>
-            <p className="text-[13px] mb-6" style={{ color: "rgba(255,255,255,0.40)" }}>AI Industrial Advisor briefs require a free account.</p>
-            <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px]"
-              style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
-              Sign in free →
-            </Link>
-          </div>
-        )}
-
-        {/* ── Step 1: Select ── */}
-        {user && step === "select" && (
-          <div>
-            {/* Category tabs */}
-            <div className="flex flex-wrap gap-2 mb-8">
-              {CATEGORIES.map(cat => (
-                <button key={cat.id} onClick={() => setCategory(cat.id)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition-all"
-                  style={{
-                    backgroundColor: category === cat.id ? cat.color : "rgba(255,255,255,0.04)",
-                    color: category === cat.id ? "#000" : "rgba(255,255,255,0.50)",
-                    border: `1px solid ${category === cat.id ? cat.color : "rgba(255,255,255,0.08)"}`,
-                    fontWeight: category === cat.id ? 700 : 400,
-                  }}>
-                  {cat.icon}
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mb-6">
-              <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>{activeCat.desc}</p>
-            </div>
-
-            {/* Brief type cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {catBriefs.map(b => (
-                <button key={b.id} onClick={() => selectBrief(b)} className="text-left group p-5 rounded-xl transition-all"
-                  style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-                  onMouseEnter={e => (e.currentTarget.style.border = `1px solid ${activeCat.color}40`)}
-                  onMouseLeave={e => (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.07)")}>
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3 transition-all"
-                    style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>
-                    {b.icon}
-                  </div>
-                  <h3 className="text-[13px] font-bold mb-1.5 leading-snug" style={{ color: "#ffffff" }}>{b.title}</h3>
-                  <p className="text-[11.5px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.40)" }}>{b.desc}</p>
-                  <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: activeCat.color }}>
-                    For: {b.audience}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                    <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>
-                      {b.fields.length} inputs · ~30 sec
-                    </span>
-                    <span className="ml-auto font-mono text-[9px]" style={{ color: activeCat.color }}>Generate →</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Step 2: Form ── */}
-        {user && step === "form" && selectedBrief && (
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>
-                {selectedBrief.icon}
+          {/* ── Auth gate ── */}
+          {!user && (
+            <div className="max-w-md mx-auto text-center py-16">
+              <div className="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </div>
-              <div>
-                <h2 className="text-[16px] font-bold" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
-                <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Fill in the details below to generate your brief</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {selectedBrief.fields.map(field => (
-                <div key={field.id}>
-                  <label className="block font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(255,255,255,0.50)" }}>
-                    {field.label}{field.required && <span style={{ color: "#ff5100" }}> *</span>}
-                  </label>
-                  {field.type === "select" ? (
-                    <select
-                      value={form[field.id] ?? ""}
-                      onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
-                      className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition appearance-none"
-                      style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: form[field.id] ? "#ffffff" : "rgba(255,255,255,0.30)" }}>
-                      <option value="">Select…</option>
-                      {field.options?.map(o => <option key={o} value={o} style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}>{o}</option>)}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      value={form[field.id] ?? ""}
-                      onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
-                      placeholder={field.placeholder}
-                      className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition"
-                      style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-3 mt-8">
-              <button onClick={() => setStep("select")} className="px-5 py-2.5 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
-                style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
-                ← Back
-              </button>
-              <button onClick={generate} disabled={!allFilled}
-                className="flex-1 px-5 py-2.5 rounded-lg font-bold text-[13px] transition disabled:opacity-30 disabled:cursor-not-allowed"
+              <h2 className="text-[18px] font-bold mb-2" style={{ color: "#ffffff" }}>Sign in to use the Advisor</h2>
+              <p className="text-[13px] mb-6" style={{ color: "rgba(255,255,255,0.40)" }}>AI Industrial Advisor briefs require a free account.</p>
+              <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px]"
                 style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
-                Generate Brief →
-              </button>
+                Sign in free →
+              </Link>
             </div>
-            <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.20)" }}>
-              Uses 1 credit · Saved to your account
-            </p>
-          </div>
-        )}
+          )}
 
-        {/* ── Generating animation ── */}
-        {step === "generating" && (
-          <div className="flex flex-col items-center justify-center py-24 gap-5">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.6" className="animate-spin">
-                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-              </svg>
-            </div>
-            <div className="text-center">
-              <p className="font-bold text-[14px]" style={{ color: "#ffffff" }}>Generating your brief…</p>
-              <p className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,255,255,0.30)" }}>Analysing Cambodia industrial data</p>
-            </div>
-          </div>
-        )}
+          {/* ── History ── */}
+          {user && step === "history" && (
+            <HistoryView
+              briefs={savedBriefs}
+              loading={historyLoading}
+              onOpen={reopenBrief}
+              onNew={reset}
+            />
+          )}
 
-        {/* ── Step 3: Result ── */}
-        {user && step === "result" && selectedBrief && (
-          <div className="max-w-3xl">
-            {/* Actions bar */}
-            <div className="flex items-center gap-3 mb-6 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>
-                  {selectedBrief.icon}
+          {/* ── Step 1: Select ── */}
+          {user && step === "select" && (
+            <div>
+              <div className="flex flex-wrap gap-2 mb-8">
+                {CATEGORIES.map(cat => (
+                  <button key={cat.id} onClick={() => setCategory(cat.id)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition-all"
+                    style={{
+                      backgroundColor: category === cat.id ? cat.color : "rgba(255,255,255,0.04)",
+                      color: category === cat.id ? "#000" : "rgba(255,255,255,0.50)",
+                      border: `1px solid ${category === cat.id ? cat.color : "rgba(255,255,255,0.08)"}`,
+                      fontWeight: category === cat.id ? 700 : 400,
+                    }}>
+                    {cat.icon} {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mb-6">
+                <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>{activeCat.desc}</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {catBriefs.map(b => (
+                  <button key={b.id} onClick={() => selectBrief(b)} className="text-left group p-5 rounded-xl transition-all"
+                    style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                    onMouseEnter={e => (e.currentTarget.style.border = `1px solid ${activeCat.color}40`)}
+                    onMouseLeave={e => (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.07)")}>
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{b.icon}</div>
+                    <h3 className="text-[13px] font-bold mb-1.5 leading-snug" style={{ color: "#ffffff" }}>{b.title}</h3>
+                    <p className="text-[11.5px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.40)" }}>{b.desc}</p>
+                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: activeCat.color }}>For: {b.audience}</p>
+                    <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>{b.fields.length} inputs · ~30 sec</span>
+                      <span className="ml-auto font-mono text-[9px]" style={{ color: activeCat.color }}>Generate →</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 2: Form ── */}
+          {user && step === "form" && selectedBrief && (
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{selectedBrief.icon}</div>
+                <div>
+                  <h2 className="text-[16px] font-bold" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
+                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                    {isEditMode ? "Edit your inputs and regenerate the brief" : "Fill in the details below to generate your brief"}
+                  </p>
                 </div>
-                <h2 className="text-[14px] font-bold" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
               </div>
-              <div className="ml-auto flex items-center gap-2">
-                {saved && (
-                  <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Saved
-                  </span>
-                )}
-                {streaming && (
-                  <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />Generating…
-                  </span>
-                )}
-                <button onClick={() => window.print()} className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
+
+              <div className="space-y-4">
+                {selectedBrief.fields.map(field => (
+                  <div key={field.id}>
+                    <label className="block font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(255,255,255,0.50)" }}>
+                      {field.label}{field.required && <span style={{ color: "#ff5100" }}> *</span>}
+                    </label>
+                    {field.type === "select" ? (
+                      <select value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition appearance-none"
+                        style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: form[field.id] ? "#ffffff" : "rgba(255,255,255,0.30)" }}>
+                        <option value="">Select…</option>
+                        {field.options?.map(o => <option key={o} value={o} style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input type="text" value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
+                        placeholder={field.placeholder}
+                        className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition"
+                        style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-3 mt-8">
+                <button onClick={() => isEditMode ? setStep("result") : setStep("select")}
+                  className="px-5 py-2.5 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
                   style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
-                  Print
+                  ← {isEditMode ? "Cancel" : "Back"}
                 </button>
-                <button onClick={reset} className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                  style={{ border: "1px solid rgba(255,81,0,0.30)", color: "#ff5100" }}>
-                  New Brief
+                <button onClick={generate} disabled={!allFilled}
+                  className="flex-1 px-5 py-2.5 rounded-lg font-bold text-[13px] transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
+                  {isEditMode ? "Regenerate Brief →" : "Generate Brief →"}
                 </button>
+              </div>
+              <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.20)" }}>
+                Uses 1 credit · Auto-saved to your account
+              </p>
+            </div>
+          )}
+
+          {/* ── Generating animation ── */}
+          {step === "generating" && (
+            <div className="flex flex-col items-center justify-center py-24 gap-5">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.6" className="animate-spin">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="font-bold text-[14px]" style={{ color: "#ffffff" }}>Generating your brief…</p>
+                <p className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,255,255,0.30)" }}>Analysing Cambodia industrial data</p>
               </div>
             </div>
+          )}
 
-            {/* Brief output */}
-            <div ref={outputRef} className="rounded-xl p-6 md:p-8 min-h-[400px]"
-              style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
-              {output ? renderMarkdown(output) : (
-                <div className="flex items-center gap-2" style={{ color: "rgba(255,255,255,0.30)" }}>
-                  <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
-                  <span className="animate-bounce" style={{ animationDelay: "120ms" }}>·</span>
-                  <span className="animate-bounce" style={{ animationDelay: "240ms" }}>·</span>
+          {/* ── Step 3: Result ── */}
+          {user && step === "result" && selectedBrief && (
+            <div className="max-w-3xl">
+              {/* Actions bar */}
+              <div className="flex items-center gap-3 mb-6 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{selectedBrief.icon}</div>
+                  <h2 className="text-[14px] font-bold" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
+                </div>
+                <div className="ml-auto flex items-center gap-2 flex-wrap">
+                  {saved && !streaming && (
+                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Auto-saved
+                    </span>
+                  )}
+                  {streaming && (
+                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />Generating…
+                    </span>
+                  )}
+                  {!streaming && output && (
+                    <button onClick={editAndRegenerate} className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
+                      style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.50)" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Edit & Regen
+                    </button>
+                  )}
+                  {!streaming && output && (
+                    <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
+                      style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.50)" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                      Print / PDF
+                    </button>
+                  )}
+                  <button onClick={reset} className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
+                    style={{ border: "1px solid rgba(255,81,0,0.30)", color: "#ff5100" }}>
+                    New Brief
+                  </button>
+                </div>
+              </div>
+
+              {/* Saved ref strip */}
+              {savedBriefId && !streaming && (
+                <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.12)" }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>Saved to your account</span>
+                  <span className="font-mono text-[9px] ml-auto" style={{ color: "rgba(255,255,255,0.20)" }}>Ref #{savedBriefId.slice(0, 8).toUpperCase()}</span>
+                  <button onClick={openHistory} className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    View all →
+                  </button>
+                </div>
+              )}
+
+              {/* Brief output */}
+              <div ref={outputRef} className="rounded-xl p-6 md:p-8 min-h-[400px]"
+                style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+                {output ? renderMarkdown(output) : (
+                  <div className="flex items-center gap-2" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
+                    <span className="animate-bounce" style={{ animationDelay: "120ms" }}>·</span>
+                    <span className="animate-bounce" style={{ animationDelay: "240ms" }}>·</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Advisory CTA */}
+              {!streaming && output && (
+                <div className="mt-6 p-5 rounded-xl flex items-center justify-between gap-4 flex-wrap"
+                  style={{ backgroundColor: "rgba(255,81,0,0.06)", border: "1px solid rgba(255,81,0,0.15)" }}>
+                  <div>
+                    <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
+                    <p className="text-[12.5px]" style={{ color: "rgba(255,255,255,0.55)" }}>
+                      Want a human expert to review this brief and advise on next steps?
+                    </p>
+                  </div>
+                  <a href="mailto:advisory@thegentrylab.io?subject=AI Brief Review Request"
+                    className="px-5 py-2.5 rounded-lg font-bold text-[12px] shrink-0 transition"
+                    style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
+                    Get Expert Review →
+                  </a>
                 </div>
               )}
             </div>
-
-            {/* Advisory CTA */}
-            {!streaming && output && (
-              <div className="mt-6 p-5 rounded-xl flex items-center justify-between gap-4 flex-wrap"
-                style={{ backgroundColor: "rgba(255,81,0,0.06)", border: "1px solid rgba(255,81,0,0.15)" }}>
-                <div>
-                  <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
-                  <p className="text-[12.5px]" style={{ color: "rgba(255,255,255,0.55)" }}>
-                    Want a human expert to review this brief and advise on next steps?
-                  </p>
-                </div>
-                <a href="mailto:advisory@thegentrylab.io?subject=AI Brief Review Request"
-                  className="px-5 py-2.5 rounded-lg font-bold text-[12px] shrink-0 transition"
-                  style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
-                  Get Expert Review →
-                </a>
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
