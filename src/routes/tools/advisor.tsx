@@ -1287,6 +1287,8 @@ export default function AdvisorPage() {
   const [reportType, setReportType] = useState<ReportType>("standard");
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [creditError, setCreditError] = useState<{ balance: number } | null>(null);
+  const [refinePrompt, setRefinePrompt] = useState("");
+  const [refining, setRefining] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1422,6 +1424,73 @@ export default function AdvisorPage() {
     }
   }
 
+  async function refine() {
+    if (!selectedBrief || !refinePrompt.trim()) return;
+    setRefining(true);
+    setOutput("");
+    setChartData(null);
+    setCreditError(null);
+    const now = new Date();
+    setGeneratedAt(now);
+
+    try {
+      const session = await supabase?.auth.getSession();
+      const token = session?.data.session?.access_token;
+
+      const res = await fetch("/api/advisor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          briefType: selectedBrief.id,
+          briefTitle: selectedBrief.title,
+          fields: form,
+          reportType,
+          refinePrompt: refinePrompt.trim(),
+        }),
+      });
+
+      if (res.status === 402) {
+        const body = await res.json().catch(() => ({}));
+        setCreditError({ balance: body.balance ?? 0 });
+        setRefining(false);
+        return;
+      }
+
+      if (!res.ok || !res.body) { setOutput("[Error refining brief. Please try again.]"); setRefining(false); return; }
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let accumulated = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += dec.decode(value, { stream: true });
+        setOutput(accumulated);
+      }
+
+      const { chartData: parsed, cleanText } = extractChartData(accumulated);
+      if (parsed) { setChartData(parsed); setOutput(cleanText); accumulated = cleanText; }
+
+      if (user && supabase) {
+        const { data: inserted } = await supabase.from("advisor_briefs").insert({
+          user_id: user.id, brief_type: selectedBrief.id, brief_title: selectedBrief.title,
+          category: selectedBrief.category, fields: form, output: accumulated,
+        }).select("id").single();
+        if (inserted?.id) setSavedBriefId(inserted.id);
+        setSaved(true);
+      }
+      setRefinePrompt("");
+    } catch (e) {
+      setOutput("[Error: " + (e instanceof Error ? e.message : "Unknown error") + "]");
+    } finally {
+      setRefining(false);
+    }
+  }
+
   function reset() {
     setStep("select");
     setSelectedBrief(null);
@@ -1433,6 +1502,8 @@ export default function AdvisorPage() {
     setChartData(null);
     setCreditError(null);
     setReportType("standard");
+    setRefinePrompt("");
+    setRefining(false);
   }
 
   const allFilled = selectedBrief?.fields.filter(f => f.required).every(f => form[f.id]?.trim());
@@ -1787,8 +1858,85 @@ export default function AdvisorPage() {
                 </div>
               )}
 
+              {/* Refine panel */}
+              {!streaming && !refining && output && (
+                <div className="mt-6 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.09)" }}>
+                  {/* Header */}
+                  <div className="px-5 py-4 flex items-center gap-3" style={{ backgroundColor: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.12)", border: "1px solid rgba(255,81,0,0.25)" }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </div>
+                    <div>
+                      <p className="font-bold text-[13px]" style={{ color: "#ffffff" }}>Refine this report</p>
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Tell the AI what to adjust, expand, or focus on — it will regenerate using your inputs</p>
+                    </div>
+                  </div>
+
+                  {/* Prompt chips */}
+                  <div className="px-5 pt-4 pb-2 flex flex-wrap gap-2">
+                    {[
+                      "Focus more on risk factors",
+                      "Add more detail on permits",
+                      "Compare costs in more depth",
+                      "Summarise into executive bullets",
+                      "Expand the recommended action plan",
+                      "Include labour market analysis",
+                    ].map(chip => (
+                      <button key={chip} onClick={() => setRefinePrompt(chip)}
+                        className="px-3 py-1 rounded-full text-[10.5px] transition"
+                        style={{
+                          backgroundColor: refinePrompt === chip ? "rgba(255,81,0,0.15)" : "rgba(255,255,255,0.05)",
+                          border: `1px solid ${refinePrompt === chip ? "rgba(255,81,0,0.40)" : "rgba(255,255,255,0.10)"}`,
+                          color: refinePrompt === chip ? "#ff5100" : "rgba(255,255,255,0.55)",
+                        }}>
+                        {chip}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Text input */}
+                  <div className="px-5 pb-5 pt-2">
+                    <textarea
+                      value={refinePrompt}
+                      onChange={e => setRefinePrompt(e.target.value)}
+                      placeholder="Or type your own instruction — e.g. 'Add a section on logistics corridors', 'Focus only on Sihanoukville', 'Expand the financial model'…"
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl text-[12px] leading-relaxed outline-none resize-none transition"
+                      style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
+                    />
+                    {creditError && (
+                      <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: "#ef4444" }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        Insufficient credits ({creditError.balance} cr). <Link to="/credits" className="underline ml-1" style={{ color: "#ff5100" }}>Buy more →</Link>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="font-mono text-[9px]" style={{ color: "rgba(255,255,255,0.20)" }}>
+                        Uses {reportType === "standard" ? "75" : "150"} credits · saves new version
+                      </span>
+                      <button
+                        onClick={refine}
+                        disabled={!refinePrompt.trim()}
+                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[12px] transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-4.95"/></svg>
+                        Regenerate with adjustments
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Refining indicator */}
+              {refining && (
+                <div className="mt-6 flex items-center gap-3 px-5 py-4 rounded-xl" style={{ backgroundColor: "rgba(255,81,0,0.05)", border: "1px solid rgba(255,81,0,0.15)" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.8" className="animate-spin shrink-0"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                  <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>Regenerating with your adjustments…</span>
+                </div>
+              )}
+
               {/* Advisory CTA */}
-              {!streaming && output && (
+              {!streaming && !refining && output && (
                 <div className="mt-6 p-5 rounded-xl flex items-center justify-between gap-4 flex-wrap"
                   style={{ backgroundColor: "rgba(255,81,0,0.06)", border: "1px solid rgba(255,81,0,0.15)" }}>
                   <div>

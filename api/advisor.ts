@@ -291,13 +291,14 @@ export default async function handler(req: Request): Promise<Response> {
     }
   }
 
-  let briefType: string, fields: Record<string, string>, briefTitle: string, reportType: string;
+  let briefType: string, fields: Record<string, string>, briefTitle: string, reportType: string, refinePrompt: string;
   try {
     const body  = await req.json();
     briefType   = body.briefType;
     briefTitle  = body.briefTitle;
     fields      = body.fields ?? {};
     reportType  = body.reportType ?? "standard";
+    refinePrompt = body.refinePrompt ?? "";
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400, headers: { "Content-Type": "application/json", ...CORS },
@@ -347,7 +348,11 @@ export default async function handler(req: Request): Promise<Response> {
     ? COMPREHENSIVE_CHART_SUFFIX
     : COMPREHENSIVE_GENERIC_SUFFIX;
 
-  const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.${isComprehensive ? comprehensiveSuffix : ""}`;
+  const refineInstruction = refinePrompt
+    ? `\n\n**USER ADJUSTMENT REQUEST:** ${refinePrompt}\n\nPlease regenerate the full brief incorporating this adjustment. Keep all relevant original analysis but apply the requested change throughout.`
+    : "";
+
+  const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.${isComprehensive ? comprehensiveSuffix : ""}${refineInstruction}`;
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({

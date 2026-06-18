@@ -145,7 +145,7 @@ export default function CreditsPage() {
         {user && (
           <>
             <h2 className="text-[18px] font-bold mb-2" style={{ color: "#ffffff" }}>Credit Packages</h2>
-            <p className="text-[12px] mb-6" style={{ color: "rgba(255,255,255,0.35)" }}>Credits never expire. Secure payment via Visa / Mastercard.</p>
+            <p className="text-[12px] mb-6" style={{ color: "rgba(255,255,255,0.35)" }}>Credits never expire. Priced on actual compute cost per request. Secure payment via Visa / Mastercard.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
               {CREDIT_PACKAGES.map(pkg => (
@@ -166,6 +166,7 @@ export default function CreditsPage() {
                   <div className="py-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                     <p className="text-[22px] font-extrabold" style={{ color: "#ff5100" }}>{pkg.credits.toLocaleString()}</p>
                     <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.40)" }}>Credits</p>
+                    <p className="font-mono text-[9px] mt-1" style={{ color: "rgba(255,255,255,0.22)" }}>${(pkg.price_usd / pkg.credits * 1000).toFixed(2)} per 1,000 cr</p>
                   </div>
                   <div className="space-y-1.5 text-[11.5px]" style={{ color: "rgba(255,255,255,0.55)" }}>
                     <div className="flex items-center gap-2">
@@ -226,7 +227,7 @@ export default function CreditsPage() {
             {[
               { q: "Do credits expire?", a: "No. Purchased credits never expire. New user welcome credits (500 free) also carry over indefinitely." },
               { q: "What are my free credits?", a: "Every new account gets 500 free credits — enough for 6 standard briefs or 25 chat messages. No card required." },
-              { q: "How is the price calculated?", a: "Our AI costs reflect the real infrastructure cost to run each request (Anthropic API) plus 200% to keep the lights on and fund ongoing research into Cambodia's industrial data." },
+              { q: "How is the price calculated?", a: "Credit prices are based on actual compute costs per request — longer, more complex briefs consume more compute and cost more credits. Prices are set to cover infrastructure and ongoing research into Cambodia's industrial data." },
               { q: "Can I get a refund?", a: "Unused credits can be refunded within 30 days of purchase. Contact advisory@thegentrylab.io." },
             ].map((item, i) => (
               <div key={i} className="p-4 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
