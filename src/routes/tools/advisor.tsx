@@ -648,24 +648,51 @@ function ScreenTable({ rows }: { rows: string[] }) {
 }
 
 /* ── Print markdown renderer ─────────────────────────────── */
-function renderPrintMarkdown(text: string) {
+function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
     if (line.startsWith("## ")) {
-      elements.push(<div key={i} className="pr-h2">{line.slice(3)}</div>);
+      const parsed = stripSectionEmoji(line.slice(3));
+      elements.push(
+        <div key={i} className="pr-h2" style={{ display: "flex", alignItems: "center" }}>
+          {parsed ? <><PrintIconSvg emoji={parsed.emoji} color={accentColor} />{parsed.clean}</> : line.slice(3)}
+        </div>
+      );
     } else if (line.startsWith("### ")) {
-      elements.push(<div key={i} className="pr-h3">{line.slice(4)}</div>);
+      const parsed = stripSectionEmoji(line.slice(4));
+      elements.push(
+        <div key={i} className="pr-h3" style={{ display: "flex", alignItems: "center" }}>
+          {parsed ? <><PrintIconSvg emoji={parsed.emoji} color={accentColor} />{parsed.clean}</> : line.slice(4)}
+        </div>
+      );
     } else if (line.startsWith("#### ")) {
-      elements.push(<div key={i} className="pr-h4">{line.slice(5)}</div>);
+      const parsed = stripSectionEmoji(line.slice(5));
+      elements.push(
+        <div key={i} className="pr-h4" style={{ display: "flex", alignItems: "center" }}>
+          {parsed ? <><PrintIconSvg emoji={parsed.emoji} color={accentColor} />{parsed.clean}</> : line.slice(5)}
+        </div>
+      );
     } else if (line.startsWith("> ")) {
       elements.push(<div key={i} className="pr-blockquote">{printInline(line.slice(2))}</div>);
     } else if (line.startsWith("⚠️")) {
-      elements.push(<div key={i} className="pr-warn">{printInline(line)}</div>);
+      const content = line.slice("⚠️".length).trimStart();
+      elements.push(
+        <div key={i} className="pr-warn" style={{ display: "flex", alignItems: "flex-start", gap: "6pt" }}>
+          <PrintIconSvg emoji="⚠️" color="#b86e00" />
+          <span>{printInline(content)}</span>
+        </div>
+      );
     } else if (line.startsWith("✅")) {
-      elements.push(<div key={i} className="pr-good">{printInline(line)}</div>);
+      const content = line.slice("✅".length).trimStart();
+      elements.push(
+        <div key={i} className="pr-good" style={{ display: "flex", alignItems: "flex-start", gap: "6pt" }}>
+          <PrintIconSvg emoji="✅" color="#217a4b" />
+          <span>{printInline(content)}</span>
+        </div>
+      );
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
       elements.push(<div key={i} className="pr-li"><span className="pr-li-dot">·</span><span>{printInline(line.slice(2))}</span></div>);
     } else if (/^\d+\./.test(line)) {
@@ -1110,6 +1137,84 @@ function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClas
   );
 }
 
+/* ── Province → satellite bbox [minLng, minLat, maxLng, maxLat] ── */
+const PROVINCE_BBOX: Record<string, [number, number, number, number]> = {
+  "Phnom Penh":                     [104.82, 11.48, 104.99, 11.62],
+  "Kandal":                         [104.85, 11.18, 105.10, 11.38],
+  "Kampong Speu":                   [104.43, 11.35, 104.63, 11.55],
+  "Preah Sihanouk (Sihanoukville)": [103.44, 10.55, 103.63, 10.70],
+  "Svay Rieng":                     [105.74, 11.04, 105.88, 11.14],
+  "Kampong Cham":                   [105.43, 11.94, 105.55, 12.02],
+  "Kampot":                         [104.15, 10.56, 104.22, 10.65],
+  "Siem Reap":                      [103.80, 13.32, 103.92, 13.42],
+  "Battambang":                     [102.97, 13.07, 103.12, 13.17],
+  "Banteay Meanchey":               [102.95, 13.62, 103.12, 13.80],
+  "Kampong Chhnang":                [104.62, 12.22, 104.72, 12.32],
+  "Kampong Thom":                   [104.82, 12.65, 104.97, 12.78],
+  "Kep":                            [104.28, 10.47, 104.36, 10.54],
+  "Koh Kong":                       [103.41, 11.58, 103.55, 11.72],
+  "Kratié":                         [106.00, 12.44, 106.12, 12.54],
+  "Mondulkiri":                     [107.07, 12.41, 107.22, 12.58],
+  "Oddar Meanchey":                 [103.68, 14.12, 103.88, 14.30],
+  "Pailin":                         [102.54, 12.80, 102.67, 12.90],
+  "Preah Vihear":                   [104.93, 13.77, 105.12, 13.95],
+  "Prey Veng":                      [105.28, 11.37, 105.48, 11.52],
+  "Pursat":                         [103.82, 12.50, 103.98, 12.62],
+  "Ratanakiri":                     [106.93, 13.70, 107.12, 13.88],
+  "Stung Treng":                    [105.96, 13.51, 106.12, 13.65],
+  "Takéo":                          [104.73, 10.93, 104.87, 11.05],
+  "Tboung Khmum":                   [105.62, 11.88, 105.78, 12.02],
+};
+
+function getCoverImageUrl(form: Record<string, string>): string {
+  const province = form.province_preference || form.location || form.province || form.target_province || "";
+  const bbox = PROVINCE_BBOX[province] ?? [102.5, 10.4, 107.9, 14.7];
+  const [minLng, minLat, maxLng, maxLat] = bbox;
+  return `https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/export?bbox=${minLng},${minLat},${maxLng},${maxLat}&size=1200,600&imageSR=4326&bboxSR=4326&format=jpg&f=image`;
+}
+
+/* ── SVG icons for print section headings ── */
+const SECTION_EMOJI_LIST = ["📋","🏆","📍","💰","⏱️","👷","🔌","🎯","⚠️","✅","📊","📈","🏗️","🌿","⚡","🔒","🛣️","🔍","📌","🗺️","💼","🤝","📐","📉","🔧","⚙️","🧩","📏","🌐","🏭","🏢","🛑","💡","📦","🔐","🚧"];
+
+function stripSectionEmoji(text: string): { emoji: string; clean: string } | null {
+  for (const e of SECTION_EMOJI_LIST) {
+    if (text.startsWith(e)) return { emoji: e, clean: text.slice(e.length).trimStart() };
+  }
+  return null;
+}
+
+function PrintIconSvg({ emoji, color }: { emoji: string; color: string }) {
+  const p: React.SVGProps<SVGSVGElement> = { width: 11, height: 11, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, style: { display: "inline", verticalAlign: "middle", marginRight: "5pt", flexShrink: 0 } };
+  switch (emoji) {
+    case "📋": return <svg {...p}><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>;
+    case "📊": case "📈": case "📉": return <svg {...p}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
+    case "💰": return <svg {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
+    case "⏱️": return <svg {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+    case "👷": return <svg {...p}><path d="M12 2a10 10 0 0 1 10 10"/><path d="M2 12A10 10 0 0 1 12 2"/><rect x="7" y="13" width="10" height="9" rx="2"/><line x1="7" y1="13" x2="17" y2="13"/></svg>;
+    case "🔌": case "⚡": return <svg {...p}><polyline points="13 2 13 9 19 9 11 22 11 15 5 15 13 2"/></svg>;
+    case "🎯": return <svg {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>;
+    case "⚠️": case "🛑": return <svg {...p}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+    case "✅": return <svg {...p}><polyline points="20 6 9 17 4 12"/></svg>;
+    case "📍": case "📌": case "🗺️": return <svg {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>;
+    case "🏆": return <svg {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>;
+    case "🏗️": case "🏭": case "🏢": return <svg {...p}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
+    case "🌿": return <svg {...p}><path d="M20 2H4v20l8-4 8 4V2z"/></svg>;
+    case "🔒": case "🔐": return <svg {...p}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+    case "🛣️": return <svg {...p}><path d="M12 22V2M5 12H2M22 12h-3"/><circle cx="12" cy="12" r="4"/></svg>;
+    case "🔍": return <svg {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+    case "💼": return <svg {...p}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
+    case "🤝": return <svg {...p}><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"/></svg>;
+    case "📐": case "📏": return <svg {...p}><polygon points="2 22 22 2 22 22 2 22"/><line x1="12" y1="12" x2="22" y2="12"/></svg>;
+    case "🔧": case "⚙️": return <svg {...p}><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>;
+    case "🧩": return <svg {...p}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>;
+    case "🌐": return <svg {...p}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
+    case "📦": return <svg {...p}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>;
+    case "💡": return <svg {...p}><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>;
+    case "🚧": return <svg {...p}><path d="M5 3L3 6v14h18V6l-2-3H5z"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+    default: return null;
+  }
+}
+
 function PrintReport({
   brief, form, output, savedBriefId, generatedAt, chartData, reportType, user,
 }: {
@@ -1129,6 +1234,7 @@ function PrintReport({
   const exportedBy = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Anonymous";
   const exportedEmail = user?.email || "—";
   const exportedId = user?.email ? user.email.replace(/[^a-z0-9]/gi, "").slice(0, 12).toUpperCase() : "GUEST";
+  const coverImageUrl = getCoverImageUrl(form);
 
   const labelMap: Record<string, string> = {};
   brief.fields.forEach(f => { labelMap[f.id] = f.label; });
@@ -1213,9 +1319,10 @@ function PrintReport({
       ══════════════════════════════════════════════ */}
       <div style={{ position: "relative", width: "210mm", height: "297mm", overflow: "hidden", pageBreakAfter: "always", display: "flex", flexDirection: "column", backgroundColor: "#0d1117" }}>
 
-        {/* Hero image — full bleed */}
-        <img src={heroBlueprintImg} alt=""
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", opacity: 0.45 }}
+        {/* Hero image — full bleed satellite or blueprint fallback */}
+        <img src={coverImageUrl} alt=""
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", opacity: 0.55 }}
+          onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
         />
 
         {/* Dark gradient overlay — bottom-heavy like WB */}
@@ -1604,19 +1711,20 @@ function PrintReport({
       {/* ══════════════════════════════════════════════
           CONTENT PAGES — Brief body (renderPrintMarkdown)
       ══════════════════════════════════════════════ */}
-      <div className="pr-page-break pr-content-page">
+      <div className="pr-analysis-page">
         <PRHeader title={brief.title} refId={refId} dateStr={dateStr} />
         <div className="pr-content-body">
           {/* Inline photo — analysis section opener */}
           <div className="pr-figure" style={{ marginBottom: "12pt" }}>
-            <img src={heroBlueprintImg} alt="Industrial analysis, Cambodia"
+            <img src={coverImageUrl} alt="Industrial analysis, Cambodia"
               style={{ width: "100%", height: "90pt", objectFit: "cover", objectPosition: "center 40%", display: "block" }}
+              onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
             />
             <div className="pr-figure-caption">
-              <strong>Figure VI.1</strong> — Industrial zone planning and site analysis context, Kingdom of Cambodia.
+              <strong>Figure VI.1</strong> — Industrial zone, Kingdom of Cambodia. Source: ESRI World Imagery / TheGentryLab.io
             </div>
           </div>
-          {renderPrintMarkdown(output)}
+          {renderPrintMarkdown(output, catColor)}
         </div>
         <PRFooter pageNum={9} refId={refId} year={year} />
       </div>

@@ -396,7 +396,8 @@
 /* ── Print component base styles (always on, scoped) ── */
 /* These must live outside @media print so the flex layout
    renders correctly when Chromium builds the print PDF.  */
-.advisor-print .pr-content-page {
+.advisor-print .pr-content-page,
+.advisor-print .pr-analysis-page {
   display: flex !important;
   flex-direction: column !important;
   background: #ffffff;
@@ -440,6 +441,9 @@
 
   /* ── Content page — exact A4 per page ── */
   .pr-content-page { height: 297mm; overflow: hidden; page-break-after: always; }
+
+  /* ── Analysis content page — flows naturally across pages ── */
+  .pr-analysis-page { page-break-before: always; }
 
   /* ── Root — DM Sans light ── */
   .pr-root {
