@@ -133,11 +133,26 @@ export function AiChat() {
   const [unread, setUnread]       = useState(false);
   const [historyLoaded, setHistoryLoaded]   = useState(false);
   const [showLoginWall, setShowLoginWall]   = useState(false);
-  const [creditsUsed, setCreditsUsed]       = useState(0);   // for logged-in daily tracking
+  const [creditsUsed, setCreditsUsed]       = useState(0);
   const [outOfCredits, setOutOfCredits]     = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
+  const panelRef  = useRef<HTMLDivElement>(null);
+
+  /* Push panel above keyboard on mobile */
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const handler = () => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardOffset(kb);
+    };
+    vv.addEventListener("resize", handler);
+    vv.addEventListener("scroll", handler);
+    return () => { vv.removeEventListener("resize", handler); vv.removeEventListener("scroll", handler); };
+  }, []);
 
   /* Auto-scroll */
   useEffect(() => {
@@ -303,11 +318,19 @@ export function AiChat() {
     <>
       {/* Chat panel */}
       <div
-        className={`fixed bottom-24 right-5 z-[9999] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col
+        ref={panelRef}
+        className={`fixed right-4 z-[9999] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col
           shadow-2xl overflow-hidden
           transition-all duration-300 origin-bottom-right
           ${open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}`}
-        style={{ height: "min(560px, calc(100vh - 8rem))", borderRadius: 12, backgroundColor: "var(--chat-bg)", border: "1px solid var(--chat-border)", color: "var(--chat-text)" }}
+        style={{
+          bottom: `${(keyboardOffset > 0 ? keyboardOffset + 8 : 80) + 8}px`,
+          height: `min(560px, calc(100dvh - ${keyboardOffset > 0 ? keyboardOffset + 24 : 130}px))`,
+          borderRadius: 12,
+          backgroundColor: "var(--chat-bg)",
+          border: "1px solid var(--chat-border)",
+          color: "var(--chat-text)",
+        }}
       >
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3.5 shrink-0" style={{ backgroundColor: "var(--chat-header-bg)", borderBottom: "1px solid var(--chat-inner-border)" }}>
@@ -433,9 +456,10 @@ export function AiChat() {
       {/* Floating button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`fixed bottom-5 right-5 z-[9999] w-14 h-14 rounded-full shadow-xl
+        className={`fixed right-4 z-[9999] w-14 h-14 rounded-full shadow-xl
           flex items-center justify-center transition-all duration-300
           ${open ? "bg-[#1a1a1b] border border-white/15" : "bg-[#ff5100] hover:bg-[#e64a00] hover:scale-105"}`}
+        style={{ bottom: "max(1.25rem, env(safe-area-inset-bottom, 1.25rem) + 0.5rem)" }}
         aria-label="Open GentryBot chat"
       >
         {unread && !open && (

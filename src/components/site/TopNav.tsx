@@ -304,14 +304,50 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               {l.label}
             </Link>
           ))}
+
+          {/* Tools section */}
+          <div className="pt-3 pb-1">
+            <p className="font-mono text-[8px] uppercase tracking-[0.2em] nav-text-muted mb-2">AI Tools</p>
+            <Link to="/tools/advisor" onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-between py-2.5 px-3 rounded-lg mb-1 transition-colors"
+              style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.18)" }}>
+              <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
+                AI Industrial Advisor
+              </span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+            </Link>
+            {[
+              "Site Scoring Engine",
+              "Permit Navigator",
+              "Utility Capacity Map",
+              "Cost Heat Map",
+            ].map((tool) => (
+              <div key={tool} className="flex items-center justify-between py-2 px-3 rounded-lg opacity-40 cursor-not-allowed mb-0.5">
+                <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">{tool}</span>
+                <span className="font-mono text-[8px] uppercase tracking-widest nav-text-muted">Soon</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Credits link for logged-in */}
+          {user && credits !== null && (
+            <Link to="/credits" onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-between py-2.5 px-3 rounded-lg mt-1 border-t nav-border pt-3">
+              <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">Credits</span>
+              <span className="font-mono text-[11px] font-bold" style={{ color: "#ff5100" }}>
+                {formatCredits(credits.balance)} cr
+              </span>
+            </Link>
+          )}
+
           {/* Mobile auth */}
           {user ? (
-            <div className="pt-3 flex items-center justify-between">
+            <div className="pt-3 border-t nav-border flex items-center justify-between mt-2">
               <div className="flex items-center gap-2">
                 {user.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                  <img src={user.user_metadata.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
                 ) : (
-                  <span className="w-6 h-6 rounded-full bg-brand-accent flex items-center justify-center text-[9px] font-bold text-black">
+                  <span className="w-7 h-7 rounded-full bg-brand-accent flex items-center justify-center text-[9px] font-bold text-black">
                     {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
                   </span>
                 )}

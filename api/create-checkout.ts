@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import Stripe from "stripe";
 
+// LemonSqueezy variant IDs — set these in Vercel env vars after creating products
 const PACKAGES = {
-  starter:  { credits: 1_000,  price_cents:  299,  label: "Starter"  },
-  pro:      { credits: 5_000,  price_cents:  999,  label: "Pro"      },
-  business: { credits: 20_000, price_cents: 2999,  label: "Business" },
+  starter:  { credits: 1_000,  label: "Starter",  variantEnv: "LS_VARIANT_STARTER"  },
+  pro:      { credits: 5_000,  label: "Pro",       variantEnv: "LS_VARIANT_PRO"      },
+  business: { credits: 20_000, label: "Business",  variantEnv: "LS_VARIANT_BUSINESS" },
 } as const;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -15,11 +15,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  const stripeKey   = process.env.STRIPE_SECRET_KEY;
+  const lsApiKey    = process.env.LS_API_KEY;
+  const lsStoreId   = process.env.LS_STORE_ID;
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!stripeKey || !supabaseUrl || !serviceKey)
+  if (!lsApiKey || !lsStoreId || !supabaseUrl || !serviceKey)
     return res.status(500).json({ error: "Server not configured" });
 
   const auth = req.headers["authorization"] as string | undefined;
@@ -46,28 +47,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const pkg = PACKAGES[packageId as keyof typeof PACKAGES];
   if (!pkg) return res.status(400).json({ error: "Invalid package" });
 
-  const stripe = new Stripe(stripeKey);
+  const variantId = process.env[pkg.variantEnv];
+  if (!variantId) return res.status(500).json({ error: `Variant not configured: ${pkg.variantEnv}` });
+
   const origin = (req.headers["origin"] as string) ?? "https://thegentrylab.io";
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    payment_method_types: ["card"],
-    line_items: [{
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: `GentryLab ${pkg.label} Credits`,
-          description: `${pkg.credits.toLocaleString()} AI credits for GentryLab Industrial Advisor & Chat`,
-        },
-        unit_amount: pkg.price_cents,
+  try {
+    const lsRes = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
+      method: "POST",
+      headers: {
+        "Accept": "application/vnd.api+json",
+        "Content-Type": "application/vnd.api+json",
+        "Authorization": `Bearer ${lsApiKey}`,
       },
-      quantity: 1,
-    }],
-    customer_email: userEmail,
-    metadata: { userId, packageId, credits: String(pkg.credits) },
-    success_url: `${origin}/credits?success=1&pkg=${packageId}&cr=${pkg.credits}`,
-    cancel_url:  `${origin}/credits?cancelled=1`,
-  });
+      body: JSON.stringify({
+        data: {
+          type: "checkouts",
+          attributes: {
+            checkout_data: {
+              email: userEmail,
+              custom: { userId, packageId, credits: String(pkg.credits) },
+            },
+            product_options: {
+              redirect_url: `${origin}/credits?success=1&pkg=${packageId}&cr=${pkg.credits}`,
+            },
+          },
+          relationships: {
+            store:   { data: { type: "stores",   id: lsStoreId  } },
+            variant: { data: { type: "variants", id: variantId  } },
+          },
+        },
+      }),
+    });
 
-  return res.status(200).json({ url: session.url });
+    if (!lsRes.ok) {
+      const err = await lsRes.text();
+      console.error("LemonSqueezy error:", err);
+      return res.status(502).json({ error: "Payment provider error" });
+    }
+
+    const { data } = await lsRes.json();
+    return res.status(200).json({ url: data.attributes.url });
+  } catch (err) {
+    console.error("Checkout error:", err);
+    return res.status(500).json({ error: "Failed to create checkout" });
+  }
 }

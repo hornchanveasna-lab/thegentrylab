@@ -1,21 +1,17 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import Stripe from "stripe";
+import { createHmac } from "crypto";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).send("Method not allowed");
 
-  const stripeKey     = process.env.STRIPE_SECRET_KEY;
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret = process.env.LS_WEBHOOK_SECRET;
   const supabaseUrl   = process.env.SUPABASE_URL;
   const serviceKey    = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!stripeKey || !webhookSecret || !supabaseUrl || !serviceKey)
+  if (!webhookSecret || !supabaseUrl || !serviceKey)
     return res.status(500).send("Not configured");
 
-  const sig = req.headers["stripe-signature"] as string;
-
-  // Vercel gives us the raw body as a Buffer when we read req via getRawBody
-  // For webhook signature verification we need the raw bytes
+  // Read raw body for signature verification
   let rawBody: string;
   try {
     rawBody = await new Promise<string>((resolve, reject) => {
@@ -28,17 +24,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).send("Could not read body");
   }
 
-  let event: Stripe.Event;
+  // Verify LemonSqueezy HMAC-SHA256 signature
+  const sig = req.headers["x-signature"] as string;
+  if (!sig) return res.status(400).send("Missing signature");
+
+  const expected = createHmac("sha256", webhookSecret)
+    .update(rawBody)
+    .digest("hex");
+
+  if (sig !== expected) return res.status(400).send("Signature mismatch");
+
+  let payload: Record<string, unknown>;
   try {
-    const stripe = new Stripe(stripeKey);
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    payload = JSON.parse(rawBody);
   } catch {
-    return res.status(400).send("Webhook signature failed");
+    return res.status(400).send("Invalid JSON");
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const { userId, credits, packageId } = session.metadata ?? {};
+  // LemonSqueezy fires "order_created" for completed one-time purchases
+  const eventName = payload.meta && (payload.meta as Record<string, unknown>).event_name;
+  if (eventName === "order_created") {
+    const data = payload.data as Record<string, unknown> | undefined;
+    const attrs = data?.attributes as Record<string, unknown> | undefined;
+    const custom = attrs?.first_order_item as Record<string, unknown> | undefined;
+
+    // Custom data is nested under meta.custom_data
+    const meta = payload.meta as Record<string, unknown>;
+    const customData = meta?.custom_data as Record<string, string> | undefined;
+    const { userId, credits, packageId } = customData ?? {};
+
     if (userId && credits) {
       await fetch(`${supabaseUrl}/rest/v1/rpc/add_credits`, {
         method: "POST",

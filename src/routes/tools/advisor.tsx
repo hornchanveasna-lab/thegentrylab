@@ -160,8 +160,8 @@ function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timelin
           const left = (offset / total) * 100;
           offset += phase.weeks;
           return (
-            <div key={phase.label} className="flex items-center gap-3">
-              <span className="text-[10px] w-40 shrink-0 text-right" style={{ color: "rgba(255,255,255,0.50)" }}>{phase.label}</span>
+            <div key={phase.label} className="flex items-center gap-2">
+              <span className="text-[10px] w-24 sm:w-40 shrink-0 text-right leading-tight" style={{ color: "rgba(255,255,255,0.50)" }}>{phase.label}</span>
               <div className="flex-1 h-5 rounded overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
                 <div className="h-full rounded flex items-center pl-2 text-[9px] font-bold" style={{ marginLeft: `${left}%`, width: `${pct}%`, backgroundColor: phase.color, color: "#fff", whiteSpace: "nowrap", overflow: "hidden" }}>
                   {phase.weeks >= 6 ? `${phase.weeks}w` : ""}
@@ -859,11 +859,7 @@ function PrintReport({
   const labelMap: Record<string, string> = {};
   brief.fields.forEach(f => { labelMap[f.id] = f.label; });
   const inputPairs = Object.entries(form).filter(([, v]) => v).map(([k, v]) => ({ key: labelMap[k] ?? k, val: v }));
-  const half = Math.ceil(inputPairs.length / 2);
-  const col1 = inputPairs.slice(0, half);
-  const col2 = inputPairs.slice(half);
 
-  /* shared table style helper */
   const th = (extra?: React.CSSProperties): React.CSSProperties => ({
     padding: "4pt 7pt", textAlign: "left", fontFamily: PF.head, fontSize: "7.5pt",
     color: "#555", borderBottom: "1pt solid #ddd", backgroundColor: "#fff3ee", ...extra,
@@ -876,143 +872,118 @@ function PrintReport({
   const gd  = chartData?.type === "generic"        ? chartData as GenericChartData        : null;
 
   return (
-    <div className="advisor-print pr-root">
+    <div className="advisor-print pr-root" style={{ backgroundColor: "#ffffff", color: "#000000" }}>
 
       {/* ══════════════════════════════════════════
-          PAGE 1 — COVER
+          PAGE 1 — MINIMAL COVER
       ══════════════════════════════════════════ */}
-      <div style={{ pageBreakAfter: "always", minHeight: "270mm", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "0" }}>
+      <div style={{ pageBreakAfter: "always", minHeight: "270mm", display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
 
-        {/* Orange top bar */}
-        <div style={{ backgroundColor: "#cc3300", padding: "18pt 24pt 14pt", marginBottom: "0" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 900, color: "#fff", letterSpacing: "0.35em", textTransform: "uppercase", opacity: 0.9 }}>THE GENTRY LAB</div>
-              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "rgba(255,255,255,0.7)", letterSpacing: "0.15em", marginTop: "2pt" }}>AI INDUSTRIAL ADVISOR · CAMBODIA</div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "rgba(255,255,255,0.65)", letterSpacing: "0.12em" }}>REF #{refId}</div>
-              <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "rgba(255,255,255,0.5)", marginTop: "2pt" }}>{reportType.toUpperCase()} REPORT</div>
-            </div>
+        {/* Thin top accent line */}
+        <div style={{ height: "4pt", backgroundColor: "#cc3300" }} />
+
+        {/* Cover body — centred, lots of white space */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 48pt" }}>
+
+          {/* Brand wordmark */}
+          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#cc3300", letterSpacing: "0.35em", textTransform: "uppercase", marginBottom: "48pt" }}>
+            THE GENTRY LAB
           </div>
-        </div>
 
-        {/* Cover body */}
-        <div style={{ flex: 1, padding: "36pt 24pt 24pt", display: "flex", flexDirection: "column" }}>
-
-          {/* Category badge */}
-          <div style={{ display: "inline-block", fontFamily: PF.head, fontSize: "7pt", fontWeight: 700, color: cat.color, textTransform: "uppercase", letterSpacing: "0.2em", border: `1pt solid ${cat.color}`, padding: "2pt 8pt", borderRadius: "3pt", alignSelf: "flex-start", marginBottom: "16pt" }}>
+          {/* Category label */}
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#999", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "10pt" }}>
             {cat.label} · {brief.audience}
           </div>
 
           {/* Main title */}
-          <div style={{ fontFamily: PF.head, fontSize: "28pt", fontWeight: 900, color: "#111", lineHeight: 1.15, marginBottom: "10pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "32pt", fontWeight: 900, color: "#111", lineHeight: 1.1, marginBottom: "16pt", maxWidth: "380pt" }}>
             {brief.title}
           </div>
-          <div style={{ fontFamily: PF.body, fontSize: "11pt", color: "#555", marginBottom: "28pt", lineHeight: 1.5, maxWidth: "420pt" }}>
-            {brief.desc}
+
+          {/* Thin rule */}
+          <div style={{ width: "40pt", height: "2pt", backgroundColor: "#cc3300", marginBottom: "20pt" }} />
+
+          {/* Report type + date only */}
+          <div style={{ fontFamily: PF.head, fontSize: "9pt", color: "#666", marginBottom: "4pt" }}>
+            {reportType === "comprehensive" ? "Comprehensive Analysis Report" : "Standard Advisory Brief"}
           </div>
+          <div style={{ fontFamily: PF.body, fontSize: "9pt", color: "#aaa" }}>
+            {dateStr}
+          </div>
+        </div>
 
-          {/* Input parameters on cover */}
-          {inputPairs.length > 0 && (
-            <div style={{ borderTop: "2pt solid #cc3300", paddingTop: "14pt", marginBottom: "24pt" }}>
-              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8pt" }}>Analysis Parameters</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4pt 24pt" }}>
-                {inputPairs.map((p, i) => (
-                  <div key={i} style={{ display: "flex", gap: "6pt", alignItems: "baseline" }}>
-                    <span style={{ fontFamily: PF.head, fontSize: "7.5pt", color: "#888", minWidth: "80pt", flexShrink: 0 }}>{p.key}</span>
-                    <span style={{ fontFamily: PF.body, fontSize: "9pt", color: "#222", fontWeight: 600 }}>{p.val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ flex: 1 }} />
-
-          {/* Cover footer row */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderTop: "1pt solid #ddd", paddingTop: "12pt" }}>
-            <div>
-              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#888" }}>Generated {dateStr} at {timeStr}</div>
-              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#bbb", marginTop: "2pt" }}>This is an AI-generated advisory brief. Verify all data before making investment decisions.</div>
-            </div>
-            <div style={{ textAlign: "center", flexShrink: 0, marginLeft: "16pt" }}>
-              <img
-                src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://thegentrylab.io&bgcolor=ffffff&color=111111&format=png&margin=2"
-                alt="thegentrylab.io"
-                style={{ width: "52pt", height: "52pt", display: "block" }}
-              />
-              <div style={{ fontFamily: "monospace", fontSize: "5.5pt", color: "#aaa", marginTop: "2pt" }}>thegentrylab.io</div>
-            </div>
+        {/* Cover bottom bar */}
+        <div style={{ padding: "14pt 48pt", borderTop: "1pt solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#bbb", letterSpacing: "0.1em" }}>
+            REF #{refId} · AI INDUSTRIAL ADVISOR · CAMBODIA
+          </div>
+          <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#bbb" }}>
+            thegentrylab.io
           </div>
         </div>
       </div>
 
       {/* ══════════════════════════════════════════
-          PAGE 2+ — BRIEF CONTENT
+          PAGE 2 — DATA VISUALISATION (if comprehensive)
+          or PARAMETERS (if standard)
       ══════════════════════════════════════════ */}
+      <div style={{ pageBreakAfter: "always", backgroundColor: "#ffffff" }}>
 
-      {/* Running header on content pages */}
-      <div className="pr-header">
-        <div>
-          <div className="pr-brand-name">THE GENTRY LAB</div>
-          <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10pt" }}>
+        {/* Running header */}
+        <div className="pr-header">
+          <div>
+            <div className="pr-brand-name">THE GENTRY LAB</div>
+            <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
+          </div>
           <div style={{ textAlign: "right" }}>
-            <div className="pr-meta-label">Brief</div>
-            <div className="pr-meta-value">{brief.title}</div>
+            <div className="pr-meta-label">{brief.title}</div>
             <div className="pr-meta-label">Ref #{refId} · {dateStr}</div>
           </div>
         </div>
-      </div>
 
-      {/* Brief content */}
-      <div style={{ marginBottom: "16pt" }}>
-        {renderPrintMarkdown(output)}
-      </div>
-
-      {/* ══════════════════════════════════════════
-          COMPREHENSIVE DATA VISUALISATION (SVG)
-      ══════════════════════════════════════════ */}
-      {reportType === "comprehensive" && chartData && (
-        <div style={{ pageBreakBefore: "always", marginTop: "0" }}>
-          {/* Section header */}
-          <div style={{ backgroundColor: "#cc3300", padding: "8pt 12pt", marginBottom: "14pt" }}>
-            <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.2em" }}>
-              Data Visualisation · Comprehensive Analysis
+        {/* Analysis parameters */}
+        {inputPairs.length > 0 && (
+          <div style={{ marginBottom: "20pt" }}>
+            <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "10pt", borderBottom: "1pt solid #eee", paddingBottom: "4pt" }}>
+              Analysis Parameters
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6pt 32pt" }}>
+              {inputPairs.map((p, i) => (
+                <div key={i} style={{ display: "flex", gap: "8pt", alignItems: "baseline", borderBottom: "1pt solid #f5f5f5", paddingBottom: "4pt" }}>
+                  <span style={{ fontFamily: PF.head, fontSize: "7pt", color: "#999", minWidth: "90pt", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>{p.key}</span>
+                  <span style={{ fontFamily: PF.body, fontSize: "9.5pt", color: "#111", fontWeight: 600 }}>{p.val}</span>
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
-          {ssd && (
-            <>
-              {/* Key stats panel */}
-              <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Market Indicators</div>
-                <SvgKeyStats stats={ssd.key_stats} zones={ssd.zones} />
-              </div>
+        {/* Comprehensive charts */}
+        {reportType === "comprehensive" && chartData && (
+          <>
+            <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "14pt", borderBottom: "1pt solid #eee", paddingBottom: "4pt" }}>
+              Data Visualisation
+            </div>
 
-              {/* Zone scoring chart */}
-              <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Scoring — Criteria Breakdown</div>
-                <SvgZoneScoringChart zones={ssd.zones} />
-              </div>
-
-              {/* Cost comparison chart */}
-              <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Cost Comparison by Zone</div>
-                <SvgCostChart costs={ssd.costs} />
-              </div>
-
-              {/* Cost data table */}
-              <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Estimated Capex Detail (USD)</div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>{["Zone", "Land Lease /m²/yr", "Build Cost /m²", "Utilities /mo", "Permits", "Factory Size"].map(h => <th key={h} style={th({ textAlign: h === "Zone" ? "left" : "center" })}>{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {ssd.costs.map((c, i) => (
+            {ssd && (
+              <>
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Market Indicators</div>
+                  <SvgKeyStats stats={ssd.key_stats} zones={ssd.zones} />
+                </div>
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Scoring — Criteria Breakdown</div>
+                  <SvgZoneScoringChart zones={ssd.zones} />
+                </div>
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Cost Comparison by Zone</div>
+                  <SvgCostChart costs={ssd.costs} />
+                </div>
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Estimated Capex Detail (USD)</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead><tr>{["Zone","Land Lease /m²/yr","Build Cost /m²","Utilities /mo","Permits","Factory Size"].map(h => <th key={h} style={th({ textAlign: h === "Zone" ? "left" : "center" })}>{h}</th>)}</tr></thead>
+                    <tbody>{ssd.costs.map((c, i) => (
                       <tr key={c.zone} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                         <td style={td({ fontWeight: 700, color: PCOLS[i % PCOLS.length] })}>{c.zone}</td>
                         <td style={td({ textAlign: "center" })}>${c.land_lease_m2_yr}</td>
@@ -1021,26 +992,18 @@ function PrintReport({
                         <td style={td({ textAlign: "center" })}>${c.permits_usd.toLocaleString()}</td>
                         <td style={td({ textAlign: "center" })}>{c.factory_size_m2.toLocaleString()} m²</td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Timeline Gantt SVG */}
-              <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Timeline to First Production</div>
-                <SvgTimeline timeline={ssd.timeline_weeks} />
-              </div>
-
-              {/* Zone ranking table */}
-              <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Rankings Summary</div>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>{["Rank", "Zone", "Province", "Type", "Score", "Labour", "Cost", "Permits", "Infra", "Risk"].map(h => <th key={h} style={th({ textAlign: "center" })}>{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {ssd.zones.map((z, i) => (
+                    ))}</tbody>
+                  </table>
+                </div>
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Timeline to First Production</div>
+                  <SvgTimeline timeline={ssd.timeline_weeks} />
+                </div>
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Rankings Summary</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead><tr>{["Rank","Zone","Province","Type","Score","Labour","Cost","Permits","Infra","Risk"].map(h => <th key={h} style={th({ textAlign: "center" })}>{h}</th>)}</tr></thead>
+                    <tbody>{ssd.zones.map((z, i) => (
                       <tr key={z.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                         <td style={td({ textAlign: "center", fontWeight: 700, color: PCOLS[i % PCOLS.length] })}>#{z.rank}</td>
                         <td style={td({ fontWeight: 700 })}>{z.name}</td>
@@ -1053,135 +1016,170 @@ function PrintReport({
                         <td style={td({ textAlign: "center" })}>{z.infrastructure}/10</td>
                         <td style={td({ textAlign: "center" })}>{z.risk}/10</td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {gd && (
-            <>
-              {gd.key_metrics?.length > 0 && (
-                <div style={{ marginBottom: "14pt" }}>
-                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures</div>
-                  <SvgGenericMetrics metrics={gd.key_metrics} />
-                </div>
-              )}
-              {gd.comparison_table?.headers?.length > 0 && (
-                <div style={{ marginBottom: "14pt" }}>
-                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Comparison</div>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                    <thead><tr>{gd.comparison_table.headers.map(h => <th key={h} style={th()}>{h}</th>)}</tr></thead>
-                    <tbody>{gd.comparison_table.rows.map((row, i) => <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>{row.map((cell, j) => <td key={j} style={td()}>{cell}</td>)}</tr>)}</tbody>
+                    ))}</tbody>
                   </table>
                 </div>
-              )}
-              {gd.timeline_items?.length > 0 && (
-                <div style={{ marginBottom: "14pt" }}>
-                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Timeline</div>
-                  <SvgGenericTimeline items={gd.timeline_items} />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+              </>
+            )}
+
+            {gd && (
+              <>
+                {gd.key_metrics?.length > 0 && (
+                  <div style={{ marginBottom: "14pt" }}>
+                    <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures</div>
+                    <SvgGenericMetrics metrics={gd.key_metrics} />
+                  </div>
+                )}
+                {gd.comparison_table?.headers?.length > 0 && (
+                  <div style={{ marginBottom: "14pt" }}>
+                    <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Comparison</div>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead><tr>{gd.comparison_table.headers.map(h => <th key={h} style={th()}>{h}</th>)}</tr></thead>
+                      <tbody>{gd.comparison_table.rows.map((row, i) => <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>{row.map((cell, j) => <td key={j} style={td()}>{cell}</td>)}</tr>)}</tbody>
+                    </table>
+                  </div>
+                )}
+                {gd.timeline_items?.length > 0 && (
+                  <div style={{ marginBottom: "14pt" }}>
+                    <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Timeline</div>
+                    <SvgGenericTimeline items={gd.timeline_items} />
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       {/* ══════════════════════════════════════════
-          CITATIONS & DATA SOURCES
+          PAGE 3+ — BRIEF CONTENT
       ══════════════════════════════════════════ */}
-      <div style={{ pageBreakBefore: "always", marginTop: "0" }}>
-        <div style={{ backgroundColor: "#cc3300", padding: "8pt 12pt", marginBottom: "16pt" }}>
-          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.2em" }}>
-            References & Data Sources
+      <div style={{ backgroundColor: "#ffffff" }}>
+
+        {/* Running header */}
+        <div className="pr-header">
+          <div>
+            <div className="pr-brand-name">THE GENTRY LAB</div>
+            <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="pr-meta-label">{brief.title}</div>
+            <div className="pr-meta-label">Ref #{refId} · {dateStr}</div>
           </div>
         </div>
 
-        <div style={{ fontFamily: PF.body, fontSize: "9pt", color: "#444", lineHeight: 1.6, marginBottom: "16pt" }}>
-          This brief was generated using the GentryLab AI Industrial Advisor, which synthesises data from the following primary and secondary sources. All figures should be independently verified prior to any investment decision.
-        </div>
-
-        {/* Primary sources */}
-        <div style={{ marginBottom: "14pt" }}>
-          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8pt", borderBottom: "1pt solid #ddd", paddingBottom: "4pt" }}>Primary Government & Regulatory Sources</div>
-          {[
-            { ref: "[1]", title: "Cambodia Development Council (CDC) — QIP Investment Approvals & Industrial Zone Registry", url: "cdc.gov.kh", note: "Official source for QIP qualification, tax incentive status, and CDC-registered zones." },
-            { ref: "[2]", title: "Special Economic Zone Board of Cambodia (SEZB) — SEZ Directory & Occupancy Data", url: "sezb.gov.kh", note: "Authoritative registry of all licensed SEZs, developer contacts, and zone-specific regulations." },
-            { ref: "[3]", title: "Ministry of Industry and Handicraft (MIH) — Operating Licence Framework & Permit Guidelines", url: "mih.gov.kh", note: "MIH factory operating licence requirements, environmental compliance categories, and permit sequencing." },
-            { ref: "[4]", title: "Ministry of Environment (MoE) — Environmental Compliance Certificate (ECC) Requirements", url: "moe.gov.kh", note: "ECC categories, IEE and EIA requirements, monitoring obligations, and wastewater discharge standards." },
-            { ref: "[5]", title: "Electricité du Cambodge (EDC) — Industrial Power Tariff Schedule", url: "edc.com.kh", note: "Current industrial electricity tariff by voltage class, provincial substation capacity, and connection lead times." },
-            { ref: "[6]", title: "Ministry of Labour and Vocational Training (MoLVT) — Minimum Wage Orders & Labour Regulations", url: "molvt.gov.kh", note: "Annual minimum wage declarations for the textile, garment, and footwear sectors; general labour law compliance." },
-            { ref: "[7]", title: "General Department of Customs and Excise (GDCE) — Import/Export Duty Schedule", url: "customs.gov.kh", note: "Tariff schedules, SEZ customs procedures, and machinery import duty exemptions under QIP." },
-          ].map(s => (
-            <div key={s.ref} style={{ marginBottom: "6pt", paddingLeft: "20pt", position: "relative" }}>
-              <span style={{ position: "absolute", left: "0", fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#cc3300" }}>{s.ref}</span>
-              <div style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: 600, color: "#222" }}>{s.title}</div>
-              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#888" }}>{s.url}</div>
-              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#666", fontStyle: "italic" }}>{s.note}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Multilateral & research sources */}
-        <div style={{ marginBottom: "14pt" }}>
-          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#1a5c9e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8pt", borderBottom: "1pt solid #ddd", paddingBottom: "4pt" }}>Multilateral & Research Institutions</div>
-          {[
-            { ref: "[8]", title: "World Bank Group — Cambodia Economic Monitor & Investment Climate Assessment", url: "worldbank.org/cambodia", note: "Macroeconomic indicators, doing-business rankings, infrastructure gap analysis." },
-            { ref: "[9]", title: "Asian Development Bank (ADB) — Cambodia Country Operations Portfolio", url: "adb.org/countries/cambodia", note: "Infrastructure project pipeline, power sector development plans, logistics corridor assessments." },
-            { ref: "[10]", title: "International Finance Corporation (IFC) — Doing Business in Cambodia", url: "ifc.org", note: "Investment climate, regulatory burden indicators, and SME financing conditions." },
-            { ref: "[11]", title: "Open Development Cambodia (ODC) — GIS Data & Economic Zones Layer", url: "opendevelopmentcambodia.net", note: "Spatial data for SEZs, land concessions, infrastructure, and environmental sensitive areas." },
-            { ref: "[12]", title: "JETRO Cambodia — Japanese Investment Surveys & Factory Cost Comparisons", url: "jetro.go.jp/cambodia", note: "Annual survey of Japanese manufacturers: wage data, utility costs, logistics costs per province." },
-          ].map(s => (
-            <div key={s.ref} style={{ marginBottom: "6pt", paddingLeft: "20pt", position: "relative" }}>
-              <span style={{ position: "absolute", left: "0", fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#1a5c9e" }}>{s.ref}</span>
-              <div style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: 600, color: "#222" }}>{s.title}</div>
-              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#888" }}>{s.url}</div>
-              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#666", fontStyle: "italic" }}>{s.note}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* GentryLab proprietary */}
         <div style={{ marginBottom: "16pt" }}>
-          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#217a4b", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8pt", borderBottom: "1pt solid #ddd", paddingBottom: "4pt" }}>GentryLab Proprietary Data</div>
-          {[
-            { ref: "[13]", title: "GentryLab Industrial Site Intelligence Database", url: "thegentrylab.io", note: "Scored database of 110+ Cambodia industrial sites: SEZ availability, utility headroom, flood risk, title status, and access quality. Updated quarterly." },
-            { ref: "[14]", title: "GentryLab EPC Benchmark Database — 60+ Delivered Industrial Buildings", url: "thegentrylab.io", note: "Cost-per-m² benchmarks by building type, province, specification level, and contractor tier from projects delivered 2018–2024." },
-            { ref: "[15]", title: "GentryLab Permit Timeline Tracker", url: "thegentrylab.io", note: "Observed permit durations across 40+ projects by sector, province, and SEZ/non-SEZ status. Updated as projects complete milestones." },
-          ].map(s => (
-            <div key={s.ref} style={{ marginBottom: "6pt", paddingLeft: "20pt", position: "relative" }}>
-              <span style={{ position: "absolute", left: "0", fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#217a4b" }}>{s.ref}</span>
-              <div style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: 600, color: "#222" }}>{s.title}</div>
-              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#888" }}>{s.url}</div>
-              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#666", fontStyle: "italic" }}>{s.note}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Disclaimer box */}
-        <div style={{ border: "1pt solid #ddd", borderLeft: "3pt solid #cc3300", padding: "10pt 12pt", backgroundColor: "#fafafa", marginBottom: "16pt" }}>
-          <div style={{ fontFamily: PF.head, fontSize: "7.5pt", fontWeight: 700, color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4pt" }}>Important Disclaimer</div>
-          <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#555", lineHeight: 1.5 }}>
-            This report was generated by an AI language model (Anthropic Claude) using the GentryLab AI Industrial Advisor platform. While every effort has been made to ensure accuracy, the information contained herein is based on publicly available data and GentryLab's proprietary benchmarks as of the date of generation. It does not constitute legal, financial, or investment advice. Regulations, tariffs, permit timelines, and market conditions in Cambodia can change rapidly. The Gentry Lab Pte. Ltd. accepts no liability for decisions made in reliance on this report. Independent verification with qualified local advisors is strongly recommended before making any investment commitment.
-          </div>
+          {renderPrintMarkdown(output)}
         </div>
       </div>
 
       {/* ══════════════════════════════════════════
-          RUNNING FOOTER
+          LAST PAGE — DISCLAIMER + METADATA
       ══════════════════════════════════════════ */}
+      <div style={{ pageBreakBefore: "always", backgroundColor: "#ffffff", color: "#000000" }}>
+
+        {/* Running header */}
+        <div className="pr-header">
+          <div>
+            <div className="pr-brand-name">THE GENTRY LAB</div>
+            <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div className="pr-meta-label">Ref #{refId} · {dateStr}</div>
+          </div>
+        </div>
+
+        {/* Data sources — compact */}
+        <div style={{ marginBottom: "18pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.15em", borderBottom: "1pt solid #eee", paddingBottom: "4pt", marginBottom: "10pt" }}>
+            Data Sources
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4pt 24pt" }}>
+            {[
+              { ref: "1", src: "CDC Cambodia — QIP Registry", url: "cdc.gov.kh" },
+              { ref: "2", src: "SEZB — SEZ Directory", url: "sezb.gov.kh" },
+              { ref: "3", src: "Ministry of Industry (MIH)", url: "mih.gov.kh" },
+              { ref: "4", src: "Ministry of Environment (MoE)", url: "moe.gov.kh" },
+              { ref: "5", src: "Électricité du Cambodge (EDC)", url: "edc.com.kh" },
+              { ref: "6", src: "MoLVT — Minimum Wage Orders", url: "molvt.gov.kh" },
+              { ref: "7", src: "GDCE — Customs & Duty Schedule", url: "customs.gov.kh" },
+              { ref: "8", src: "World Bank — Cambodia Monitor", url: "worldbank.org/cambodia" },
+              { ref: "9", src: "ADB — Cambodia Portfolio", url: "adb.org/cambodia" },
+              { ref: "10", src: "IFC — Doing Business in Cambodia", url: "ifc.org" },
+              { ref: "11", src: "Open Development Cambodia (ODC)", url: "opendevelopmentcambodia.net" },
+              { ref: "12", src: "JETRO Cambodia Investment Survey", url: "jetro.go.jp/cambodia" },
+              { ref: "13", src: "GentryLab Site Intelligence DB", url: "thegentrylab.io" },
+              { ref: "14", src: "GentryLab EPC Benchmark DB", url: "thegentrylab.io" },
+              { ref: "15", src: "GentryLab Permit Timeline Tracker", url: "thegentrylab.io" },
+            ].map(s => (
+              <div key={s.ref} style={{ display: "flex", gap: "6pt", alignItems: "baseline", borderBottom: "1pt solid #f8f8f8", paddingBottom: "3pt" }}>
+                <span style={{ fontFamily: PF.head, fontSize: "6.5pt", fontWeight: 700, color: "#cc3300", minWidth: "14pt", flexShrink: 0 }}>[{s.ref}]</span>
+                <div>
+                  <div style={{ fontFamily: PF.head, fontSize: "7.5pt", color: "#333" }}>{s.src}</div>
+                  <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "#aaa" }}>{s.url}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Disclaimer */}
+        <div style={{ border: "1pt solid #e8e8e8", borderLeft: "3pt solid #cc3300", padding: "10pt 12pt", backgroundColor: "#fafafa", marginBottom: "18pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: 700, color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "5pt" }}>
+            Important Disclaimer
+          </div>
+          <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#555", lineHeight: 1.55 }}>
+            This report was generated by an AI language model using the GentryLab AI Industrial Advisor platform. While every effort has been made to ensure accuracy, the information is based on publicly available data and GentryLab's proprietary benchmarks as of the date of generation. It does not constitute legal, financial, or investment advice. Regulations, tariffs, permit timelines, and market conditions in Cambodia can change rapidly. The Gentry Lab accepts no liability for decisions made in reliance on this report. Independent verification with qualified local advisors is strongly recommended before making any investment commitment.
+          </div>
+        </div>
+
+        {/* Report metadata */}
+        <div style={{ border: "1pt solid #eee", borderRadius: "4pt", padding: "10pt 12pt", backgroundColor: "#ffffff" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#999", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8pt" }}>
+            Report Metadata
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4pt 24pt" }}>
+            {[
+              { label: "Reference", value: `#${refId}` },
+              { label: "Generated", value: `${dateStr} at ${timeStr}` },
+              { label: "Brief Type", value: brief.title },
+              { label: "Category", value: cat.label },
+              { label: "Report Type", value: reportType === "comprehensive" ? "Comprehensive Analysis" : "Standard Brief" },
+              { label: "Platform", value: "GentryLab AI Industrial Advisor" },
+              { label: "Jurisdiction", value: "Kingdom of Cambodia" },
+              { label: "Contact", value: "advisory@thegentrylab.io" },
+            ].map(m => (
+              <div key={m.label} style={{ display: "flex", gap: "8pt", alignItems: "baseline", borderBottom: "1pt solid #f5f5f5", paddingBottom: "4pt" }}>
+                <span style={{ fontFamily: PF.head, fontSize: "7pt", color: "#aaa", minWidth: "70pt", flexShrink: 0 }}>{m.label}</span>
+                <span style={{ fontFamily: PF.body, fontSize: "8.5pt", color: "#333" }}>{m.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom mark */}
+        <div style={{ marginTop: "24pt", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", fontWeight: 700, letterSpacing: "0.25em", textTransform: "uppercase" }}>
+            THE GENTRY LAB
+          </div>
+          <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "#ccc" }}>
+            © {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd. · thegentrylab.io
+          </div>
+        </div>
+      </div>
+
+      {/* Running footer */}
       <div className="pr-footer">
         <div>
           <div className="pr-footer-left">
             <span className="pr-footer-brand">THE GENTRY LAB</span> · AI Industrial Advisor · Ref #{refId}
           </div>
           <div className="pr-disclaimer">
-            AI-generated advisory brief. Verify all data before making investment decisions. © {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd.
+            AI-generated advisory brief. Verify all data independently. © {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd.
           </div>
         </div>
         <div className="pr-footer-right">
-          advisory@thegentrylab.io<br />thegentrylab.io
+          advisory@thegentrylab.io · thegentrylab.io
         </div>
       </div>
     </div>
@@ -1287,6 +1285,7 @@ export default function AdvisorPage() {
   const [reportType, setReportType] = useState<ReportType>("standard");
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [creditError, setCreditError] = useState<{ balance: number } | null>(null);
+  const [userNotes, setUserNotes] = useState("");
   const [refinePrompt, setRefinePrompt] = useState("");
   const [refining, setRefining] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
@@ -1338,6 +1337,7 @@ export default function AdvisorPage() {
     setIsEditMode(false);
     setChartData(null);
     setCreditError(null);
+    setUserNotes("");
     setStep("form");
   }
 
@@ -1371,7 +1371,7 @@ export default function AdvisorPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ briefType: selectedBrief.id, briefTitle: selectedBrief.title, fields: form, reportType }),
+        body: JSON.stringify({ briefType: selectedBrief.id, briefTitle: selectedBrief.title, fields: form, reportType, userNotes: userNotes.trim() }),
       });
 
       if (res.status === 402) {
@@ -1502,6 +1502,7 @@ export default function AdvisorPage() {
     setChartData(null);
     setCreditError(null);
     setReportType("standard");
+    setUserNotes("");
     setRefinePrompt("");
     setRefining(false);
   }
@@ -1530,7 +1531,7 @@ export default function AdvisorPage() {
 
         {/* Hero */}
         <div className="border-b" style={{ borderColor: "rgba(255,255,255,0.06)", backgroundColor: "#0d0d0e" }}>
-          <div className="max-w-6xl mx-auto px-6 md:px-12 py-10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-12 py-6 sm:py-10">
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div>
                 <div className="flex items-center gap-3 mb-3">
@@ -1595,7 +1596,7 @@ export default function AdvisorPage() {
           </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-6 md:px-12 py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-12 py-6 sm:py-10">
 
           {/* ── Auth gate ── */}
           {!user && (
@@ -1727,6 +1728,24 @@ export default function AdvisorPage() {
                 </div>
               </div>
 
+              {/* User notes */}
+              <div className="mt-6 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.09)" }}>
+                <div className="px-4 py-3 flex items-center gap-2" style={{ backgroundColor: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.50)" }}>Your notes <span style={{ color: "rgba(255,255,255,0.25)" }}>(optional)</span></p>
+                </div>
+                <div className="px-4 py-3">
+                  <textarea
+                    value={userNotes}
+                    onChange={e => setUserNotes(e.target.value)}
+                    placeholder="Add any specific focus areas, constraints, or context for the AI — e.g. 'Focus on garment sector', 'Budget under $5M', 'Priority is fast permit timeline'…"
+                    rows={3}
+                    className="w-full text-[12px] leading-relaxed outline-none resize-none transition"
+                    style={{ backgroundColor: "transparent", color: "#ffffff", border: "none", padding: 0 }}
+                  />
+                </div>
+              </div>
+
               {/* Credit error */}
               {creditError && (
                 <div className="mt-4 rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
@@ -1775,15 +1794,15 @@ export default function AdvisorPage() {
           {user && step === "result" && selectedBrief && (
             <div className="max-w-3xl">
               {/* Actions bar */}
-              <div className="flex items-center gap-3 mb-6 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded flex items-center justify-center" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{selectedBrief.icon}</div>
-                  <h2 className="text-[14px] font-bold" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{selectedBrief.icon}</div>
+                  <h2 className="text-[14px] font-bold truncate" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
                 </div>
-                <div className="ml-auto flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap sm:ml-auto">
                   {saved && !streaming && (
                     <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Auto-saved
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Saved
                     </span>
                   )}
                   {streaming && (
@@ -1792,20 +1811,20 @@ export default function AdvisorPage() {
                     </span>
                   )}
                   {!streaming && output && (
-                    <button onClick={editAndRegenerate} className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
+                    <button onClick={editAndRegenerate} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
                       style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.50)" }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      Edit & Regen
+                      <span className="hidden sm:inline">Edit &amp; </span>Regen
                     </button>
                   )}
                   {!streaming && output && (
-                    <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
+                    <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
                       style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.50)" }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                      Print / PDF
+                      <span className="hidden sm:inline">Print / </span>PDF
                     </button>
                   )}
-                  <button onClick={reset} className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded transition"
+                  <button onClick={reset} className="px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
                     style={{ border: "1px solid rgba(255,81,0,0.30)", color: "#ff5100" }}>
                     New Brief
                   </button>
@@ -1825,7 +1844,7 @@ export default function AdvisorPage() {
               )}
 
               {/* Brief output */}
-              <div ref={outputRef} className="rounded-xl p-6 md:p-8 min-h-[400px]"
+              <div ref={outputRef} className="rounded-xl p-4 sm:p-6 md:p-8 min-h-[300px] sm:min-h-[400px]"
                 style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
                 {output ? renderMarkdown(output) : (
                   <div className="flex items-center gap-2" style={{ color: "rgba(255,255,255,0.30)" }}>
@@ -1910,17 +1929,18 @@ export default function AdvisorPage() {
                         Insufficient credits ({creditError.balance} cr). <Link to="/credits" className="underline ml-1" style={{ color: "#ff5100" }}>Buy more →</Link>
                       </div>
                     )}
-                    <div className="flex items-center justify-between mt-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
                       <span className="font-mono text-[9px]" style={{ color: "rgba(255,255,255,0.20)" }}>
                         Uses {reportType === "standard" ? "75" : "150"} credits · saves new version
                       </span>
                       <button
                         onClick={refine}
                         disabled={!refinePrompt.trim()}
-                        className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[12px] transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[12px] transition disabled:opacity-30 disabled:cursor-not-allowed w-full sm:w-auto"
                         style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-4.95"/></svg>
-                        Regenerate with adjustments
+                        <span className="hidden sm:inline">Regenerate with adjustments</span>
+                        <span className="sm:hidden">Regenerate</span>
                       </button>
                     </div>
                   </div>
