@@ -637,10 +637,11 @@ function PrintTable({ rows }: { rows: string[] }) {
 
 /* ── Print Report component ─────────────────────────────── */
 function PrintReport({
-  brief, form, output, savedBriefId, generatedAt,
+  brief, form, output, savedBriefId, generatedAt, chartData, reportType,
 }: {
   brief: BriefType; form: Record<string, string>; output: string;
   savedBriefId: string | null; generatedAt: Date;
+  chartData: ChartData | null; reportType: ReportType;
 }) {
   const cat = CATEGORIES.find(c => c.id === brief.category)!;
   const refId = savedBriefId ? savedBriefId.slice(0, 8).toUpperCase() : "DRAFT";
@@ -717,6 +718,189 @@ function PrintReport({
       <div style={{ marginBottom: "16pt" }}>
         {renderPrintMarkdown(output)}
       </div>
+
+      {/* Comprehensive charts — screen-rendered into print layout */}
+      {reportType === "comprehensive" && chartData && (
+        <div style={{ marginBottom: "16pt", pageBreakBefore: "always" }}>
+          <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "11pt", fontWeight: 700, color: "#ff5100", textTransform: "uppercase", letterSpacing: "0.1em", borderBottom: "1.5pt solid #ff5100", paddingBottom: "4pt", marginBottom: "12pt" }}>
+            Data Visualisation · Comprehensive Analysis
+          </div>
+          {chartData.type === "site_selection" ? (
+            <>
+              {/* Key stats table */}
+              <div style={{ marginBottom: "12pt" }}>
+                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Key Market Indicators</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#fff3ee" }}>
+                      {["Min. Wage /month", "Power Tariff /kWh", "SEZ Permits", "Outside SEZ"].map(h => (
+                        <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>${(chartData as SiteSelectionChartData).key_stats.min_wage_usd}</td>
+                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>${(chartData as SiteSelectionChartData).key_stats.power_min}–${(chartData as SiteSelectionChartData).key_stats.power_max}</td>
+                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>{(chartData as SiteSelectionChartData).key_stats.sez_permit_months} months</td>
+                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>{(chartData as SiteSelectionChartData).key_stats.outside_permit_months} months</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Zone rankings table */}
+              <div style={{ marginBottom: "12pt" }}>
+                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Zone Scoring Comparison</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#fff3ee" }}>
+                      {["Rank", "Zone", "Province", "Overall", "Labour", "Cost", "Permits", "Infrastructure", "Risk"].map(h => (
+                        <th key={h} style={{ padding: "4pt 6pt", textAlign: "center", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(chartData as SiteSelectionChartData).zones.map((z, i) => (
+                      <tr key={z.name} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center", fontWeight: 700, color: "#cc3300" }}>#{z.rank}</td>
+                        <td style={{ padding: "4pt 6pt", fontWeight: 600 }}>{z.name}</td>
+                        <td style={{ padding: "4pt 6pt", color: "#666" }}>{z.province}</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center", fontWeight: 700, color: "#cc3300" }}>{z.score}</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.labour}/10</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.cost}/10</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.permits}/10</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.infrastructure}/10</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.risk}/10</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Cost comparison table */}
+              <div style={{ marginBottom: "12pt" }}>
+                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Estimated Capex by Zone (USD)</div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#fff3ee" }}>
+                      {["Zone", "Land Lease /m²/yr", "Build Cost /m²", "Utilities /mo", "Permits", "Factory Size m²"].map(h => (
+                        <th key={h} style={{ padding: "4pt 6pt", textAlign: "center", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(chartData as SiteSelectionChartData).costs.map((c, i) => (
+                      <tr key={c.zone} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
+                        <td style={{ padding: "4pt 6pt", fontWeight: 600 }}>{c.zone}</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.land_lease_m2_yr}</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.build_cost_m2}</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.utilities_usd.toLocaleString()}</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.permits_usd.toLocaleString()}</td>
+                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{c.factory_size_m2.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Timeline table */}
+              <div style={{ marginBottom: "12pt" }}>
+                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>
+                  Timeline to First Production · Total: ~{Math.round(Object.values((chartData as SiteSelectionChartData).timeline_weeks).reduce((a, b) => a + b, 0) / 4.33)} months
+                </div>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#fff3ee" }}>
+                      {["Phase", "Duration (weeks)"].map(h => (
+                        <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries((chartData as SiteSelectionChartData).timeline_weeks).map(([phase, weeks], i) => (
+                      <tr key={phase} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
+                        <td style={{ padding: "4pt 8pt" }}>{phase.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</td>
+                        <td style={{ padding: "4pt 8pt", fontWeight: 600, color: "#cc3300" }}>{weeks} weeks</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Generic key metrics */}
+              {(chartData as GenericChartData).key_metrics?.length > 0 && (
+                <div style={{ marginBottom: "12pt" }}>
+                  <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Key Figures</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#fff3ee" }}>
+                        {(chartData as GenericChartData).key_metrics.map(m => (
+                          <th key={m.label} style={{ padding: "4pt 8pt", textAlign: "center", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{m.label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        {(chartData as GenericChartData).key_metrics.map(m => (
+                          <td key={m.label} style={{ padding: "5pt 8pt", textAlign: "center", fontWeight: 700, color: "#cc3300" }}>{m.value} <span style={{ fontWeight: 400, color: "#888", fontSize: "8pt" }}>{m.unit}</span></td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {/* Generic comparison table */}
+              {(chartData as GenericChartData).comparison_table?.headers?.length > 0 && (
+                <div style={{ marginBottom: "12pt" }}>
+                  <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Comparison</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#fff3ee" }}>
+                        {(chartData as GenericChartData).comparison_table.headers.map(h => (
+                          <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(chartData as GenericChartData).comparison_table.rows.map((row, i) => (
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
+                          {row.map((cell, j) => <td key={j} style={{ padding: "4pt 8pt" }}>{cell}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {/* Generic timeline */}
+              {(chartData as GenericChartData).timeline_items?.length > 0 && (
+                <div style={{ marginBottom: "12pt" }}>
+                  <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Timeline</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+                    <thead>
+                      <tr style={{ backgroundColor: "#fff3ee" }}>
+                        {["Phase", "Duration (weeks)"].map(h => (
+                          <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(chartData as GenericChartData).timeline_items.map((item, i) => (
+                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
+                          <td style={{ padding: "4pt 8pt" }}>{item.label}</td>
+                          <td style={{ padding: "4pt 8pt", fontWeight: 600, color: "#cc3300" }}>{item.weeks} weeks</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="pr-footer">
@@ -997,6 +1181,8 @@ export default function AdvisorPage() {
           output={output}
           savedBriefId={savedBriefId}
           generatedAt={generatedAt}
+          chartData={chartData}
+          reportType={reportType}
         />
       )}
 
