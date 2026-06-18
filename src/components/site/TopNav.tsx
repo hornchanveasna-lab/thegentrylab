@@ -131,23 +131,6 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-56 nav-surface border nav-border rounded-xl shadow-2xl overflow-hidden z-50">
 
-                  {/* User identity */}
-                  <div className="px-4 py-3.5 border-b nav-border flex items-center gap-3">
-                    {user.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                    ) : (
-                      <span className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center text-[10px] font-bold text-black shrink-0">
-                        {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
-                      </span>
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-bold nav-text-primary truncate leading-tight">
-                        {user.user_metadata?.full_name ?? "Account"}
-                      </p>
-                      <p className="font-mono text-[9px] nav-text-muted truncate mt-0.5">{user.email}</p>
-                    </div>
-                  </div>
-
                   {/* Profile & Settings */}
                   <div className="px-3 py-2 border-b nav-border">
                     {[
