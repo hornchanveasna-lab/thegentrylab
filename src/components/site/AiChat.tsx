@@ -173,6 +173,19 @@ export function AiChat() {
     setMessages((prev) => prev.length === 0 ? [GREETING] : prev);
   }, [open]);
 
+  /* Listen for brief-to-chat events from the Advisor page */
+  useEffect(() => {
+    function handleBriefChat(e: Event) {
+      const msg = (e as CustomEvent<{ message: string }>).detail?.message;
+      if (!msg) return;
+      setOpen(true);
+      setInput(msg);
+      setTimeout(() => inputRef.current?.focus(), 200);
+    }
+    window.addEventListener("tgl:chat-brief", handleBriefChat);
+    return () => window.removeEventListener("tgl:chat-brief", handleBriefChat);
+  }, []);
+
   /* Load today's credit usage when user logs in */
   useEffect(() => {
     if (!user || !supabase) return;

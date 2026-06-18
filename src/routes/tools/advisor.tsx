@@ -293,10 +293,17 @@ const CATEGORIES: { id: Category; label: string; color: string; desc: string; ic
   },
 ];
 
-const SECTORS = ["Garment & Textiles","Electronics & PCB","Food Processing","Warehousing & Logistics","Automotive / EV","Data Center","Energy / Solar","Pharmaceutical","Furniture","Footwear"];
-const PROVINCES = ["Phnom Penh","Kandal","Kampong Speu","Sihanoukville","Svay Rieng","Kampong Cham","Kampot","Siem Reap","Battambang","Other / Recommend best"];
-const BUDGET_RANGES = ["Under USD 1M","USD 1M – 5M","USD 5M – 20M","USD 20M – 50M","USD 50M – 100M","Over USD 100M"];
-const FACTORY_SIZES = ["Under 1,000 m²","1,000 – 3,000 m²","3,000 – 10,000 m²","10,000 – 30,000 m²","30,000 – 65,000 m²","Over 65,000 m²"];
+const SECTORS = ["Garment & Textiles","Electronics & PCB","Food Processing","Warehousing & Logistics","Automotive / EV","Data Center","Energy / Solar","Pharmaceutical","Furniture","Footwear","Agro-processing","Chemical / Plastics","Metal Fabrication","Cosmetics / Personal Care","Medical Devices"];
+const PROVINCES = [
+  "Phnom Penh","Kandal","Kampong Speu","Preah Sihanouk (Sihanoukville)","Svay Rieng","Kampong Cham",
+  "Kampot","Siem Reap","Battambang","Banteay Meanchey","Kampong Chhnang","Kampong Thom",
+  "Kep","Koh Kong","Kratié","Mondulkiri","Oddar Meanchey","Pailin","Preah Vihear",
+  "Prey Veng","Pursat","Ratanakiri","Stung Treng","Takéo","Tboung Khmum",
+  "Recommend best province for my needs",
+];
+const BUDGET_RANGES = ["Under USD 500K","USD 500K – 1M","USD 1M – 5M","USD 5M – 20M","USD 20M – 50M","USD 50M – 100M","Over USD 100M"];
+const FACTORY_SIZES = ["Under 500 m²","500 – 1,000 m²","1,000 – 3,000 m²","3,000 – 10,000 m²","10,000 – 30,000 m²","30,000 – 65,000 m²","Over 65,000 m²"];
+const WORKER_COUNTS = ["Under 50","50 – 200","200 – 500","500 – 1,000","1,000 – 3,000","Over 3,000"];
 
 /* ── Brief definitions ──────────────────────────────────── */
 const BRIEFS: BriefType[] = [
@@ -307,12 +314,16 @@ const BRIEFS: BriefType[] = [
     audience: "Manufacturer evaluating Cambodia entry",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
     fields: [
-      { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
-      { id: "factory_size", label: "Factory Size", type: "select", options: FACTORY_SIZES, required: true },
+      { id: "sector", label: "Industry Sector", type: "select", options: SECTORS, required: true },
+      { id: "factory_size", label: "Factory / Facility Size", type: "select", options: FACTORY_SIZES, required: true },
       { id: "budget", label: "Total Investment Budget", type: "select", options: BUDGET_RANGES, required: true },
+      { id: "workers_needed", label: "Planned Workforce (year 1)", type: "select", options: WORKER_COUNTS, required: true },
       { id: "province_preference", label: "Province Preference", type: "select", options: PROVINCES, required: true },
-      { id: "priority", label: "Top Priority", type: "select", options: ["Lowest cost","Fastest timeline","Best incentives","Strongest labour pool","Port/export access","Recommend best balance"], required: true },
+      { id: "priority", label: "Top Priority Criteria", type: "select", options: ["Lowest total cost","Fastest timeline to production","Best tax incentives","Strongest labour pool","Port / export logistics access","Inside SEZ preferred","Recommend best balance"], required: true },
+      { id: "inside_sez", label: "SEZ or Greenfield?", type: "select", options: ["Inside SEZ preferred","Greenfield / outside SEZ","Open to either — advise me"], required: true },
+      { id: "timeline", label: "Target Timeline to Production", type: "select", options: ["Under 12 months","12 – 18 months","18 – 24 months","Over 24 months / flexible"], required: true },
       { id: "origin_country", label: "Investor Country of Origin", type: "text", placeholder: "e.g. South Korea, China, Japan", required: true },
+      { id: "special_req", label: "Special Requirements", type: "text", placeholder: "e.g. clean room, cold chain, bonded warehouse, high-power (5MW+)" },
     ],
   },
   {
@@ -321,12 +332,16 @@ const BRIEFS: BriefType[] = [
     audience: "Investor stress-testing a specific project",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
     fields: [
-      { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
+      { id: "sector", label: "Industry Sector", type: "select", options: SECTORS, required: true },
+      { id: "production", label: "What will you produce?", type: "text", placeholder: "e.g. garment cutting & sewing, PCB assembly, EV battery packs", required: true },
       { id: "factory_size", label: "Factory / Facility Size", type: "select", options: FACTORY_SIZES, required: true },
-      { id: "location", label: "Target Location", type: "select", options: PROVINCES, required: true },
+      { id: "investment_budget", label: "Total Investment Budget (USD)", type: "select", options: BUDGET_RANGES, required: true },
+      { id: "workers_planned", label: "Planned Workforce (year 1)", type: "select", options: WORKER_COUNTS, required: true },
+      { id: "location", label: "Target Province", type: "select", options: PROVINCES, required: true },
       { id: "inside_sez", label: "Inside SEZ or Outside?", type: "select", options: ["Inside SEZ","Outside SEZ / greenfield","Not sure — advise me"], required: true },
-      { id: "export_market", label: "Primary Export Market", type: "select", options: ["European Union","United States","ASEAN region","China","Japan / South Korea","Multiple markets"], required: true },
-      { id: "production", label: "What will you produce?", type: "text", placeholder: "e.g. garment cutting & sewing, PCB assembly", required: true },
+      { id: "export_market", label: "Primary Export Market", type: "select", options: ["European Union (EBA)","United States (GSP)","ASEAN region","China","Japan / South Korea","Multiple markets / domestic"], required: true },
+      { id: "origin_country", label: "Investor Country of Origin", type: "text", placeholder: "e.g. South Korea, Japan, China", required: true },
+      { id: "biggest_concern", label: "Biggest Risk / Concern", type: "select", options: ["Cost overruns","Permit delays","Labour availability","Power supply reliability","Political / regulatory risk","Currency / FX risk","Supply chain access","Not sure"] },
     ],
   },
   {
@@ -335,11 +350,14 @@ const BRIEFS: BriefType[] = [
     audience: "CFO / tax counsel calculating net investment cost",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
     fields: [
-      { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
+      { id: "sector", label: "Industry Sector", type: "select", options: SECTORS, required: true },
       { id: "origin_country", label: "Investor Country of Origin", type: "text", placeholder: "e.g. South Korea", required: true },
-      { id: "investment_size", label: "Investment Size (USD)", type: "select", options: BUDGET_RANGES, required: true },
-      { id: "export_pct", label: "Export Percentage", type: "select", options: ["Over 80% export","50–80% export","Under 50% export","Domestic market only"], required: true },
-      { id: "project_type", label: "Project Type", type: "select", options: ["New greenfield investment","Expansion of existing facility","Relocation from another country","Joint venture with local partner"], required: true },
+      { id: "investment_size", label: "Total Investment Size (USD)", type: "select", options: BUDGET_RANGES, required: true },
+      { id: "province", label: "Target Province", type: "select", options: PROVINCES, required: true },
+      { id: "employees_planned", label: "Cambodian Employees Planned", type: "select", options: WORKER_COUNTS, required: true },
+      { id: "export_pct", label: "Export Percentage", type: "select", options: ["Over 80% export","50–80% export","20–50% export","Under 20% / domestic market"], required: true },
+      { id: "project_type", label: "Project Type", type: "select", options: ["New greenfield investment","Expansion of existing facility","Relocation from another country","Joint venture with local partner","Acquisition / brownfield"], required: true },
+      { id: "inside_sez", label: "SEZ or Outside?", type: "select", options: ["Inside SEZ / developer zone","Outside SEZ — greenfield","Not decided — advise me"], required: true },
     ],
   },
   {
@@ -348,11 +366,14 @@ const BRIEFS: BriefType[] = [
     audience: "C-suite deciding where in SE Asia to invest",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
     fields: [
-      { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
-      { id: "origin_country", label: "Your Country", type: "text", placeholder: "e.g. Japan", required: true },
-      { id: "compare_with", label: "Compare Cambodia Against", type: "select", options: ["Vietnam","Thailand","Indonesia","Myanmar","All three (Vietnam, Thailand, Indonesia)"], required: true },
-      { id: "key_concern", label: "Your Biggest Decision Factor", type: "select", options: ["Lowest labour cost","Fastest time to production","Best export incentives","Lowest political risk","Strongest supply chain","EU/US market access"], required: true },
+      { id: "sector", label: "Industry Sector", type: "select", options: SECTORS, required: true },
+      { id: "origin_country", label: "Your Country / HQ", type: "text", placeholder: "e.g. Japan, Germany, USA", required: true },
+      { id: "compare_with", label: "Compare Cambodia Against", type: "select", options: ["Vietnam","Thailand","Indonesia","Myanmar","Bangladesh","All SE Asia (Vietnam, Thailand, Indonesia, Myanmar)"], required: true },
+      { id: "investment_size", label: "Investment Scale (USD)", type: "select", options: BUDGET_RANGES, required: true },
       { id: "factory_size", label: "Factory Size", type: "select", options: FACTORY_SIZES, required: true },
+      { id: "workers_planned", label: "Planned Workforce", type: "select", options: WORKER_COUNTS, required: true },
+      { id: "key_concern", label: "Primary Decision Factor", type: "select", options: ["Lowest labour cost","Fastest time to production","Best export incentives (EBA/GSP)","Lowest political / regulatory risk","Strongest supply chain ecosystem","EU/US market access","Overall risk-adjusted ROI"], required: true },
+      { id: "supply_chain", label: "Supply Chain Needs", type: "select", options: ["Need local raw material supply","Need bonded warehouse access","Need strong port logistics","Self-contained — import all inputs","Not a key constraint"] },
     ],
   },
 
@@ -367,8 +388,11 @@ const BRIEFS: BriefType[] = [
       { id: "land_size", label: "Land Size (hectares)", type: "text", placeholder: "e.g. 12.5 ha", required: true },
       { id: "title_type", label: "Land Title Type", type: "select", options: ["Hard title (LMAP)","Soft title","Unclear / under investigation","Inside SEZ / developer-managed"], required: true },
       { id: "distance_nr", label: "Distance to Nearest National Road", type: "select", options: ["On national road","Under 2 km","2–10 km","Over 10 km","Unknown"], required: true },
-      { id: "current_use", label: "Current Land Use", type: "select", options: ["Farmland / rice field","Scrubland / vacant","Existing structure (low-value)","Operating facility","Other"], required: true },
-      { id: "development_goal", label: "Your Goal", type: "select", options: ["Sell the land","Lease to a factory tenant","Develop an industrial park / SEZ","Develop for own use"], required: true },
+      { id: "utilities_nearby", label: "Nearest Utility Infrastructure", type: "select", options: ["EDC power line on/adjacent","EDC power under 5 km","EDC power 5–15 km","No grid power nearby","Water canal / river nearby","Fully off-grid"], required: true },
+      { id: "flood_risk", label: "Known Flood / Drainage Issues?", type: "select", options: ["No known issues","Minor seasonal flooding","Moderate flooding history","High flood risk area","Unknown"], required: true },
+      { id: "current_use", label: "Current Land Use", type: "select", options: ["Farmland / rice paddy","Scrubland / vacant","Existing low-value structure","Operating facility","Mixed use","Other"], required: true },
+      { id: "development_goal", label: "Your Development Goal", type: "select", options: ["Sell the land","Lease plots to factory tenants","Build & lease a shell factory","Develop a full industrial park","Develop a Special Economic Zone (SEZ)","Develop for own company use"], required: true },
+      { id: "ownership", label: "Ownership Structure", type: "select", options: ["Cambodian individual owner","Cambodian company","Joint venture (Khmer + foreign)","Foreign company (long-lease)","Not yet decided"] },
     ],
   },
   {
@@ -378,10 +402,12 @@ const BRIEFS: BriefType[] = [
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
     fields: [
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
-      { id: "land_or_building", label: "What are you offering?", type: "select", options: ["Bare land only","Serviced plot (utilities to boundary)","Shell factory building","Fitted factory (ready to use)","Whole industrial park"], required: true },
+      { id: "land_or_building", label: "What are you offering?", type: "select", options: ["Bare land only","Serviced plot (utilities to boundary)","Shell factory building","Fitted factory (ready to use)","Whole industrial park with management","Portion of existing park"], required: true },
       { id: "size", label: "Available Size", type: "text", placeholder: "e.g. 5 ha land / 8,000 m² building", required: true },
-      { id: "utilities", label: "Utilities Available", type: "select", options: ["Power + water + road (fully serviced)","Power + road only","Road only","None yet","Inside SEZ (full)"], required: true },
-      { id: "asking_rate", label: "Target Lease Rate (USD/m²/yr)", type: "text", placeholder: "e.g. 45 or leave blank for our recommendation" },
+      { id: "utilities", label: "Utilities Available", type: "select", options: ["Full services — power, water, road, telecom","Power + water + road","Power + road only","Road access only","None yet — open to developer","Inside SEZ (full service)"], required: true },
+      { id: "target_tenant_origin", label: "Preferred Tenant Origin", type: "select", options: ["Any nationality welcome","East Asian (China, Korea, Japan, Taiwan)","European / US investors","SE Asian investors","Cambodian domestic companies","No preference"] },
+      { id: "asking_rate", label: "Target Lease Rate (USD/m²/yr)", type: "text", placeholder: "e.g. 45 or leave blank for market recommendation" },
+      { id: "lease_term", label: "Lease Term Preference", type: "select", options: ["Short-term (1–3 years)","Medium-term (3–10 years)","Long-term (10–30 years)","50-year concession","Flexible / open to advice"] },
     ],
   },
   {
@@ -392,9 +418,11 @@ const BRIEFS: BriefType[] = [
     fields: [
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "land_size", label: "Total Land Area (ha)", type: "text", placeholder: "e.g. 50 ha", required: true },
-      { id: "target_sector", label: "Target Tenant Sector", type: "select", options: [...SECTORS, "Mixed / multi-sector"], required: true },
-      { id: "development_budget", label: "Development Budget", type: "select", options: ["Under USD 5M","USD 5M – 20M","USD 20M – 50M","Over USD 50M","Unknown — advise me"], required: true },
-      { id: "utilities_status", label: "Utilities Status", type: "select", options: ["EDC power nearby (under 5km)","EDC power available on site","Water source available","All utilities available","Need to develop from scratch"], required: true },
+      { id: "target_sector", label: "Target Tenant Sector", type: "select", options: [...SECTORS, "Mixed / multi-sector","Logistics hub","Agro-industrial park"], required: true },
+      { id: "development_budget", label: "Total Development Budget (USD)", type: "select", options: ["Under USD 5M","USD 5M – 20M","USD 20M – 50M","USD 50M – 150M","Over USD 150M","Unknown — advise me"], required: true },
+      { id: "utilities_status", label: "Utilities Status", type: "select", options: ["EDC power line adjacent to site","EDC power available on site","Power + water both available","All utilities available at boundary","Need to develop from scratch","Has canal / river — need pump station"], required: true },
+      { id: "park_type", label: "Park Type Target", type: "select", options: ["Government-registered SEZ","Private industrial park (no SEZ status)","Agro-processing cluster","Logistics / warehousing park","Mixed-use industrial estate","Tech / light industrial campus"] },
+      { id: "investor_origin", label: "Developer / Investor Origin", type: "select", options: ["Cambodian developer","Korean / Japanese JV","Chinese / HK partner","Singapore / regional fund","Government / state-owned","Mixed consortium"] },
     ],
   },
 
@@ -462,9 +490,11 @@ const BRIEFS: BriefType[] = [
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
     fields: [
       { id: "product", label: "Product / HS Code", type: "text", placeholder: "e.g. garments HS 6203, PCB HS 8534", required: true },
-      { id: "export_market", label: "Target Export Market", type: "select", options: ["European Union (EBA)","United States (GSP)","United Kingdom","Japan (EPA)","ASEAN (RCEP)","Multiple markets"], required: true },
-      { id: "origin_country", label: "Investor Origin Country", type: "text", placeholder: "e.g. South Korea", required: true },
-      { id: "local_content", label: "Estimated Local (Cambodia) Content %", type: "select", options: ["Under 20%","20–40%","40–60%","Over 60%","Not sure"], required: true },
+      { id: "export_market", label: "Target Export Market", type: "select", options: ["European Union (EBA)","United States (GSP)","United Kingdom (UK GSP)","Japan (EPA)","Canada / Australia","ASEAN (RCEP)","China","Multiple markets"], required: true },
+      { id: "origin_country", label: "Investor / Company Origin Country", type: "text", placeholder: "e.g. South Korea", required: true },
+      { id: "province", label: "Production Province", type: "select", options: PROVINCES, required: true },
+      { id: "local_content", label: "Estimated Cambodia Value-Add %", type: "select", options: ["Under 20%","20–35%","35–50%","Over 50%","Not sure — need guidance"], required: true },
+      { id: "production_process", label: "Production Process Type", type: "select", options: ["Cut, Make, Trim (CMT)","Full Package (FOB)","Assembly only","Substantial transformation","Processing / refining"] },
     ],
   },
   {
@@ -473,10 +503,12 @@ const BRIEFS: BriefType[] = [
     audience: "Developer or consultant navigating MoE approval",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
     fields: [
-      { id: "project_type", label: "Project Type", type: "select", options: ["Factory (manufacturing)","Warehouse / logistics","Industrial park / SEZ","Food processing","Chemical / pharmaceutical","Energy (solar / power plant)","Mixed use"], required: true },
+      { id: "project_type", label: "Project Type", type: "select", options: ["Factory (manufacturing)","Warehouse / logistics","Industrial park / SEZ","Food processing","Chemical / pharmaceutical","Energy (solar / power plant)","Cold storage","Data center","Mixed use"], required: true },
       { id: "size", label: "Project Size", type: "select", options: FACTORY_SIZES, required: true },
       { id: "province", label: "Province", type: "select", options: PROVINCES, required: true },
-      { id: "near_sensitive", label: "Near Sensitive Area?", type: "select", options: ["Near river / water body (under 500m)","Near protected forest","Near residential area","Near national park","None of the above","Not sure"], required: true },
+      { id: "near_sensitive", label: "Near Sensitive Area?", type: "select", options: ["Near river / water body (under 500m)","Near protected forest","Near national park / protected area","Near residential community (under 200m)","Near school / hospital","None of the above","Not sure — need site assessment"], required: true },
+      { id: "wastewater", label: "Wastewater / Effluent Generated?", type: "select", options: ["No process wastewater","Low volume — domestic only","Industrial wastewater (light)","Industrial wastewater (heavy / chemical)","Food processing effluent","Yes — already have treatment plan"] },
+      { id: "hazmat", label: "Hazardous Materials Used?", type: "select", options: ["None","Minor — cleaning chemicals only","Moderate — paints, solvents, lubricants","Significant — industrial chemicals","Flammable / explosive materials","Not sure"] },
     ],
   },
 
@@ -1717,6 +1749,14 @@ function PrintReport({
 }
 
 /* ── Saved Briefs history component ─────────────────────── */
+const HISTORY_FAVS_KEY = "tgl_brief_favs";
+function getFavs(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(HISTORY_FAVS_KEY) ?? "[]")); } catch { return new Set(); }
+}
+function saveFavs(favs: Set<string>) {
+  localStorage.setItem(HISTORY_FAVS_KEY, JSON.stringify([...favs]));
+}
+
 function HistoryView({
   briefs, loading, onOpen, onNew,
 }: {
@@ -1728,20 +1768,165 @@ function HistoryView({
   const catColors: Record<string, string> = {
     INVEST: "#ff5100", DEVELOP: "#10b981", FINANCE: "#3b82f6", COMPLY: "#f59e0b", PLAN: "#8b5cf6",
   };
+  const [favs, setFavs] = useState<Set<string>>(getFavs);
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [filterFavs, setFilterFavs] = useState(false);
+  const [groupBy, setGroupBy] = useState<"none" | "category">("none");
+  const [sortBy, setSortBy] = useState<"date" | "name">("date");
+
+  function toggleFav(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const next = new Set(favs);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setFavs(next);
+    saveFavs(next);
+  }
+
+  function sendToChat(b: SavedBrief, e: React.MouseEvent) {
+    e.stopPropagation();
+    const preview = b.output?.replace(/[#>*`|]/g, "").replace(/\s+/g, " ").slice(0, 600) ?? "";
+    const msg = `I'd like to discuss my "${b.brief_title}" brief (${b.category} category). Here's a summary:\n\n${preview}...\n\nCan you help me dig deeper, explore alternative approaches, or answer follow-up questions?`;
+    window.dispatchEvent(new CustomEvent("tgl:chat-brief", { detail: { message: msg } }));
+  }
+
+  let displayed = [...briefs];
+  if (filterFavs) displayed = displayed.filter(b => favs.has(b.id));
+  if (sortBy === "name") displayed.sort((a, b) => a.brief_title.localeCompare(b.brief_title));
+
+  const grouped: Record<string, SavedBrief[]> = {};
+  if (groupBy === "category") {
+    for (const b of displayed) {
+      (grouped[b.category] = grouped[b.category] ?? []).push(b);
+    }
+  } else {
+    grouped["all"] = displayed;
+  }
+
+  function BriefCard({ b }: { b: SavedBrief }) {
+    const color = catColors[b.category] ?? "#ff5100";
+    const date = new Date(b.created_at);
+    const preview = b.output?.replace(/[#>*`|]/g, "").replace(/\n/g, " ").slice(0, 110) ?? "";
+    const isFav = favs.has(b.id);
+
+    if (viewMode === "list") {
+      return (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all group"
+          style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}
+          onClick={() => onOpen(b)}
+          onMouseEnter={e => (e.currentTarget.style.borderColor = `${color}40`)}
+          onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--adv-border)")}>
+          <span className="font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>{b.category}</span>
+          <span className="text-[12.5px] font-semibold flex-1 truncate" style={{ color: "var(--adv-text-hi)" }}>{b.brief_title}</span>
+          <span className="font-mono text-[9px] shrink-0" style={{ color: "var(--adv-text-faint)" }}>
+            {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
+          </span>
+          <button onClick={e => sendToChat(b, e)} title="Discuss in AiChat"
+            className="flex items-center gap-1 px-2 py-1 rounded transition shrink-0"
+            style={{ backgroundColor: "rgba(255,81,0,0.08)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.20)" }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span className="font-mono text-[8px] uppercase tracking-widest hidden sm:block">Chat</span>
+          </button>
+          <button onClick={e => toggleFav(b.id, e)} title={isFav ? "Remove favorite" : "Add to favorites"}
+            className="shrink-0 p-1.5 rounded transition"
+            style={{ color: isFav ? "#ff5100" : "var(--adv-text-dim)" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill={isFav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>Open →</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-left p-4 rounded-xl transition-all group cursor-pointer relative"
+        style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}
+        onClick={() => onOpen(b)}
+        onMouseEnter={e => (e.currentTarget.style.borderColor = `${color}40`)}
+        onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--adv-border)")}>
+        {/* Fav + Chat actions */}
+        <div className="absolute top-3 right-3 flex items-center gap-1">
+          <button onClick={e => sendToChat(b, e)} title="Send to AiChat"
+            className="p-1.5 rounded transition opacity-0 group-hover:opacity-100"
+            style={{ backgroundColor: "rgba(255,81,0,0.10)", color: "#ff5100" }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </button>
+          <button onClick={e => toggleFav(b.id, e)} title={isFav ? "Remove favorite" : "Favorite"}
+            className="p-1.5 rounded transition"
+            style={{ color: isFav ? "#ff5100" : "var(--adv-text-dim)" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill={isFav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
+        </div>
+        <div className="flex items-center gap-2 mb-2 pr-14">
+          <span className="font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>{b.category}</span>
+          <span className="text-[13px] font-semibold truncate" style={{ color: "var(--adv-text-hi)" }}>{b.brief_title}</span>
+        </div>
+        {preview && <p className="text-[11px] leading-relaxed line-clamp-2 mb-3" style={{ color: "var(--adv-text-dim)" }}>{preview}…</p>}
+        <div className="flex items-center justify-between pt-2.5" style={{ borderTop: "1px solid var(--adv-border-sub)" }}>
+          <span className="font-mono text-[9px]" style={{ color: "var(--adv-text-faint)" }}>
+            {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
+          </span>
+          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>Open →</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
         <div>
-          <h2 className="text-[16px] font-bold" style={{ color: "#ffffff" }}>Saved Briefs</h2>
-          <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Reopen any brief to view, edit inputs, or regenerate</p>
+          <h2 className="text-[16px] font-bold" style={{ color: "var(--adv-text-hi)" }}>My Briefs</h2>
+          <p className="text-[11px] mt-0.5" style={{ color: "var(--adv-text-sub)" }}>
+            {briefs.length} brief{briefs.length !== 1 ? "s" : ""} saved · Reopen to view, edit, or regenerate
+          </p>
         </div>
-        <button onClick={onNew} className="px-4 py-2 rounded-lg font-bold text-[12px]" style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
+        <button onClick={onNew} className="px-4 py-2 rounded-lg font-bold text-[12px] shrink-0" style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
           + New Brief
         </button>
       </div>
 
+      {/* Toolbar */}
+      {!loading && briefs.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-5 pb-4" style={{ borderBottom: "1px solid var(--adv-border-sub)" }}>
+          {/* Favorites filter */}
+          <button onClick={() => setFilterFavs(v => !v)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-[9px] uppercase tracking-widest transition"
+            style={{ backgroundColor: filterFavs ? "rgba(255,81,0,0.12)" : "var(--adv-card)", color: filterFavs ? "#ff5100" : "var(--adv-text-sec)", border: filterFavs ? "1px solid rgba(255,81,0,0.30)" : "1px solid var(--adv-border)" }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill={filterFavs ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            Favorites {filterFavs && `(${[...favs].filter(id => briefs.some(b => b.id === id)).length})`}
+          </button>
+          {/* Group by */}
+          <button onClick={() => setGroupBy(v => v === "none" ? "category" : "none")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-[9px] uppercase tracking-widest transition"
+            style={{ backgroundColor: groupBy === "category" ? "rgba(59,130,246,0.10)" : "var(--adv-card)", color: groupBy === "category" ? "#3b82f6" : "var(--adv-text-sec)", border: groupBy === "category" ? "1px solid rgba(59,130,246,0.25)" : "1px solid var(--adv-border)" }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            {groupBy === "category" ? "Grouped" : "Group by type"}
+          </button>
+          {/* Sort */}
+          <button onClick={() => setSortBy(v => v === "date" ? "name" : "date")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full font-mono text-[9px] uppercase tracking-widest transition"
+            style={{ backgroundColor: "var(--adv-card)", color: "var(--adv-text-sec)", border: "1px solid var(--adv-border)" }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M7 12h10M11 18h2"/></svg>
+            Sort: {sortBy === "date" ? "Recent" : "Name"}
+          </button>
+          <div className="ml-auto flex items-center gap-1">
+            {/* View toggle */}
+            {(["card", "list"] as const).map(v => (
+              <button key={v} onClick={() => setViewMode(v)}
+                className="p-2 rounded transition"
+                style={{ backgroundColor: viewMode === v ? "rgba(255,81,0,0.12)" : "var(--adv-card)", color: viewMode === v ? "#ff5100" : "var(--adv-text-sec)", border: "1px solid " + (viewMode === v ? "rgba(255,81,0,0.25)" : "var(--adv-border)") }}>
+                {v === "card"
+                  ? <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                }
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {loading && (
-        <div className="flex items-center gap-2 py-12 justify-center" style={{ color: "rgba(255,255,255,0.30)" }}>
+        <div className="flex items-center gap-2 py-12 justify-center" style={{ color: "var(--adv-text-dim)" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="animate-spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
           <span className="font-mono text-[10px] uppercase tracking-widest">Loading briefs...</span>
         </div>
@@ -1749,50 +1934,40 @@ function HistoryView({
 
       {!loading && briefs.length === 0 && (
         <div className="text-center py-16">
-          <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.6"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border-input)" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" style={{ color: "var(--adv-text-dim)" }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           </div>
-          <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.40)" }}>No saved briefs yet.</p>
-          <p className="text-[11px] mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>Generate your first brief to see it here.</p>
+          <p className="text-[13px]" style={{ color: "var(--adv-text-muted)" }}>No saved briefs yet.</p>
+          <p className="text-[11px] mt-1" style={{ color: "var(--adv-text-faint)" }}>Generate your first brief to see it here.</p>
           <button onClick={onNew} className="mt-5 px-5 py-2.5 rounded-lg font-bold text-[12px]" style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.25)" }}>
             Generate a Brief →
           </button>
         </div>
       )}
 
-      {!loading && briefs.length > 0 && (
-        <div className="space-y-2">
-          {briefs.map(b => {
-            const color = catColors[b.category] ?? "#ff5100";
-            const date = new Date(b.created_at);
-            const preview = b.output?.replace(/[#>*`|]/g, "").replace(/\n/g, " ").slice(0, 120) ?? "";
-            return (
-              <button key={b.id} onClick={() => onOpen(b)} className="w-full text-left p-4 rounded-xl transition-all group"
-                style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = `${color}40`)}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)")}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>
-                      {b.category}
-                    </span>
-                    <span className="text-[13px] font-semibold truncate" style={{ color: "#ffffff" }}>{b.brief_title}</span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono text-[9px]" style={{ color: "rgba(255,255,255,0.25)" }}>
-                      {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
-                    </span>
-                    <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>Open →</span>
-                  </div>
-                </div>
-                {preview && (
-                  <p className="text-[11px] mt-2 leading-relaxed line-clamp-2" style={{ color: "rgba(255,255,255,0.30)" }}>{preview}...</p>
-                )}
-              </button>
-            );
-          })}
+      {!loading && displayed.length === 0 && briefs.length > 0 && (
+        <div className="text-center py-12">
+          <p className="text-[13px]" style={{ color: "var(--adv-text-muted)" }}>No briefs match your filter.</p>
+          <button onClick={() => setFilterFavs(false)} className="mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>Clear filter</button>
         </div>
       )}
+
+      {!loading && Object.entries(grouped).map(([group, items]) => (
+        <div key={group} className="mb-6">
+          {groupBy === "category" && (
+            <div className="flex items-center gap-2 mb-3">
+              <span className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full"
+                style={{ backgroundColor: `${catColors[group] ?? "#ff5100"}15`, color: catColors[group] ?? "#ff5100", border: `1px solid ${catColors[group] ?? "#ff5100"}30` }}>
+                {group}
+              </span>
+              <span className="font-mono text-[9px]" style={{ color: "var(--adv-text-faint)" }}>{items.length} brief{items.length !== 1 ? "s" : ""}</span>
+            </div>
+          )}
+          <div className={viewMode === "card" ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "space-y-1.5"}>
+            {items.map(b => <BriefCard key={b.id} b={b} />)}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -2258,11 +2433,11 @@ export default function AdvisorPage() {
       )}
 
       {/* Screen content */}
-      <div className="advisor-screen min-h-screen" style={{ backgroundColor: "#0a0a0b", color: "#ffffff" }}>
+      <div className="advisor-screen min-h-screen" style={{ backgroundColor: "var(--adv-page-bg)", color: "var(--adv-text-hi)" }}>
         <TopNav />
 
         {/* Hero */}
-        <div className="border-b" style={{ borderColor: "rgba(255,255,255,0.06)", backgroundColor: "#0d0d0e" }}>
+        <div className="border-b" style={{ borderColor: "var(--adv-border-sub)", backgroundColor: "var(--adv-hero-bg)" }}>
           <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-12 py-6 sm:py-10">
             <div className="flex items-start justify-between gap-6 flex-wrap">
               <div>
@@ -2270,32 +2445,32 @@ export default function AdvisorPage() {
                   <span className="font-mono text-[9px] uppercase tracking-[0.25em] px-2.5 py-1 rounded" style={{ color: "#ff5100", backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
                     AI Tool · Beta
                   </span>
-                  {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.25)" }}>Logged in · Credits active</span>}
+                  {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "var(--adv-text-faint)" }}>Logged in · Credits active</span>}
                 </div>
-                <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight leading-tight" style={{ color: "#ffffff" }}>
+                <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight leading-tight" style={{ color: "var(--adv-text-hi)" }}>
                   AI Industrial Advisor
                 </h1>
-                <p className="mt-2 text-[13px] leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.40)" }}>
+                <p className="mt-2 text-[13px] leading-relaxed max-w-xl" style={{ color: "var(--adv-text-muted)" }}>
                   Generate structured investment briefs — site selection, feasibility, permits, finance, and more — powered by Cambodia ground-level data.
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 {user && step !== "history" && (
                   <button onClick={openHistory} className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
-                    style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.50)" }}>
+                    style={{ border: "1px solid var(--adv-border-input)", color: "var(--adv-text-sec)" }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     My Briefs
                   </button>
                 )}
                 {step !== "select" && step !== "history" && (
                   <button onClick={reset} className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest rounded transition"
-                    style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
+                    style={{ border: "1px solid var(--adv-border-input)", color: "var(--adv-text-muted)" }}>
                     ← New Brief
                   </button>
                 )}
                 {step === "history" && (
                   <button onClick={reset} className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest rounded transition"
-                    style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
+                    style={{ border: "1px solid var(--adv-border-input)", color: "var(--adv-text-muted)" }}>
                     ← Back
                   </button>
                 )}
@@ -2313,13 +2488,13 @@ export default function AdvisorPage() {
                     <div key={s} className="flex items-center gap-2">
                       <div className="flex items-center gap-1.5">
                         <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all"
-                          style={{ backgroundColor: isActive ? "#ff5100" : isDone ? "rgba(255,81,0,0.30)" : "rgba(255,255,255,0.08)", color: isActive || isDone ? "#fff" : "rgba(255,255,255,0.30)" }}>
+                          style={{ backgroundColor: isActive ? "#ff5100" : isDone ? "rgba(255,81,0,0.30)" : "var(--adv-card)", color: isActive || isDone ? "#fff" : "var(--adv-text-dim)" }}>
                           {isDone ? "✓" : i + 1}
                         </div>
                         <span className="font-mono text-[10px] uppercase tracking-wider hidden sm:block"
-                          style={{ color: isActive ? "#ff5100" : "rgba(255,255,255,0.25)" }}>{labels[i]}</span>
+                          style={{ color: isActive ? "#ff5100" : "var(--adv-text-faint)" }}>{labels[i]}</span>
                       </div>
-                      {i < 2 && <div className="w-8 h-px" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />}
+                      {i < 2 && <div className="w-8 h-px" style={{ backgroundColor: "var(--adv-border)" }} />}
                     </div>
                   );
                 })}
@@ -2336,8 +2511,8 @@ export default function AdvisorPage() {
               <div className="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.6" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               </div>
-              <h2 className="text-[18px] font-bold mb-2" style={{ color: "#ffffff" }}>Sign in to use the Advisor</h2>
-              <p className="text-[13px] mb-6" style={{ color: "rgba(255,255,255,0.40)" }}>AI Industrial Advisor briefs require a free account.</p>
+              <h2 className="text-[18px] font-bold mb-2" style={{ color: "var(--adv-text-hi)" }}>Sign in to use the Advisor</h2>
+              <p className="text-[13px] mb-6" style={{ color: "var(--adv-text-muted)" }}>AI Industrial Advisor briefs require a free account.</p>
               <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px]"
                 style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
                 Sign in free →
@@ -2363,9 +2538,9 @@ export default function AdvisorPage() {
                   <button key={cat.id} onClick={() => setCategory(cat.id)}
                     className="flex items-center gap-2 px-4 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition-all"
                     style={{
-                      backgroundColor: category === cat.id ? cat.color : "rgba(255,255,255,0.04)",
-                      color: category === cat.id ? "#000" : "rgba(255,255,255,0.50)",
-                      border: `1px solid ${category === cat.id ? cat.color : "rgba(255,255,255,0.08)"}`,
+                      backgroundColor: category === cat.id ? cat.color : "var(--adv-card)",
+                      color: category === cat.id ? "#000" : "var(--adv-text-sec)",
+                      border: `1px solid ${category === cat.id ? cat.color : "var(--adv-border)"}`,
                       fontWeight: category === cat.id ? 700 : 400,
                     }}>
                     {cat.icon} {cat.label}
@@ -2374,21 +2549,21 @@ export default function AdvisorPage() {
               </div>
 
               <div className="mb-6">
-                <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.35)" }}>{activeCat.desc}</p>
+                <p className="text-[12px]" style={{ color: "var(--adv-text-sub)" }}>{activeCat.desc}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {catBriefs.map(b => (
                   <button key={b.id} onClick={() => selectBrief(b)} className="text-left group p-5 rounded-xl transition-all"
-                    style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}
+                    style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}
                     onMouseEnter={e => (e.currentTarget.style.border = `1px solid ${activeCat.color}40`)}
-                    onMouseLeave={e => (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.07)")}>
+                    onMouseLeave={e => (e.currentTarget.style.border = "1px solid var(--adv-border)")}>
                     <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-3" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{b.icon}</div>
-                    <h3 className="text-[13px] font-bold mb-1.5 leading-snug" style={{ color: "#ffffff" }}>{b.title}</h3>
-                    <p className="text-[11.5px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.40)" }}>{b.desc}</p>
+                    <h3 className="text-[13px] font-bold mb-1.5 leading-snug" style={{ color: "var(--adv-text-hi)" }}>{b.title}</h3>
+                    <p className="text-[11.5px] leading-relaxed mb-3" style={{ color: "var(--adv-text-muted)" }}>{b.desc}</p>
                     <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: activeCat.color }}>For: {b.audience}</p>
-                    <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>{b.fields.length} inputs · ~30 sec</span>
+                    <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid var(--adv-border-sub)" }}>
+                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-faint)" }}>{b.fields.length} inputs · ~30 sec</span>
                       <span className="ml-auto font-mono text-[9px]" style={{ color: activeCat.color }}>Generate →</span>
                     </div>
                   </button>
@@ -2403,8 +2578,8 @@ export default function AdvisorPage() {
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{selectedBrief.icon}</div>
                 <div>
-                  <h2 className="text-[16px] font-bold" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
-                  <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+                  <h2 className="text-[16px] font-bold" style={{ color: "var(--adv-text-hi)" }}>{selectedBrief.title}</h2>
+                  <p className="text-[11px] mt-0.5" style={{ color: "var(--adv-text-sub)" }}>
                     {isEditMode ? "Edit your inputs and regenerate the brief" : "Fill in the details below to generate your brief"}
                   </p>
                 </div>
@@ -2413,21 +2588,21 @@ export default function AdvisorPage() {
               <div className="space-y-4">
                 {selectedBrief.fields.map(field => (
                   <div key={field.id}>
-                    <label className="block font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "rgba(255,255,255,0.50)" }}>
+                    <label className="block font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "var(--adv-text-sec)" }}>
                       {field.label}{field.required && <span style={{ color: "#ff5100" }}> *</span>}
                     </label>
                     {field.type === "select" ? (
                       <select value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
                         className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition appearance-none"
-                        style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: form[field.id] ? "#ffffff" : "rgba(255,255,255,0.30)" }}>
+                        style={{ backgroundColor: "var(--adv-input-bg)", border: "1px solid var(--adv-border-input)", color: form[field.id] ? "var(--adv-text-hi)" : "var(--adv-text-dim)" }}>
                         <option value="">Select...</option>
-                        {field.options?.map(o => <option key={o} value={o} style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}>{o}</option>)}
+                        {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
                     ) : (
                       <input type="text" value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
                         placeholder={field.placeholder}
                         className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition"
-                        style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
+                        style={{ backgroundColor: "var(--adv-input-bg)", border: "1px solid var(--adv-border-input)", color: "var(--adv-text-hi)" }}
                       />
                     )}
                   </div>
@@ -2435,8 +2610,8 @@ export default function AdvisorPage() {
               </div>
 
               {/* Report type selector */}
-              <div className="mt-8 rounded-xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <p className="font-mono text-[9px] uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>Report Type</p>
+              <div className="mt-8 rounded-xl p-4" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
+                <p className="font-mono text-[9px] uppercase tracking-widest mb-3" style={{ color: "var(--adv-text-sub)" }}>Report Type</p>
                 <div className="grid grid-cols-2 gap-2">
                   {(["standard", "comprehensive"] as ReportType[]).map(rt => {
                     const isSelected = reportType === rt;
@@ -2446,12 +2621,12 @@ export default function AdvisorPage() {
                         className="text-left p-3 rounded-lg transition"
                         style={{ backgroundColor: isSelected ? "rgba(255,81,0,0.12)" : "rgba(255,255,255,0.03)", border: isSelected ? "1px solid rgba(255,81,0,0.40)" : "1px solid rgba(255,255,255,0.07)" }}>
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-[12px]" style={{ color: isSelected ? "#ff5100" : "rgba(255,255,255,0.75)" }}>
+                          <span className="font-bold text-[12px]" style={{ color: isSelected ? "#ff5100" : "var(--adv-text-body)" }}>
                             {rt === "standard" ? "Standard" : "Comprehensive"}
                           </span>
-                          <span className="font-mono text-[9px]" style={{ color: isSelected ? "#ff5100" : "rgba(255,255,255,0.30)" }}>{cost} cr</span>
+                          <span className="font-mono text-[9px]" style={{ color: isSelected ? "#ff5100" : "var(--adv-text-dim)" }}>{cost} cr</span>
                         </div>
-                        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        <p className="text-[10px] leading-relaxed" style={{ color: "var(--adv-text-sub)" }}>
                           {rt === "standard" ? "Structured text brief with full analysis and recommendations." : "Includes charts, cost tables, timeline visual, and scoring graphs."}
                         </p>
                       </button>
@@ -2461,10 +2636,10 @@ export default function AdvisorPage() {
               </div>
 
               {/* User notes */}
-              <div className="mt-6 rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.09)" }}>
-                <div className="px-4 py-3 flex items-center gap-2" style={{ backgroundColor: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="mt-6 rounded-xl overflow-hidden" style={{ border: "1px solid var(--adv-border-input)" }}>
+                <div className="px-4 py-3 flex items-center gap-2" style={{ backgroundColor: "var(--adv-card)", borderBottom: "1px solid var(--adv-border)" }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.50)" }}>Your notes <span style={{ color: "rgba(255,255,255,0.25)" }}>(optional)</span></p>
+                  <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--adv-text-sec)" }}>Your notes <span style={{ color: "var(--adv-text-faint)" }}>(optional)</span></p>
                 </div>
                 <div className="px-4 py-3">
                   <textarea
@@ -2473,7 +2648,7 @@ export default function AdvisorPage() {
                     placeholder="Add any specific focus areas, constraints, or context for the AI — e.g. 'Focus on garment sector', 'Budget under $5M', 'Priority is fast permit timeline'..."
                     rows={3}
                     className="w-full text-[12px] leading-relaxed outline-none resize-none transition"
-                    style={{ backgroundColor: "transparent", color: "#ffffff", border: "none", padding: 0 }}
+                    style={{ backgroundColor: "transparent", color: "var(--adv-text-hi)", border: "none", padding: 0 }}
                   />
                 </div>
               </div>
@@ -2492,7 +2667,7 @@ export default function AdvisorPage() {
               <div className="flex items-center gap-3 mt-4">
                 <button onClick={() => isEditMode ? setStep("result") : setStep("select")}
                   className="px-5 py-2.5 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
-                  style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
+                  style={{ border: "1px solid var(--adv-border-input)", color: "var(--adv-text-muted)" }}>
                   ← {isEditMode ? "Cancel" : "Back"}
                 </button>
                 <button onClick={generate} disabled={!allFilled}
@@ -2501,7 +2676,7 @@ export default function AdvisorPage() {
                   {isEditMode ? "Regenerate Brief →" : "Generate Brief →"}
                 </button>
               </div>
-              <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.20)" }}>
+              <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-ghost)" }}>
                 {reportType === "standard" ? `${CREDIT_COSTS.brief_standard} credits` : `${CREDIT_COSTS.brief_comprehensive} credits`} · Auto-saved to your account
               </p>
             </div>
@@ -2516,8 +2691,8 @@ export default function AdvisorPage() {
                 </svg>
               </div>
               <div className="text-center">
-                <p className="font-bold text-[14px]" style={{ color: "#ffffff" }}>Generating your brief...</p>
-                <p className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,255,255,0.30)" }}>Analysing Cambodia industrial data</p>
+                <p className="font-bold text-[14px]" style={{ color: "var(--adv-text-hi)" }}>Generating your brief...</p>
+                <p className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "var(--adv-text-dim)" }}>Analysing Cambodia industrial data</p>
               </div>
             </div>
           )}
@@ -2529,7 +2704,7 @@ export default function AdvisorPage() {
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{selectedBrief.icon}</div>
-                  <h2 className="text-[14px] font-bold truncate" style={{ color: "#ffffff" }}>{selectedBrief.title}</h2>
+                  <h2 className="text-[14px] font-bold truncate" style={{ color: "var(--adv-text-hi)" }}>{selectedBrief.title}</h2>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap sm:ml-auto">
                   {saved && !streaming && (
@@ -2538,20 +2713,30 @@ export default function AdvisorPage() {
                     </span>
                   )}
                   {streaming && (
-                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-dim)" }}>
                       <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />Generating...
                     </span>
                   )}
                   {!streaming && output && (
+                    <button onClick={() => {
+                      const preview = output.replace(/[#>*`|]/g, "").replace(/\s+/g, " ").slice(0, 600);
+                      window.dispatchEvent(new CustomEvent("tgl:chat-brief", { detail: { message: `I'd like to discuss my "${selectedBrief.title}" brief. Summary:\n\n${preview}…\n\nCan you help me explore this deeper?` } }));
+                    }} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
+                      style={{ border: "1px solid rgba(255,81,0,0.30)", color: "#ff5100", backgroundColor: "rgba(255,81,0,0.06)" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      <span className="hidden sm:inline">Discuss in </span>Chat
+                    </button>
+                  )}
+                  {!streaming && output && (
                     <button onClick={editAndRegenerate} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                      style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.50)" }}>
+                      style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)" }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       <span className="hidden sm:inline">Edit &amp; </span>Regen
                     </button>
                   )}
                   {!streaming && output && (
                     <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                      style={{ border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.50)" }}>
+                      style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)" }}>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                       <span className="hidden sm:inline">Print / </span>PDF
                     </button>
@@ -2575,8 +2760,8 @@ export default function AdvisorPage() {
                 <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.12)" }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
                   <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>Saved to your account</span>
-                  <span className="font-mono text-[9px] ml-auto" style={{ color: "rgba(255,255,255,0.20)" }}>Ref #{savedBriefId.slice(0, 8).toUpperCase()}</span>
-                  <button onClick={openHistory} className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>
+                  <span className="font-mono text-[9px] ml-auto" style={{ color: "var(--adv-text-ghost)" }}>Ref #{savedBriefId.slice(0, 8).toUpperCase()}</span>
+                  <button onClick={openHistory} className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-dim)" }}>
                     View all →
                   </button>
                 </div>
@@ -2618,15 +2803,15 @@ export default function AdvisorPage() {
 
               {/* Refine panel */}
               {!streaming && !refining && output && (
-                <div className="mt-6 rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.09)" }}>
+                <div className="mt-6 rounded-2xl overflow-hidden" style={{ border: "1px solid var(--adv-border-input)" }}>
                   {/* Header */}
-                  <div className="px-5 py-4 flex items-center gap-3" style={{ backgroundColor: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div className="px-5 py-4 flex items-center gap-3" style={{ backgroundColor: "var(--adv-card)", borderBottom: "1px solid var(--adv-border)" }}>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.12)", border: "1px solid rgba(255,81,0,0.25)" }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </div>
                     <div>
-                      <p className="font-bold text-[13px]" style={{ color: "#ffffff" }}>Refine this report</p>
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Tell the AI what to adjust, expand, or focus on — it will regenerate using your inputs</p>
+                      <p className="font-bold text-[13px]" style={{ color: "var(--adv-text-hi)" }}>Refine this report</p>
+                      <p className="text-[11px]" style={{ color: "var(--adv-text-sub)" }}>Tell the AI what to adjust, expand, or focus on — it will regenerate using your inputs</p>
                     </div>
                   </div>
 

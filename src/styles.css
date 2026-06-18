@@ -122,6 +122,50 @@
   --chat-chip-text:   rgba(0,0,0,0.50);
 }
 
+/* ── Advisor tool CSS variables ─────────────────────────── */
+:root, [data-theme="dark"] {
+  --adv-text-hi:      #ffffff;
+  --adv-text-body:    rgba(255,255,255,0.70);
+  --adv-text-sec:     rgba(255,255,255,0.50);
+  --adv-text-muted:   rgba(255,255,255,0.40);
+  --adv-text-sub:     rgba(255,255,255,0.35);
+  --adv-text-dim:     rgba(255,255,255,0.30);
+  --adv-text-faint:   rgba(255,255,255,0.25);
+  --adv-text-ghost:   rgba(255,255,255,0.20);
+  --adv-page-bg:      #0a0a0b;
+  --adv-hero-bg:      #0d0d0e;
+  --adv-card:         rgba(255,255,255,0.03);
+  --adv-input-bg:     rgba(255,255,255,0.05);
+  --adv-border:       rgba(255,255,255,0.07);
+  --adv-border-sub:   rgba(255,255,255,0.06);
+  --adv-border-input: rgba(255,255,255,0.10);
+  --adv-border-mid:   rgba(255,255,255,0.12);
+}
+[data-theme="light"] {
+  --adv-text-hi:      rgba(0,0,0,0.90);
+  --adv-text-body:    rgba(0,0,0,0.75);
+  --adv-text-sec:     rgba(0,0,0,0.60);
+  --adv-text-muted:   rgba(0,0,0,0.55);
+  --adv-text-sub:     rgba(0,0,0,0.50);
+  --adv-text-dim:     rgba(0,0,0,0.45);
+  --adv-text-faint:   rgba(0,0,0,0.38);
+  --adv-text-ghost:   rgba(0,0,0,0.30);
+  --adv-page-bg:      var(--background);
+  --adv-hero-bg:      var(--surface-1);
+  --adv-card:         rgba(0,0,0,0.03);
+  --adv-input-bg:     rgba(0,0,0,0.04);
+  --adv-border:       rgba(0,0,0,0.09);
+  --adv-border-sub:   rgba(0,0,0,0.07);
+  --adv-border-input: rgba(0,0,0,0.11);
+  --adv-border-mid:   rgba(0,0,0,0.14);
+}
+/* Chart panels always stay dark regardless of theme */
+.adv-chart-panel {
+  background-color: #0d0d0e !important;
+  border-color: rgba(255,255,255,0.07) !important;
+  color: #ffffff !important;
+}
+
 /* ── News + Research + Map inline-style CSS variables ────── */
 :root, [data-theme="dark"] {
   --news-card-border:         rgba(255,255,255,0.08);
