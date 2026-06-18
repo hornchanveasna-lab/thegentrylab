@@ -46,8 +46,7 @@ function ContactPage() {
               {t("contact.officeLabel")}
             </p>
             <p className="text-white leading-relaxed">
-              Exchange Square, Tower B<br />
-              Level 14, Wat Phnom<br />
+              ISI Tower<br />
               Phnom Penh, Cambodia
             </p>
           </div>
@@ -60,7 +59,7 @@ function ContactPage() {
                 {EMAIL}
               </a>
               <br />
-              +855 (0) 23 900 123
+              +855 93 391 884
             </p>
           </div>
         </div>
