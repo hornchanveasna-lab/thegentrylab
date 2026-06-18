@@ -1443,115 +1443,172 @@ function SvgKeyStats({ stats, zones }: { stats: SiteSelectionChartData["key_stat
   );
 }
 
+/* HTML-based metric cards — 2 per row, no SVG clipping issues */
 function SvgGenericMetrics({ metrics }: { metrics: GenericChartData["key_metrics"] }) {
-  const cols = Math.min(metrics.length, 4);
-  const gap = 6;
-  const boxW = Math.floor((540 - gap * (cols - 1)) / cols);
   return (
-    <svg width="100%" viewBox="0 0 540 95" style={{ display: "block", marginBottom: "10pt" }}>
-      {metrics.slice(0, 4).map((m, i) => {
-        const x = i * (boxW + gap);
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10pt", marginBottom: "16pt" }}>
+      {metrics.slice(0, 6).map((m, i) => {
         const col = PCOLS[i % PCOLS.length];
         return (
-          <g key={m.label} transform={`translate(${x},0)`}>
-            <rect x="0" y="0" width={boxW} height="90" fill={i % 2 === 0 ? "#fff8f6" : "#f7f7f7"} rx="5" />
-            <rect x="0" y="0" width="5" height="90" fill={col} rx="3" />
-            <text x="14" y="20" style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 600, fill: "#999", letterSpacing: "0.5" }}>{m.label.toUpperCase()}</text>
-            <text x="14" y="58" style={{ fontFamily: PF.head, fontSize: "22pt", fontWeight: "bold", fill: col }}>{m.value}</text>
-            <text x="14" y="78" style={{ fontFamily: PF.body, fontSize: "9.5pt", fill: "#777" }}>{m.unit}</text>
-          </g>
+          <div key={i} style={{ padding: "14pt 14pt 12pt", backgroundColor: i % 2 === 0 ? "#fff8f6" : "#f7f7f7", borderLeft: `5pt solid ${col}`, borderRadius: "5pt" }}>
+            <div style={{ fontFamily: PF.head, fontSize: "7.5pt", fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "8pt" }}>{m.label}</div>
+            <div style={{ fontFamily: PF.head, fontSize: "28pt", fontWeight: 900, color: col, lineHeight: 1, letterSpacing: "-0.02em" }}>{m.value}</div>
+            <div style={{ fontFamily: PF.body, fontSize: "10pt", color: "#777", marginTop: "5pt" }}>{m.unit}</div>
+          </div>
         );
       })}
-    </svg>
+    </div>
   );
 }
 
+/* Proper Gantt chart with time axis, gridlines, and phase bars */
 function SvgGenericTimeline({ items }: { items: GenericChartData["timeline_items"] }) {
   const total = items.reduce((s, t) => s + t.weeks, 0);
-  const labelW = 160, W = 370, rowH = 28, headerH = 30;
-  const H = items.length * rowH + headerH + 10;
+  const labelW = 155, barW = 360, axisH = 36, rowH = 32, footH = 14;
+  const H = axisH + items.length * rowH + footH;
+  const tickInterval = total <= 20 ? 2 : total <= 50 ? 5 : 10;
+  const ticks: number[] = [];
+  for (let t = 0; t <= total; t += tickInterval) ticks.push(t);
+
   let off = 0;
   return (
-    <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "10pt" }}>
-      {/* Header */}
-      <text x="0" y="14" style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 700, fill: "#333", letterSpacing: "0.5" }}>
-        PROJECT TIMELINE
-      </text>
-      <text x="0" y="26" style={{ fontFamily: PF.body, fontSize: "8pt", fill: "#aaa" }}>
-        Total {total} weeks
-      </text>
+    <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "12pt" }}>
+      {/* ── Title ── */}
+      <text x="0" y="14" style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: 700, fill: "#333" }}>PROJECT TIMELINE</text>
+      <text x="0" y="27" style={{ fontFamily: PF.body, fontSize: "7.5pt", fill: "#aaa" }}>Total {total} weeks · {items.length} phases</text>
+
+      {/* ── Axis ticks + gridlines ── */}
+      {ticks.map(t => {
+        const x = labelW + Math.round((t / total) * barW);
+        return (
+          <g key={t}>
+            <line x1={x} y1={axisH - 6} x2={x} y2={axisH + items.length * rowH} stroke="#e8e8e8" strokeWidth="1" />
+            <text x={x} y={axisH - 8} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#bbb" }}>{t}w</text>
+          </g>
+        );
+      })}
+
+      {/* ── Background bar area ── */}
+      <rect x={labelW} y={axisH} width={barW} height={items.length * rowH} fill="#fafafa" rx="3" />
+
+      {/* ── Phase rows ── */}
       {items.map((item, i) => {
-        const xBar = labelW + 5 + Math.round((off / total) * W);
-        const wBar = Math.max(4, Math.round((item.weeks / total) * W));
-        const y = headerH + i * rowH;
-        off += item.weeks;
+        const xStart = labelW + Math.round((off / total) * barW);
+        const wBar = Math.max(6, Math.round((item.weeks / total) * barW));
+        const yRow = axisH + i * rowH;
         const col = PCOLS[i % PCOLS.length];
+        const pct = Math.round((off / total) * 100);
+        off += item.weeks;
+
         return (
           <g key={i}>
-            <text x={labelW} y={y + rowH * 0.68} textAnchor="end" style={{ fontFamily: PF.body, fontSize: "9pt", fill: "#444" }}>{item.label}</text>
-            <rect x={labelW + 5} y={y + 4} width={W} height={rowH - 8} fill="#f0f0f0" rx="3" />
-            <rect x={xBar} y={y + 4} width={wBar} height={rowH - 8} fill={col} rx="3" />
-            {wBar > 28 && (
-              <text x={xBar + wBar / 2} y={y + rowH * 0.68} textAnchor="middle"
+            {/* Alternating row background */}
+            {i % 2 === 0 && <rect x={labelW} y={yRow} width={barW} height={rowH} fill="#f5f5f5" />}
+            {/* Label */}
+            <text x={labelW - 6} y={yRow + rowH * 0.62} textAnchor="end"
+              style={{ fontFamily: PF.body, fontSize: "8.5pt", fill: "#444" }}>
+              {item.label.length > 22 ? item.label.slice(0, 20) + "…" : item.label}
+            </text>
+            {/* Track */}
+            <rect x={labelW} y={yRow + 7} width={barW} height={rowH - 14} fill="#ebebeb" rx="3" />
+            {/* Bar */}
+            <rect x={xStart} y={yRow + 7} width={wBar} height={rowH - 14} fill={col} rx="3" />
+            {/* Week label inside bar */}
+            {wBar > 30 && (
+              <text x={xStart + wBar / 2} y={yRow + rowH * 0.62} textAnchor="middle"
                 style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: "bold", fill: "#fff" }}>
                 {item.weeks}w
               </text>
             )}
+            {/* % complete dot */}
+            <circle cx={labelW + Math.round((pct / 100) * barW)} cy={yRow + rowH / 2} r="3" fill={col} opacity="0.35" />
           </g>
         );
       })}
+
+      {/* ── Bottom total bar ── */}
+      <text x={labelW} y={axisH + items.length * rowH + 12}
+        style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#999" }}>
+        Week 0
+      </text>
+      <text x={labelW + barW} y={axisH + items.length * rowH + 12} textAnchor="end"
+        style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#999" }}>
+        Week {total}
+      </text>
     </svg>
   );
 }
 
-/* ── SVG Pie Chart ──────────────────────────────────────── */
+/* ── SVG Donut Chart ────────────────────────────────────── */
 function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
   const total = slices.reduce((s, p) => s + p.value, 0);
-  const cx = 110, cy = 105, r = 88;
-  const legendX = 230;
-  const legendRowH = 26;
-  const svgH = Math.max(220, slices.length * legendRowH + 50);
+  const cx = 110, cy = 115, R = 90, innerR = 52;
+  const legendX = 230, legendRowH = 28;
+  const svgH = Math.max(240, slices.length * legendRowH + 60);
   let angle = -Math.PI / 2;
-  const paths: React.ReactNode[] = [];
+  const arcs: React.ReactNode[] = [];
+  const pctLabels: React.ReactNode[] = [];
   const legends: React.ReactNode[] = [];
+
   slices.forEach((sl, i) => {
     const frac = sl.value / total;
     const a0 = angle, a1 = angle + frac * 2 * Math.PI;
-    const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
-    const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
-    const large = frac > 0.5 ? 1 : 0;
-    const mid = (a0 + a1) / 2;
-    const lx = cx + (r * 0.65) * Math.cos(mid);
-    const ly = cy + (r * 0.65) * Math.sin(mid);
     const col = PCOLS[i % PCOLS.length];
-    paths.push(
-      <path key={i} d={`M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large} 1 ${x1},${y1} Z`}
+    const ox0 = cx + R * Math.cos(a0), oy0 = cy + R * Math.sin(a0);
+    const ox1 = cx + R * Math.cos(a1), oy1 = cy + R * Math.sin(a1);
+    const ix0 = cx + innerR * Math.cos(a1), iy0 = cy + innerR * Math.sin(a1);
+    const ix1 = cx + innerR * Math.cos(a0), iy1 = cy + innerR * Math.sin(a0);
+    const large = frac > 0.5 ? 1 : 0;
+    arcs.push(
+      <path key={i}
+        d={`M${ox0},${oy0} A${R},${R} 0 ${large} 1 ${ox1},${oy1} L${ix0},${iy0} A${innerR},${innerR} 0 ${large} 0 ${ix1},${iy1} Z`}
         fill={col} stroke="#fff" strokeWidth="2" />
     );
-    if (frac > 0.06) {
-      paths.push(
+    if (frac > 0.08) {
+      const mid = (a0 + a1) / 2;
+      const lx = cx + (R * 0.74) * Math.cos(mid);
+      const ly = cy + (R * 0.74) * Math.sin(mid);
+      pctLabels.push(
         <text key={`l${i}`} x={lx} y={ly + 4} textAnchor="middle"
-          style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: "bold", fill: "#fff" }}>
+          style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: "bold", fill: "#fff" }}>
           {Math.round(frac * 100)}%
         </text>
       );
     }
     legends.push(
-      <g key={i} transform={`translate(${legendX}, ${28 + i * legendRowH})`}>
-        <rect x="0" y="0" width="13" height="13" fill={col} rx="3" />
-        <text x="20" y="11" style={{ fontFamily: PF.body, fontSize: "10pt", fill: "#333" }}>{sl.label}</text>
-        <text x="300" y="11" textAnchor="end" style={{ fontFamily: PF.head, fontSize: "10pt", fontWeight: "bold", fill: col }}>{sl.value}%</text>
+      <g key={i} transform={`translate(${legendX}, ${32 + i * legendRowH})`}>
+        <rect x="0" y="-1" width="12" height="12" fill={col} rx="2" />
+        <text x="18" y="10" style={{ fontFamily: PF.body, fontSize: "10pt", fill: "#333" }}>{sl.label}</text>
+        <text x="305" y="10" textAnchor="end" style={{ fontFamily: PF.head, fontSize: "10pt", fontWeight: "bold", fill: col }}>{sl.value}%</text>
       </g>
     );
     angle = a1;
   });
+
+  const topSlice = [...slices].sort((a, b) => b.value - a.value)[0];
+
   return (
     <svg width="100%" viewBox={`0 0 540 ${svgH}`} style={{ display: "block", marginBottom: "10pt" }}>
-      <text x="0" y="16" style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 700, fill: "#333", letterSpacing: "0.5" }}>
+      <text x="0" y="16" style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 700, fill: "#333" }}>
         {title.toUpperCase()}
       </text>
-      <g transform="translate(0,20)">{paths}</g>
-      <g transform="translate(0,10)">{legends}</g>
+      <g transform="translate(0,18)">
+        {arcs}
+        {pctLabels}
+        <text x={cx} y={cy - 8} textAnchor="middle"
+          style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, fill: "#888" }}>
+          {(topSlice?.label ?? "").slice(0, 10)}
+        </text>
+        <text x={cx} y={cy + 12} textAnchor="middle"
+          style={{ fontFamily: PF.head, fontSize: "22pt", fontWeight: 900, fill: "#333" }}>
+          {topSlice?.value ?? total}%
+        </text>
+        <text x={cx} y={cy + 26} textAnchor="middle"
+          style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#bbb" }}>
+          largest share
+        </text>
+      </g>
+      <g>{legends}</g>
     </svg>
   );
 }
