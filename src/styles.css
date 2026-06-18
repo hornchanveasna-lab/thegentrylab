@@ -416,7 +416,7 @@
   border-top: 0.75pt solid #e0e0e0;
 }
 .advisor-print .pr-content-body {
-  padding: 14pt 20mm 10pt;
+  padding: 22pt 20mm 10pt;
   vertical-align: top;
 }
 
@@ -487,10 +487,12 @@
   .pr-h2 {
     font-family: 'DM Sans', sans-serif; font-size: 12pt; font-weight: 600; color: #1a1a1a;
     margin: 18pt 0 5pt; padding-bottom: 4pt; border-bottom: 1pt solid #ebebeb;
+    break-after: avoid; page-break-after: avoid;
   }
   .pr-h3 {
     font-family: 'DM Sans', sans-serif; font-size: 10pt; font-weight: 600; color: #333;
     margin: 12pt 0 3pt;
+    break-after: avoid; page-break-after: avoid;
   }
   .pr-h4 {
     font-family: 'DM Sans', sans-serif; font-size: 7pt; font-weight: 600; color: #666;

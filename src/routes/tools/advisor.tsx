@@ -752,28 +752,275 @@ function SvgParsedBarChart({ title, rows, catColor }: { title: string; rows: PCh
   );
 }
 
-function PrintFallbackViz({ output, catColor }: { output: string; catColor: string }) {
+/* ── SVG People/Worker Infographic ───────────────────────── */
+function SvgPeopleGrid({ pct, label, color, caption }: { pct: number; label: string; color: string; caption?: string }) {
+  const total = 20;
+  const filled = Math.max(0, Math.min(total, Math.round(pct / 100 * total)));
+  const cols = 10, iconW = 24, iconH = 32, gap = 4;
+  const rows = Math.ceil(total / cols);
+  const svgW = cols * (iconW + gap) - gap;
+  const svgH = rows * (iconH + gap) - gap + 48;
+  const personPath = "M12 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-5 7h10c1.1 0 2 .9 2 2v1H5v-1c0-1.1.9-2 2-2z";
+  return (
+    <svg width="100%" viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block" }}>
+      <text x="0" y="14" style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: "bold", fill: "#222" }}>{label}</text>
+      <text x="0" y="26" style={{ fontFamily: PF.head, fontSize: "22pt", fontWeight: "bold", fill: color }}>{pct}%</text>
+      {Array.from({ length: total }).map((_, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const x = col * (iconW + gap);
+        const y = 36 + row * (iconH + gap);
+        const isFilled = idx < filled;
+        return (
+          <g key={idx} transform={`translate(${x},${y})`}>
+            <svg width={iconW} height={iconH} viewBox="0 0 24 24">
+              <circle cx="12" cy="6" r="4" fill={isFilled ? color : "#e0e0e0"} />
+              <path d="M5 20c0-4 3-7 7-7s7 3 7 7" fill={isFilled ? color : "#e0e0e0"} />
+            </svg>
+          </g>
+        );
+      })}
+      {caption && <text x="0" y={svgH - 2} style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#888" }}>{caption}</text>}
+    </svg>
+  );
+}
+
+/* ── SVG Process Flow Diagram ─────────────────────────────── */
+function SvgProcessFlow({ steps, color }: { steps: string[]; color: string }) {
+  const boxW = 80, boxH = 44, arrowW = 24, gap = 6;
+  const perRow = 4;
+  const rows = Math.ceil(steps.length / perRow);
+  const rowW = Math.min(steps.length, perRow) * (boxW + arrowW + gap) - arrowW;
+  const svgW = 540;
+  const svgH = rows * (boxH + 36) + 20;
+  const scale = Math.min(1, svgW / rowW);
+  return (
+    <svg width="100%" viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block", marginBottom: "10pt" }}>
+      <text x="0" y="13" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>PROCESS FLOW — KEY STAGES</text>
+      {steps.map((step, i) => {
+        const row = Math.floor(i / perRow);
+        const col = i % perRow;
+        const isRowReversed = row % 2 === 1;
+        const actualCol = isRowReversed ? (Math.min(steps.length - row * perRow, perRow) - 1 - col) : col;
+        const x = 2 + actualCol * (boxW + arrowW + gap);
+        const y = 22 + row * (boxH + 36);
+        const isLast = i === steps.length - 1;
+        const isRowEnd = (col === perRow - 1) || i === steps.length - 1;
+        const alpha = (color + "22").slice(0, 9);
+        return (
+          <g key={i}>
+            <rect x={x} y={y} width={boxW} height={boxH} rx="5" fill={alpha} stroke={color} strokeWidth="1.5" />
+            <circle cx={x + 14} cy={y + 14} r="9" fill={color} />
+            <text x={x + 14} y={y + 18} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: "bold", fill: "#fff" }}>{i + 1}</text>
+            {step.split(" ").slice(0, 3).map((word, wi) => (
+              <text key={wi} x={x + boxW / 2} y={y + 22 + wi * 9} textAnchor="middle" style={{ fontFamily: PF.body, fontSize: "6.5pt", fill: "#333" }}>{word}</text>
+            ))}
+            {!isLast && !isRowEnd && (
+              <g transform={`translate(${x + boxW + 2},${y + boxH / 2 - 5})`}>
+                <line x1="0" y1="5" x2={arrowW - 4} y2="5" stroke={color} strokeWidth="1.5" />
+                <polygon points={`${arrowW - 4},2 ${arrowW - 4},8 ${arrowW},5`} fill={color} />
+              </g>
+            )}
+            {isRowEnd && !isLast && (
+              <g>
+                <line x1={x + boxW / 2} y1={y + boxH} x2={x + boxW / 2} y2={y + boxH + 18} stroke={color} strokeWidth="1.5" strokeDasharray="3,2" />
+              </g>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ── SVG Money / Investment Infographic ───────────────────── */
+function SvgMoneyInfographic({ amounts, color }: { amounts: { label: string; value: string; icon: string }[]; color: string }) {
+  const colW = 130, H = 90;
+  const total = amounts.length;
+  const svgW = Math.min(total, 4) * (colW + 8);
+  return (
+    <svg width="100%" viewBox={`0 0 ${svgW} ${H}`} style={{ display: "block", marginBottom: "10pt" }}>
+      {amounts.slice(0, 4).map((a, i) => {
+        const x = i * (colW + 8);
+        const alpha = (color + "18").slice(0, 9);
+        return (
+          <g key={i}>
+            <rect x={x} y="0" width={colW} height={H} rx="6" fill={alpha} />
+            <rect x={x} y="0" width="5" height={H} rx="3" fill={color} />
+            <text x={x + 16} y="18" style={{ fontFamily: PF.head, fontSize: "7pt", textTransform: "uppercase", letterSpacing: "0.5", fill: "#999" }}>{a.icon}</text>
+            <text x={x + 16} y="42" style={{ fontFamily: PF.head, fontSize: "14pt", fontWeight: "bold", fill: color }}>{a.value}</text>
+            <text x={x + 16} y="60" style={{ fontFamily: PF.body, fontSize: "7.5pt", fill: "#555" }}>{a.label.slice(0, 18)}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/* ── SVG Location / Map Pin Infographic ──────────────────── */
+function SvgLocationInfographic({ province, sector, color }: { province: string; sector: string; color: string }) {
+  return (
+    <svg width="100%" viewBox="0 0 540 120" style={{ display: "block", marginBottom: "10pt" }}>
+      {/* Map outline — simple Cambodia silhouette */}
+      <g transform="translate(10,10)">
+        <path d={CAMBODIA_PATH} fill="#f5f0ee" stroke="#ddd" strokeWidth="1" transform="scale(0.55)" />
+        <text x="60" y="88" style={{ fontFamily: PF.body, fontSize: "5.5pt", fill: "#999" }}>CAMBODIA</text>
+      </g>
+      {/* Info panel */}
+      <g transform="translate(230,10)">
+        <rect x="0" y="0" width="300" height="100" rx="6" fill="#fafafa" stroke="#ebebeb" strokeWidth="1" />
+        <rect x="0" y="0" width="5" height="100" rx="3" fill={color} />
+        <text x="16" y="20" style={{ fontFamily: PF.head, fontSize: "6.5pt", fill: "#aaa", textTransform: "uppercase", letterSpacing: "1" }}>PROJECT LOCATION</text>
+        <text x="16" y="42" style={{ fontFamily: PF.head, fontSize: "16pt", fontWeight: "bold", fill: color }}>{province.slice(0, 16)}</text>
+        <text x="16" y="60" style={{ fontFamily: PF.body, fontSize: "9pt", fill: "#555" }}>Kingdom of Cambodia</text>
+        <text x="16" y="78" style={{ fontFamily: PF.body, fontSize: "8pt", fill: "#888" }}>Sector: {sector.slice(0, 28)}</text>
+        {/* Map pin icon */}
+        <g transform="translate(260, 20)">
+          <path d="M15 5a7 7 0 1 0-14 0c0 5.25 7 13 7 13s7-7.75 7-13z" fill={color} />
+          <circle cx="8" cy="5" r="2.5" fill="#fff" />
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+/* ── SVG Score Gauge / Speedometer ───────────────────────── */
+function SvgScoreGauge({ score, max, label, color }: { score: number; max: number; label: string; color: string }) {
+  const pct = Math.min(1, score / max);
+  const angle = -150 + pct * 300;
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  const cx = 70, cy = 65, r = 52;
+  const arcX1 = cx + r * Math.cos(rad(-150));
+  const arcY1 = cy + r * Math.sin(rad(-150));
+  const arcX2 = cx + r * Math.cos(rad(150));
+  const arcY2 = cy + r * Math.sin(rad(150));
+  const pX1 = cx + r * Math.cos(rad(-150));
+  const pY1 = cy + r * Math.sin(rad(-150));
+  const pX2 = cx + r * Math.cos(rad(angle));
+  const pY2 = cy + r * Math.sin(rad(angle));
+  const largeArc = pct > 0.5 ? 1 : 0;
+  const needleX = cx + 40 * Math.cos(rad(angle));
+  const needleY = cy + 40 * Math.sin(rad(angle));
+  const scoreColor = pct >= 0.7 ? "#217a4b" : pct >= 0.4 ? color : "#cc3300";
+  return (
+    <svg width="140" height="90" viewBox="0 0 140 90" style={{ display: "inline-block" }}>
+      {/* Background arc */}
+      <path d={`M${arcX1},${arcY1} A${r},${r} 0 1 1 ${arcX2},${arcY2}`} fill="none" stroke="#ebebeb" strokeWidth="10" strokeLinecap="round" />
+      {/* Filled arc */}
+      {pct > 0 && (
+        <path d={`M${pX1},${pY1} A${r},${r} 0 ${largeArc} 1 ${pX2},${pY2}`} fill="none" stroke={scoreColor} strokeWidth="10" strokeLinecap="round" />
+      )}
+      {/* Needle */}
+      <line x1={cx} y1={cy} x2={needleX} y2={needleY} stroke="#333" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx={cx} cy={cy} r="5" fill="#333" />
+      {/* Score text */}
+      <text x={cx} y={cy + 22} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "15pt", fontWeight: "bold", fill: scoreColor }}>{score}</text>
+      <text x={cx} y={cy + 33} textAnchor="middle" style={{ fontFamily: PF.body, fontSize: "6pt", fill: "#888" }}>out of {max}</text>
+      <text x={cx} y={cy + 43} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "6pt", fill: "#666", textTransform: "uppercase" }}>{label.slice(0, 14)}</text>
+    </svg>
+  );
+}
+
+function PrintFallbackViz({ output, catColor, form, brief }: { output: string; catColor: string; form?: Record<string, string>; brief?: BriefType }) {
   const charts = parsePrintCharts(output);
   const stats = extractPrintKeyStats(output);
+
+  // Extract province / sector for location infographic
+  const province = form ? (form.province_preference || form.location || form.province || form.target_province || "Cambodia") : "Cambodia";
+  const sector = brief?.category ?? "Industrial";
+
+  // Extract score for gauge
+  const scoreMatch = output.match(/(?:composite|overall|bankability)\s+score[:\s]+([0-9.]+)\s*\/\s*([0-9.]+)/i);
+  const gaugeScore = scoreMatch ? parseFloat(scoreMatch[1]) : null;
+  const gaugeMax = scoreMatch ? parseFloat(scoreMatch[2]) : 10;
+
+  // Extract monetary figures for money infographic
+  const moneyItems: { label: string; value: string; icon: string }[] = [];
+  const moneyPatterns: [RegExp, string, string][] = [
+    [/(?:total project cost|project cost|total cost)[:\s]+USD\s*([\d,]+(?:\.\d+)?(?:\s*[KMB])?)/i, "Project Cost", "💵"],
+    [/(?:loan amount|maximum loan|max loan)[:\s]+USD\s*([\d,]+(?:,\d{3})*)/i, "Loan Amount", "🏦"],
+    [/(?:equity|equity contribution)[:\s]+USD\s*([\d,]+(?:,\d{3})*)/i, "Equity", "📈"],
+    [/(?:annual revenue|projected revenue)[:\s]+USD\s*([\d,]+(?:,\d{3})*)/i, "Annual Revenue", "💰"],
+  ];
+  for (const [re, label, icon] of moneyPatterns) {
+    const m = output.match(re);
+    if (m) moneyItems.push({ label, value: `$${m[1]}`, icon });
+  }
+
+  // Extract process steps for flow diagram
+  const permitSteps = output.match(/(?:step|phase|stage)\s*\d+[:\s–—-]+([^\n.]{8,40})/gi)?.slice(0, 8) ?? [];
+  const defaultSteps = ["Site Due Diligence", "Environmental EIA", "MIH Licence", "CDC / QIP", "Construction", "Utilities", "Operations"];
+
+  // Extract labour percentage for people grid
+  const labourMatch = output.match(/([0-9]+(?:\.[0-9]+)?)\s*%[^.]*(?:labour|worker|employment|workforce)/i);
+  const labourPct = labourMatch ? parseFloat(labourMatch[1]) : null;
+
   return (
-    <>
+    <div>
+      {/* Row 1: Score gauge + Location map */}
+      <div style={{ display: "grid", gridTemplateColumns: gaugeScore ? "1fr 1fr" : "1fr", gap: "14pt", marginBottom: "14pt" }}>
+        {gaugeScore && (
+          <div style={{ padding: "12pt", backgroundColor: "#fafafa", border: "1pt solid #ebebeb", borderRadius: "6pt", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt", width: "100%" }}>Overall Score</div>
+            <SvgScoreGauge score={gaugeScore} max={gaugeMax} label="Score" color={catColor} />
+            <div style={{ fontFamily: PF.body, fontSize: "7.5pt", color: "#777", marginTop: "4pt", textAlign: "center" }}>
+              {gaugeScore / gaugeMax >= 0.7 ? "Bankable — Proceed with preparation" : gaugeScore / gaugeMax >= 0.4 ? "Conditional — Restructuring required" : "Not Bankable — Significant changes needed"}
+            </div>
+          </div>
+        )}
+        <div>
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Location & Sector</div>
+          <SvgLocationInfographic province={province} sector={sector} color={catColor} />
+        </div>
+      </div>
+
+      {/* Row 2: Key stats */}
       {stats.length > 0 && (
-        <div className="pr-stat-grid" style={{ marginBottom: "18pt" }}>
+        <div className="pr-stat-grid" style={{ marginBottom: "14pt" }}>
           {stats.map((s, idx) => (
             <div key={idx} className="pr-stat-cell">
-              <div className="pr-stat-value" style={{ color: catColor, fontSize: "18pt" }}>{s.value}</div>
+              <div className="pr-stat-value" style={{ color: catColor, fontSize: "16pt" }}>{s.value}</div>
               <div className="pr-stat-label">{s.label}</div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Row 3: Money infographic */}
+      {moneyItems.length > 0 && (
+        <div style={{ marginBottom: "14pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Financial Summary</div>
+          <SvgMoneyInfographic amounts={moneyItems} color={catColor} />
+        </div>
+      )}
+
+      {/* Row 4: Bar charts from parsed tables */}
       {charts.map((c, idx) => <SvgParsedBarChart key={idx} title={c.title} rows={c.rows} catColor={catColor} />)}
-      {charts.length === 0 && stats.length === 0 && (
+
+      {/* Row 5: Labour people grid */}
+      {labourPct !== null && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14pt", marginBottom: "14pt" }}>
+          <div>
+            <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Workforce Indicator</div>
+            <SvgPeopleGrid pct={labourPct} label="Labour Utilisation" color={catColor} caption={`${labourPct}% of workforce — Kingdom of Cambodia`} />
+          </div>
+          <div />
+        </div>
+      )}
+
+      {/* Row 6: Process flow */}
+      {(permitSteps.length > 0 || defaultSteps.length > 0) && (
+        <div style={{ marginBottom: "14pt" }}>
+          <SvgProcessFlow steps={permitSteps.length > 0 ? permitSteps.map(s => s.replace(/step\s*\d+[:\s–—-]+/i, "").trim()) : defaultSteps} color={catColor} />
+        </div>
+      )}
+
+      {charts.length === 0 && stats.length === 0 && moneyItems.length === 0 && (
         <p className="pr-p" style={{ color: "#999", fontStyle: "italic" }}>
           Structured chart data will appear here for site selection and industrial park briefs. See the Analysis &amp; Findings section for the full advisory report.
         </p>
       )}
-    </>
+    </div>
   );
 }
 
@@ -795,30 +1042,30 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
-    const badge = (emoji: string, color: string) => (
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "26pt", height: "26pt", borderRadius: "7pt", flexShrink: 0, backgroundColor: `${color}1c`, marginRight: "10pt" }}>
-        <PrintIconSvg emoji={emoji} color={color} />
+    const badge = (emoji: string, color: string, size: number = 34) => (
+      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: `${size}pt`, height: `${size}pt`, borderRadius: "9pt", flexShrink: 0, backgroundColor: color, marginRight: "10pt", boxShadow: `0 2pt 6pt ${color}55` }}>
+        <PrintIconSvg emoji={emoji} color="#ffffff" />
       </span>
     );
     if (line.startsWith("## ")) {
       const parsed = stripSectionEmoji(line.slice(3));
       elements.push(
         <div key={i} className="pr-h2" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <>{badge(parsed.emoji, accentColor)}{parsed.clean}</> : line.slice(3)}
+          {parsed ? <>{badge(parsed.emoji, accentColor, 34)}{parsed.clean}</> : line.slice(3)}
         </div>
       );
     } else if (line.startsWith("### ")) {
       const parsed = stripSectionEmoji(line.slice(4));
       elements.push(
         <div key={i} className="pr-h3" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <>{badge(parsed.emoji, accentColor)}{parsed.clean}</> : line.slice(4)}
+          {parsed ? <>{badge(parsed.emoji, accentColor, 26)}{parsed.clean}</> : line.slice(4)}
         </div>
       );
     } else if (line.startsWith("#### ")) {
       const parsed = stripSectionEmoji(line.slice(5));
       elements.push(
         <div key={i} className="pr-h4" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <>{badge(parsed.emoji, accentColor)}{parsed.clean}</> : line.slice(5)}
+          {parsed ? <>{badge(parsed.emoji, accentColor, 22)}{parsed.clean}</> : line.slice(5)}
         </div>
       );
     } else if (line.startsWith("> ")) {
@@ -1341,7 +1588,7 @@ function stripSectionEmoji(text: string): { emoji: string; clean: string } | nul
 }
 
 function PrintIconSvg({ emoji, color }: { emoji: string; color: string }) {
-  const p: React.SVGProps<SVGSVGElement> = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  const p: React.SVGProps<SVGSVGElement> = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (emoji) {
     case "📋": return <svg {...p}><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>;
     case "📊": case "📈": case "📉": return <svg {...p}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
@@ -1859,7 +2106,7 @@ function PrintReport({
           </>
         )}
         {/* ── Fallback when no structured chart data (Finance, Bankability, etc.) ── */}
-        {!ssd && !gd && <PrintFallbackViz output={output} catColor={catColor} />}
+        {!ssd && !gd && <PrintFallbackViz output={output} catColor={catColor} form={form} brief={brief} />}
       </ContentPage>
 
       {/* ══════════════════════════════════════════════
@@ -1929,53 +2176,9 @@ function PrintReport({
       </ContentPage>
 
       {/* ══════════════════════════════════════════════
-          DISCLAIMER PAGE (standalone — small, understated)
-      ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={13} year={year} extraClass="pr-disclaimer-page" bottomAlign>
-        <div className="pr-section-number">Important Notice</div>
-        <div className="pr-h1">Disclaimer</div>
-
-        <p className="pr-p">
-          This report was produced by the GentryLab AI Industrial Advisor — an artificial intelligence platform developed and operated by The Gentry Lab. By reading or acting upon the content of this report, the recipient acknowledges and accepts the terms of this disclaimer in full.
-        </p>
-
-        <div className="pr-h2">Nature of the Analysis</div>
-        <p className="pr-p">
-          The analysis and recommendations contained in this report were generated by a large language model (AI) operating on the basis of the parameters provided at the time of generation. While the platform incorporates GentryLab's proprietary site intelligence database, EPC benchmarking data, and publicly available official sources, the output is inherently probabilistic in nature and reflects conditions as understood at the time of generation.
-        </p>
-
-        <div className="pr-h2">No Professional Advice</div>
-        <p className="pr-p">
-          This report does not constitute legal advice, financial advice, investment advice, environmental advice, or any other form of professional advisory service. Nothing in this report should be construed as a recommendation to commit capital, enter into any contract, or take any specific regulatory action. Readers should engage qualified legal, financial, and technical professionals operating within the relevant jurisdiction before making any investment or operational decision.
-        </p>
-
-        <div className="pr-h2">Data Currency &amp; Accuracy</div>
-        <p className="pr-p">
-          Regulations, tariff schedules, minimum wage levels, permit timelines, land availability, utility capacity, and market conditions in the Kingdom of Cambodia are subject to frequent change. The Gentry Lab makes no representation that the information contained herein is current, complete, or accurate as of any date subsequent to the date of generation. Data from third-party sources is reproduced in good faith but has not been independently audited.
-        </p>
-
-        <div className="pr-h2">Limitation of Liability</div>
-        <p className="pr-p">
-          To the maximum extent permitted by applicable law, The Gentry Lab, its directors, employees, and agents accept no liability for any loss, damage, cost, or expense (including consequential or indirect loss) arising from reliance upon this report or any decisions made in connection with its contents. The recipient assumes full responsibility for any use made of this report.
-        </p>
-
-        <div className="pr-h2">AI-Generated Content</div>
-        <div className="pr-warn">
-          <p className="pr-p" style={{ margin: 0, fontSize: "8.5pt" }}>
-            This report was produced by an AI language model. It has not been reviewed, verified, or approved by a licensed human advisor prior to delivery. All quantitative figures, timelines, cost estimates, and regulatory references must be independently verified before use in any business plan, feasibility study, investment memorandum, or due diligence process.
-          </p>
-        </div>
-
-        <div style={{ marginTop: "24pt", padding: "10pt 14pt", backgroundColor: "#f8f8f8", border: "1pt solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase" }}>THE GENTRY LAB</div>
-          <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "#aaa" }}>© {year} The Gentry Lab · thegentrylab.io · advisory@thegentrylab.io</div>
-        </div>
-      </ContentPage>
-
-      {/* ══════════════════════════════════════════════
           METADATA PAGE — Report provenance + QR
       ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={14} year={year} extraClass="pr-metadata-page" bottomAlign>
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={13} year={year} extraClass="pr-metadata-page" bottomAlign>
         <div className="pr-section-number">Report Provenance</div>
         <div className="pr-h1">Document Metadata</div>
 
@@ -2063,6 +2266,99 @@ function PrintReport({
           </div>
         </div>
       </ContentPage>
+
+      {/* ══════════════════════════════════════════════
+          DISCLAIMER PAGE (standalone — small, last before color close)
+      ══════════════════════════════════════════════ */}
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={14} year={year} extraClass="pr-disclaimer-page" bottomAlign>
+        <div className="pr-section-number">Important Notice</div>
+        <div className="pr-h1">Disclaimer</div>
+
+        <p className="pr-p">
+          This report was produced by the GentryLab AI Industrial Advisor — an artificial intelligence platform developed and operated by The Gentry Lab. By reading or acting upon the content of this report, the recipient acknowledges and accepts the terms of this disclaimer in full.
+        </p>
+
+        <div className="pr-h2">Nature of the Analysis</div>
+        <p className="pr-p">
+          The analysis and recommendations contained in this report were generated by a large language model (AI) operating on the basis of the parameters provided at the time of generation. While the platform incorporates GentryLab's proprietary site intelligence database, EPC benchmarking data, and publicly available official sources, the output is inherently probabilistic in nature and reflects conditions as understood at the time of generation.
+        </p>
+
+        <div className="pr-h2">No Professional Advice</div>
+        <p className="pr-p">
+          This report does not constitute legal advice, financial advice, investment advice, environmental advice, or any other form of professional advisory service. Nothing in this report should be construed as a recommendation to commit capital, enter into any contract, or take any specific regulatory action. Readers should engage qualified legal, financial, and technical professionals operating within the relevant jurisdiction before making any investment or operational decision.
+        </p>
+
+        <div className="pr-h2">Data Currency &amp; Accuracy</div>
+        <p className="pr-p">
+          Regulations, tariff schedules, minimum wage levels, permit timelines, land availability, utility capacity, and market conditions in the Kingdom of Cambodia are subject to frequent change. The Gentry Lab makes no representation that the information contained herein is current, complete, or accurate as of any date subsequent to the date of generation. Data from third-party sources is reproduced in good faith but has not been independently audited.
+        </p>
+
+        <div className="pr-h2">Limitation of Liability</div>
+        <p className="pr-p">
+          To the maximum extent permitted by applicable law, The Gentry Lab, its directors, employees, and agents accept no liability for any loss, damage, cost, or expense (including consequential or indirect loss) arising from reliance upon this report or any decisions made in connection with its contents. The recipient assumes full responsibility for any use made of this report.
+        </p>
+
+        <div className="pr-h2">AI-Generated Content</div>
+        <div className="pr-warn">
+          <p className="pr-p" style={{ margin: 0, fontSize: "8.5pt" }}>
+            This report was produced by an AI language model. It has not been reviewed, verified, or approved by a licensed human advisor prior to delivery. All quantitative figures, timelines, cost estimates, and regulatory references must be independently verified before use in any business plan, feasibility study, investment memorandum, or due diligence process.
+          </p>
+        </div>
+
+        <div style={{ marginTop: "24pt", padding: "10pt 14pt", backgroundColor: "#f8f8f8", border: "1pt solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase" }}>THE GENTRY LAB</div>
+          <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "#aaa" }}>© {year} The Gentry Lab · thegentrylab.io · advisory@thegentrylab.io</div>
+        </div>
+      </ContentPage>
+
+      {/* ══════════════════════════════════════════════
+          CLOSING COLOR PAGE — Mirror of page 2, very last page
+      ══════════════════════════════════════════════ */}
+      <div style={{ width: "210mm", height: "297mm", backgroundColor: catColor, pageBreakBefore: "always", breakBefore: "page", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "16mm 18mm", position: "relative", overflow: "hidden" }}>
+
+        {/* Background circle decoration */}
+        <div style={{ position: "absolute", right: "-80pt", top: "-80pt", width: "320pt", height: "320pt", borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.06)" }} />
+        <div style={{ position: "absolute", left: "-40pt", bottom: "-40pt", width: "200pt", height: "200pt", borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.04)" }} />
+        <div style={{ position: "absolute", right: "30pt", bottom: "80pt", width: "100pt", height: "100pt", borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.03)" }} />
+
+        {/* Top: TGL mark + brief title */}
+        <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: "12pt" }}>
+          <TGLMark size={28} color="rgba(255,255,255,0.6)" />
+          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "rgba(255,255,255,0.5)", letterSpacing: "0.22em", textTransform: "uppercase" }}>
+            THE GENTRY LAB · AI Industrial Advisor
+          </div>
+        </div>
+
+        {/* Center: "End of report" statement */}
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, letterSpacing: "0.4em", textTransform: "uppercase", color: "rgba(255,255,255,0.45)", marginBottom: "14pt" }}>
+            End of Report
+          </div>
+          <div style={{ fontFamily: PF.head, fontSize: "36pt", fontWeight: 900, color: "#ffffff", lineHeight: 1.1, letterSpacing: "-0.03em", marginBottom: "10pt", maxWidth: "320pt" }}>
+            {brief.title}
+          </div>
+          <div style={{ width: "48pt", height: "3pt", backgroundColor: "rgba(255,255,255,0.5)", marginBottom: "16pt" }} />
+          <div style={{ fontFamily: PF.head, fontSize: "9pt", color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
+            {cat.label} · Kingdom of Cambodia · {dateStr}
+          </div>
+          <div style={{ marginTop: "14pt", fontFamily: PF.head, fontSize: "7.5pt", color: "rgba(255,255,255,0.40)" }}>
+            Ref #{refId} · AI-generated advisory · Verify independently
+          </div>
+        </div>
+
+        {/* Bottom: contact + QR hint */}
+        <div style={{ position: "relative", zIndex: 1, borderTop: "0.75pt solid rgba(255,255,255,0.2)", paddingTop: "14pt", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+          <div>
+            <div style={{ fontFamily: PF.head, fontSize: "8pt", color: "rgba(255,255,255,0.8)", fontWeight: 600, letterSpacing: "0.06em", marginBottom: "4pt" }}>thegentrylab.io</div>
+            <div style={{ fontFamily: PF.body, fontSize: "7pt", color: "rgba(255,255,255,0.45)" }}>advisory@thegentrylab.io</div>
+          </div>
+          <div style={{ fontFamily: PF.head, fontSize: "6.5pt", color: "rgba(255,255,255,0.35)", textAlign: "right", lineHeight: 1.8 }}>
+            <div>© {year} The Gentry Lab</div>
+            <div>AI Industrial Advisor Platform</div>
+            <div>Kingdom of Cambodia</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
