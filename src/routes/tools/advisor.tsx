@@ -1181,6 +1181,33 @@ const CAT_ANALYSIS_IMAGES: Record<string, string> = {
   energy: "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=1400&h=500&fit=crop&auto=format&q=80",
 };
 
+function detectTopicEmoji(text: string): string {
+  const t = text.toLowerCase();
+  if (/factory|manufactur|industrial|warehouse|facilit|production|assembl/.test(t)) return "🏭";
+  if (/market|position|sell|sale|buyer|demand|commercial|retail/.test(t)) return "📊";
+  if (/invest|financ|cost|capital|fund|budget|price|value|revenue|profit/.test(t)) return "💰";
+  if (/logistics|transport|road|access|supply chain|port|freight|cargo/.test(t)) return "🚚";
+  if (/energy|power|solar|electric|utility|grid|substation/.test(t)) return "☀️";
+  if (/environment|green|eco|sustain|pollution|waste|water/.test(t)) return "🌱";
+  if (/permit|legal|regulat|compli|policy|license|approval|zoning/.test(t)) return "🔒";
+  if (/land|site|location|province|map|zone|parcel|plot|hectare/.test(t)) return "📍";
+  if (/people|labour|worker|employ|social|community|staff/.test(t)) return "👥";
+  if (/timeline|schedule|phase|duration|month|year|deadline/.test(t)) return "⏱️";
+  if (/construct|build|develop|epc|contractor|civil|structure/.test(t)) return "🏗️";
+  if (/tech|digital|data|software|system|automat|smart/.test(t)) return "🔧";
+  if (/food|agricultur|farm|crop|process/.test(t)) return "🌿";
+  if (/global|international|export|import|trade|foreign|fdi/.test(t)) return "🌐";
+  if (/package|product|supply|inventory|stock|goods/.test(t)) return "📦";
+  if (/strategy|recommend|approach|solution|action|next step/.test(t)) return "💡";
+  if (/risk|warning|concern|challenge|issue|obstacle/.test(t)) return "⚠️";
+  if (/assess|viab|feasib|analys|evaluat|review|check/.test(t)) return "📋";
+  if (/due diligence|title|owner|cadastr|encumbr/.test(t)) return "🔍";
+  if (/partner|collabor|agreement|contract|negotiat/.test(t)) return "🤝";
+  if (/garment|textile|apparel|cloth|fashion/.test(t)) return "📦";
+  if (/design|plan|layout|master|blueprint/.test(t)) return "📐";
+  return "💡";
+}
+
 function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
@@ -1222,6 +1249,32 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
           {parsed?.clean ?? raw4}
         </div>
       );
+    } else if (/^[A-Z]\.\s+\S/.test(line)) {
+      /* Letter-prefixed subheading: "A. Industrial Factory / Manufacturing Facility" */
+      const letter = line[0];
+      const subText = line.replace(/^[A-Z]\.\s+/, "");
+      const emoji = detectTopicEmoji(subText);
+      elements.push(
+        <div key={i} style={{
+          display: "flex", alignItems: "center", gap: "10pt",
+          margin: "16pt 0 6pt", padding: "8pt 12pt",
+          backgroundColor: `${accentColor}12`,
+          borderLeft: `3.5pt solid ${accentColor}`,
+          borderRadius: "0 5pt 5pt 0", breakAfter: "avoid", pageBreakAfter: "avoid"
+        }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", justifyContent: "center",
+            width: "26pt", height: "26pt", borderRadius: "7pt", flexShrink: 0,
+            backgroundColor: accentColor, boxShadow: `0 2pt 8pt ${accentColor}44`
+          }}>
+            <PrintIconSvg emoji={emoji} color="#ffffff" />
+          </span>
+          <span style={{ fontFamily: PF.head, fontSize: "11pt", fontWeight: 700, color: "#1a1a1a", letterSpacing: "-0.01em", lineHeight: 1.25 }}>
+            <span style={{ color: accentColor, marginRight: "5pt" }}>{letter}.</span>
+            {subText}
+          </span>
+        </div>
+      );
     } else if (line.startsWith("> ")) {
       elements.push(<div key={i} className="pr-blockquote">{printInline(line.slice(2))}</div>);
     } else if (line.startsWith("⚠️")) {
@@ -1241,11 +1294,35 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
         </div>
       );
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      elements.push(<div key={i} className="pr-li"><span className="pr-li-dot">·</span><span>{printInline(line.slice(2))}</span></div>);
+      const liText = line.slice(2);
+      const liEmoji = detectTopicEmoji(liText);
+      elements.push(
+        <div key={i} className="pr-li">
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "16pt", height: "16pt", borderRadius: "4pt", flexShrink: 0, backgroundColor: `${accentColor}18`, marginTop: "1pt" }}>
+            <span style={{ display: "inline-flex", width: 13, height: 13, alignItems: "center", justifyContent: "center" }}>
+              <PrintIconSvg emoji={liEmoji} color={accentColor} />
+            </span>
+          </span>
+          <span style={{ paddingLeft: "4pt" }}>{printInline(liText)}</span>
+        </div>
+      );
     } else if (/^\d+\./.test(line)) {
       const num = line.match(/^(\d+)\./)?.[1];
       const olText = line.replace(/^\d+\.\s*/, "").replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]️?\s*/gu, "").trim();
-      elements.push(<div key={i} className="pr-ol"><span className="pr-ol-num">{num}.</span><span>{printInline(olText)}</span></div>);
+      const olEmoji = detectTopicEmoji(olText);
+      elements.push(
+        <div key={i} className="pr-ol">
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "18pt", height: "18pt", borderRadius: "5pt", flexShrink: 0, backgroundColor: accentColor, marginTop: "1pt" }}>
+            <span style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 800, color: "#fff", lineHeight: 1 }}>{num}</span>
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "14pt", height: "14pt", borderRadius: "3pt", flexShrink: 0, backgroundColor: `${accentColor}18`, marginTop: "2pt" }}>
+            <span style={{ display: "inline-flex", width: 11, height: 11, alignItems: "center", justifyContent: "center" }}>
+              <PrintIconSvg emoji={olEmoji} color={accentColor} />
+            </span>
+          </span>
+          <span>{printInline(olText)}</span>
+        </div>
+      );
     } else if (line.startsWith("|")) {
       const tableLines: string[] = [];
       while (i < lines.length && lines[i].startsWith("|")) { tableLines.push(lines[i]); i++; }

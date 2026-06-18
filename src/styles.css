@@ -418,9 +418,39 @@
 .advisor-print .pr-content-body {
   padding: 22pt 20mm 10pt;
   vertical-align: top;
-  /* Force each content page to fill a full A4 body height on screen.
-     297mm − header(16mm) − footer(14mm) − padding(11mm) ≈ 256mm */
-  min-height: 256mm;
+}
+
+/* ── Screen layout: full A4 page appearance with footer pinned to bottom ── */
+@media screen {
+  .advisor-print .pr-cpage-table {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 297mm;
+    border: 1px solid #e8e8e8;
+    margin-bottom: 10mm;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .advisor-print .pr-cpage-thead { display: block !important; flex-shrink: 0; }
+  .advisor-print .pr-cpage-tfoot { display: block !important; flex-shrink: 0; margin-top: auto; }
+  .advisor-print .pr-cpage-tbody { display: block !important; flex: 1; }
+  .advisor-print .pr-content-body { height: 100%; box-sizing: border-box; }
+
+  /* ── Mobile: scale down A4 pages to fit narrow screens ── */
+  @media (max-width: 700px) {
+    .advisor-print { padding: 0 !important; }
+    .advisor-print .pr-cpage-table {
+      min-height: unset;
+      margin-bottom: 6px;
+      border-radius: 4px;
+    }
+    .advisor-print .pr-content-body { padding: 12pt 10pt !important; }
+    .advisor-print .pr-h1 { font-size: 14pt !important; }
+    .advisor-print .pr-h2 { font-size: 11pt !important; }
+    .advisor-print .pr-h3 { font-size: 9.5pt !important; }
+    .advisor-print .pr-p,
+    .advisor-print .pr-li,
+    .advisor-print .pr-ol { font-size: 9pt !important; }
+  }
 }
 
 @media print {
@@ -527,9 +557,9 @@
   }
 
   /* ── Lists ── */
-  .pr-li { display: flex; gap: 8pt; margin: 3pt 0; font-size: 9.5pt; color: #444; line-height: 1.6; font-weight: 300; }
+  .pr-li { display: flex; gap: 8pt; margin: 4pt 0; font-size: 9.5pt; color: #444; line-height: 1.6; font-weight: 300; align-items: flex-start; }
   .pr-li-dot { color: #cc3300; flex-shrink: 0; font-weight: 600; margin-top: 1pt; }
-  .pr-ol { display: flex; gap: 8pt; margin: 3pt 0; font-size: 9.5pt; color: #444; line-height: 1.6; font-weight: 300; }
+  .pr-ol { display: flex; gap: 6pt; margin: 4pt 0; font-size: 9.5pt; color: #444; line-height: 1.6; font-weight: 300; align-items: flex-start; }
   .pr-ol-num { color: #cc3300; font-weight: 600; font-size: 7.5pt; flex-shrink: 0; width: 14pt; margin-top: 2pt; }
 
   /* ── Tables — WB style, light ── */
