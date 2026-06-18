@@ -4,6 +4,7 @@ import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
 import { GentryMark } from "@/components/site/GentryMark";
 import { useLang } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
+import { useCredits, formatCredits } from "@/lib/credits";
 
 /* ── Dark/light helpers ─────────────────────────────────── */
 function getStoredTheme(): "dark" | "light" {
@@ -20,6 +21,7 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { user, signInWithGoogle, signOut } = useAuth();
+  const { credits } = useCredits();
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -113,6 +115,12 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
                 className="flex items-center gap-2 px-2 py-1.5 rounded-full nav-toggle-btn transition-all"
                 aria-label="User menu"
               >
+                {/* Credit badge */}
+                {credits !== null && (
+                  <span className="font-mono text-[8px] font-bold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgba(255,81,0,0.15)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.25)" }}>
+                    {formatCredits(credits.balance)} cr
+                  </span>
+                )}
                 {user.user_metadata?.avatar_url ? (
                   <img
                     src={user.user_metadata.avatar_url}
@@ -130,6 +138,22 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
               </button>
               {userMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-56 nav-surface border nav-border rounded-xl shadow-2xl overflow-hidden z-50">
+
+                  {/* Credit balance strip */}
+                  {credits !== null && (
+                    <div className="px-3 py-2 border-b nav-border flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span className="font-mono text-[9px] uppercase tracking-widest nav-text-muted">Credits</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] font-bold" style={{ color: "#ff5100" }}>{formatCredits(credits.balance)}</span>
+                        <Link to="/credits" onClick={() => setUserMenuOpen(false)} className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100" }}>
+                          Buy
+                        </Link>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Profile & Settings */}
                   <div className="px-3 py-2 border-b nav-border">

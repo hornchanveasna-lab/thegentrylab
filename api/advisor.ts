@@ -189,12 +189,76 @@ A 5-point action plan with specific next steps the investor should take within t
 **Construction Timeline**: sections = Phase Breakdown (table: phase / duration / key milestone), Critical Path, Seasonal Risks, Recommended Start Window
 **EPC Budget Builder**: sections = Cost Summary (table: category / m² rate / total), Biggest Variables, Contingency Guidance, Procurement Approach
 
-Keep each brief 500–900 words. Use specific numbers. Be direct. If you don't have exact data for a specific sub-location, give the best range and say so.`;
+Keep each brief 500–900 words for standard. 900–1400 words for comprehensive. Use specific numbers. Be direct. If you don't have exact data for a specific sub-location, give the best range and say so.`;
+
+/* ── Comprehensive mode chart data suffix (site selection) ── */
+const COMPREHENSIVE_CHART_SUFFIX = `
+
+IMPORTANT — COMPREHENSIVE REPORT MODE:
+After completing the full brief text above, append a machine-readable JSON block EXACTLY as shown below. Do NOT wrap it in markdown code fences. The JSON must be valid. Use your best estimates based on the input parameters and your knowledge.
+
+<CHART_DATA>
+{
+  "type": "site_selection",
+  "zones": [
+    {"rank": 1, "name": "ZONE_1_NAME", "province": "PROVINCE_1", "zone_type": "SEZ|Park|Greenfield", "lat": 11.55, "lng": 104.92, "score": 87, "labour": 9, "cost": 7, "permits": 9, "infrastructure": 8, "risk": 8},
+    {"rank": 2, "name": "ZONE_2_NAME", "province": "PROVINCE_2", "zone_type": "SEZ|Park|Greenfield", "lat": 11.28, "lng": 104.95, "score": 79, "labour": 8, "cost": 8, "permits": 8, "infrastructure": 7, "risk": 8},
+    {"rank": 3, "name": "ZONE_3_NAME", "province": "PROVINCE_3", "zone_type": "SEZ|Park|Greenfield", "lat": 11.45, "lng": 104.52, "score": 71, "labour": 6, "cost": 9, "permits": 7, "infrastructure": 7, "risk": 7}
+  ],
+  "costs": [
+    {"zone": "ZONE_1_NAME", "land_lease_m2_yr": 85, "build_cost_m2": 320, "utilities_usd": 140000, "permits_usd": 20000, "factory_size_m2": FACTORY_SIZE_M2},
+    {"zone": "ZONE_2_NAME", "land_lease_m2_yr": 55, "build_cost_m2": 300, "utilities_usd": 180000, "permits_usd": 25000, "factory_size_m2": FACTORY_SIZE_M2},
+    {"zone": "ZONE_3_NAME", "land_lease_m2_yr": 30, "build_cost_m2": 290, "utilities_usd": 220000, "permits_usd": 30000, "factory_size_m2": FACTORY_SIZE_M2}
+  ],
+  "timeline_weeks": {"due_diligence": 6, "environmental": 14, "mih_licence": 10, "cdc_qip": 10, "construction": 52, "utilities": 12},
+  "labour_pool": [
+    {"zone": "ZONE_1_NAME", "available": 45000},
+    {"zone": "ZONE_2_NAME", "available": 28000},
+    {"zone": "ZONE_3_NAME", "available": 12000}
+  ],
+  "key_stats": {"min_wage_usd": 204, "power_min": 0.12, "power_max": 0.18, "sez_permit_months": 4, "outside_permit_months": 10}
+}
+</CHART_DATA>`;
+
+const COMPREHENSIVE_GENERIC_SUFFIX = `
+
+IMPORTANT — COMPREHENSIVE REPORT MODE:
+After completing your full brief, append a structured data JSON block EXACTLY as shown (no markdown fences, valid JSON only):
+
+<CHART_DATA>
+{
+  "type": "generic",
+  "key_metrics": [
+    {"label": "METRIC_LABEL_1", "value": "VALUE_1", "unit": "UNIT_1"},
+    {"label": "METRIC_LABEL_2", "value": "VALUE_2", "unit": "UNIT_2"},
+    {"label": "METRIC_LABEL_3", "value": "VALUE_3", "unit": "UNIT_3"},
+    {"label": "METRIC_LABEL_4", "value": "VALUE_4", "unit": "UNIT_4"}
+  ],
+  "comparison_table": {
+    "headers": ["Category", "Low", "Mid", "High"],
+    "rows": [
+      ["ITEM_1", "LOW_1", "MID_1", "HIGH_1"],
+      ["ITEM_2", "LOW_2", "MID_2", "HIGH_2"],
+      ["ITEM_3", "LOW_3", "MID_3", "HIGH_3"]
+    ]
+  },
+  "timeline_items": [
+    {"label": "PHASE_1", "weeks": 6},
+    {"label": "PHASE_2", "weeks": 12},
+    {"label": "PHASE_3", "weeks": 10}
+  ]
+}
+</CHART_DATA>`;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+const CREDIT_COSTS: Record<string, number> = {
+  standard:      75,
+  comprehensive: 150,
 };
 
 export default async function handler(req: Request): Promise<Response> {
@@ -208,16 +272,69 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  let briefType: string, fields: Record<string, string>, briefTitle: string;
+  /* ── Credit deduction for logged-in users ── */
+  const auth = req.headers.get("Authorization");
+  let userId: string | null = null;
+  if (auth?.startsWith("Bearer ")) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && serviceKey) {
+      try {
+        const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+          headers: { Authorization: auth, apikey: serviceKey },
+        });
+        if (userRes.ok) {
+          const { id } = await userRes.json();
+          userId = id;
+        }
+      } catch { /* proceed */ }
+    }
+  }
+
+  let briefType: string, fields: Record<string, string>, briefTitle: string, reportType: string;
   try {
-    const body = await req.json();
-    briefType  = body.briefType;
-    briefTitle = body.briefTitle;
-    fields     = body.fields ?? {};
+    const body  = await req.json();
+    briefType   = body.briefType;
+    briefTitle  = body.briefTitle;
+    fields      = body.fields ?? {};
+    reportType  = body.reportType ?? "standard";
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400, headers: { "Content-Type": "application/json", ...CORS },
     });
+  }
+
+  /* ── Deduct credits (after parsing so we know reportType) ── */
+  if (userId) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const cost = CREDIT_COSTS[reportType] ?? CREDIT_COSTS.standard;
+    if (supabaseUrl && serviceKey) {
+      try {
+        const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify({
+            p_user_id:     userId,
+            p_amount:      cost,
+            p_type:        reportType === "comprehensive" ? "brief_comprehensive" : "brief_standard",
+            p_description: `${briefTitle} — ${reportType}`,
+          }),
+        });
+        if (rpcRes.ok) {
+          const result = await rpcRes.json();
+          if (result.success === false) {
+            return new Response(JSON.stringify({ error: "insufficient_credits", balance: result.balance }), {
+              status: 402, headers: { "Content-Type": "application/json", ...CORS },
+            });
+          }
+        }
+      } catch { /* allow through */ }
+    }
   }
 
   /* Build the user message from form fields */
@@ -225,7 +342,12 @@ export default async function handler(req: Request): Promise<Response> {
     .map(([k, v]) => `- ${k}: ${v}`)
     .join("\n");
 
-  const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.`;
+  const isComprehensive = reportType === "comprehensive";
+  const comprehensiveSuffix = briefType === "site-selection"
+    ? COMPREHENSIVE_CHART_SUFFIX
+    : COMPREHENSIVE_GENERIC_SUFFIX;
+
+  const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.${isComprehensive ? comprehensiveSuffix : ""}`;
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
@@ -240,7 +362,7 @@ export default async function handler(req: Request): Promise<Response> {
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
-            max_tokens: 2048,
+            max_tokens: isComprehensive ? 3500 : 2048,
             stream: true,
             system: SYSTEM_PROMPT,
             messages: [{ role: "user", content: userMessage }],

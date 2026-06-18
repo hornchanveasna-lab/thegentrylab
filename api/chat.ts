@@ -49,7 +49,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-const DAILY_LIMIT = 100;
+const CHAT_CREDIT_COST = 20; // credits per chat message (300% markup on ~$0.006 API cost)
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -62,70 +62,44 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  /* ── Logged-in user: verify JWT + enforce daily limit ── */
+  /* ── Logged-in user: verify JWT + deduct credits ── */
   const auth = req.headers.get("Authorization");
   if (auth?.startsWith("Bearer ")) {
-    const jwt = auth.slice(7);
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (supabaseUrl && serviceKey) {
       try {
-        /* Verify JWT via Supabase auth */
         const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-          headers: { Authorization: `Bearer ${jwt}`, apikey: serviceKey },
+          headers: { Authorization: auth, apikey: serviceKey },
         });
         if (userRes.ok) {
           const { id: userId } = await userRes.json();
-          const today = new Date().toISOString().slice(0, 10);
-
-          /* Upsert usage row and get new count */
-          const upsertRes = await fetch(
-            `${supabaseUrl}/rest/v1/user_daily_usage`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: serviceKey,
-                Authorization: `Bearer ${serviceKey}`,
-                Prefer: "resolution=merge-duplicates,return=representation",
-              },
-              body: JSON.stringify({ user_id: userId, date: today, count: 1 }),
-            }
-          );
-
-          if (upsertRes.ok) {
-            const rows = await upsertRes.json();
-            const count = rows[0]?.count ?? 1;
-
-            if (count > DAILY_LIMIT) {
-              return new Response(JSON.stringify({ error: "daily_limit" }), {
-                status: 429,
-                headers: { "Content-Type": "application/json", ...CORS },
+          const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: serviceKey,
+              Authorization: `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({
+              p_user_id:    userId,
+              p_amount:     CHAT_CREDIT_COST,
+              p_type:       "chat",
+              p_description: "Chat message",
+            }),
+          });
+          if (rpcRes.ok) {
+            const result = await rpcRes.json();
+            if (result.success === false) {
+              return new Response(JSON.stringify({ error: "insufficient_credits", balance: result.balance }), {
+                status: 402, headers: { "Content-Type": "application/json", ...CORS },
               });
-            }
-
-            /* Increment if row already existed (upsert merges to 1, need real increment) */
-            if (count === 1 && rows[0]) {
-              /* New row — check if it was actually pre-existing with count > 1 */
-            } else {
-              await fetch(
-                `${supabaseUrl}/rest/v1/user_daily_usage?user_id=eq.${userId}&date=eq.${today}`,
-                {
-                  method: "PATCH",
-                  headers: {
-                    "Content-Type": "application/json",
-                    apikey: serviceKey,
-                    Authorization: `Bearer ${serviceKey}`,
-                  },
-                  body: JSON.stringify({ count: count }),
-                }
-              );
             }
           }
         }
       } catch {
-        /* Auth check failed — continue anonymously rather than blocking */
+        /* Auth check failed — allow through */
       }
     }
   }

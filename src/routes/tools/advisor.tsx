@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { TopNav } from "@/components/site/TopNav";
+import { useCredits, CREDIT_COSTS } from "@/lib/credits";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis,
+} from "recharts";
 
 export const Route = createFileRoute("/tools/advisor")({
   component: AdvisorPage,
@@ -39,6 +44,222 @@ interface SavedBrief {
   fields: Record<string, string>;
   output: string;
   created_at: string;
+}
+
+type ReportType = "standard" | "comprehensive";
+
+interface ZoneData { rank: number; name: string; province: string; zone_type: string; lat: number; lng: number; score: number; labour: number; cost: number; permits: number; infrastructure: number; risk: number; }
+interface CostData  { zone: string; land_lease_m2_yr: number; build_cost_m2: number; utilities_usd: number; permits_usd: number; factory_size_m2: number; }
+interface SiteSelectionChartData {
+  type: "site_selection";
+  zones: ZoneData[];
+  costs: CostData[];
+  timeline_weeks: { due_diligence: number; environmental: number; mih_licence: number; cdc_qip: number; construction: number; utilities: number; };
+  labour_pool: { zone: string; available: number; }[];
+  key_stats: { min_wage_usd: number; power_min: number; power_max: number; sez_permit_months: number; outside_permit_months: number; };
+}
+interface GenericChartData {
+  type: "generic";
+  key_metrics: { label: string; value: string; unit: string; }[];
+  comparison_table: { headers: string[]; rows: string[][]; };
+  timeline_items: { label: string; weeks: number; }[];
+}
+type ChartData = SiteSelectionChartData | GenericChartData;
+
+function extractChartData(text: string): { chartData: ChartData | null; cleanText: string } {
+  const match = text.match(/<CHART_DATA>([\s\S]*?)<\/CHART_DATA>/);
+  if (!match) return { chartData: null, cleanText: text };
+  try {
+    const chartData = JSON.parse(match[1].trim()) as ChartData;
+    const cleanText = text.replace(/<CHART_DATA>[\s\S]*?<\/CHART_DATA>/, "").trim();
+    return { chartData, cleanText };
+  } catch {
+    return { chartData: null, cleanText: text };
+  }
+}
+
+/* ── Chart: Zone Scoring ─────────────────────────────────── */
+function ZoneScoringChart({ zones }: { zones: ZoneData[] }) {
+  const data = zones.map(z => ({
+    subject: z.name.length > 22 ? z.name.slice(0, 20) + "…" : z.name,
+    Labour: z.labour * 10, Cost: z.cost * 10, Permits: z.permits * 10,
+    Infrastructure: z.infrastructure * 10, Risk: z.risk * 10,
+  }));
+  const COLORS = ["#ff5100", "#10b981", "#3b82f6"];
+  return (
+    <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <p className="font-mono text-[9px] uppercase tracking-widest mb-3" style={{ color: "#ff5100" }}>Zone Scoring Comparison</p>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={[
+          { criterion: "Labour",         ...Object.fromEntries(zones.map(z => [z.name.split(" ")[0], z.labour * 10])) },
+          { criterion: "Cost",           ...Object.fromEntries(zones.map(z => [z.name.split(" ")[0], z.cost * 10])) },
+          { criterion: "Permits",        ...Object.fromEntries(zones.map(z => [z.name.split(" ")[0], z.permits * 10])) },
+          { criterion: "Infrastructure", ...Object.fromEntries(zones.map(z => [z.name.split(" ")[0], z.infrastructure * 10])) },
+          { criterion: "Risk",           ...Object.fromEntries(zones.map(z => [z.name.split(" ")[0], z.risk * 10])) },
+        ]} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis dataKey="criterion" tick={{ fill: "rgba(255,255,255,0.40)", fontSize: 10 }} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.30)", fontSize: 9 }} axisLine={false} tickLine={false} />
+          <Tooltip contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#fff", fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.50)" }} />
+          {zones.map((z, i) => <Bar key={z.name} dataKey={z.name.split(" ")[0]} fill={COLORS[i % COLORS.length]} radius={[2, 2, 0, 0]} />)}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ── Chart: Cost Comparison ──────────────────────────────── */
+function CostComparisonChart({ costs }: { costs: CostData[] }) {
+  const data = costs.map(c => ({
+    zone: c.zone.length > 20 ? c.zone.slice(0, 18) + "…" : c.zone,
+    "Land Lease/yr": Math.round(c.land_lease_m2_yr * (c.factory_size_m2 || 8000) / 1000),
+    "Build Cost": Math.round(c.build_cost_m2 * (c.factory_size_m2 || 8000) / 1000),
+    "Utilities": Math.round(c.utilities_usd / 1000),
+    "Permits": Math.round(c.permits_usd / 1000),
+  }));
+  return (
+    <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: "#ff5100" }}>Estimated Capex Breakdown</p>
+      <p className="font-mono text-[8px] mb-3" style={{ color: "rgba(255,255,255,0.25)" }}>USD thousands</p>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 5, right: 10, left: -15, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+          <XAxis dataKey="zone" tick={{ fill: "rgba(255,255,255,0.40)", fontSize: 9 }} axisLine={false} tickLine={false} angle={-15} textAnchor="end" />
+          <YAxis tick={{ fill: "rgba(255,255,255,0.30)", fontSize: 9 }} axisLine={false} tickLine={false} />
+          <Tooltip contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#fff", fontSize: 11 }} formatter={(v: number) => [`$${v}k`, ""]} />
+          <Legend wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.50)" }} />
+          <Bar dataKey="Land Lease/yr" stackId="a" fill="#ff5100" />
+          <Bar dataKey="Build Cost"    stackId="a" fill="#f97316" />
+          <Bar dataKey="Utilities"     stackId="a" fill="#fb923c" />
+          <Bar dataKey="Permits"       stackId="a" fill="rgba(255,81,0,0.35)" radius={[2, 2, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ── Chart: Timeline ─────────────────────────────────────── */
+function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timeline_weeks"] }) {
+  const phases = [
+    { label: "Land Due Diligence",   weeks: timeline.due_diligence,  color: "#3b82f6" },
+    { label: "Environmental (MoE)",  weeks: timeline.environmental,  color: "#f59e0b" },
+    { label: "MIH Licence",          weeks: timeline.mih_licence,    color: "#8b5cf6" },
+    { label: "CDC QIP",              weeks: timeline.cdc_qip,        color: "#10b981" },
+    { label: "Construction",         weeks: timeline.construction,   color: "#ff5100" },
+    { label: "Utility Connection",   weeks: timeline.utilities,      color: "#6366f1" },
+  ];
+  const total = phases.reduce((s, p) => s + p.weeks, 0);
+  let offset = 0;
+  return (
+    <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <p className="font-mono text-[9px] uppercase tracking-widest mb-4" style={{ color: "#ff5100" }}>Timeline to First Production</p>
+      <div className="space-y-2">
+        {phases.map((phase) => {
+          const pct = (phase.weeks / total) * 100;
+          const left = (offset / total) * 100;
+          offset += phase.weeks;
+          return (
+            <div key={phase.label} className="flex items-center gap-3">
+              <span className="text-[10px] w-40 shrink-0 text-right" style={{ color: "rgba(255,255,255,0.50)" }}>{phase.label}</span>
+              <div className="flex-1 h-5 rounded overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                <div className="h-full rounded flex items-center pl-2 text-[9px] font-bold" style={{ marginLeft: `${left}%`, width: `${pct}%`, backgroundColor: phase.color, color: "#fff", whiteSpace: "nowrap", overflow: "hidden" }}>
+                  {phase.weeks >= 6 ? `${phase.weeks}w` : ""}
+                </div>
+              </div>
+              <span className="font-mono text-[9px] w-8 text-right shrink-0" style={{ color: "rgba(255,255,255,0.35)" }}>{phase.weeks}w</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="font-mono text-[9px] mt-3" style={{ color: "rgba(255,255,255,0.25)" }}>Total: ~{Math.round(total / 4.33)} months · {total} weeks</p>
+    </div>
+  );
+}
+
+/* ── Chart: Key Stats ────────────────────────────────────── */
+function KeyStatsPanel({ stats, zones }: { stats: SiteSelectionChartData["key_stats"]; zones: ZoneData[] }) {
+  return (
+    <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <p className="font-mono text-[9px] uppercase tracking-widest mb-4" style={{ color: "#ff5100" }}>Key Market Indicators</p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: "Min. Wage", value: `$${stats.min_wage_usd}`, unit: "/month" },
+          { label: "Power Tariff", value: `$${stats.power_min}–$${stats.power_max}`, unit: "/kWh" },
+          { label: "SEZ Permits", value: `${stats.sez_permit_months}`, unit: "months" },
+          { label: "Outside SEZ", value: `${stats.outside_permit_months}`, unit: "months" },
+        ].map(s => (
+          <div key={s.label}>
+            <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.30)" }}>{s.label}</p>
+            <p className="text-[18px] font-extrabold leading-none" style={{ color: "#ff5100" }}>{s.value}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.40)" }}>{s.unit}</p>
+          </div>
+        ))}
+      </div>
+      {zones.length > 0 && (
+        <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          <p className="font-mono text-[8px] uppercase tracking-widest mb-2" style={{ color: "rgba(255,255,255,0.30)" }}>Zone Rankings</p>
+          <div className="flex gap-3 flex-wrap">
+            {zones.map((z, i) => (
+              <div key={z.name} className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <span className="font-mono text-[10px] font-bold" style={{ color: ["#ff5100","#10b981","#3b82f6"][i] }}>#{z.rank}</span>
+                <span className="text-[11px]" style={{ color: "rgba(255,255,255,0.75)" }}>{z.name}</span>
+                <span className="font-mono text-[10px]" style={{ color: "rgba(255,255,255,0.40)" }}>{z.score}/100</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Generic chart panel ─────────────────────────────────── */
+function GenericChartsPanel({ data }: { data: GenericChartData }) {
+  return (
+    <div className="space-y-4">
+      {data.key_metrics?.length > 0 && (
+        <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-4" style={{ color: "#ff5100" }}>Key Figures</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {data.key_metrics.map((m, i) => (
+              <div key={i}>
+                <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.30)" }}>{m.label}</p>
+                <p className="text-[20px] font-extrabold" style={{ color: "#ff5100" }}>{m.value}</p>
+                <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{m.unit}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {data.timeline_items?.length > 0 && (
+        <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-3" style={{ color: "#ff5100" }}>Timeline</p>
+          {(() => {
+            const total = data.timeline_items.reduce((s, t) => s + t.weeks, 0);
+            let off = 0;
+            return data.timeline_items.map((item, i) => {
+              const pct = (item.weeks / total) * 100;
+              const lft = (off / total) * 100;
+              off += item.weeks;
+              const COLORS = ["#ff5100","#f97316","#f59e0b","#10b981","#3b82f6","#8b5cf6"];
+              return (
+                <div key={i} className="flex items-center gap-3 mb-2">
+                  <span className="text-[10px] w-36 shrink-0 text-right" style={{ color: "rgba(255,255,255,0.50)" }}>{item.label}</span>
+                  <div className="flex-1 h-5 rounded overflow-hidden" style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                    <div className="h-full rounded flex items-center pl-2 text-[9px] font-bold" style={{ marginLeft: `${lft}%`, width: `${pct}%`, backgroundColor: COLORS[i % COLORS.length], color: "#fff", whiteSpace: "nowrap", overflow: "hidden" }}>
+                      {item.weeks >= 5 ? `${item.weeks}w` : ""}
+                    </div>
+                  </div>
+                  <span className="font-mono text-[9px] w-8 shrink-0 text-right" style={{ color: "rgba(255,255,255,0.35)" }}>{item.weeks}w</span>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ── Category config ────────────────────────────────────── */
@@ -612,6 +833,9 @@ export default function AdvisorPage() {
   const [savedBriefs, setSavedBriefs] = useState<SavedBrief[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [reportType, setReportType] = useState<ReportType>("standard");
+  const [chartData, setChartData] = useState<ChartData | null>(null);
+  const [creditError, setCreditError] = useState<{ balance: number } | null>(null);
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -659,6 +883,8 @@ export default function AdvisorPage() {
     setSaved(false);
     setSavedBriefId(null);
     setIsEditMode(false);
+    setChartData(null);
+    setCreditError(null);
     setStep("form");
   }
 
@@ -674,6 +900,8 @@ export default function AdvisorPage() {
     setStreaming(true);
     setSaved(false);
     setSavedBriefId(null);
+    setChartData(null);
+    setCreditError(null);
     const now = new Date();
     setGeneratedAt(now);
 
@@ -690,8 +918,16 @@ export default function AdvisorPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ briefType: selectedBrief.id, briefTitle: selectedBrief.title, fields: form }),
+        body: JSON.stringify({ briefType: selectedBrief.id, briefTitle: selectedBrief.title, fields: form, reportType }),
       });
+
+      if (res.status === 402) {
+        const body = await res.json().catch(() => ({}));
+        setCreditError({ balance: body.balance ?? 0 });
+        setStep("form");
+        setStreaming(false);
+        return;
+      }
 
       if (!res.ok || !res.body) { setOutput("[Error generating brief. Please try again.]"); setStreaming(false); return; }
 
@@ -704,6 +940,14 @@ export default function AdvisorPage() {
         if (done) break;
         accumulated += dec.decode(value, { stream: true });
         setOutput(accumulated);
+      }
+
+      // Extract chart data from comprehensive mode response
+      const { chartData: parsed, cleanText } = extractChartData(accumulated);
+      if (parsed) {
+        setChartData(parsed);
+        setOutput(cleanText);
+        accumulated = cleanText;
       }
 
       // Auto-save to Supabase
@@ -735,6 +979,9 @@ export default function AdvisorPage() {
     setSaved(false);
     setSavedBriefId(null);
     setIsEditMode(false);
+    setChartData(null);
+    setCreditError(null);
+    setReportType("standard");
   }
 
   const allFilled = selectedBrief?.fields.filter(f => f.required).every(f => form[f.id]?.trim());
@@ -930,7 +1177,44 @@ export default function AdvisorPage() {
                 ))}
               </div>
 
-              <div className="flex items-center gap-3 mt-8">
+              {/* Report type selector */}
+              <div className="mt-8 rounded-xl p-4" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                <p className="font-mono text-[9px] uppercase tracking-widest mb-3" style={{ color: "rgba(255,255,255,0.35)" }}>Report Type</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["standard", "comprehensive"] as ReportType[]).map(rt => {
+                    const isSelected = reportType === rt;
+                    const cost = rt === "standard" ? CREDIT_COSTS.brief_standard : CREDIT_COSTS.brief_comprehensive;
+                    return (
+                      <button key={rt} onClick={() => setReportType(rt)}
+                        className="text-left p-3 rounded-lg transition"
+                        style={{ backgroundColor: isSelected ? "rgba(255,81,0,0.12)" : "rgba(255,255,255,0.03)", border: isSelected ? "1px solid rgba(255,81,0,0.40)" : "1px solid rgba(255,255,255,0.07)" }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-[12px]" style={{ color: isSelected ? "#ff5100" : "rgba(255,255,255,0.75)" }}>
+                            {rt === "standard" ? "Standard" : "Comprehensive"}
+                          </span>
+                          <span className="font-mono text-[9px]" style={{ color: isSelected ? "#ff5100" : "rgba(255,255,255,0.30)" }}>{cost} cr</span>
+                        </div>
+                        <p className="text-[10px] leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>
+                          {rt === "standard" ? "Structured text brief with full analysis and recommendations." : "Includes charts, cost tables, timeline visual, and scoring graphs."}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Credit error */}
+              {creditError && (
+                <div className="mt-4 rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <div>
+                    <p className="font-bold text-[12px] mb-1" style={{ color: "#ef4444" }}>Insufficient credits</p>
+                    <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.50)" }}>Your balance is {creditError.balance} cr. <Link to="/credits" className="underline" style={{ color: "#ff5100" }}>Buy more credits →</Link></p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 mt-4">
                 <button onClick={() => isEditMode ? setStep("result") : setStep("select")}
                   className="px-5 py-2.5 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
                   style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
@@ -943,7 +1227,7 @@ export default function AdvisorPage() {
                 </button>
               </div>
               <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.20)" }}>
-                Uses 1 credit · Auto-saved to your account
+                {reportType === "standard" ? `${CREDIT_COSTS.brief_standard} credits` : `${CREDIT_COSTS.brief_comprehensive} credits`} · Auto-saved to your account
               </p>
             </div>
           )}
@@ -1027,6 +1311,28 @@ export default function AdvisorPage() {
                   </div>
                 )}
               </div>
+
+              {/* Comprehensive charts panel */}
+              {!streaming && chartData && (
+                <div className="mt-6 space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#ff5100" }}>Data Visualisation</span>
+                    <span className="font-mono text-[8px] px-2 py-0.5 rounded-full" style={{ backgroundColor: "rgba(255,81,0,0.10)", color: "rgba(255,81,0,0.70)", border: "1px solid rgba(255,81,0,0.20)" }}>Comprehensive</span>
+                  </div>
+                  {chartData.type === "site_selection" ? (
+                    <>
+                      <KeyStatsPanel stats={chartData.key_stats} zones={chartData.zones} />
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <ZoneScoringChart zones={chartData.zones} />
+                        <CostComparisonChart costs={chartData.costs} />
+                      </div>
+                      <TimelineChart timeline={chartData.timeline_weeks} />
+                    </>
+                  ) : (
+                    <GenericChartsPanel data={chartData as GenericChartData} />
+                  )}
+                </div>
+              )}
 
               {/* Advisory CTA */}
               {!streaming && output && (

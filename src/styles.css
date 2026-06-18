@@ -346,12 +346,12 @@
 
   .pr-page-break { page-break-before: always; }
 
-  /* Print report layout */
-  .pr-root { font-family: "Inter", "Helvetica Neue", Arial, sans-serif; color: #111; font-size: 11pt; line-height: 1.55; }
+  /* Print report layout — World Bank / ADB document style */
+  .pr-root { font-family: Georgia, 'Cambria', 'Palatino Linotype', Palatino, serif; color: #1a1a1a; font-size: 10.5pt; line-height: 1.65; }
   .pr-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 12pt; border-bottom: 2pt solid #ff5100; margin-bottom: 14pt; }
-  .pr-brand-name { font-size: 15pt; font-weight: 900; letter-spacing: -0.02em; color: #111; }
-  .pr-brand-tag  { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; color: #ff5100; margin-top: 2pt; font-family: monospace; }
-  .pr-brand-city { font-size: 7pt; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-top: 1pt; font-family: monospace; }
+  .pr-brand-name { font-size: 15pt; font-weight: 900; letter-spacing: -0.02em; color: #111; font-family: 'Trebuchet MS', 'Calibri', 'Helvetica Neue', Arial, sans-serif; }
+  .pr-brand-tag  { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; color: #ff5100; margin-top: 2pt; font-family: 'Trebuchet MS', Arial, monospace; }
+  .pr-brand-city { font-size: 7pt; letter-spacing: 0.12em; text-transform: uppercase; color: #888; margin-top: 1pt; font-family: 'Trebuchet MS', Arial, monospace; }
   .pr-meta-block { text-align: right; display: flex; align-items: flex-start; gap: 12pt; }
   .pr-meta-qr img { width: 62pt; height: 62pt; display: block; }
   .pr-meta-text { text-align: right; }
@@ -360,8 +360,8 @@
   .pr-meta-cat { display: inline-block; padding: 1pt 5pt; border-radius: 3pt; font-size: 7pt; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; font-family: monospace; background: #ff5100; color: #fff; margin-bottom: 4pt; }
 
   .pr-title-section { margin-bottom: 14pt; }
-  .pr-title { font-size: 20pt; font-weight: 900; color: #111; letter-spacing: -0.03em; line-height: 1.15; margin-bottom: 4pt; }
-  .pr-subtitle { font-size: 9pt; color: #666; }
+  .pr-title { font-size: 20pt; font-weight: 900; color: #111; letter-spacing: -0.02em; line-height: 1.15; margin-bottom: 4pt; font-family: 'Trebuchet MS', 'Calibri', 'Helvetica Neue', Arial, sans-serif; }
+  .pr-subtitle { font-size: 9pt; color: #666; font-family: 'Trebuchet MS', Arial, sans-serif; font-style: italic; }
 
   .pr-inputs { background: #f9f9f9; border: 1pt solid #e5e5e5; border-radius: 4pt; padding: 10pt 12pt; margin-bottom: 16pt; }
   .pr-inputs-title { font-size: 7pt; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: #ff5100; font-family: monospace; margin-bottom: 8pt; }
@@ -371,10 +371,10 @@
   .pr-input-val { font-size: 9pt; color: #111; font-weight: 600; }
 
   .pr-divider { border: none; border-top: 1pt solid #e5e5e5; margin: 10pt 0; }
-  .pr-h2 { font-size: 10pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #ff5100; margin: 14pt 0 5pt; font-family: monospace; }
-  .pr-h3 { font-size: 10.5pt; font-weight: 700; color: #111; margin: 10pt 0 4pt; border-bottom: 0.5pt solid #eee; padding-bottom: 3pt; }
-  .pr-h4 { font-size: 9.5pt; font-weight: 600; color: #333; margin: 8pt 0 3pt; }
-  .pr-p  { font-size: 9.5pt; color: #333; margin: 3pt 0; line-height: 1.6; }
+  .pr-h2 { font-size: 9.5pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: #ff5100; margin: 16pt 0 5pt; font-family: 'Trebuchet MS', 'Calibri', Arial, sans-serif; }
+  .pr-h3 { font-size: 11pt; font-weight: 700; color: #111; margin: 12pt 0 4pt; border-bottom: 0.5pt solid #ddd; padding-bottom: 3pt; font-family: 'Trebuchet MS', 'Calibri', Arial, sans-serif; }
+  .pr-h4 { font-size: 10pt; font-weight: 700; color: #333; margin: 8pt 0 3pt; font-family: 'Trebuchet MS', Arial, sans-serif; }
+  .pr-p  { font-size: 10pt; color: #2a2a2a; margin: 4pt 0; line-height: 1.65; }
   .pr-blockquote { background: #fff8f5; border-left: 3pt solid #ff5100; padding: 8pt 10pt; margin: 8pt 0; font-size: 9.5pt; color: #333; border-radius: 0 3pt 3pt 0; }
   .pr-warn { background: #fffbf0; border-left: 3pt solid #f59e0b; padding: 8pt 10pt; margin: 8pt 0; font-size: 9.5pt; color: #333; border-radius: 0 3pt 3pt 0; }
   .pr-good { background: #f0fdf7; border-left: 3pt solid #10b981; padding: 8pt 10pt; margin: 8pt 0; font-size: 9.5pt; color: #333; border-radius: 0 3pt 3pt 0; }
@@ -383,9 +383,9 @@
   .pr-ol { display: flex; gap: 6pt; margin: 2pt 0; font-size: 9.5pt; color: #333; }
   .pr-ol-num { color: #ff5100; font-weight: 700; font-family: monospace; font-size: 8pt; flex-shrink: 0; width: 14pt; margin-top: 1pt; }
 
-  .pr-table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 9pt; }
-  .pr-table th { background: #111; color: #fff; text-align: left; padding: 5pt 7pt; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.12em; font-family: monospace; }
-  .pr-table td { padding: 4.5pt 7pt; border-bottom: 0.5pt solid #eee; color: #333; vertical-align: top; }
+  .pr-table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 9pt; font-family: 'Trebuchet MS', Arial, sans-serif; }
+  .pr-table th { background: #1a1a1a; color: #fff; text-align: left; padding: 5pt 8pt; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.14em; font-family: 'Trebuchet MS', Arial, monospace; }
+  .pr-table td { padding: 5pt 8pt; border-bottom: 0.5pt solid #e8e8e8; color: #2a2a2a; vertical-align: top; font-family: Georgia, serif; font-size: 9pt; }
   .pr-table tr:nth-child(even) td { background: #fafafa; }
 
   .pr-footer { margin-top: 20pt; padding-top: 8pt; border-top: 1pt solid #e5e5e5; display: flex; justify-content: space-between; align-items: center; }
