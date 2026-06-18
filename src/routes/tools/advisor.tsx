@@ -1193,24 +1193,30 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
       </span>
     );
     if (line.startsWith("## ")) {
-      const parsed = stripSectionEmoji(line.slice(3));
+      const raw = line.slice(3).replace(/^\d+\.\s*/, ""); // strip leading "1." if AI adds it
+      const parsed = stripSectionEmoji(raw);
       elements.push(
-        <div key={i} className="pr-h2" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <>{badge(parsed.emoji, accentColor, 34)}{parsed.clean}</> : line.slice(3)}
+        <div key={i} className="pr-h2" style={{ display: "flex", alignItems: "center", pageBreakBefore: "always", breakBefore: "page" }}>
+          {badge(parsed?.emoji ?? "●", accentColor, 34)}
+          {parsed?.clean ?? raw}
         </div>
       );
     } else if (line.startsWith("### ")) {
-      const parsed = stripSectionEmoji(line.slice(4));
+      const raw3 = line.slice(4).replace(/^\d+\.\s*/, "");
+      const parsed = stripSectionEmoji(raw3);
       elements.push(
         <div key={i} className="pr-h3" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <>{badge(parsed.emoji, accentColor, 26)}{parsed.clean}</> : line.slice(4)}
+          {badge(parsed?.emoji ?? "●", accentColor, 26)}
+          {parsed?.clean ?? raw3}
         </div>
       );
     } else if (line.startsWith("#### ")) {
-      const parsed = stripSectionEmoji(line.slice(5));
+      const raw4 = line.slice(5).replace(/^\d+\.\s*/, "");
+      const parsed = stripSectionEmoji(raw4);
       elements.push(
         <div key={i} className="pr-h4" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <>{badge(parsed.emoji, accentColor, 22)}{parsed.clean}</> : line.slice(5)}
+          {badge(parsed?.emoji ?? "●", accentColor, 20)}
+          {parsed?.clean ?? raw4}
         </div>
       );
     } else if (line.startsWith("> ")) {
@@ -1235,7 +1241,8 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
       elements.push(<div key={i} className="pr-li"><span className="pr-li-dot">·</span><span>{printInline(line.slice(2))}</span></div>);
     } else if (/^\d+\./.test(line)) {
       const num = line.match(/^(\d+)\./)?.[1];
-      elements.push(<div key={i} className="pr-ol"><span className="pr-ol-num">{num}.</span><span>{printInline(line.replace(/^\d+\.\s*/, ""))}</span></div>);
+      const olText = line.replace(/^\d+\.\s*/, "").replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]️?\s*/gu, "").trim();
+      elements.push(<div key={i} className="pr-ol"><span className="pr-ol-num">{num}.</span><span>{printInline(olText)}</span></div>);
     } else if (line.startsWith("|")) {
       const tableLines: string[] = [];
       while (i < lines.length && lines[i].startsWith("|")) { tableLines.push(lines[i]); i++; }
@@ -1789,10 +1796,12 @@ function getZoomedMapUrl(form: Record<string, string>, radiusDeg = 0.055): strin
 /* ── SVG icons for print section headings ── */
 const SECTION_EMOJI_LIST = ["📋","🏆","📍","💰","⏱️","👷","🔌","🎯","⚠️","✅","📊","📈","🏗️","🌿","⚡","🔒","🛣️","🔍","📌","🗺️","💼","🤝","📐","📉","🔧","⚙️","🧩","📏","🌐","🏭","🏢","🛑","💡","📦","🔐","🚧"];
 
+/* Matches any leading emoji — covers all Unicode emoji sequences */
+const EMOJI_LEAD_RE = /^((?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:️|⃣)?(?:[‍](?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:️)?)*)\s*/u;
+
 function stripSectionEmoji(text: string): { emoji: string; clean: string } | null {
-  for (const e of SECTION_EMOJI_LIST) {
-    if (text.startsWith(e)) return { emoji: e, clean: text.slice(e.length).trimStart() };
-  }
+  const m = text.match(EMOJI_LEAD_RE);
+  if (m && m[1]) return { emoji: m[1], clean: text.slice(m[0].length).trim() };
   return null;
 }
 
@@ -1824,7 +1833,28 @@ function PrintIconSvg({ emoji, color }: { emoji: string; color: string }) {
     case "📦": return <svg {...p}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>;
     case "💡": return <svg {...p}><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>;
     case "🚧": return <svg {...p}><path d="M5 3L3 6v14h18V6l-2-3H5z"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
-    default: return null;
+    /* science / lab / analysis */
+    case "🧪": case "🔬": case "🧬": return <svg {...p}><path d="M9 3h6m-3 0v8l4.5 7.5A2 2 0 0 1 14.76 21H9.24a2 2 0 0 1-1.74-2.5L12 11V3"/><line x1="6" y1="15" x2="18" y2="15"/></svg>;
+    case "🧮": case "🖩": return <svg {...p}><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="12" y2="14"/><line x1="8" y1="18" x2="12" y2="18"/></svg>;
+    /* finance / bank */
+    case "🏦": case "💵": case "💶": case "💷": case "💴": case "💸": case "🤑": return <svg {...p}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>;
+    case "📑": case "🗒️": case "📝": return <svg {...p}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
+    /* people / social */
+    case "👥": case "🤜": case "🏘️": return <svg {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+    /* plants / environment / nature */
+    case "🌱": case "🌲": case "🌳": case "☘️": return <svg {...p}><path d="M12 22V12m0 0C12 7 7 4 2 6c5 0 8 3 10 6zm0 0c0-5 5-8 10-6-5 0-8 3-10 6"/></svg>;
+    case "♻️": case "🔁": return <svg {...p}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>;
+    /* transport / logistics */
+    case "🚚": case "🚛": case "🚢": case "✈️": return <svg {...p}><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>;
+    /* energy / solar */
+    case "🌞": case "☀️": case "🔆": return <svg {...p}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>;
+    /* generic fallback — clean diamond graphic */
+    default: return (
+      <svg {...p} fill={color} stroke="none">
+        <polygon points="12,3 21,12 12,21 3,12" />
+        <polygon points="12,7 17,12 12,17 7,12" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
+      </svg>
+    );
   }
 }
 
