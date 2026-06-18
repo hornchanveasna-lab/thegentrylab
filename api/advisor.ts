@@ -415,4 +415,4 @@ export default async function handler(req: Request): Promise<Response> {
   });
 }
 
-export const config = { runtime: "edge" };
+export const runtime = "edge";
