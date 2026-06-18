@@ -1193,10 +1193,12 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
       </span>
     );
     if (line.startsWith("## ")) {
-      const raw = line.slice(3).replace(/^\d+\.\s*/, ""); // strip leading "1." if AI adds it
+      const raw = line.slice(3).replace(/^\d+\.\s*/, "");
       const parsed = stripSectionEmoji(raw);
+      // Zero-height break element before heading — works inside CSS table cells
+      elements.push(<div key={`pb-${i}`} style={{ height: 0, pageBreakBefore: "always", breakBefore: "page" }} />);
       elements.push(
-        <div key={i} className="pr-h2" style={{ display: "flex", alignItems: "center", pageBreakBefore: "always", breakBefore: "page" }}>
+        <div key={i} className="pr-h2" style={{ display: "flex", alignItems: "center" }}>
           {badge(parsed?.emoji ?? "●", accentColor, 34)}
           {parsed?.clean ?? raw}
         </div>
@@ -1204,6 +1206,7 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
     } else if (line.startsWith("### ")) {
       const raw3 = line.slice(4).replace(/^\d+\.\s*/, "");
       const parsed = stripSectionEmoji(raw3);
+      elements.push(<div key={`pb3-${i}`} style={{ height: 0, pageBreakBefore: "always", breakBefore: "page" }} />);
       elements.push(
         <div key={i} className="pr-h3" style={{ display: "flex", alignItems: "center" }}>
           {badge(parsed?.emoji ?? "●", accentColor, 26)}
@@ -1796,13 +1799,28 @@ function getZoomedMapUrl(form: Record<string, string>, radiusDeg = 0.055): strin
 /* ── SVG icons for print section headings ── */
 const SECTION_EMOJI_LIST = ["📋","🏆","📍","💰","⏱️","👷","🔌","🎯","⚠️","✅","📊","📈","🏗️","🌿","⚡","🔒","🛣️","🔍","📌","🗺️","💼","🤝","📐","📉","🔧","⚙️","🧩","📏","🌐","🏭","🏢","🛑","💡","📦","🔐","🚧"];
 
-/* Matches any leading emoji — covers all Unicode emoji sequences */
-const EMOJI_LEAD_RE = /^((?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:️|⃣)?(?:[‍](?:\p{Emoji_Presentation}|\p{Extended_Pictographic})(?:️)?)*)\s*/u;
-
+/* Reliable codepoint-based emoji stripper — works without Unicode property escapes */
 function stripSectionEmoji(text: string): { emoji: string; clean: string } | null {
-  const m = text.match(EMOJI_LEAD_RE);
-  if (m && m[1]) return { emoji: m[1], clean: text.slice(m[0].length).trim() };
-  return null;
+  if (!text) return null;
+  const chars = [...text]; // proper Unicode code-point split
+  const cp = chars[0]?.codePointAt(0) ?? 0;
+  // Emoji are above U+2600; ASCII-range characters are never emoji
+  if (cp < 0x2600) return null;
+  // Walk forward past ZWJ sequences, variation selectors, and joined emoji
+  let byteLen = chars[0].length;
+  let j = 1;
+  while (j < chars.length) {
+    const c = chars[j];
+    const cv = c.codePointAt(0) ?? 0;
+    // U+FE0F variation selector, U+200D ZWJ, or another emoji codepoint
+    if (cv === 0xFE0F || cv === 0x200D || (cv >= 0x2600 && cv !== 0x20)) {
+      byteLen += c.length;
+      j++;
+    } else break;
+  }
+  const emoji = text.slice(0, byteLen);
+  const clean = text.slice(byteLen).replace(/^[\s️]+/, "");
+  return { emoji, clean };
 }
 
 function PrintIconSvg({ emoji, color }: { emoji: string; color: string }) {
