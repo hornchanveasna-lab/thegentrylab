@@ -542,6 +542,41 @@ const BRIEFS: BriefType[] = [
   },
 ];
 
+/* ── Custom select dropdown (theme-aware, no native popup) ── */
+function CustomSelect({ value, onChange, options, placeholder = "Select..." }: {
+  value: string; onChange: (v: string) => void; options: string[]; placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDown(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, []);
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full px-3 py-2.5 rounded-lg text-[12.5px] text-left flex items-center justify-between gap-2 outline-none transition"
+        style={{ backgroundColor: "var(--adv-input-bg)", border: `1px solid ${open ? "rgba(255,81,0,0.45)" : "var(--adv-border-input)"}`, color: value ? "var(--adv-text-hi)" : "var(--adv-text-dim)" }}>
+        <span className="truncate">{value || placeholder}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 transition-transform" style={{ transform: open ? "rotate(180deg)" : "none", opacity: 0.5 }}><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      {open && (
+        <div className="absolute z-50 w-full mt-1 rounded-lg overflow-auto max-h-56 py-1"
+          style={{ backgroundColor: "var(--adv-hero-bg)", border: "1px solid var(--adv-border-mid)", boxShadow: "0 12px 32px rgba(0,0,0,0.45)" }}>
+          {options.map(o => (
+            <button key={o} type="button" onClick={() => { onChange(o); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-[12px] transition hover:opacity-100"
+              style={{ color: value === o ? "#ff5100" : "var(--adv-text-body)", backgroundColor: value === o ? "rgba(255,81,0,0.08)" : "transparent", opacity: value === o ? 1 : 0.85 }}>
+              {o}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Screen markdown renderer ────────────────────────────── */
 function renderMarkdown(text: string) {
   const lines = text.split("\n");
@@ -2614,12 +2649,11 @@ export default function AdvisorPage() {
                       {field.label}{field.required && <span style={{ color: "#ff5100" }}> *</span>}
                     </label>
                     {field.type === "select" ? (
-                      <select value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
-                        className="adv-select w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition appearance-none"
-                        style={{ backgroundColor: "var(--adv-input-bg)", border: "1px solid var(--adv-border-input)", color: form[field.id] ? "var(--adv-text-hi)" : "var(--adv-text-dim)" }}>
-                        <option value="">Select...</option>
-                        {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
+                      <CustomSelect
+                        value={form[field.id] ?? ""}
+                        onChange={v => setForm(p => ({ ...p, [field.id]: v }))}
+                        options={field.options ?? []}
+                      />
                     ) : (
                       <input type="text" value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
                         placeholder={field.placeholder}
