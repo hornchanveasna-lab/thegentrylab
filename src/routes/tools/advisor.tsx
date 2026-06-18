@@ -3407,7 +3407,7 @@ export default function AdvisorPage() {
                 )}
               </div>
 
-              {/* Comprehensive charts panel */}
+              {/* Comprehensive charts panel — structured chartData (Site Selection, etc.) */}
               {!streaming && chartData && (
                 <div className="mt-6 space-y-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -3428,6 +3428,60 @@ export default function AdvisorPage() {
                   )}
                 </div>
               )}
+
+              {/* Fallback visualisation panel — Finance, Bankability, etc. (no structured chartData) */}
+              {!streaming && output && !chartData && (() => {
+                const charts = parsePrintCharts(output);
+                const stats = extractPrintKeyStats(output);
+                const scoreMatch = output.match(/(?:composite|overall|bankability)\s+score[:\s]+([0-9.]+)\s*\/\s*([0-9.]+)/i);
+                const gaugeScore = scoreMatch ? parseFloat(scoreMatch[1]) : null;
+                const gaugeMax = scoreMatch ? parseFloat(scoreMatch[2]) : 10;
+                const col = activeCat.color;
+                if (charts.length === 0 && stats.length === 0 && !gaugeScore) return null;
+                return (
+                  <div className="mt-6 space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: col }}>Data Visualisation</span>
+                    </div>
+
+                    {/* Score + key stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {gaugeScore !== null && (
+                        <div className="col-span-2 md:col-span-1 rounded-xl p-4 flex flex-col items-center" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
+                          <div className="font-mono text-[8px] uppercase tracking-widest mb-2 self-start" style={{ color: col }}>Overall Score</div>
+                          <div style={{ filter: "invert(0)" }}>
+                            <SvgScoreGauge score={gaugeScore} max={gaugeMax} label="Score" color={col} />
+                          </div>
+                        </div>
+                      )}
+                      {stats.map((s, i) => (
+                        <div key={i} className="rounded-xl p-4 flex flex-col justify-center" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
+                          <div className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "var(--adv-text-dim)" }}>{s.label}</div>
+                          <div className="font-bold text-[20px]" style={{ color: col }}>{s.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Parsed bar charts */}
+                    {charts.length > 0 && (
+                      <div className="rounded-xl p-5" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
+                        <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: col }}>Score Breakdown</div>
+                        <div style={{ background: "#fff", borderRadius: "8px", padding: "16px" }}>
+                          {charts.map((c, idx) => <SvgParsedBarChart key={idx} title={c.title} rows={c.rows} catColor={col} />)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Process flow */}
+                    <div className="rounded-xl p-5" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
+                      <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: col }}>Process Flow</div>
+                      <div style={{ background: "#fff", borderRadius: "8px", padding: "12px" }}>
+                        <SvgProcessFlow steps={["Site Due Diligence", "Environmental EIA", "MIH Licence", "CDC / QIP", "Construction", "Utilities", "Operations"]} color={col} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Refine panel */}
               {!streaming && !refining && output && (
