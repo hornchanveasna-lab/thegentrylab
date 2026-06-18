@@ -124,9 +124,6 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
                     {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
                   </span>
                 )}
-                <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted max-w-[80px] truncate">
-                  {user.user_metadata?.full_name?.split(" ")[0] ?? "Account"}
-                </span>
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor" className="nav-text-muted opacity-50">
                   <path d="M0 2l4 4 4-4H0z"/>
                 </svg>
