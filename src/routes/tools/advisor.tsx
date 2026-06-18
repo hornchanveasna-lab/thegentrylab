@@ -848,20 +848,21 @@ function SvgParsedBarChart({ title, rows, catColor }: { title: string; rows: PCh
 function SvgPeopleGrid({ pct, label, color, caption }: { pct: number; label: string; color: string; caption?: string }) {
   const total = 20;
   const filled = Math.max(0, Math.min(total, Math.round(pct / 100 * total)));
-  const cols = 10, iconW = 24, iconH = 32, gap = 4;
+  const cols = 10, iconW = 24, iconH = 30, gap = 4;
   const rows = Math.ceil(total / cols);
   const svgW = cols * (iconW + gap) - gap;
-  const svgH = rows * (iconH + gap) - gap + 48;
-  const personPath = "M12 4a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-5 7h10c1.1 0 2 .9 2 2v1H5v-1c0-1.1.9-2 2-2z";
+  /* header: label at y=13, pct at y=46 (22pt tall), grid starts at y=58 */
+  const gridTop = 60;
+  const svgH = gridTop + rows * (iconH + gap) - gap + 18;
   return (
     <svg width="100%" viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block" }}>
-      <text x="0" y="14" style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: "bold", fill: "#222" }}>{label}</text>
-      <text x="0" y="26" style={{ fontFamily: PF.head, fontSize: "22pt", fontWeight: "bold", fill: color }}>{pct}%</text>
+      <text x="0" y="13" style={{ fontFamily: PF.head, fontSize: "7.5pt", fontWeight: 700, fill: "#888", textTransform: "uppercase", letterSpacing: "0.1em" }}>{label}</text>
+      <text x="0" y="48" style={{ fontFamily: PF.head, fontSize: "26pt", fontWeight: 900, fill: color, lineHeight: 1 }}>{pct}%</text>
       {Array.from({ length: total }).map((_, idx) => {
         const col = idx % cols;
         const row = Math.floor(idx / cols);
         const x = col * (iconW + gap);
-        const y = 36 + row * (iconH + gap);
+        const y = gridTop + row * (iconH + gap);
         const isFilled = idx < filled;
         return (
           <g key={idx} transform={`translate(${x},${y})`}>
@@ -872,55 +873,67 @@ function SvgPeopleGrid({ pct, label, color, caption }: { pct: number; label: str
           </g>
         );
       })}
-      {caption && <text x="0" y={svgH - 2} style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#888" }}>{caption}</text>}
+      {caption && <text x="0" y={svgH - 1} style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#999" }}>{caption}</text>}
     </svg>
   );
 }
 
-/* ── SVG Process Flow Diagram ─────────────────────────────── */
+/* ── SVG Process Flow Diagram — single scrolling row, auto-scales ── */
 function SvgProcessFlow({ steps, color }: { steps: string[]; color: string }) {
-  const boxW = 80, boxH = 44, arrowW = 24, gap = 6;
-  const perRow = 4;
-  const rows = Math.ceil(steps.length / perRow);
-  const rowW = Math.min(steps.length, perRow) * (boxW + arrowW + gap) - arrowW;
+  const n = steps.length;
   const svgW = 540;
-  const svgH = rows * (boxH + 36) + 20;
-  const scale = Math.min(1, svgW / rowW);
+  const arrowW = 18, gap = 4;
+  /* Auto-size boxes to always fit single row */
+  const boxW = Math.max(52, Math.floor((svgW - (n - 1) * (arrowW + gap)) / n));
+  const boxH = 52;
+  const totalW = n * boxW + (n - 1) * (arrowW + gap);
+  const alpha = color + "22";
+  const svgH = boxH + 38;
   return (
     <svg width="100%" viewBox={`0 0 ${svgW} ${svgH}`} style={{ display: "block", marginBottom: "10pt" }}>
-      <text x="0" y="13" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>PROCESS FLOW — KEY STAGES</text>
-      {steps.map((step, i) => {
-        const row = Math.floor(i / perRow);
-        const col = i % perRow;
-        const isRowReversed = row % 2 === 1;
-        const actualCol = isRowReversed ? (Math.min(steps.length - row * perRow, perRow) - 1 - col) : col;
-        const x = 2 + actualCol * (boxW + arrowW + gap);
-        const y = 22 + row * (boxH + 36);
-        const isLast = i === steps.length - 1;
-        const isRowEnd = (col === perRow - 1) || i === steps.length - 1;
-        const alpha = (color + "22").slice(0, 9);
-        return (
-          <g key={i}>
-            <rect x={x} y={y} width={boxW} height={boxH} rx="5" fill={alpha} stroke={color} strokeWidth="1.5" />
-            <circle cx={x + 14} cy={y + 14} r="9" fill={color} />
-            <text x={x + 14} y={y + 18} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: "bold", fill: "#fff" }}>{i + 1}</text>
-            {step.split(" ").slice(0, 3).map((word, wi) => (
-              <text key={wi} x={x + boxW / 2} y={y + 22 + wi * 9} textAnchor="middle" style={{ fontFamily: PF.body, fontSize: "6.5pt", fill: "#333" }}>{word}</text>
-            ))}
-            {!isLast && !isRowEnd && (
-              <g transform={`translate(${x + boxW + 2},${y + boxH / 2 - 5})`}>
-                <line x1="0" y1="5" x2={arrowW - 4} y2="5" stroke={color} strokeWidth="1.5" />
-                <polygon points={`${arrowW - 4},2 ${arrowW - 4},8 ${arrowW},5`} fill={color} />
-              </g>
-            )}
-            {isRowEnd && !isLast && (
-              <g>
-                <line x1={x + boxW / 2} y1={y + boxH} x2={x + boxW / 2} y2={y + boxH + 18} stroke={color} strokeWidth="1.5" strokeDasharray="3,2" />
-              </g>
-            )}
-          </g>
-        );
-      })}
+      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "0.08em" }}>Process Flow — Key Stages</text>
+      {/* Centre the row if shorter than svgW */}
+      <g transform={`translate(${Math.max(0, (svgW - totalW) / 2)}, 18)`}>
+        {steps.map((step, i) => {
+          const x = i * (boxW + arrowW + gap);
+          const words = step.replace(/[-–—]/g, " ").split(/\s+/).filter(Boolean);
+          /* Split label into up to 2 lines of ≤10 chars each */
+          const lines: string[] = [];
+          let cur = "";
+          for (const w of words) {
+            if ((cur + (cur ? " " : "") + w).length <= 11) {
+              cur += (cur ? " " : "") + w;
+            } else {
+              if (cur) lines.push(cur);
+              cur = w;
+              if (lines.length >= 1) { cur = w.slice(0, 10) + (w.length > 10 ? "…" : ""); break; }
+            }
+          }
+          if (cur) lines.push(cur);
+          return (
+            <g key={i}>
+              {/* Box */}
+              <rect x={x} y={0} width={boxW} height={boxH} rx="5" fill={alpha} stroke={color} strokeWidth="1.5" />
+              {/* Step number badge */}
+              <circle cx={x + 13} cy={13} r="9" fill={color} />
+              <text x={x + 13} y={17} textAnchor="middle"
+                style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: 800, fill: "#fff" }}>{i + 1}</text>
+              {/* Label lines */}
+              {lines.slice(0, 2).map((ln, li) => (
+                <text key={li} x={x + boxW / 2} y={28 + li * 11} textAnchor="middle"
+                  style={{ fontFamily: PF.body, fontSize: "6.5pt", fill: "#333" }}>{ln}</text>
+              ))}
+              {/* Arrow to next */}
+              {i < n - 1 && (
+                <g transform={`translate(${x + boxW + 2}, ${boxH / 2 - 5})`}>
+                  <line x1="0" y1="5" x2={arrowW - 5} y2="5" stroke={color} strokeWidth="1.5" />
+                  <polygon points={`${arrowW - 5},2 ${arrowW - 5},8 ${arrowW},5`} fill={color} />
+                </g>
+              )}
+            </g>
+          );
+        })}
+      </g>
     </svg>
   );
 }
@@ -961,18 +974,18 @@ function PrintSatMap({ form, color, height = "130pt", showPin = true }: {
     : "Kingdom of Cambodia";
   const mapUrl = getZoomedMapUrl(form);
   return (
-    <div style={{ position: "relative", borderRadius: "5pt", overflow: "hidden", border: `1.5pt solid ${color}40`, backgroundColor: "#0d1117", height }}>
-      {/* Blueprint — always rendered, sets visual baseline */}
+    <div style={{ position: "relative", borderRadius: "5pt", overflow: "hidden", border: `1.5pt solid ${color}40`, backgroundColor: "#1a1f2e", height }}>
+      {/* Blueprint — always rendered at high opacity so map is never black */}
       <img
         src={heroBlueprintImg}
         alt=""
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 60%", opacity: 0.35 }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 60%", opacity: 0.65 }}
       />
-      {/* Satellite tile on top — hides itself on error, blueprint remains */}
+      {/* Satellite tile on top — fades away on error, blueprint stays visible */}
       <img
         src={mapUrl}
         alt={`Satellite — ${province}`}
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", opacity: 0.92 }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", opacity: 0.88, transition: "opacity 0.3s" }}
         onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
       />
       {/* Top bar */}
