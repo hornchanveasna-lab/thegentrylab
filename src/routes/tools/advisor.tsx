@@ -85,7 +85,7 @@ function extractChartData(text: string): { chartData: ChartData | null; cleanTex
 /* â”€â”€ Chart: Zone Scoring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ZoneScoringChart({ zones }: { zones: ZoneData[] }) {
   const data = zones.map(z => ({
-    subject: z.name.length > 22 ? z.name.slice(0, 20) + "â€¦" : z.name,
+    subject: z.name.length > 22 ? z.name.slice(0, 20) + "..." : z.name,
     Labour: z.labour * 10, Cost: z.cost * 10, Permits: z.permits * 10,
     Infrastructure: z.infrastructure * 10, Risk: z.risk * 10,
   }));
@@ -116,7 +116,7 @@ function ZoneScoringChart({ zones }: { zones: ZoneData[] }) {
 /* â”€â”€ Chart: Cost Comparison â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function CostComparisonChart({ costs }: { costs: CostData[] }) {
   const data = costs.map(c => ({
-    zone: c.zone.length > 20 ? c.zone.slice(0, 18) + "â€¦" : c.zone,
+    zone: c.zone.length > 20 ? c.zone.slice(0, 18) + "..." : c.zone,
     "Land Lease/yr": Math.round(c.land_lease_m2_yr * (c.factory_size_m2 || 8000) / 1000),
     "Build Cost": Math.round(c.build_cost_m2 * (c.factory_size_m2 || 8000) / 1000),
     "Utilities": Math.round(c.utilities_usd / 1000),
@@ -176,7 +176,7 @@ function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timelin
           );
         })}
       </div>
-      <p className="font-mono text-[9px] mt-3" style={{ color: "rgba(255,255,255,0.25)" }}>Total: ~{Math.round(total / 4.33)} months Â· {total} weeks</p>
+      <p className="font-mono text-[9px] mt-3" style={{ color: "rgba(255,255,255,0.25)" }}>Total: ~{Math.round(total / 4.33)} months · {total} weeks</p>
     </div>
   );
 }
@@ -189,7 +189,7 @@ function KeyStatsPanel({ stats, zones }: { stats: SiteSelectionChartData["key_st
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: "Min. Wage", value: `$${stats.min_wage_usd}`, unit: "/month" },
-          { label: "Power Tariff", value: `$${stats.power_min}â€“$${stats.power_max}`, unit: "/kWh" },
+          { label: "Power Tariff", value: `$${stats.power_min}"“$${stats.power_max}`, unit: "/kWh" },
           { label: "SEZ Permits", value: `${stats.sez_permit_months}`, unit: "months" },
           { label: "Outside SEZ", value: `${stats.outside_permit_months}`, unit: "months" },
         ].map(s => (
@@ -292,15 +292,15 @@ const CATEGORIES: { id: Category; label: string; color: string; desc: string; ic
 
 const SECTORS = ["Garment & Textiles","Electronics & PCB","Food Processing","Warehousing & Logistics","Automotive / EV","Data Center","Energy / Solar","Pharmaceutical","Furniture","Footwear"];
 const PROVINCES = ["Phnom Penh","Kandal","Kampong Speu","Sihanoukville","Svay Rieng","Kampong Cham","Kampot","Siem Reap","Battambang","Other / Recommend best"];
-const BUDGET_RANGES = ["Under USD 1M","USD 1M â€“ 5M","USD 5M â€“ 20M","USD 20M â€“ 50M","USD 50M â€“ 100M","Over USD 100M"];
-const FACTORY_SIZES = ["Under 1,000 mÂ²","1,000 â€“ 3,000 mÂ²","3,000 â€“ 10,000 mÂ²","10,000 â€“ 30,000 mÂ²","30,000 â€“ 65,000 mÂ²","Over 65,000 mÂ²"];
+const BUDGET_RANGES = ["Under USD 1M","USD 1M "“ 5M","USD 5M "“ 20M","USD 20M "“ 50M","USD 50M "“ 100M","Over USD 100M"];
+const FACTORY_SIZES = ["Under 1,000 m²","1,000 "“ 3,000 m²","3,000 "“ 10,000 m²","10,000 "“ 30,000 m²","30,000 "“ 65,000 m²","Over 65,000 m²"];
 
 /* â”€â”€ Brief definitions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const BRIEFS: BriefType[] = [
   /* INVEST */
   {
     id: "site-selection", category: "INVEST", title: "Site Selection Brief",
-    desc: "Top 3 zone recommendations scored across 14 criteria â€” utilities, labour, cost, permits, risk.",
+    desc: "Top 3 zone recommendations scored across 14 criteria "” utilities, labour, cost, permits, risk.",
     audience: "Manufacturer evaluating Cambodia entry",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
     fields: [
@@ -321,7 +321,7 @@ const BRIEFS: BriefType[] = [
       { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
       { id: "factory_size", label: "Factory / Facility Size", type: "select", options: FACTORY_SIZES, required: true },
       { id: "location", label: "Target Location", type: "select", options: PROVINCES, required: true },
-      { id: "inside_sez", label: "Inside SEZ or Outside?", type: "select", options: ["Inside SEZ","Outside SEZ / greenfield","Not sure â€” advise me"], required: true },
+      { id: "inside_sez", label: "Inside SEZ or Outside?", type: "select", options: ["Inside SEZ","Outside SEZ / greenfield","Not sure "” advise me"], required: true },
       { id: "export_market", label: "Primary Export Market", type: "select", options: ["European Union","United States","ASEAN region","China","Japan / South Korea","Multiple markets"], required: true },
       { id: "production", label: "What will you produce?", type: "text", placeholder: "e.g. garment cutting & sewing, PCB assembly", required: true },
     ],
@@ -335,7 +335,7 @@ const BRIEFS: BriefType[] = [
       { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
       { id: "origin_country", label: "Investor Country of Origin", type: "text", placeholder: "e.g. South Korea", required: true },
       { id: "investment_size", label: "Investment Size (USD)", type: "select", options: BUDGET_RANGES, required: true },
-      { id: "export_pct", label: "Export Percentage", type: "select", options: ["Over 80% export","50â€“80% export","Under 50% export","Domestic market only"], required: true },
+      { id: "export_pct", label: "Export Percentage", type: "select", options: ["Over 80% export","50"“80% export","Under 50% export","Domestic market only"], required: true },
       { id: "project_type", label: "Project Type", type: "select", options: ["New greenfield investment","Expansion of existing facility","Relocation from another country","Joint venture with local partner"], required: true },
     ],
   },
@@ -363,7 +363,7 @@ const BRIEFS: BriefType[] = [
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "land_size", label: "Land Size (hectares)", type: "text", placeholder: "e.g. 12.5 ha", required: true },
       { id: "title_type", label: "Land Title Type", type: "select", options: ["Hard title (LMAP)","Soft title","Unclear / under investigation","Inside SEZ / developer-managed"], required: true },
-      { id: "distance_nr", label: "Distance to Nearest National Road", type: "select", options: ["On national road","Under 2 km","2â€“10 km","Over 10 km","Unknown"], required: true },
+      { id: "distance_nr", label: "Distance to Nearest National Road", type: "select", options: ["On national road","Under 2 km","2"“10 km","Over 10 km","Unknown"], required: true },
       { id: "current_use", label: "Current Land Use", type: "select", options: ["Farmland / rice field","Scrubland / vacant","Existing structure (low-value)","Operating facility","Other"], required: true },
       { id: "development_goal", label: "Your Goal", type: "select", options: ["Sell the land","Lease to a factory tenant","Develop an industrial park / SEZ","Develop for own use"], required: true },
     ],
@@ -376,9 +376,9 @@ const BRIEFS: BriefType[] = [
     fields: [
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "land_or_building", label: "What are you offering?", type: "select", options: ["Bare land only","Serviced plot (utilities to boundary)","Shell factory building","Fitted factory (ready to use)","Whole industrial park"], required: true },
-      { id: "size", label: "Available Size", type: "text", placeholder: "e.g. 5 ha land / 8,000 mÂ² building", required: true },
+      { id: "size", label: "Available Size", type: "text", placeholder: "e.g. 5 ha land / 8,000 m² building", required: true },
       { id: "utilities", label: "Utilities Available", type: "select", options: ["Power + water + road (fully serviced)","Power + road only","Road only","None yet","Inside SEZ (full)"], required: true },
-      { id: "asking_rate", label: "Target Lease Rate (USD/mÂ²/yr)", type: "text", placeholder: "e.g. 45 or leave blank for our recommendation" },
+      { id: "asking_rate", label: "Target Lease Rate (USD/m²/yr)", type: "text", placeholder: "e.g. 45 or leave blank for our recommendation" },
     ],
   },
   {
@@ -390,7 +390,7 @@ const BRIEFS: BriefType[] = [
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "land_size", label: "Total Land Area (ha)", type: "text", placeholder: "e.g. 50 ha", required: true },
       { id: "target_sector", label: "Target Tenant Sector", type: "select", options: [...SECTORS, "Mixed / multi-sector"], required: true },
-      { id: "development_budget", label: "Development Budget", type: "select", options: ["Under USD 5M","USD 5M â€“ 20M","USD 20M â€“ 50M","Over USD 50M","Unknown â€” advise me"], required: true },
+      { id: "development_budget", label: "Development Budget", type: "select", options: ["Under USD 5M","USD 5M "“ 20M","USD 20M "“ 50M","Over USD 50M","Unknown "” advise me"], required: true },
       { id: "utilities_status", label: "Utilities Status", type: "select", options: ["EDC power nearby (under 5km)","EDC power available on site","Water source available","All utilities available","Need to develop from scratch"], required: true },
     ],
   },
@@ -412,15 +412,15 @@ const BRIEFS: BriefType[] = [
   },
   {
     id: "cost-benchmark", category: "FINANCE", title: "Cost Benchmark",
-    desc: "Market rate line-item cost breakdown â€” is the budget realistic vs what GentryLab has seen delivered?",
+    desc: "Market rate line-item cost breakdown "” is the budget realistic vs what GentryLab has seen delivered?",
     audience: "Bank / investor stress-testing a project budget",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
     fields: [
       { id: "building_type", label: "Building Type", type: "select", options: ["Standard factory (portal frame steel)","Warehouse / logistics hub","Food processing facility","Clean room / electronics","Office + factory mix","Cold storage"], required: true },
-      { id: "size", label: "Total Built Area (mÂ²)", type: "text", placeholder: "e.g. 12,000", required: true },
+      { id: "size", label: "Total Built Area (m²)", type: "text", placeholder: "e.g. 12,000", required: true },
       { id: "province", label: "Province", type: "select", options: PROVINCES, required: true },
       { id: "spec_level", label: "Specification Level", type: "select", options: ["Basic (minimum spec)","Standard (market norm)","High-spec (international standard)","Premium / pharma-grade"], required: true },
-      { id: "include_utilities", label: "Include Utility Connection Cost?", type: "select", options: ["Yes â€” include EDC + water connection","No â€” building only","Not sure â€” include both scenarios"], required: true },
+      { id: "include_utilities", label: "Include Utility Connection Cost?", type: "select", options: ["Yes "” include EDC + water connection","No "” building only","Not sure "” include both scenarios"], required: true },
     ],
   },
   {
@@ -432,7 +432,7 @@ const BRIEFS: BriefType[] = [
       { id: "sector", label: "Sector", type: "select", options: SECTORS, required: true },
       { id: "province", label: "Province / Location", type: "select", options: PROVINCES, required: true },
       { id: "investment_size", label: "Exposure / Investment Size", type: "select", options: BUDGET_RANGES, required: true },
-      { id: "horizon", label: "Investment Horizon", type: "select", options: ["1â€“3 years","3â€“5 years","5â€“10 years","Over 10 years"], required: true },
+      { id: "horizon", label: "Investment Horizon", type: "select", options: ["1"“3 years","3"“5 years","5"“10 years","Over 10 years"], required: true },
       { id: "concern", label: "Primary Risk Concern", type: "select", options: ["Market demand / vacancy","Regulatory / political","FX / currency","Borrower default","Environmental","All risks"], required: true },
     ],
   },
@@ -449,7 +449,7 @@ const BRIEFS: BriefType[] = [
       { id: "inside_sez", label: "Inside SEZ or Outside?", type: "select", options: ["Inside SEZ","Outside SEZ","Not decided yet"], required: true },
       { id: "entity_type", label: "Entity Type", type: "select", options: ["100% foreign-owned","Cambodian-owned","JV (foreign + local)","Cambodian subsidiary of foreign company"], required: true },
       { id: "building_type", label: "Facility Type", type: "select", options: ["Factory / production","Warehouse","Office + factory","Food processing","Cold storage","Data center"], required: true },
-      { id: "timeline_goal", label: "Target Timeline to Start Production", type: "select", options: ["As fast as possible (under 12 months)","12â€“18 months","18â€“24 months","Over 24 months / flexible"], required: true },
+      { id: "timeline_goal", label: "Target Timeline to Start Production", type: "select", options: ["As fast as possible (under 12 months)","12"“18 months","18"“24 months","Over 24 months / flexible"], required: true },
     ],
   },
   {
@@ -461,7 +461,7 @@ const BRIEFS: BriefType[] = [
       { id: "product", label: "Product / HS Code", type: "text", placeholder: "e.g. garments HS 6203, PCB HS 8534", required: true },
       { id: "export_market", label: "Target Export Market", type: "select", options: ["European Union (EBA)","United States (GSP)","United Kingdom","Japan (EPA)","ASEAN (RCEP)","Multiple markets"], required: true },
       { id: "origin_country", label: "Investor Origin Country", type: "text", placeholder: "e.g. South Korea", required: true },
-      { id: "local_content", label: "Estimated Local (Cambodia) Content %", type: "select", options: ["Under 20%","20â€“40%","40â€“60%","Over 60%","Not sure"], required: true },
+      { id: "local_content", label: "Estimated Local (Cambodia) Content %", type: "select", options: ["Under 20%","20"“40%","40"“60%","Over 60%","Not sure"], required: true },
     ],
   },
   {
@@ -487,21 +487,21 @@ const BRIEFS: BriefType[] = [
       { id: "building_type", label: "Building Type", type: "select", options: ["Standard factory","Warehouse / logistics","Food processing","Clean room / electronics","Multi-building industrial campus"], required: true },
       { id: "factory_size", label: "Total Built Area", type: "select", options: FACTORY_SIZES, required: true },
       { id: "province", label: "Province", type: "select", options: PROVINCES, required: true },
-      { id: "start_timing", label: "Planned Start Month", type: "select", options: ["November â€“ February (dry season start)","March â€“ May (late dry)","June â€“ October (wet season)","Flexible â€” advise best window"], required: true },
+      { id: "start_timing", label: "Planned Start Month", type: "select", options: ["November "“ February (dry season start)","March "“ May (late dry)","June "“ October (wet season)","Flexible "” advise best window"], required: true },
       { id: "complexity", label: "Project Complexity", type: "select", options: ["Simple shell building","Standard with full MEP","High-spec with clean room / cold chain","Complex multi-building campus"], required: true },
     ],
   },
   {
     id: "epc-budget", category: "PLAN", title: "EPC Budget Builder",
-    desc: "Line-item cost estimate for civil, structural, MEP, and utilities â€” with low/mid/high ranges.",
+    desc: "Line-item cost estimate for civil, structural, MEP, and utilities "” with low/mid/high ranges.",
     audience: "Developer or CFO building a project budget",
     icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
     fields: [
       { id: "building_type", label: "Building Type", type: "select", options: ["Standard factory (portal frame steel)","Warehouse / logistics hub","Food processing facility","Clean room / electronics assembly","Office + factory mix","Cold storage"], required: true },
-      { id: "size", label: "Total Built Area (mÂ²)", type: "text", placeholder: "e.g. 15,000", required: true },
+      { id: "size", label: "Total Built Area (m²)", type: "text", placeholder: "e.g. 15,000", required: true },
       { id: "province", label: "Province", type: "select", options: PROVINCES, required: true },
       { id: "spec_level", label: "Specification Level", type: "select", options: ["Basic (minimum viable)","Standard (market norm)","High-spec (international)","Premium / pharma-grade"], required: true },
-      { id: "include_site", label: "Include Site Works?", type: "select", options: ["Yes (earthworks, roads, drainage)","Building only","Full package incl. utilities","Not sure â€” include everything"], required: true },
+      { id: "include_site", label: "Include Site Works?", type: "select", options: ["Yes (earthworks, roads, drainage)","Building only","Full package incl. utilities","Not sure "” include everything"], required: true },
       { id: "procurement", label: "Procurement Approach", type: "select", options: ["Full turnkey EPC contractor","Design-bid-build (separate)","Owner-managed packages","Not decided yet"], required: true },
     ],
   },
@@ -527,7 +527,7 @@ function renderMarkdown(text: string) {
     } else if (line.startsWith("âœ…")) {
       elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(16,185,129,0.08)", borderLeft: "3px solid #10b981", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line)}</div>);
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      elements.push(<div key={i} className="flex gap-2 text-[12.5px] my-0.5" style={{ color: "rgba(255,255,255,0.70)" }}><span style={{ color: "#ff5100" }} className="shrink-0 mt-0.5">Â·</span><span>{inlineMd(line.slice(2))}</span></div>);
+      elements.push(<div key={i} className="flex gap-2 text-[12.5px] my-0.5" style={{ color: "rgba(255,255,255,0.70)" }}><span style={{ color: "#ff5100" }} className="shrink-0 mt-0.5">·</span><span>{inlineMd(line.slice(2))}</span></div>);
     } else if (/^\d+\./.test(line)) {
       const num = line.match(/^(\d+)\./)?.[1];
       elements.push(<div key={i} className="flex gap-2.5 text-[12.5px] my-1" style={{ color: "rgba(255,255,255,0.70)" }}><span className="font-mono text-[10px] font-bold shrink-0 mt-0.5 w-4" style={{ color: "#ff5100" }}>{num}.</span><span>{inlineMd(line.replace(/^\d+\.\s*/, ""))}</span></div>);
@@ -597,7 +597,7 @@ function renderPrintMarkdown(text: string) {
     } else if (line.startsWith("âœ…")) {
       elements.push(<div key={i} className="pr-good">{printInline(line)}</div>);
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      elements.push(<div key={i} className="pr-li"><span className="pr-li-dot">Â·</span><span>{printInline(line.slice(2))}</span></div>);
+      elements.push(<div key={i} className="pr-li"><span className="pr-li-dot">·</span><span>{printInline(line.slice(2))}</span></div>);
     } else if (/^\d+\./.test(line)) {
       const num = line.match(/^(\d+)\./)?.[1];
       elements.push(<div key={i} className="pr-ol"><span className="pr-ol-num">{num}.</span><span>{printInline(line.replace(/^\d+\.\s*/, ""))}</span></div>);
@@ -667,7 +667,7 @@ function SvgZoneScoringChart({ zones }: { zones: ZoneData[] }) {
   const totalH = zones.length * groupH + 40;
   return (
     <svg width="100%" viewBox={`0 0 540 ${totalH}`} style={{ display: "block", marginBottom: "8pt" }}>
-      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>ZONE SCORING â€” CRITERIA BREAKDOWN (out of 10)</text>
+      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>ZONE SCORING "” CRITERIA BREAKDOWN (out of 10)</text>
       {zones.map((zone, zi) => {
         const gy = 22 + zi * groupH;
         return (
@@ -676,7 +676,7 @@ function SvgZoneScoringChart({ zones }: { zones: ZoneData[] }) {
             <text x="6" y="11" style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: "bold", fill: PCOLS[zi % PCOLS.length] }}>
               #{zone.rank} {zone.name}
             </text>
-            <text x="6" y="21" style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#777" }}>{zone.province} Â· {zone.zone_type} Â· Overall: {zone.score}/100</text>
+            <text x="6" y="21" style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#777" }}>{zone.province} · {zone.zone_type} · Overall: {zone.score}/100</text>
             {criteria.map((c, ci) => {
               const val = zone[c.key] * 10;
               const barX = 140, barMaxW = 360, barW = Math.max(2, Math.round((val / 100) * barMaxW));
@@ -699,8 +699,8 @@ function SvgZoneScoringChart({ zones }: { zones: ZoneData[] }) {
 
 function SvgCostChart({ costs }: { costs: CostData[] }) {
   const fields: { key: keyof CostData; label: string }[] = [
-    { key: "land_lease_m2_yr", label: "Land Lease /mÂ²/yr ($)" },
-    { key: "build_cost_m2", label: "Build Cost /mÂ² ($)" },
+    { key: "land_lease_m2_yr", label: "Land Lease /m²/yr ($)" },
+    { key: "build_cost_m2", label: "Build Cost /m² ($)" },
   ];
   const rowH = 18, groupH = fields.length * rowH + 18;
   const totalH = costs.length * groupH + 40;
@@ -749,7 +749,7 @@ function SvgTimeline({ timeline }: { timeline: SiteSelectionChartData["timeline_
   return (
     <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "8pt" }}>
       <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>
-        TIMELINE TO FIRST PRODUCTION Â· TOTAL ~{Math.round(total / 4.33)} MONTHS
+        TIMELINE TO FIRST PRODUCTION · TOTAL ~{Math.round(total / 4.33)} MONTHS
       </text>
       {phases.map((p, i) => {
         const x = 150 + Math.round((off / total) * W);
@@ -776,7 +776,7 @@ function SvgTimeline({ timeline }: { timeline: SiteSelectionChartData["timeline_
 function SvgKeyStats({ stats, zones }: { stats: SiteSelectionChartData["key_stats"]; zones: ZoneData[] }) {
   const items = [
     { label: "Min. Wage", value: `$${stats.min_wage_usd}`, unit: "/month" },
-    { label: "Power Tariff", value: `$${stats.power_min}â€“$${stats.power_max}`, unit: "/kWh" },
+    { label: "Power Tariff", value: `$${stats.power_min}"“$${stats.power_max}`, unit: "/kWh" },
     { label: "SEZ Permits", value: `${stats.sez_permit_months}mo`, unit: "inside SEZ" },
     { label: "Outside SEZ", value: `${stats.outside_permit_months}mo`, unit: "permit time" },
   ];
@@ -826,7 +826,7 @@ function SvgGenericTimeline({ items }: { items: GenericChartData["timeline_items
   return (
     <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "8pt" }}>
       <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>
-        TIMELINE Â· TOTAL {total} WEEKS
+        TIMELINE · TOTAL {total} WEEKS
       </text>
       {items.map((item, i) => {
         const x = 145 + Math.round((off / total) * W);
@@ -895,7 +895,7 @@ function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
 
 /* â”€â”€ SVG Cambodia Province Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 // Converts lat/lng to SVG x/y within a 400Ã—300 viewport
-// Cambodia bounds: lat 10.4â€“14.7, lng 102.35â€“107.62
+// Cambodia bounds: lat 10.4"“14.7, lng 102.35"“107.62
 function latLngToSvg(lat: number, lng: number): [number, number] {
   const x = ((lng - 102.35) / (107.62 - 102.35)) * 400;
   const y = ((14.7 - lat) / (14.7 - 10.4)) * 300;
@@ -919,7 +919,7 @@ function SvgCambodiaMap({ zones }: { zones: ZoneData[] }) {
   return (
     <svg width="100%" viewBox="0 0 540 330" style={{ display: "block", marginBottom: "8pt" }}>
       <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>
-        ZONE LOCATIONS â€” CAMBODIA MAP
+        ZONE LOCATIONS "” CAMBODIA MAP
       </text>
       <g transform="translate(60,18)">
         {/* Country fill */}
@@ -946,7 +946,7 @@ function SvgCambodiaMap({ zones }: { zones: ZoneData[] }) {
               <circle cx={x} cy={y} r="8" fill={col} stroke="#fff" strokeWidth="1.5" opacity="0.92" />
               <text x={x} y={y + 4} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "7.5pt", fontWeight: "bold", fill: "#fff" }}>{z.rank}</text>
               <text x={x + 11} y={y - 4} style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: "bold", fill: col }}>{z.name}</text>
-              <text x={x + 11} y={y + 6} style={{ fontFamily: PF.body, fontSize: "6pt", fill: "#888" }}>{z.province} Â· Score {z.score}</text>
+              <text x={x + 11} y={y + 6} style={{ fontFamily: PF.body, fontSize: "6pt", fill: "#888" }}>{z.province} · Score {z.score}</text>
             </g>
           );
         })}
@@ -1019,14 +1019,14 @@ function PrintReport({
     <div className="advisor-print pr-root" style={{ backgroundColor: "#ffffff", color: "#000000" }}>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          PAGE 1 â€” MINIMAL COVER
+          PAGE 1 "” MINIMAL COVER
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ pageBreakAfter: "always", minHeight: "270mm", display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
 
         {/* Thin top accent line */}
         <div style={{ height: "4pt", backgroundColor: "#cc3300" }} />
 
-        {/* Cover body â€” centred, lots of white space */}
+        {/* Cover body "” centred, lots of white space */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 48pt" }}>
 
           {/* Brand wordmark */}
@@ -1036,7 +1036,7 @@ function PrintReport({
 
           {/* Category label */}
           <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#999", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: "10pt" }}>
-            {cat.label} Â· {brief.audience}
+            {cat.label} · {brief.audience}
           </div>
 
           {/* Main title */}
@@ -1059,7 +1059,7 @@ function PrintReport({
         {/* Cover bottom bar */}
         <div style={{ padding: "14pt 48pt", borderTop: "1pt solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#bbb", letterSpacing: "0.1em" }}>
-            REF #{refId} Â· AI INDUSTRIAL ADVISOR Â· CAMBODIA
+            REF #{refId} · AI INDUSTRIAL ADVISOR · CAMBODIA
           </div>
           <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#bbb" }}>
             thegentrylab.io
@@ -1068,18 +1068,18 @@ function PrintReport({
       </div>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          PAGE 2 â€” INFOGRAPHIC / DATA VISUALISATION
+          PAGE 2 "” INFOGRAPHIC / DATA VISUALISATION
           (all reports get this page)
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ pageBreakAfter: "always", backgroundColor: "#ffffff" }}>
         <div className="pr-header">
           <div>
             <div className="pr-brand-name">THE GENTRY LAB</div>
-            <div className="pr-brand-tag">AI Industrial Advisor Â· Cambodia</div>
+            <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div className="pr-meta-label">{brief.title}</div>
-            <div className="pr-meta-label">Ref #{refId} Â· {dateStr}</div>
+            <div className="pr-meta-label">Ref #{refId} · {dateStr}</div>
           </div>
         </div>
 
@@ -1121,13 +1121,13 @@ function PrintReport({
 
             {/* Zone scoring chart */}
             <div style={{ marginBottom: "14pt" }}>
-              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Scoring â€” Criteria Breakdown</div>
+              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Scoring "” Criteria Breakdown</div>
               <SvgZoneScoringChart zones={ssd.zones} />
             </div>
 
             {/* Gantt chart / timeline */}
             <div style={{ marginBottom: "14pt" }}>
-              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Project Timeline â€” Gantt Chart</div>
+              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Project Timeline "” Gantt Chart</div>
               <SvgTimeline timeline={ssd.timeline_weeks} />
             </div>
 
@@ -1148,7 +1148,7 @@ function PrintReport({
             <div style={{ marginBottom: "14pt" }}>
               <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Estimated Capex Detail (USD)</div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead><tr>{["Zone","Land /mÂ²/yr","Build /mÂ²","Utilities /mo","Permits","Area"].map(h => <th key={h} style={th({ textAlign: h === "Zone" ? "left" : "center" })}>{h}</th>)}</tr></thead>
+                <thead><tr>{["Zone","Land /m²/yr","Build /m²","Utilities /mo","Permits","Area"].map(h => <th key={h} style={th({ textAlign: h === "Zone" ? "left" : "center" })}>{h}</th>)}</tr></thead>
                 <tbody>{ssd.costs.map((c, i) => (
                   <tr key={c.zone} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                     <td style={td({ fontWeight: 700, color: PCOLS[i % PCOLS.length] })}>{c.zone}</td>
@@ -1156,7 +1156,7 @@ function PrintReport({
                     <td style={td({ textAlign: "center" })}>${c.build_cost_m2}</td>
                     <td style={td({ textAlign: "center" })}>${c.utilities_usd.toLocaleString()}</td>
                     <td style={td({ textAlign: "center" })}>${c.permits_usd.toLocaleString()}</td>
-                    <td style={td({ textAlign: "center" })}>{c.factory_size_m2.toLocaleString()} mÂ²</td>
+                    <td style={td({ textAlign: "center" })}>{c.factory_size_m2.toLocaleString()} m²</td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -1192,7 +1192,7 @@ function PrintReport({
             {/* Key metrics infographic */}
             {gd.key_metrics?.length > 0 && (
               <div style={{ marginBottom: "14pt" }}>
-                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures â€” Infographic</div>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures "” Infographic</div>
                 <SvgGenericMetrics metrics={gd.key_metrics} />
               </div>
             )}
@@ -1227,7 +1227,7 @@ function PrintReport({
       </div>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          PAGE 3+ â€” BRIEF CONTENT
+          PAGE 3+ "” BRIEF CONTENT
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ backgroundColor: "#ffffff" }}>
 
@@ -1235,11 +1235,11 @@ function PrintReport({
         <div className="pr-header">
           <div>
             <div className="pr-brand-name">THE GENTRY LAB</div>
-            <div className="pr-brand-tag">AI Industrial Advisor Â· Cambodia</div>
+            <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div className="pr-meta-label">{brief.title}</div>
-            <div className="pr-meta-label">Ref #{refId} Â· {dateStr}</div>
+            <div className="pr-meta-label">Ref #{refId} · {dateStr}</div>
           </div>
         </div>
 
@@ -1249,7 +1249,7 @@ function PrintReport({
       </div>
 
       {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-          LAST PAGE â€” DISCLAIMER + METADATA
+          LAST PAGE "” DISCLAIMER + METADATA
       â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
       <div style={{ pageBreakBefore: "always", backgroundColor: "#ffffff", color: "#000000" }}>
 
@@ -1257,30 +1257,30 @@ function PrintReport({
         <div className="pr-header">
           <div>
             <div className="pr-brand-name">THE GENTRY LAB</div>
-            <div className="pr-brand-tag">AI Industrial Advisor Â· Cambodia</div>
+            <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div className="pr-meta-label">Ref #{refId} Â· {dateStr}</div>
+            <div className="pr-meta-label">Ref #{refId} · {dateStr}</div>
           </div>
         </div>
 
-        {/* Data sources â€” compact */}
+        {/* Data sources "” compact */}
         <div style={{ marginBottom: "18pt" }}>
           <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.15em", borderBottom: "1pt solid #eee", paddingBottom: "4pt", marginBottom: "10pt" }}>
             Data Sources
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4pt 24pt" }}>
             {[
-              { ref: "1", src: "CDC Cambodia â€” QIP Registry", url: "cdc.gov.kh" },
-              { ref: "2", src: "SEZB â€” SEZ Directory", url: "sezb.gov.kh" },
+              { ref: "1", src: "CDC Cambodia "” QIP Registry", url: "cdc.gov.kh" },
+              { ref: "2", src: "SEZB "” SEZ Directory", url: "sezb.gov.kh" },
               { ref: "3", src: "Ministry of Industry (MIH)", url: "mih.gov.kh" },
               { ref: "4", src: "Ministry of Environment (MoE)", url: "moe.gov.kh" },
               { ref: "5", src: "Ã‰lectricitÃ© du Cambodge (EDC)", url: "edc.com.kh" },
-              { ref: "6", src: "MoLVT â€” Minimum Wage Orders", url: "molvt.gov.kh" },
-              { ref: "7", src: "GDCE â€” Customs & Duty Schedule", url: "customs.gov.kh" },
-              { ref: "8", src: "World Bank â€” Cambodia Monitor", url: "worldbank.org/cambodia" },
-              { ref: "9", src: "ADB â€” Cambodia Portfolio", url: "adb.org/cambodia" },
-              { ref: "10", src: "IFC â€” Doing Business in Cambodia", url: "ifc.org" },
+              { ref: "6", src: "MoLVT "” Minimum Wage Orders", url: "molvt.gov.kh" },
+              { ref: "7", src: "GDCE "” Customs & Duty Schedule", url: "customs.gov.kh" },
+              { ref: "8", src: "World Bank "” Cambodia Monitor", url: "worldbank.org/cambodia" },
+              { ref: "9", src: "ADB "” Cambodia Portfolio", url: "adb.org/cambodia" },
+              { ref: "10", src: "IFC "” Doing Business in Cambodia", url: "ifc.org" },
               { ref: "11", src: "Open Development Cambodia (ODC)", url: "opendevelopmentcambodia.net" },
               { ref: "12", src: "JETRO Cambodia Investment Survey", url: "jetro.go.jp/cambodia" },
               { ref: "13", src: "GentryLab Site Intelligence DB", url: "thegentrylab.io" },
@@ -1338,7 +1338,7 @@ function PrintReport({
             THE GENTRY LAB
           </div>
           <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "#ccc" }}>
-            Â© {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd. Â· thegentrylab.io
+            © {generatedAt.getFullYear()} The Gentry Lab · thegentrylab.io
           </div>
         </div>
       </div>
@@ -1347,14 +1347,14 @@ function PrintReport({
       <div className="pr-footer">
         <div>
           <div className="pr-footer-left">
-            <span className="pr-footer-brand">THE GENTRY LAB</span> Â· AI Industrial Advisor Â· Ref #{refId}
+            <span className="pr-footer-brand">THE GENTRY LAB</span> · AI Industrial Advisor · Ref #{refId}
           </div>
           <div className="pr-disclaimer">
-            AI-generated advisory brief. Verify all data independently. Â© {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd.
+            AI-generated advisory brief. Verify all data independently. © {generatedAt.getFullYear()} The Gentry Lab 
           </div>
         </div>
         <div className="pr-footer-right">
-          advisory@thegentrylab.io Â· thegentrylab.io
+          advisory@thegentrylab.io · thegentrylab.io
         </div>
       </div>
     </div>
@@ -1388,7 +1388,7 @@ function HistoryView({
       {loading && (
         <div className="flex items-center gap-2 py-12 justify-center" style={{ color: "rgba(255,255,255,0.30)" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="animate-spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          <span className="font-mono text-[10px] uppercase tracking-widest">Loading briefsâ€¦</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest">Loading briefs...</span>
         </div>
       )}
 
@@ -1431,7 +1431,7 @@ function HistoryView({
                   </div>
                 </div>
                 {preview && (
-                  <p className="text-[11px] mt-2 leading-relaxed line-clamp-2" style={{ color: "rgba(255,255,255,0.30)" }}>{preview}â€¦</p>
+                  <p className="text-[11px] mt-2 leading-relaxed line-clamp-2" style={{ color: "rgba(255,255,255,0.30)" }}>{preview}...</p>
                 )}
               </button>
             );
@@ -1539,10 +1539,10 @@ export default function AdvisorPage() {
     s1.addText("THE GENTRY LAB", { x: 0.6, y: 0.35, w: 12, h: 0.35, fontSize: 10, color: RED, bold: true, charSpacing: 6, fontFace: "Arial" });
     s1.addText(selectedBrief.title, { x: 0.6, y: 1.0, w: 9.5, h: 2.5, fontSize: 36, color: DARK, bold: true, fontFace: "Arial", valign: "top" });
     s1.addShape(pptx.ShapeType.rect, { x: 0.6, y: 3.7, w: 0.7, h: 0.05, fill: { color: RED } } as any);
-    s1.addText(`${reportType === "comprehensive" ? "Comprehensive Analysis Report" : "Standard Advisory Brief"}  Â·  ${cat.label}`, { x: 0.6, y: 3.85, w: 10, h: 0.3, fontSize: 11, color: GRAY, fontFace: "Arial" });
+    s1.addText(`${reportType === "comprehensive" ? "Comprehensive Analysis Report" : "Standard Advisory Brief"}  ·  ${cat.label}`, { x: 0.6, y: 3.85, w: 10, h: 0.3, fontSize: 11, color: GRAY, fontFace: "Arial" });
     s1.addText(dateStr, { x: 0.6, y: 4.2, w: 10, h: 0.3, fontSize: 11, color: LGRAY, fontFace: "Arial" });
     s1.addShape(pptx.ShapeType.rect, { x: 0, y: 7.1, w: "100%", h: 0.02, fill: { color: "EEEEEE" } } as any);
-    s1.addText(`REF #${refId}  Â·  AI INDUSTRIAL ADVISOR  Â·  CAMBODIA`, { x: 0.6, y: 7.15, w: 9, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial" });
+    s1.addText(`REF #${refId}  ·  AI INDUSTRIAL ADVISOR  ·  CAMBODIA`, { x: 0.6, y: 7.15, w: 9, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial" });
     s1.addText("thegentrylab.io", { x: 10.5, y: 7.15, w: 2.5, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial", align: "right" });
 
     // â”€â”€ Slide 2: Analysis Parameters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1553,7 +1553,7 @@ export default function AdvisorPage() {
       const s2 = pptx.addSlide();
       s2.background = { color: WHITE };
       s2.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
-      s2.addText("THE GENTRY LAB  â€”  Analysis Parameters", { x: 0.4, y: 0.2, w: 12, h: 0.35, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
+      s2.addText("THE GENTRY LAB  "”  Analysis Parameters", { x: 0.4, y: 0.2, w: 12, h: 0.35, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
       s2.addText(selectedBrief.title, { x: 0.4, y: 0.55, w: 12, h: 0.35, fontSize: 14, color: DARK, bold: true, fontFace: "Arial" });
       const rows: string[][] = inputPairs2.map(p => [p.key, p.val]);
       s2.addTable([
@@ -1574,7 +1574,7 @@ export default function AdvisorPage() {
       const stats = ssd2.key_stats;
       const statItems = [
         { label: "Min. Wage", val: `$${stats.min_wage_usd}`, unit: "/ month" },
-        { label: "Power Tariff", val: `$${stats.power_min}â€“$${stats.power_max}`, unit: "/ kWh" },
+        { label: "Power Tariff", val: `$${stats.power_min}"“$${stats.power_max}`, unit: "/ kWh" },
         { label: "SEZ Permits", val: `${stats.sez_permit_months} mo`, unit: "inside SEZ" },
         { label: "Outside SEZ", val: `${stats.outside_permit_months} mo`, unit: "permit time" },
       ];
@@ -1608,8 +1608,8 @@ export default function AdvisorPage() {
       s4.addText("COST COMPARISON & TIMELINE", { x: 0.4, y: 0.15, w: 12, h: 0.35, fontSize: 9, color: RED, bold: true, charSpacing: 4, fontFace: "Arial" });
       // Cost bar chart
       const costChartData = [
-        { name: "Land Lease /mÂ²/yr ($)", labels: ssd2.costs.map(c => c.zone), values: ssd2.costs.map(c => c.land_lease_m2_yr) },
-        { name: "Build Cost /mÂ² ($)", labels: ssd2.costs.map(c => c.zone), values: ssd2.costs.map(c => c.build_cost_m2) },
+        { name: "Land Lease /m²/yr ($)", labels: ssd2.costs.map(c => c.zone), values: ssd2.costs.map(c => c.land_lease_m2_yr) },
+        { name: "Build Cost /m² ($)", labels: ssd2.costs.map(c => c.zone), values: ssd2.costs.map(c => c.build_cost_m2) },
       ];
       s4.addChart(pptx.ChartType.bar, costChartData.map((cd, ci) => ({
         name: cd.name,
@@ -1686,13 +1686,13 @@ export default function AdvisorPage() {
       sc.background = { color: WHITE };
       sc.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
       sc.addText(selectedBrief.title, { x: 0.4, y: 0.12, w: 10, h: 0.3, fontSize: 9, color: RED, bold: true, fontFace: "Arial" });
-      sc.addText(`Ref #${refId}  Â·  ${dateStr}`, { x: 10.5, y: 0.12, w: 2.7, h: 0.3, fontSize: 7, color: LGRAY, align: "right", fontFace: "Arial" });
+      sc.addText(`Ref #${refId}  ·  ${dateStr}`, { x: 10.5, y: 0.12, w: 2.7, h: 0.3, fontSize: 7, color: LGRAY, align: "right", fontFace: "Arial" });
       const textRuns = chunk.map(line => {
         const isH2 = line.startsWith("## ");
         const isH3 = line.startsWith("### ");
-        const isBullet = line.startsWith("- ") || line.startsWith("â€¢ ");
-        const clean = line.replace(/^#{1,3}\s+/, "").replace(/^[-â€¢]\s+/, "").replace(/\*\*(.*?)\*\*/g, "$1");
-        return { text: (isBullet ? "  â€¢ " : "") + clean, options: { fontSize: isH2 ? 13 : isH3 ? 11 : 10, bold: isH2 || isH3, color: isH2 ? RED : DARK, breakLine: true, fontFace: "Arial" } };
+        const isBullet = line.startsWith("- ") || line.startsWith(""¢ ");
+        const clean = line.replace(/^#{1,3}\s+/, "").replace(/^[-"¢]\s+/, "").replace(/\*\*(.*?)\*\*/g, "$1");
+        return { text: (isBullet ? "  "¢ " : "") + clean, options: { fontSize: isH2 ? 13 : isH3 ? 11 : 10, bold: isH2 || isH3, color: isH2 ? RED : DARK, breakLine: true, fontFace: "Arial" } };
       });
       sc.addText(textRuns, { x: 0.4, y: 0.55, w: 12.5, h: 6.8, valign: "top" });
     }
@@ -1716,7 +1716,7 @@ export default function AdvisorPage() {
       ...metaItems.map(r => r.map(cell => ({ text: cell, options: { fontSize: 10, fontFace: "Arial" } }))),
     ], { x: 0.4, y: 3.05, w: 8, colW: [2.5, 5.5], border: { type: "solid", color: "EEEEEE" } as const });
     sLast.addText("THE GENTRY LAB", { x: 0.4, y: 7.0, w: 6, h: 0.35, fontSize: 11, color: RED, bold: true, charSpacing: 5, fontFace: "Arial" });
-    sLast.addText(`Â© ${generatedAt.getFullYear()} The Gentry Lab Pte. Ltd.  Â·  thegentrylab.io`, { x: 7, y: 7.0, w: 6, h: 0.35, fontSize: 8, color: LGRAY, align: "right", fontFace: "Arial" });
+    sLast.addText(`© ${generatedAt.getFullYear()} The Gentry Lab   ·  thegentrylab.io`, { x: 7, y: 7.0, w: 6, h: 0.35, fontSize: 8, color: LGRAY, align: "right", fontFace: "Arial" });
 
     const slug = selectedBrief.title.replace(/[^a-z0-9]+/gi, "_").slice(0, 40);
     await pptx.writeFile({ fileName: `GentryLab_${slug}_${refId}.pptx` });
@@ -1912,15 +1912,15 @@ export default function AdvisorPage() {
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="font-mono text-[9px] uppercase tracking-[0.25em] px-2.5 py-1 rounded" style={{ color: "#ff5100", backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
-                    AI Tool Â· Beta
+                    AI Tool · Beta
                   </span>
-                  {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.25)" }}>Logged in Â· Credits active</span>}
+                  {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "rgba(255,255,255,0.25)" }}>Logged in · Credits active</span>}
                 </div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight leading-tight" style={{ color: "#ffffff" }}>
                   AI Industrial Advisor
                 </h1>
                 <p className="mt-2 text-[13px] leading-relaxed max-w-xl" style={{ color: "rgba(255,255,255,0.40)" }}>
-                  Generate structured investment briefs â€” site selection, feasibility, permits, finance, and more â€” powered by Cambodia ground-level data.
+                  Generate structured investment briefs "” site selection, feasibility, permits, finance, and more "” powered by Cambodia ground-level data.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -2032,7 +2032,7 @@ export default function AdvisorPage() {
                     <p className="text-[11.5px] leading-relaxed mb-3" style={{ color: "rgba(255,255,255,0.40)" }}>{b.desc}</p>
                     <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: activeCat.color }}>For: {b.audience}</p>
                     <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>{b.fields.length} inputs Â· ~30 sec</span>
+                      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>{b.fields.length} inputs · ~30 sec</span>
                       <span className="ml-auto font-mono text-[9px]" style={{ color: activeCat.color }}>Generate â†’</span>
                     </div>
                   </button>
@@ -2064,7 +2064,7 @@ export default function AdvisorPage() {
                       <select value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
                         className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition appearance-none"
                         style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: form[field.id] ? "#ffffff" : "rgba(255,255,255,0.30)" }}>
-                        <option value="">Selectâ€¦</option>
+                        <option value="">Select...</option>
                         {field.options?.map(o => <option key={o} value={o} style={{ backgroundColor: "#1a1a1a", color: "#ffffff" }}>{o}</option>)}
                       </select>
                     ) : (
@@ -2114,7 +2114,7 @@ export default function AdvisorPage() {
                   <textarea
                     value={userNotes}
                     onChange={e => setUserNotes(e.target.value)}
-                    placeholder="Add any specific focus areas, constraints, or context for the AI â€” e.g. 'Focus on garment sector', 'Budget under $5M', 'Priority is fast permit timeline'â€¦"
+                    placeholder="Add any specific focus areas, constraints, or context for the AI "” e.g. 'Focus on garment sector', 'Budget under $5M', 'Priority is fast permit timeline'..."
                     rows={3}
                     className="w-full text-[12px] leading-relaxed outline-none resize-none transition"
                     style={{ backgroundColor: "transparent", color: "#ffffff", border: "none", padding: 0 }}
@@ -2146,7 +2146,7 @@ export default function AdvisorPage() {
                 </button>
               </div>
               <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.20)" }}>
-                {reportType === "standard" ? `${CREDIT_COSTS.brief_standard} credits` : `${CREDIT_COSTS.brief_comprehensive} credits`} Â· Auto-saved to your account
+                {reportType === "standard" ? `${CREDIT_COSTS.brief_standard} credits` : `${CREDIT_COSTS.brief_comprehensive} credits`} · Auto-saved to your account
               </p>
             </div>
           )}
@@ -2160,7 +2160,7 @@ export default function AdvisorPage() {
                 </svg>
               </div>
               <div className="text-center">
-                <p className="font-bold text-[14px]" style={{ color: "#ffffff" }}>Generating your briefâ€¦</p>
+                <p className="font-bold text-[14px]" style={{ color: "#ffffff" }}>Generating your brief...</p>
                 <p className="font-mono text-[10px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,255,255,0.30)" }}>Analysing Cambodia industrial data</p>
               </div>
             </div>
@@ -2183,7 +2183,7 @@ export default function AdvisorPage() {
                   )}
                   {streaming && (
                     <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />Generatingâ€¦
+                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />Generating...
                     </span>
                   )}
                   {!streaming && output && (
@@ -2231,9 +2231,9 @@ export default function AdvisorPage() {
                 style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
                 {output ? renderMarkdown(output) : (
                   <div className="flex items-center gap-2" style={{ color: "rgba(255,255,255,0.30)" }}>
-                    <span className="animate-bounce" style={{ animationDelay: "0ms" }}>Â·</span>
-                    <span className="animate-bounce" style={{ animationDelay: "120ms" }}>Â·</span>
-                    <span className="animate-bounce" style={{ animationDelay: "240ms" }}>Â·</span>
+                    <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
+                    <span className="animate-bounce" style={{ animationDelay: "120ms" }}>·</span>
+                    <span className="animate-bounce" style={{ animationDelay: "240ms" }}>·</span>
                   </div>
                 )}
               </div>
@@ -2270,7 +2270,7 @@ export default function AdvisorPage() {
                     </div>
                     <div>
                       <p className="font-bold text-[13px]" style={{ color: "#ffffff" }}>Refine this report</p>
-                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Tell the AI what to adjust, expand, or focus on â€” it will regenerate using your inputs</p>
+                      <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.35)" }}>Tell the AI what to adjust, expand, or focus on "” it will regenerate using your inputs</p>
                     </div>
                   </div>
 
@@ -2301,7 +2301,7 @@ export default function AdvisorPage() {
                     <textarea
                       value={refinePrompt}
                       onChange={e => setRefinePrompt(e.target.value)}
-                      placeholder="Or type your own instruction â€” e.g. 'Add a section on logistics corridors', 'Focus only on Sihanoukville', 'Expand the financial model'â€¦"
+                      placeholder="Or type your own instruction "” e.g. 'Add a section on logistics corridors', 'Focus only on Sihanoukville', 'Expand the financial model'..."
                       rows={3}
                       className="w-full px-4 py-3 rounded-xl text-[12px] leading-relaxed outline-none resize-none transition"
                       style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
@@ -2314,7 +2314,7 @@ export default function AdvisorPage() {
                     )}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
                       <span className="font-mono text-[9px]" style={{ color: "rgba(255,255,255,0.20)" }}>
-                        Uses {reportType === "standard" ? "75" : "150"} credits Â· saves new version
+                        Uses {reportType === "standard" ? "75" : "150"} credits · saves new version
                       </span>
                       <button
                         onClick={refine}
@@ -2334,7 +2334,7 @@ export default function AdvisorPage() {
               {refining && (
                 <div className="mt-6 flex items-center gap-3 px-5 py-4 rounded-xl" style={{ backgroundColor: "rgba(255,81,0,0.05)", border: "1px solid rgba(255,81,0,0.15)" }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.8" className="animate-spin shrink-0"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                  <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>Regenerating with your adjustmentsâ€¦</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>Regenerating with your adjustments...</span>
                 </div>
               )}
 
