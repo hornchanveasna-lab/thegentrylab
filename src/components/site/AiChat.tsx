@@ -470,13 +470,16 @@ export function AiChat() {
             <path d="M2 2l12 12M14 2L2 14"/>
           </svg>
         ) : (
-          /* TGL G-mark icon */
-          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-            <rect x="3" y="3" width="9.5" height="2.5" rx="0.5" fill="white"/>
-            <rect x="2" y="3" width="2.5" height="14" rx="0.5" fill="white"/>
-            <rect x="3" y="14.5" width="9.5" height="2.5" rx="0.5" fill="white"/>
-            <rect x="9.5" y="10" width="6" height="2.5" rx="0.5" fill="white"/>
-            <rect x="13" y="10" width="2.5" height="7" rx="0.5" fill="white"/>
+          /* TGL G-mark — exact logo geometry */
+          <svg width="22" height="22" viewBox="0 0 22 22">
+            <g transform="translate(2 2) scale(0.01233)">
+              <rect x="143" y="2"    width="1285" height="283" fill="white"/>
+              <rect x="0"   y="143"  width="287"  height="857" fill="white"/>
+              <circle cx="143" cy="143" r="143"               fill="white"/>
+              <rect x="558" y="572"  width="870"  height="288" fill="white"/>
+              <rect x="1141" y="572" width="287"  height="890" fill="white"/>
+              <rect x="0"   y="1146" width="1428" height="316" fill="white"/>
+            </g>
           </svg>
         )}
       </button>
