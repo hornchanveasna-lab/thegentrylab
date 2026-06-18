@@ -950,6 +950,51 @@ function SvgMoneyInfographic({ amounts, color }: { amounts: { label: string; val
 }
 
 /* ── SVG Location / Map Pin Infographic ──────────────────── */
+/* ── Real satellite map tile with pin overlay ── */
+function PrintSatMap({ form, color, height = "130pt", showPin = true }: {
+  form: Record<string, string>; color: string; height?: string; showPin?: boolean;
+}) {
+  const province = form.province_preference || form.location || form.province || form.target_province || "Cambodia";
+  const center = PROVINCE_CENTER[province];
+  const coordText = center
+    ? `${center[1].toFixed(4)}°N  ${center[0].toFixed(4)}°E`
+    : "Kingdom of Cambodia";
+  const mapUrl = getZoomedMapUrl(form);
+  return (
+    <div style={{ position: "relative", borderRadius: "5pt", overflow: "hidden", border: `1.5pt solid ${color}40` }}>
+      <img
+        src={mapUrl}
+        alt={`Satellite — ${province}`}
+        style={{ width: "100%", height, objectFit: "cover", objectPosition: "center", display: "block" }}
+        onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
+      />
+      {/* Top bar */}
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4pt 7pt", background: "rgba(0,0,0,0.50)" }}>
+        <span style={{ fontFamily: PF.head, fontSize: "6pt", color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+          Satellite View · {province}
+        </span>
+        <span style={{ backgroundColor: color, color: "#fff", fontFamily: PF.head, fontSize: "5.5pt", fontWeight: 700, padding: "1.5pt 5pt", borderRadius: "2pt" }}>
+          ESRI
+        </span>
+      </div>
+      {/* Centre pin */}
+      {showPin && (
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -100%)", pointerEvents: "none" }}>
+          <svg width="20" height="28" viewBox="0 0 20 28">
+            <path d="M10 0C5.58 0 2 3.58 2 8c0 6 8 16 8 16s8-10 8-16c0-4.42-3.58-8-8-8z" fill={color} />
+            <circle cx="10" cy="8" r="3.2" fill="#fff" />
+          </svg>
+        </div>
+      )}
+      {/* Bottom gradient info bar */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "14pt 8pt 5pt", background: "linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%)" }}>
+        <div style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>{province}</div>
+        <div style={{ fontFamily: PF.body, fontSize: "6pt", color: "rgba(255,255,255,0.70)", marginTop: "1pt" }}>{coordText} · Kingdom of Cambodia</div>
+      </div>
+    </div>
+  );
+}
+
 function SvgLocationInfographic({ province, sector, color }: { province: string; sector: string; color: string }) {
   return (
     <svg width="100%" viewBox="0 0 540 120" style={{ display: "block", marginBottom: "10pt" }}>
@@ -1049,20 +1094,21 @@ function PrintFallbackViz({ output, catColor, form, brief }: { output: string; c
 
   return (
     <div>
-      {/* Row 1: Score gauge + Location map */}
-      <div style={{ display: "grid", gridTemplateColumns: gaugeScore ? "1fr 1fr" : "1fr", gap: "14pt", marginBottom: "14pt" }}>
-        {gaugeScore && (
-          <div style={{ padding: "12pt", backgroundColor: "#fafafa", border: "1pt solid #ebebeb", borderRadius: "6pt", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt", width: "100%" }}>Overall Score</div>
-            <SvgScoreGauge score={gaugeScore} max={gaugeMax} label="Score" color={catColor} />
-            <div style={{ fontFamily: PF.body, fontSize: "7.5pt", color: "#777", marginTop: "4pt", textAlign: "center" }}>
-              {gaugeScore / gaugeMax >= 0.7 ? "Bankable — Proceed with preparation" : gaugeScore / gaugeMax >= 0.4 ? "Conditional — Restructuring required" : "Not Bankable — Significant changes needed"}
+      {/* Row 1: Satellite map full-width + optional score gauge overlay */}
+      <div style={{ marginBottom: "14pt" }}>
+        <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Project Location — Satellite View</div>
+        <div style={{ position: "relative" }}>
+          {form && <PrintSatMap form={form} color={catColor} height={gaugeScore ? "160pt" : "150pt"} />}
+          {/* Score gauge overlaid top-right corner */}
+          {gaugeScore && (
+            <div style={{ position: "absolute", top: "28pt", right: "10pt", backgroundColor: "rgba(255,255,255,0.93)", borderRadius: "6pt", padding: "8pt 10pt", border: `1.5pt solid ${catColor}40`, backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", minWidth: "100pt" }}>
+              <div style={{ fontFamily: PF.head, fontSize: "6pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4pt" }}>Overall Score</div>
+              <SvgScoreGauge score={gaugeScore} max={gaugeMax} label="Score" color={catColor} />
+              <div style={{ fontFamily: PF.body, fontSize: "6.5pt", color: "#666", marginTop: "3pt", textAlign: "center" }}>
+                {gaugeScore / gaugeMax >= 0.7 ? "Bankable" : gaugeScore / gaugeMax >= 0.4 ? "Conditional" : "Not Bankable"}
+              </div>
             </div>
-          </div>
-        )}
-        <div>
-          <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Location & Sector</div>
-          <SvgLocationInfographic province={province} sector={sector} color={catColor} />
+          )}
         </div>
       </div>
 
@@ -1662,11 +1708,57 @@ const PROVINCE_BBOX: Record<string, [number, number, number, number]> = {
   "Tboung Khmum":                   [105.62, 11.88, 105.78, 12.02],
 };
 
+/* ── Province city-centre [lng, lat] for close-up satellite zoom ── */
+const PROVINCE_CENTER: Record<string, [number, number]> = {
+  "Phnom Penh":                     [104.9160, 11.5625],
+  "Kandal":                         [104.9500, 11.2750],
+  "Kampong Speu":                   [104.5209, 11.4543],
+  "Preah Sihanouk (Sihanoukville)": [103.5239, 10.6239],
+  "Svay Rieng":                     [105.7991, 11.0879],
+  "Kampong Cham":                   [105.4640, 11.9890],
+  "Kampot":                         [104.1820, 10.5994],
+  "Siem Reap":                      [103.8448, 13.3671],
+  "Battambang":                     [103.0900, 13.0957],
+  "Banteay Meanchey":               [103.0000, 13.7000],
+  "Kampong Chhnang":                [104.6667, 12.2500],
+  "Kampong Thom":                   [104.8880, 12.7110],
+  "Kep":                            [104.3167, 10.4833],
+  "Koh Kong":                       [102.9836, 11.6178],
+  "Kratié":                         [106.0186, 12.4888],
+  "Mondulkiri":                     [107.1884, 12.4512],
+  "Oddar Meanchey":                 [103.7526, 14.1806],
+  "Pailin":                         [102.6068, 12.8490],
+  "Preah Vihear":                   [104.9804, 13.8075],
+  "Prey Veng":                      [105.3243, 11.4860],
+  "Pursat":                         [103.9193, 12.5388],
+  "Ratanakiri":                     [107.0068, 13.7377],
+  "Stung Treng":                    [106.0146, 13.5260],
+  "Takéo":                          [104.7990, 10.9932],
+  "Tboung Khmum":                   [105.6503, 11.9075],
+};
+
 function getCoverImageUrl(form: Record<string, string>): string {
   const province = form.province_preference || form.location || form.province || form.target_province || "";
   const bbox = PROVINCE_BBOX[province] ?? [102.5, 10.4, 107.9, 14.7];
   const [minLng, minLat, maxLng, maxLat] = bbox;
   return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${minLng},${minLat},${maxLng},${maxLat}&bboxSR=4326&size=1400,700&imageSR=4326&format=jpg&f=image`;
+}
+
+/* Tight city-level zoom for inline map panels — ±0.055° ≈ 6 km radius */
+function getZoomedMapUrl(form: Record<string, string>, radiusDeg = 0.055): string {
+  const province = form.province_preference || form.location || form.province || form.target_province || "";
+  const center = PROVINCE_CENTER[province];
+  if (center) {
+    const [cLng, cLat] = center;
+    return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${cLng - radiusDeg},${cLat - radiusDeg},${cLng + radiusDeg},${cLat + radiusDeg}&bboxSR=4326&size=1200,700&imageSR=4326&format=jpg&f=image`;
+  }
+  const bbox = PROVINCE_BBOX[province];
+  if (bbox) {
+    const cLng = (bbox[0] + bbox[2]) / 2;
+    const cLat = (bbox[1] + bbox[3]) / 2;
+    return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${cLng - radiusDeg},${cLat - radiusDeg},${cLng + radiusDeg},${cLat + radiusDeg}&bboxSR=4326&size=1200,700&imageSR=4326&format=jpg&f=image`;
+  }
+  return getCoverImageUrl(form);
 }
 
 /* ── SVG icons for print section headings ── */
@@ -2017,19 +2109,11 @@ function PrintReport({
         <div className="pr-section-number">Section IV</div>
         <div className="pr-h1">Executive Summary</div>
 
-        {/* Two-column photo strip — satellite + category image */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8pt", marginBottom: "12pt" }}>
-          <div className="pr-figure" style={{ margin: 0 }}>
-            <img src={coverImageUrl} alt="Province satellite view"
-              style={{ width: "100%", height: "80pt", objectFit: "cover", objectPosition: "center", display: "block" }}
-              onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }} />
-            <div className="pr-figure-caption">Aerial view — {form.province_preference || form.location || form.province || form.target_province || "Kingdom of Cambodia"}</div>
-          </div>
-          <div className="pr-figure" style={{ margin: 0 }}>
-            <img src={analysisImageUrl} alt={brief.title}
-              style={{ width: "100%", height: "80pt", objectFit: "cover", objectPosition: "center", display: "block" }}
-              onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }} />
-            <div className="pr-figure-caption">{cat.label} — Cambodia industrial sector</div>
+        {/* Satellite map + category image strip */}
+        <div style={{ marginBottom: "12pt" }}>
+          <PrintSatMap form={form} color={catColor} height="90pt" />
+          <div className="pr-figure-caption" style={{ marginTop: "3pt" }}>
+            <strong>Figure IV.1</strong> — Satellite view · {form.province_preference || form.location || form.province || form.target_province || "Kingdom of Cambodia"}. Source: ESRI World Imagery
           </div>
         </div>
 
@@ -2229,14 +2313,22 @@ function PrintReport({
         </tfoot>
         <tbody className="pr-cpage-tbody">
           <tr><td style={{ padding: "14pt 20mm 10pt", verticalAlign: "top" }}>
-            {/* Analysis section opener — category-relevant hero image */}
-            <div className="pr-figure" style={{ marginBottom: "14pt" }}>
-              <img src={analysisImageUrl} alt={brief.title}
-                style={{ width: "100%", height: "140pt", objectFit: "cover", objectPosition: "center", display: "block" }}
-                onError={(e) => { (e.target as HTMLImageElement).src = coverImageUrl; (e.target as HTMLImageElement).onerror = () => { (e.target as HTMLImageElement).src = heroBlueprintImg; }; }}
-              />
-              <div className="pr-figure-caption">
-                <strong>Figure VI.1</strong> — {brief.title}. Source: TheGentryLab.io · ESRI World Imagery
+            {/* Analysis section opener — side-by-side satellite map + category image */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10pt", marginBottom: "14pt" }}>
+              <div>
+                <PrintSatMap form={form} color={catColor} height="110pt" />
+                <div className="pr-figure-caption" style={{ marginTop: "3pt" }}>
+                  <strong>Figure VI.1</strong> — Satellite view · {form.province_preference || form.location || form.province || form.target_province || "Cambodia"}. Source: ESRI
+                </div>
+              </div>
+              <div className="pr-figure" style={{ margin: 0 }}>
+                <img src={analysisImageUrl} alt={brief.title}
+                  style={{ width: "100%", height: "110pt", objectFit: "cover", objectPosition: "center", display: "block", borderRadius: "3pt" }}
+                  onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
+                />
+                <div className="pr-figure-caption">
+                  <strong>Figure VI.2</strong> — {brief.title}. Source: TheGentryLab.io
+                </div>
               </div>
             </div>
             {renderPrintMarkdown(output, catColor)}
