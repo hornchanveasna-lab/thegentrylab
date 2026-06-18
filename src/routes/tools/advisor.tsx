@@ -3437,46 +3437,127 @@ export default function AdvisorPage() {
                 const gaugeScore = scoreMatch ? parseFloat(scoreMatch[1]) : null;
                 const gaugeMax = scoreMatch ? parseFloat(scoreMatch[2]) : 10;
                 const col = activeCat.color;
-                if (charts.length === 0 && stats.length === 0 && !gaugeScore) return null;
+                const hasContent = charts.length > 0 || stats.length > 0 || gaugeScore !== null;
+                if (!hasContent) return null;
+
+                const scoreColor = gaugeScore !== null
+                  ? (gaugeScore / gaugeMax >= 0.7 ? "#10b981" : gaugeScore / gaugeMax >= 0.4 ? col : "#ef4444")
+                  : col;
+
+                const flowSteps = [
+                  { label: "Due Diligence", icon: "🔍" },
+                  { label: "Environmental EIA", icon: "🌿" },
+                  { label: "MIH Licence", icon: "📋" },
+                  { label: "CDC / QIP", icon: "🏆" },
+                  { label: "Construction", icon: "🏗️" },
+                  { label: "Utilities", icon: "⚡" },
+                  { label: "Operations", icon: "⚙️" },
+                ];
+
                 return (
-                  <div className="mt-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="mt-6 space-y-3">
+                    {/* Header */}
+                    <div className="flex items-center gap-3">
                       <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: col }}>Data Visualisation</span>
+                      <div className="flex-1 h-px" style={{ backgroundColor: `${col}25` }} />
                     </div>
 
-                    {/* Score + key stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {/* Row 1: Score hero + stat cards */}
+                    <div className="grid gap-3" style={{ gridTemplateColumns: gaugeScore !== null ? "auto 1fr" : "1fr" }}>
+                      {/* Score gauge card */}
                       {gaugeScore !== null && (
-                        <div className="col-span-2 md:col-span-1 rounded-xl p-4 flex flex-col items-center" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
-                          <div className="font-mono text-[8px] uppercase tracking-widest mb-2 self-start" style={{ color: col }}>Overall Score</div>
-                          <div style={{ filter: "invert(0)" }}>
-                            <SvgScoreGauge score={gaugeScore} max={gaugeMax} label="Score" color={col} />
+                        <div className="rounded-2xl p-5 flex flex-col items-center justify-center min-w-[160px]"
+                          style={{ background: `linear-gradient(135deg, ${scoreColor}12 0%, ${scoreColor}06 100%)`, border: `1.5px solid ${scoreColor}30` }}>
+                          <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: scoreColor }}>Overall Score</div>
+                          {/* Arc gauge */}
+                          <div className="relative flex items-center justify-center" style={{ width: 120, height: 72 }}>
+                            <svg width="120" height="72" viewBox="0 0 120 72">
+                              <path d="M10,65 A50,50 0 0,1 110,65" fill="none" stroke={`${scoreColor}20`} strokeWidth="10" strokeLinecap="round" />
+                              <path d="M10,65 A50,50 0 0,1 110,65" fill="none" stroke={scoreColor} strokeWidth="10" strokeLinecap="round"
+                                strokeDasharray={`${Math.PI * 50 * (gaugeScore / gaugeMax)} ${Math.PI * 50}`} />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-end pb-1">
+                              <span className="font-bold text-[26px] leading-none" style={{ color: scoreColor }}>{gaugeScore}</span>
+                              <span className="font-mono text-[9px]" style={{ color: "var(--adv-text-dim)" }}>/ {gaugeMax}</span>
+                            </div>
+                          </div>
+                          <div className="mt-2 text-center font-mono text-[9px] px-3 py-1 rounded-full" style={{ backgroundColor: `${scoreColor}18`, color: scoreColor }}>
+                            {gaugeScore / gaugeMax >= 0.7 ? "Viable" : gaugeScore / gaugeMax >= 0.4 ? "Conditional" : "Needs Restructuring"}
                           </div>
                         </div>
                       )}
-                      {stats.map((s, i) => (
-                        <div key={i} className="rounded-xl p-4 flex flex-col justify-center" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
-                          <div className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "var(--adv-text-dim)" }}>{s.label}</div>
-                          <div className="font-bold text-[20px]" style={{ color: col }}>{s.value}</div>
+
+                      {/* Stat cards grid */}
+                      {stats.length > 0 && (
+                        <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+                          {stats.map((s, i) => (
+                            <div key={i} className="rounded-xl p-4 flex flex-col justify-between"
+                              style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)", borderLeft: `3px solid ${col}` }}>
+                              <div className="font-mono text-[8px] uppercase tracking-widest mb-2" style={{ color: "var(--adv-text-dim)" }}>{s.label}</div>
+                              <div className="font-bold text-[18px] leading-none" style={{ color: col }}>{s.value}</div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
 
-                    {/* Parsed bar charts */}
+                    {/* Row 2: Score breakdown bar charts */}
                     {charts.length > 0 && (
-                      <div className="rounded-xl p-5" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
-                        <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: col }}>Score Breakdown</div>
-                        <div style={{ background: "#fff", borderRadius: "8px", padding: "16px" }}>
-                          {charts.map((c, idx) => <SvgParsedBarChart key={idx} title={c.title} rows={c.rows} catColor={col} />)}
+                      <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--adv-border)" }}>
+                        <div className="px-5 py-3 flex items-center gap-2" style={{ backgroundColor: "var(--adv-card)", borderBottom: "1px solid var(--adv-border)" }}>
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
+                          <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: col }}>Score Breakdown</span>
+                        </div>
+                        <div className="p-5 space-y-4" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                          {charts.map((chart, ci) => (
+                            <div key={ci}>
+                              {chart.title && <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: "var(--adv-text-dim)", borderLeft: `2px solid ${col}`, paddingLeft: "8px" }}>{chart.title}</div>}
+                              <div className="space-y-2">
+                                {chart.rows.map((row, ri) => {
+                                  const pct = row.score / row.max;
+                                  const barCol = pct >= 0.7 ? "#10b981" : pct >= 0.4 ? col : "#ef4444";
+                                  const suffix = row.max === 100 ? "%" : `/${row.max}`;
+                                  return (
+                                    <div key={ri} className="flex items-center gap-3">
+                                      <div className="font-mono text-[10px] shrink-0 text-right" style={{ width: "160px", color: "var(--adv-text-body)" }}>{row.label}</div>
+                                      <div className="flex-1 rounded-full h-[8px] overflow-hidden" style={{ backgroundColor: `${barCol}18` }}>
+                                        <div className="h-full rounded-full transition-all" style={{ width: `${pct * 100}%`, backgroundColor: barCol, boxShadow: `0 0 6px ${barCol}60` }} />
+                                      </div>
+                                      <div className="font-mono text-[11px] font-bold shrink-0" style={{ width: "40px", color: barCol }}>{row.score}{suffix}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    {/* Process flow */}
-                    <div className="rounded-xl p-5" style={{ backgroundColor: "var(--adv-card)", border: "1px solid var(--adv-border)" }}>
-                      <div className="font-mono text-[8px] uppercase tracking-widest mb-3" style={{ color: col }}>Process Flow</div>
-                      <div style={{ background: "#fff", borderRadius: "8px", padding: "12px" }}>
-                        <SvgProcessFlow steps={["Site Due Diligence", "Environmental EIA", "MIH Licence", "CDC / QIP", "Construction", "Utilities", "Operations"]} color={col} />
+                    {/* Row 3: Process flow */}
+                    <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--adv-border)" }}>
+                      <div className="px-5 py-3 flex items-center gap-2" style={{ backgroundColor: "var(--adv-card)", borderBottom: "1px solid var(--adv-border)" }}>
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: col }} />
+                        <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: col }}>Advisory Process Flow</span>
+                      </div>
+                      <div className="p-5" style={{ backgroundColor: "var(--adv-hero-bg)" }}>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {flowSteps.map((step, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <div className="flex flex-col items-center gap-1.5 rounded-xl px-3 py-2.5 text-center"
+                                style={{ backgroundColor: "var(--adv-card)", border: `1px solid ${col}30`, minWidth: "80px" }}>
+                                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                                  style={{ backgroundColor: col, color: "#fff" }}>{i + 1}</div>
+                                <div className="text-[10px] leading-tight font-medium" style={{ color: "var(--adv-text-body)" }}>{step.label}</div>
+                              </div>
+                              {i < flowSteps.length - 1 && (
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={col} strokeWidth="2" strokeOpacity="0.4" style={{ flexShrink: 0 }}>
+                                  <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
