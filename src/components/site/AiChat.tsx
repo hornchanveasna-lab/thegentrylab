@@ -466,12 +466,17 @@ export function AiChat() {
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-[#0a0a0b]" />
         )}
         {open ? (
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round">
-            <path d="M3 3l12 12M15 3L3 15"/>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+            <path d="M2 2l12 12M14 2L2 14"/>
           </svg>
         ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          /* TGL G-mark icon */
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="3" y="3" width="9.5" height="2.5" rx="0.5" fill="white"/>
+            <rect x="2" y="3" width="2.5" height="14" rx="0.5" fill="white"/>
+            <rect x="3" y="14.5" width="9.5" height="2.5" rx="0.5" fill="white"/>
+            <rect x="9.5" y="10" width="6" height="2.5" rx="0.5" fill="white"/>
+            <rect x="13" y="10" width="2.5" height="7" rx="0.5" fill="white"/>
           </svg>
         )}
       </button>
