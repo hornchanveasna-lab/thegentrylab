@@ -2615,7 +2615,7 @@ export default function AdvisorPage() {
                     </label>
                     {field.type === "select" ? (
                       <select value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
-                        className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition appearance-none"
+                        className="adv-select w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition appearance-none"
                         style={{ backgroundColor: "var(--adv-input-bg)", border: "1px solid var(--adv-border-input)", color: form[field.id] ? "var(--adv-text-hi)" : "var(--adv-text-dim)" }}>
                         <option value="">Select...</option>
                         {field.options?.map(o => <option key={o} value={o}>{o}</option>)}

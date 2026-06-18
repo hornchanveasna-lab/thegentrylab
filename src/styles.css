@@ -166,6 +166,15 @@
   color: #ffffff !important;
 }
 
+/* Advisor select: tell the browser to render native dropdown in the correct color-scheme */
+:root .adv-select,
+[data-theme="dark"] .adv-select {
+  color-scheme: dark;
+}
+[data-theme="light"] .adv-select {
+  color-scheme: light;
+}
+
 /* ── News + Research + Map inline-style CSS variables ────── */
 :root, [data-theme="dark"] {
   --news-card-border:         rgba(255,255,255,0.08);
