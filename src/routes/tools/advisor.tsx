@@ -2145,14 +2145,14 @@ function PrintReport({
 
         {/* Parameters strip */}
         {inputPairs.length > 0 && (
-          <div style={{ marginTop: "20pt", padding: "12pt 14pt", backgroundColor: "#f8f8f8", borderTop: `3pt solid ${catColor}`, borderBottom: "1pt solid #e8e8e8" }}>
-            <div style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: catColor, marginBottom: "10pt" }}>
+          <div style={{ marginTop: "20pt", padding: "14pt 16pt", backgroundColor: "#f8f8f8", borderTop: `3pt solid ${catColor}`, borderBottom: "1pt solid #e8e8e8" }}>
+            <div style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: catColor, marginBottom: "12pt" }}>
               Analysis Parameters — Brief Inputs
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5pt 32pt" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: "28pt", rowGap: "0pt" }}>
               {inputPairs.map((p, i) => (
-                <div key={i} style={{ display: "flex", gap: "8pt", alignItems: "baseline", borderBottom: "0.5pt solid #ebebeb", paddingBottom: "3pt" }}>
-                  <span style={{ fontFamily: PF.head, fontSize: "6.5pt", color: "#aaa", minWidth: "90pt", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>{p.key}</span>
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "130pt 1fr", alignItems: "baseline", borderBottom: "0.5pt solid #e0e0e0", padding: "5pt 0" }}>
+                  <span style={{ fontFamily: PF.head, fontSize: "6.5pt", color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", paddingRight: "8pt" }}>{p.key}</span>
                   <span style={{ fontFamily: PF.body, fontSize: "9pt", color: "#111", fontWeight: 600 }}>{p.val}</span>
                 </div>
               ))}
