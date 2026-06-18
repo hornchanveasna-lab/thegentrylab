@@ -961,12 +961,19 @@ function PrintSatMap({ form, color, height = "130pt", showPin = true }: {
     : "Kingdom of Cambodia";
   const mapUrl = getZoomedMapUrl(form);
   return (
-    <div style={{ position: "relative", borderRadius: "5pt", overflow: "hidden", border: `1.5pt solid ${color}40` }}>
+    <div style={{ position: "relative", borderRadius: "5pt", overflow: "hidden", border: `1.5pt solid ${color}40`, backgroundColor: "#0d1117", height }}>
+      {/* Blueprint — always rendered, sets visual baseline */}
+      <img
+        src={heroBlueprintImg}
+        alt=""
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 60%", opacity: 0.35 }}
+      />
+      {/* Satellite tile on top — hides itself on error, blueprint remains */}
       <img
         src={mapUrl}
         alt={`Satellite — ${province}`}
-        style={{ width: "100%", height, objectFit: "cover", objectPosition: "center", display: "block" }}
-        onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", opacity: 0.92 }}
+        onError={(e) => { (e.target as HTMLImageElement).style.opacity = "0"; }}
       />
       {/* Top bar */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "4pt 7pt", background: "rgba(0,0,0,0.50)" }}>
@@ -1908,10 +1915,13 @@ function PrintReport({
       ══════════════════════════════════════════════ */}
       <div style={{ position: "relative", width: "210mm", height: "297mm", overflow: "hidden", pageBreakAfter: "always", display: "flex", flexDirection: "column", backgroundColor: "#0d1117" }}>
 
-        {/* Hero image — full bleed satellite or blueprint fallback */}
+        {/* Hero: blueprint always visible as base, satellite tiles on top when loaded */}
+        <img src={heroBlueprintImg} alt=""
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 60%", opacity: 0.35 }}
+        />
         <img src={coverImageUrl} alt=""
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", opacity: 0.55 }}
-          onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
         />
 
         {/* Dark gradient overlay — bottom-heavy like WB */}
