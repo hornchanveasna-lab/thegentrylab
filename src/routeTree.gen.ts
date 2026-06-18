@@ -18,6 +18,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
@@ -66,6 +67,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsAdvisorRoute = ToolsAdvisorRouteImport.update({
+  id: '/tools/advisor',
+  path: '/tools/advisor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthStartRoute = AuthStartRouteImport.update({
   id: '/auth/start',
   path: '/auth/start',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/tracker': typeof TrackerRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
+  '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/tracker': typeof TrackerRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
+  '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/tracker': typeof TrackerRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
+  '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/tracker'
     | '/auth/callback'
     | '/auth/start'
+    | '/tools/advisor'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/tracker'
     | '/auth/callback'
     | '/auth/start'
+    | '/tools/advisor'
   id:
     | '__root__'
     | '/'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/tracker'
     | '/auth/callback'
     | '/auth/start'
+    | '/tools/advisor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   TrackerRoute: typeof TrackerRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthStartRoute: typeof AuthStartRoute
+  ToolsAdvisorRoute: typeof ToolsAdvisorRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -238,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/advisor': {
+      id: '/tools/advisor'
+      path: '/tools/advisor'
+      fullPath: '/tools/advisor'
+      preLoaderRoute: typeof ToolsAdvisorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/start': {
       id: '/auth/start'
       path: '/auth/start'
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrackerRoute: TrackerRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthStartRoute: AuthStartRoute,
+  ToolsAdvisorRoute: ToolsAdvisorRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

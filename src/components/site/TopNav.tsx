@@ -149,22 +149,25 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
                   <div className="px-3 py-2.5 border-b nav-border">
                     <p className="font-mono text-[8px] uppercase tracking-[0.2em] nav-text-muted px-1 mb-1.5">Tools</p>
                     {[
-                      { label: "AI Industrial Advisor", live: true },
-                      { label: "Site Scoring Engine",   live: false },
-                      { label: "Permit Navigator",      live: false },
-                      { label: "Utility Capacity Map",  live: false },
-                      { label: "Cost Heat Map",         live: false },
-                      { label: "Land Market Price",     live: false },
+                      { label: "AI Industrial Advisor", live: true,  to: "/tools/advisor" },
+                      { label: "Site Scoring Engine",   live: false, to: null },
+                      { label: "Permit Navigator",      live: false, to: null },
+                      { label: "Utility Capacity Map",  live: false, to: null },
+                      { label: "Cost Heat Map",         live: false, to: null },
+                      { label: "Land Market Price",     live: false, to: null },
                     ].map((tool) => (
-                      <div key={tool.label}
-                        className={`flex items-center justify-between px-2 py-1.5 rounded-md group ${tool.live ? "cursor-pointer hover:bg-white/5 transition-colors" : "opacity-40 cursor-not-allowed"}`}>
-                        <span className="text-[11px] nav-text-primary font-medium">{tool.label}</span>
-                        {tool.live ? (
+                      tool.live && tool.to ? (
+                        <Link key={tool.label} to={tool.to} onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-white/5 transition-colors">
+                          <span className="text-[11px] nav-text-primary font-medium">{tool.label}</span>
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                        ) : (
+                        </Link>
+                      ) : (
+                        <div key={tool.label} className="flex items-center justify-between px-2 py-1.5 rounded-md opacity-40 cursor-not-allowed">
+                          <span className="text-[11px] nav-text-primary font-medium">{tool.label}</span>
                           <span className="font-mono text-[8px] uppercase tracking-widest nav-text-muted">Soon</span>
-                        )}
-                      </div>
+                        </div>
+                      )
                     ))}
                   </div>
 
