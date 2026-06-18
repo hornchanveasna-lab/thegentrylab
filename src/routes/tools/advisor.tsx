@@ -654,25 +654,30 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
   let i = 0;
   while (i < lines.length) {
     const line = lines[i];
+    const badge = (emoji: string, color: string) => (
+      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: "26pt", height: "26pt", borderRadius: "7pt", flexShrink: 0, backgroundColor: `${color}1c`, marginRight: "10pt" }}>
+        <PrintIconSvg emoji={emoji} color={color} />
+      </span>
+    );
     if (line.startsWith("## ")) {
       const parsed = stripSectionEmoji(line.slice(3));
       elements.push(
         <div key={i} className="pr-h2" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <><PrintIconSvg emoji={parsed.emoji} color={accentColor} />{parsed.clean}</> : line.slice(3)}
+          {parsed ? <>{badge(parsed.emoji, accentColor)}{parsed.clean}</> : line.slice(3)}
         </div>
       );
     } else if (line.startsWith("### ")) {
       const parsed = stripSectionEmoji(line.slice(4));
       elements.push(
         <div key={i} className="pr-h3" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <><PrintIconSvg emoji={parsed.emoji} color={accentColor} />{parsed.clean}</> : line.slice(4)}
+          {parsed ? <>{badge(parsed.emoji, accentColor)}{parsed.clean}</> : line.slice(4)}
         </div>
       );
     } else if (line.startsWith("#### ")) {
       const parsed = stripSectionEmoji(line.slice(5));
       elements.push(
         <div key={i} className="pr-h4" style={{ display: "flex", alignItems: "center" }}>
-          {parsed ? <><PrintIconSvg emoji={parsed.emoji} color={accentColor} />{parsed.clean}</> : line.slice(5)}
+          {parsed ? <>{badge(parsed.emoji, accentColor)}{parsed.clean}</> : line.slice(5)}
         </div>
       );
     } else if (line.startsWith("> ")) {
@@ -680,17 +685,17 @@ function renderPrintMarkdown(text: string, accentColor = "#cc3300") {
     } else if (line.startsWith("⚠️")) {
       const content = line.slice("⚠️".length).trimStart();
       elements.push(
-        <div key={i} className="pr-warn" style={{ display: "flex", alignItems: "flex-start", gap: "6pt" }}>
-          <PrintIconSvg emoji="⚠️" color="#b86e00" />
-          <span>{printInline(content)}</span>
+        <div key={i} className="pr-warn" style={{ display: "flex", alignItems: "flex-start", gap: "10pt" }}>
+          {badge("⚠️", "#b86e00")}
+          <span style={{ paddingTop: "5pt" }}>{printInline(content)}</span>
         </div>
       );
     } else if (line.startsWith("✅")) {
       const content = line.slice("✅".length).trimStart();
       elements.push(
-        <div key={i} className="pr-good" style={{ display: "flex", alignItems: "flex-start", gap: "6pt" }}>
-          <PrintIconSvg emoji="✅" color="#217a4b" />
-          <span>{printInline(content)}</span>
+        <div key={i} className="pr-good" style={{ display: "flex", alignItems: "flex-start", gap: "10pt" }}>
+          {badge("✅", "#217a4b")}
+          <span style={{ paddingTop: "5pt" }}>{printInline(content)}</span>
         </div>
       );
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
@@ -1124,14 +1129,14 @@ function PRFooter({ pageNum, refId, year }: { pageNum: number; refId: string; ye
   );
 }
 
-function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClass = "" }: {
+function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClass = "", bottomAlign = false }: {
   title: string; refId: string; dateStr: string; pageNum: number; year: number;
-  children: React.ReactNode; extraClass?: string;
+  children: React.ReactNode; extraClass?: string; bottomAlign?: boolean;
 }) {
   return (
     <div className={`pr-content-page pr-page-break${extraClass ? " " + extraClass : ""}`}>
       <PRHeader title={title} refId={refId} dateStr={dateStr} />
-      <div className="pr-content-body">{children}</div>
+      <div className="pr-content-body" style={bottomAlign ? { display: "flex", flexDirection: "column", justifyContent: "flex-end" } : undefined}>{children}</div>
       <PRFooter pageNum={pageNum} refId={refId} year={year} />
     </div>
   );
@@ -1170,7 +1175,7 @@ function getCoverImageUrl(form: Record<string, string>): string {
   const province = form.province_preference || form.location || form.province || form.target_province || "";
   const bbox = PROVINCE_BBOX[province] ?? [102.5, 10.4, 107.9, 14.7];
   const [minLng, minLat, maxLng, maxLat] = bbox;
-  return `https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/export?bbox=${minLng},${minLat},${maxLng},${maxLat}&size=1200,600&imageSR=4326&bboxSR=4326&format=jpg&f=image`;
+  return `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export?bbox=${minLng},${minLat},${maxLng},${maxLat}&bboxSR=4326&size=1400,700&imageSR=4326&format=jpg&f=image`;
 }
 
 /* ── SVG icons for print section headings ── */
@@ -1184,7 +1189,7 @@ function stripSectionEmoji(text: string): { emoji: string; clean: string } | nul
 }
 
 function PrintIconSvg({ emoji, color }: { emoji: string; color: string }) {
-  const p: React.SVGProps<SVGSVGElement> = { width: 11, height: 11, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, style: { display: "inline", verticalAlign: "middle", marginRight: "5pt", flexShrink: 0 } };
+  const p: React.SVGProps<SVGSVGElement> = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke: color, strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (emoji) {
     case "📋": return <svg {...p}><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>;
     case "📊": case "📈": case "📉": return <svg {...p}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>;
@@ -1404,7 +1409,7 @@ function PrintReport({
       {/* ══════════════════════════════════════════════
           PAGE 3 — ACKNOWLEDGEMENTS
       ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={3} year={year}>
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={3} year={year} bottomAlign>
         <div className="pr-section-number">Section I</div>
         <div className="pr-h1">Acknowledgements</div>
 
@@ -1451,7 +1456,7 @@ function PrintReport({
       {/* ══════════════════════════════════════════════
           PAGE 4 — FOREWORD
       ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={4} year={year}>
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={4} year={year} bottomAlign>
         <div className="pr-section-number">Section II</div>
         <div className="pr-h1">Foreword</div>
 
@@ -1711,28 +1716,35 @@ function PrintReport({
       {/* ══════════════════════════════════════════════
           CONTENT PAGES — Brief body (renderPrintMarkdown)
       ══════════════════════════════════════════════ */}
-      <div className="pr-analysis-page">
-        <PRHeader title={brief.title} refId={refId} dateStr={dateStr} />
-        <div className="pr-content-body">
-          {/* Inline photo — analysis section opener */}
-          <div className="pr-figure" style={{ marginBottom: "12pt" }}>
-            <img src={coverImageUrl} alt="Industrial analysis, Cambodia"
-              style={{ width: "100%", height: "90pt", objectFit: "cover", objectPosition: "center 40%", display: "block" }}
-              onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
-            />
-            <div className="pr-figure-caption">
-              <strong>Figure VI.1</strong> — Industrial zone, Kingdom of Cambodia. Source: ESRI World Imagery / TheGentryLab.io
+      {/* CSS table trick: thead/tfoot repeat on every printed page */}
+      <table className="pr-analysis-table" style={{ borderCollapse: "collapse", width: "100%", pageBreakBefore: "always" }}>
+        <thead className="pr-analysis-thead">
+          <tr><td style={{ padding: 0 }}><PRHeader title={brief.title} refId={refId} dateStr={dateStr} /></td></tr>
+        </thead>
+        <tfoot className="pr-analysis-tfoot">
+          <tr><td style={{ padding: 0 }}><PRFooter pageNum={9} refId={refId} year={year} /></td></tr>
+        </tfoot>
+        <tbody className="pr-analysis-tbody">
+          <tr><td style={{ padding: "14pt 20mm 10pt", verticalAlign: "top" }}>
+            {/* Inline photo — analysis section opener */}
+            <div className="pr-figure" style={{ marginBottom: "12pt" }}>
+              <img src={coverImageUrl} alt="Industrial analysis, Cambodia"
+                style={{ width: "100%", height: "90pt", objectFit: "cover", objectPosition: "center 40%", display: "block" }}
+                onError={(e) => { (e.target as HTMLImageElement).src = heroBlueprintImg; }}
+              />
+              <div className="pr-figure-caption">
+                <strong>Figure VI.1</strong> — Aerial / satellite view. Source: ESRI World Imagery · TheGentryLab.io
+              </div>
             </div>
-          </div>
-          {renderPrintMarkdown(output, catColor)}
-        </div>
-        <PRFooter pageNum={9} refId={refId} year={year} />
-      </div>
+            {renderPrintMarkdown(output, catColor)}
+          </td></tr>
+        </tbody>
+      </table>
 
       {/* ══════════════════════════════════════════════
           REFERENCES PAGE (standalone)
       ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={12} year={year}>
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={12} year={year} bottomAlign>
         <div className="pr-section-number">Section VIII</div>
         <div className="pr-h1">References &amp; Data Sources</div>
 
@@ -1746,7 +1758,7 @@ function PrintReport({
             <div>
               <span>{s.src}</span>
               {" "}
-              <span style={{ fontFamily: "monospace", fontSize: "7pt", color: "#aaa" }}>Available at: {s.url}</span>
+              <span style={{ fontFamily: "monospace", fontSize: "7pt", color: "#aaa" }}>{s.url}</span>
             </div>
           </div>
         ))}
@@ -1755,7 +1767,7 @@ function PrintReport({
       {/* ══════════════════════════════════════════════
           DISCLAIMER PAGE (standalone — small, understated)
       ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={13} year={year} extraClass="pr-disclaimer-page">
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={13} year={year} extraClass="pr-disclaimer-page" bottomAlign>
         <div className="pr-section-number">Important Notice</div>
         <div className="pr-h1">Disclaimer</div>
 
@@ -1799,7 +1811,7 @@ function PrintReport({
       {/* ══════════════════════════════════════════════
           METADATA PAGE — Report provenance + QR
       ══════════════════════════════════════════════ */}
-      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={14} year={year}>
+      <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={14} year={year} extraClass="pr-metadata-page" bottomAlign>
         <div className="pr-section-number">Report Provenance</div>
         <div className="pr-h1">Document Metadata</div>
 
@@ -3054,7 +3066,13 @@ export default function AdvisorPage() {
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Edit &amp; Regen
                   </button>
-                  <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
+                  <button onClick={() => {
+                    const prev = document.title;
+                    const slug = selectedBrief.title.replace(/[^a-zA-Z0-9 \-–—]/g, "").replace(/\s+/g, "_").slice(0, 80);
+                    document.title = `TGL_${slug}_${new Date().toISOString().slice(0, 10)}`;
+                    window.print();
+                    setTimeout(() => { document.title = prev; }, 3000);
+                  }} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
                     style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)", backgroundColor: "var(--adv-card)" }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                     Print / PDF

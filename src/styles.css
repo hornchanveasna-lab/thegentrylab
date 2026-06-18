@@ -396,11 +396,14 @@
 /* ── Print component base styles (always on, scoped) ── */
 /* These must live outside @media print so the flex layout
    renders correctly when Chromium builds the print PDF.  */
-.advisor-print .pr-content-page,
-.advisor-print .pr-analysis-page {
+.advisor-print .pr-content-page {
   display: flex !important;
   flex-direction: column !important;
   background: #ffffff;
+}
+.advisor-print .pr-analysis-table {
+  background: #ffffff;
+  width: 100%;
 }
 .advisor-print .pr-running-header {
   display: flex !important;
@@ -442,8 +445,19 @@
   /* ── Content page — exact A4 per page ── */
   .pr-content-page { height: 297mm; overflow: hidden; page-break-after: always; }
 
-  /* ── Analysis content page — flows naturally across pages ── */
-  .pr-analysis-page { page-break-before: always; }
+  /* ── Analysis content page — CSS table trick for repeating header/footer ── */
+  .pr-analysis-table { display: table !important; width: 100%; }
+  .pr-analysis-thead { display: table-header-group !important; }
+  .pr-analysis-tfoot { display: table-footer-group !important; }
+  .pr-analysis-tbody { display: table-row-group !important; }
+
+  /* ── Disclaimer + Metadata — smaller body text ── */
+  .pr-disclaimer-page .pr-p,
+  .pr-disclaimer-page .pr-h2,
+  .pr-metadata-page .pr-p,
+  .pr-metadata-page .pr-h2 { font-size: 7.5pt !important; }
+  .pr-disclaimer-page .pr-h1,
+  .pr-metadata-page .pr-h1 { font-size: 11pt !important; }
 
   /* ── Root — DM Sans light ── */
   .pr-root {
