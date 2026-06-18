@@ -189,7 +189,7 @@ A 5-point action plan with specific next steps the investor should take within t
 **Construction Timeline**: sections = Phase Breakdown (table: phase / duration / key milestone), Critical Path, Seasonal Risks, Recommended Start Window
 **EPC Budget Builder**: sections = Cost Summary (table: category / m² rate / total), Biggest Variables, Contingency Guidance, Procurement Approach
 
-Keep each brief 500–900 words for standard. 900–1400 words for comprehensive. Use specific numbers. Be direct. If you don't have exact data for a specific sub-location, give the best range and say so.`;
+Write **2,500–4,000 words for standard reports** and **6,000–10,000 words for comprehensive reports** — do NOT truncate, generate the full content. Every section must be fully developed with real numbers, specific recommendations, and detailed tables. For comprehensive reports, expand every section significantly with sub-sections, multiple examples, and thorough analysis. Use specific numbers throughout. Be direct. If you don't have exact data for a specific sub-location, give the best range and say so.`;
 
 /* ── Chart data suffixes — ALL reports get structured data ── */
 const SITE_SELECTION_CHART_SUFFIX = `
@@ -267,10 +267,18 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-const CREDIT_COSTS: Record<string, number> = {
-  standard:      75,
-  comprehensive: 150,
+// Minimum balance gate (pre-check before streaming)
+const MIN_BALANCE: Record<string, number> = {
+  standard:       50,
+  comprehensive: 100,
 };
+
+// Dynamic credit cost: 2× actual Claude API cost
+// 1 credit ≈ $0.002 (Pro tier); Sonnet input $3/MTok, output $15/MTok
+function calcCredits(inputTokens: number, outputTokens: number): number {
+  const usd = (inputTokens * 3 + outputTokens * 15) / 1_000_000;
+  return Math.max(5, Math.ceil(usd * 2 / 0.002));
+}
 
 export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
@@ -320,35 +328,25 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  /* ── Deduct credits (after parsing so we know reportType) ── */
+  /* ── Pre-check: verify user has minimum balance before streaming ── */
   if (userId) {
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const cost = CREDIT_COSTS[reportType] ?? CREDIT_COSTS.standard;
+    const minBalance  = MIN_BALANCE[reportType] ?? MIN_BALANCE.standard;
     if (supabaseUrl && serviceKey) {
       try {
         const ac2 = new AbortController();
         const t2 = setTimeout(() => ac2.abort(), 4000);
-        const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
-          method: "POST",
+        const balRes = await fetch(`${supabaseUrl}/rest/v1/user_credits?user_id=eq.${userId}&select=balance`, {
           signal: ac2.signal,
-          headers: {
-            "Content-Type": "application/json",
-            apikey: serviceKey,
-            Authorization: `Bearer ${serviceKey}`,
-          },
-          body: JSON.stringify({
-            p_user_id:     userId,
-            p_amount:      cost,
-            p_type:        reportType === "comprehensive" ? "brief_comprehensive" : "brief_standard",
-            p_description: `${briefTitle} — ${reportType}`,
-          }),
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, Accept: "application/json" },
         });
         clearTimeout(t2);
-        if (rpcRes.ok) {
-          const result = await rpcRes.json();
-          if (result.success === false) {
-            return new Response(JSON.stringify({ error: "insufficient_credits", balance: result.balance }), {
+        if (balRes.ok) {
+          const rows = await balRes.json();
+          const balance = rows[0]?.balance ?? 0;
+          if (balance < minBalance) {
+            return new Response(JSON.stringify({ error: "insufficient_credits", balance }), {
               status: 402, headers: { "Content-Type": "application/json", ...CORS },
             });
           }
@@ -375,8 +373,14 @@ export default async function handler(req: Request): Promise<Response> {
   const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.${chartSuffix}${refineInstruction}`;
 
   const encoder = new TextEncoder();
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
   const readable = new ReadableStream({
     async start(controller) {
+      let inputTokens  = 0;
+      let outputTokens = 0;
+
       try {
         const res = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -387,7 +391,7 @@ export default async function handler(req: Request): Promise<Response> {
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
-            max_tokens: isComprehensive ? 4000 : 2800,
+            max_tokens: isComprehensive ? 8192 : 4096,
             stream: true,
             system: SYSTEM_PROMPT,
             messages: [{ role: "user", content: userMessage }],
@@ -416,12 +420,48 @@ export default async function handler(req: Request): Promise<Response> {
             if (data === "[DONE]") continue;
             try {
               const evt = JSON.parse(data);
+              // Capture token counts from Claude's usage events
+              if (evt.type === "message_start" && evt.message?.usage) {
+                inputTokens = evt.message.usage.input_tokens ?? 0;
+              }
+              if (evt.type === "message_delta" && evt.usage) {
+                outputTokens = evt.usage.output_tokens ?? 0;
+              }
               if (evt.type === "content_block_delta" && evt.delta?.type === "text_delta") {
                 controller.enqueue(encoder.encode(evt.delta.text));
               }
             } catch {}
           }
         }
+
+        // Post-deduct based on actual token usage (2× API cost)
+        const creditCost = calcCredits(inputTokens, outputTokens);
+        if (userId && supabaseUrl && serviceKey) {
+          try {
+            const ac3 = new AbortController();
+            const t3 = setTimeout(() => ac3.abort(), 5000);
+            await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
+              method: "POST",
+              signal: ac3.signal,
+              headers: {
+                "Content-Type": "application/json",
+                apikey: serviceKey,
+                Authorization: `Bearer ${serviceKey}`,
+              },
+              body: JSON.stringify({
+                p_user_id:     userId,
+                p_amount:      creditCost,
+                p_type:        isComprehensive ? "brief_comprehensive" : "brief_standard",
+                p_description: `${briefTitle} — ${reportType}`,
+              }),
+            });
+            clearTimeout(t3);
+          } catch { /* non-fatal */ }
+        }
+
+        // Append actual cost marker so frontend can display it
+        controller.enqueue(encoder.encode(`\n<COST>${creditCost}</COST>`));
+
       } catch (err) {
         controller.enqueue(encoder.encode(`\n\n[Error: ${err instanceof Error ? err.message : "Unknown"}]`));
       } finally {

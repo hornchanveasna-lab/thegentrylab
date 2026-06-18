@@ -552,31 +552,31 @@ function renderMarkdown(text: string) {
     if (line.startsWith("## ")) {
       elements.push(<h2 key={i} className="text-[15px] font-extrabold uppercase tracking-tight mt-6 mb-2" style={{ color: "#ff5100" }}>{line.slice(3)}</h2>);
     } else if (line.startsWith("### ")) {
-      elements.push(<h3 key={i} className="text-[13px] font-bold uppercase tracking-tight mt-4 mb-1.5" style={{ color: "rgba(255,255,255,0.85)" }}>{line.slice(4)}</h3>);
+      elements.push(<h3 key={i} className="text-[13px] font-bold uppercase tracking-tight mt-4 mb-1.5" style={{ color: "var(--adv-text-hi)" }}>{line.slice(4)}</h3>);
     } else if (line.startsWith("#### ")) {
-      elements.push(<h4 key={i} className="text-[12px] font-semibold mt-3 mb-1" style={{ color: "rgba(255,255,255,0.75)" }}>{line.slice(5)}</h4>);
+      elements.push(<h4 key={i} className="text-[12px] font-semibold mt-3 mb-1" style={{ color: "var(--adv-text-body)" }}>{line.slice(5)}</h4>);
     } else if (line.startsWith("> ")) {
-      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(255,81,0,0.08)", borderLeft: "3px solid #ff5100", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line.slice(2))}</div>);
+      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(255,81,0,0.08)", borderLeft: "3px solid #ff5100", color: "var(--adv-text-body)" }}>{inlineMd(line.slice(2))}</div>);
     } else if (line.startsWith("⚠️")) {
-      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(245,158,11,0.08)", borderLeft: "3px solid #f59e0b", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line)}</div>);
+      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(245,158,11,0.08)", borderLeft: "3px solid #f59e0b", color: "var(--adv-text-body)" }}>{inlineMd(line)}</div>);
     } else if (line.startsWith("✅")) {
-      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(16,185,129,0.08)", borderLeft: "3px solid #10b981", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line)}</div>);
+      elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(16,185,129,0.08)", borderLeft: "3px solid #10b981", color: "var(--adv-text-body)" }}>{inlineMd(line)}</div>);
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      elements.push(<div key={i} className="flex gap-2 text-[12.5px] my-0.5" style={{ color: "rgba(255,255,255,0.70)" }}><span style={{ color: "#ff5100" }} className="shrink-0 mt-0.5">·</span><span>{inlineMd(line.slice(2))}</span></div>);
+      elements.push(<div key={i} className="flex gap-2 text-[12.5px] my-0.5" style={{ color: "var(--adv-text-body)" }}><span style={{ color: "#ff5100" }} className="shrink-0 mt-0.5">·</span><span>{inlineMd(line.slice(2))}</span></div>);
     } else if (/^\d+\./.test(line)) {
       const num = line.match(/^(\d+)\./)?.[1];
-      elements.push(<div key={i} className="flex gap-2.5 text-[12.5px] my-1" style={{ color: "rgba(255,255,255,0.70)" }}><span className="font-mono text-[10px] font-bold shrink-0 mt-0.5 w-4" style={{ color: "#ff5100" }}>{num}.</span><span>{inlineMd(line.replace(/^\d+\.\s*/, ""))}</span></div>);
+      elements.push(<div key={i} className="flex gap-2.5 text-[12.5px] my-1" style={{ color: "var(--adv-text-body)" }}><span className="font-mono text-[10px] font-bold shrink-0 mt-0.5 w-4" style={{ color: "#ff5100" }}>{num}.</span><span>{inlineMd(line.replace(/^\d+\.\s*/, ""))}</span></div>);
     } else if (line.startsWith("|")) {
       const tableLines: string[] = [];
       while (i < lines.length && lines[i].startsWith("|")) { tableLines.push(lines[i]); i++; }
       elements.push(<ScreenTable key={`t-${i}`} rows={tableLines} />);
       continue;
     } else if (line.startsWith("---")) {
-      elements.push(<hr key={i} className="my-4" style={{ borderColor: "rgba(255,255,255,0.08)" }} />);
+      elements.push(<hr key={i} className="my-4" style={{ borderColor: "var(--adv-border)" }} />);
     } else if (line.trim() === "") {
       elements.push(<div key={i} className="h-1" />);
     } else {
-      elements.push(<p key={i} className="text-[12.5px] leading-relaxed my-1" style={{ color: "rgba(255,255,255,0.65)" }}>{inlineMd(line)}</p>);
+      elements.push(<p key={i} className="text-[12.5px] leading-relaxed my-1" style={{ color: "var(--adv-text-body)" }}>{inlineMd(line)}</p>);
     }
     i++;
   }
@@ -586,7 +586,7 @@ function renderMarkdown(text: string) {
 function inlineMd(text: string): React.ReactNode {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return parts.map((p, i) => {
-    if (p.startsWith("**") && p.endsWith("**")) return <strong key={i} style={{ color: "#ffffff" }}>{p.slice(2, -2)}</strong>;
+    if (p.startsWith("**") && p.endsWith("**")) return <strong key={i} style={{ color: "var(--adv-text-hi)" }}>{p.slice(2, -2)}</strong>;
     if (p.startsWith("`") && p.endsWith("`")) return <code key={i} className="px-1.5 py-0.5 rounded text-[11px] font-mono" style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100" }}>{p.slice(1, -1)}</code>;
     return p;
   });
@@ -603,8 +603,8 @@ function ScreenTable({ rows }: { rows: string[] }) {
           {headers.map((h, i) => <th key={i} className="text-left py-2 px-3 font-mono uppercase tracking-wider text-[10px]" style={{ color: "#ff5100" }}>{h}</th>)}
         </tr></thead>
         <tbody>{body.map((row, ri) => (
-          <tr key={ri} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-            {row.map((cell, ci) => <td key={ci} className="py-2 px-3" style={{ color: "rgba(255,255,255,0.65)" }}>{inlineMd(cell)}</td>)}
+          <tr key={ri} style={{ borderBottom: "1px solid var(--adv-border-sub)" }}>
+            {row.map((cell, ci) => <td key={ci} className="py-2 px-3" style={{ color: "var(--adv-text-body)" }}>{inlineMd(cell)}</td>)}
           </tr>
         ))}</tbody>
       </table>
@@ -1993,6 +1993,8 @@ export default function AdvisorPage() {
   const [userNotes, setUserNotes] = useState("");
   const [refinePrompt, setRefinePrompt] = useState("");
   const [refining, setRefining] = useState(false);
+  const [actualCost, setActualCost] = useState<number | null>(null);
+  const { credits, refresh: refreshCredits } = useCredits();
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -2261,6 +2263,7 @@ export default function AdvisorPage() {
     setSavedBriefId(null);
     setChartData(null);
     setCreditError(null);
+    setActualCost(null);
     const now = new Date();
     setGeneratedAt(now);
 
@@ -2301,6 +2304,15 @@ export default function AdvisorPage() {
         setOutput(accumulated);
       }
 
+      // Extract <COST>N</COST> marker and actual credit charge
+      const costMatch = accumulated.match(/<COST>(\d+)<\/COST>/);
+      if (costMatch) {
+        setActualCost(parseInt(costMatch[1], 10));
+        accumulated = accumulated.replace(/\n?<COST>\d+<\/COST>/, "");
+        setOutput(accumulated);
+        refreshCredits();
+      }
+
       // Extract chart data from comprehensive mode response
       const { chartData: parsed, cleanText } = extractChartData(accumulated);
       if (parsed) {
@@ -2336,6 +2348,7 @@ export default function AdvisorPage() {
     setOutput("");
     setChartData(null);
     setCreditError(null);
+    setActualCost(null);
     const now = new Date();
     setGeneratedAt(now);
 
@@ -2378,6 +2391,14 @@ export default function AdvisorPage() {
         setOutput(accumulated);
       }
 
+      const costMatch2 = accumulated.match(/<COST>(\d+)<\/COST>/);
+      if (costMatch2) {
+        setActualCost(parseInt(costMatch2[1], 10));
+        accumulated = accumulated.replace(/\n?<COST>\d+<\/COST>/, "");
+        setOutput(accumulated);
+        refreshCredits();
+      }
+
       const { chartData: parsed, cleanText } = extractChartData(accumulated);
       if (parsed) { setChartData(parsed); setOutput(cleanText); accumulated = cleanText; }
 
@@ -2407,6 +2428,7 @@ export default function AdvisorPage() {
     setIsEditMode(false);
     setChartData(null);
     setCreditError(null);
+    setActualCost(null);
     setReportType("standard");
     setUserNotes("");
     setRefinePrompt("");
@@ -2624,7 +2646,7 @@ export default function AdvisorPage() {
                           <span className="font-bold text-[12px]" style={{ color: isSelected ? "#ff5100" : "var(--adv-text-body)" }}>
                             {rt === "standard" ? "Standard" : "Comprehensive"}
                           </span>
-                          <span className="font-mono text-[9px]" style={{ color: isSelected ? "#ff5100" : "var(--adv-text-dim)" }}>{cost} cr</span>
+                          <span className="font-mono text-[9px]" style={{ color: isSelected ? "#ff5100" : "var(--adv-text-dim)" }}>~{cost} cr</span>
                         </div>
                         <p className="text-[10px] leading-relaxed" style={{ color: "var(--adv-text-sub)" }}>
                           {rt === "standard" ? "Structured text brief with full analysis and recommendations." : "Includes charts, cost tables, timeline visual, and scoring graphs."}
@@ -2659,7 +2681,7 @@ export default function AdvisorPage() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <div>
                     <p className="font-bold text-[12px] mb-1" style={{ color: "#ef4444" }}>Insufficient credits</p>
-                    <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.50)" }}>Your balance is {creditError.balance} cr. <Link to="/credits" className="underline" style={{ color: "#ff5100" }}>Buy more credits →</Link></p>
+                    <p className="text-[11px]" style={{ color: "var(--adv-text-muted)" }}>Your balance is {creditError.balance} cr. <Link to="/credits" className="underline" style={{ color: "#ff5100" }}>Buy more credits →</Link></p>
                   </div>
                 </div>
               )}
@@ -2677,7 +2699,7 @@ export default function AdvisorPage() {
                 </button>
               </div>
               <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-ghost)" }}>
-                {reportType === "standard" ? `${CREDIT_COSTS.brief_standard} credits` : `${CREDIT_COSTS.brief_comprehensive} credits`} · Auto-saved to your account
+                Charged based on actual usage (2× API cost) · Auto-saved
               </p>
             </div>
           )}
@@ -2700,60 +2722,66 @@ export default function AdvisorPage() {
           {/* ── Step 3: Result ── */}
           {user && step === "result" && selectedBrief && (
             <div className="max-w-3xl">
-              {/* Actions bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded flex items-center justify-center shrink-0" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{selectedBrief.icon}</div>
-                  <h2 className="text-[14px] font-bold truncate" style={{ color: "var(--adv-text-hi)" }}>{selectedBrief.title}</h2>
+              {/* Result header — title row */}
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5 text-base" style={{ backgroundColor: `${activeCat.color}15`, color: activeCat.color }}>{selectedBrief.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                    <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ backgroundColor: `${activeCat.color}12`, color: activeCat.color }}>{activeCat.label}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full" style={{ backgroundColor: reportType === "comprehensive" ? "rgba(139,92,246,0.10)" : "var(--adv-card)", color: reportType === "comprehensive" ? "#a78bfa" : "var(--adv-text-dim)", border: `1px solid ${reportType === "comprehensive" ? "rgba(139,92,246,0.25)" : "var(--adv-border)"}` }}>{reportType}</span>
+                    {saved && !streaming && (
+                      <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />Saved
+                      </span>
+                    )}
+                    {streaming && (
+                      <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-dim)" }}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse inline-block" />Generating...
+                      </span>
+                    )}
+                    {actualCost !== null && !streaming && (
+                      <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-sec)" }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        {actualCost} cr charged{credits ? ` · ${credits.balance} remaining` : ""}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-[16px] font-bold leading-snug" style={{ color: "var(--adv-text-hi)" }}>{selectedBrief.title}</h2>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap sm:ml-auto">
-                  {saved && !streaming && (
-                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Saved
-                    </span>
-                  )}
-                  {streaming && (
-                    <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-dim)" }}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />Generating...
-                    </span>
-                  )}
-                  {!streaming && output && (
-                    <button onClick={() => {
-                      const preview = output.replace(/[#>*`|]/g, "").replace(/\s+/g, " ").slice(0, 600);
-                      window.dispatchEvent(new CustomEvent("tgl:chat-brief", { detail: { message: `I'd like to discuss my "${selectedBrief.title}" brief. Summary:\n\n${preview}…\n\nCan you help me explore this deeper?` } }));
-                    }} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                      style={{ border: "1px solid rgba(255,81,0,0.30)", color: "#ff5100", backgroundColor: "rgba(255,81,0,0.06)" }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                      <span className="hidden sm:inline">Discuss in </span>Chat
-                    </button>
-                  )}
-                  {!streaming && output && (
-                    <button onClick={editAndRegenerate} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                      style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)" }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      <span className="hidden sm:inline">Edit &amp; </span>Regen
-                    </button>
-                  )}
-                  {!streaming && output && (
-                    <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                      style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)" }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                      <span className="hidden sm:inline">Print / </span>PDF
-                    </button>
-                  )}
-                  {!streaming && output && (
-                    <button onClick={downloadAsPPT} className="flex items-center gap-1.5 px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                      style={{ border: "1px solid rgba(255,165,0,0.30)", color: "rgba(255,165,0,0.70)" }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                      <span className="hidden sm:inline">Download </span>PPT
-                    </button>
-                  )}
-                  <button onClick={reset} className="px-3 py-2 font-mono text-[9px] uppercase tracking-widest rounded transition"
-                    style={{ border: "1px solid rgba(255,81,0,0.30)", color: "#ff5100" }}>
-                    New Brief
+                <button onClick={reset} className="shrink-0 px-3 py-1.5 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
+                  style={{ border: "1px solid rgba(255,81,0,0.30)", color: "#ff5100", backgroundColor: "rgba(255,81,0,0.05)" }}>
+                  + New
+                </button>
+              </div>
+
+              {/* Action buttons row */}
+              {!streaming && output && (
+                <div className="flex items-center gap-2 flex-wrap mb-5 pb-4" style={{ borderBottom: "1px solid var(--adv-border)" }}>
+                  <button onClick={() => {
+                    const preview = output.replace(/[#>*`|]/g, "").replace(/\s+/g, " ").slice(0, 600);
+                    window.dispatchEvent(new CustomEvent("tgl:chat-brief", { detail: { message: `I'd like to discuss my "${selectedBrief.title}" brief.\n\n${preview}...\n\nCan you help me explore this deeper?` } }));
+                  }} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
+                    style={{ border: "1px solid rgba(255,81,0,0.35)", color: "#ff5100", backgroundColor: "rgba(255,81,0,0.06)" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Discuss in Chat
+                  </button>
+                  <button onClick={editAndRegenerate} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
+                    style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)", backgroundColor: "var(--adv-card)" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Edit &amp; Regen
+                  </button>
+                  <button onClick={() => window.print()} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
+                    style={{ border: "1px solid var(--adv-border-mid)", color: "var(--adv-text-sec)", backgroundColor: "var(--adv-card)" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    Print / PDF
+                  </button>
+                  <button onClick={downloadAsPPT} className="flex items-center gap-1.5 px-3.5 py-2 font-mono text-[9px] uppercase tracking-widest rounded-lg transition"
+                    style={{ border: "1px solid rgba(255,165,0,0.30)", color: "rgba(255,165,0,0.75)", backgroundColor: "rgba(255,165,0,0.05)" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                    Download PPT
                   </button>
                 </div>
-              </div>
+              )}
 
               {/* Saved ref strip */}
               {savedBriefId && !streaming && (
@@ -2769,9 +2797,9 @@ export default function AdvisorPage() {
 
               {/* Brief output */}
               <div ref={outputRef} className="rounded-xl p-4 sm:p-6 md:p-8 min-h-[300px] sm:min-h-[400px]"
-                style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
+                style={{ backgroundColor: "var(--adv-hero-bg)", border: "1px solid var(--adv-border)" }}>
                 {output ? renderMarkdown(output) : (
-                  <div className="flex items-center gap-2" style={{ color: "rgba(255,255,255,0.30)" }}>
+                  <div className="flex items-center gap-2" style={{ color: "var(--adv-text-dim)" }}>
                     <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
                     <span className="animate-bounce" style={{ animationDelay: "120ms" }}>·</span>
                     <span className="animate-bounce" style={{ animationDelay: "240ms" }}>·</span>
@@ -2828,9 +2856,9 @@ export default function AdvisorPage() {
                       <button key={chip} onClick={() => setRefinePrompt(chip)}
                         className="px-3 py-1 rounded-full text-[10.5px] transition"
                         style={{
-                          backgroundColor: refinePrompt === chip ? "rgba(255,81,0,0.15)" : "rgba(255,255,255,0.05)",
-                          border: `1px solid ${refinePrompt === chip ? "rgba(255,81,0,0.40)" : "rgba(255,255,255,0.10)"}`,
-                          color: refinePrompt === chip ? "#ff5100" : "rgba(255,255,255,0.55)",
+                          backgroundColor: refinePrompt === chip ? "rgba(255,81,0,0.15)" : "var(--adv-card)",
+                          border: `1px solid ${refinePrompt === chip ? "rgba(255,81,0,0.40)" : "var(--adv-border-input)"}`,
+                          color: refinePrompt === chip ? "#ff5100" : "var(--adv-text-muted)",
                         }}>
                         {chip}
                       </button>
@@ -2845,7 +2873,7 @@ export default function AdvisorPage() {
                       placeholder="Or type your own instruction — e.g. 'Add a section on logistics corridors', 'Focus only on Sihanoukville', 'Expand the financial model'..."
                       rows={3}
                       className="w-full px-4 py-3 rounded-xl text-[12px] leading-relaxed outline-none resize-none transition"
-                      style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: "#ffffff" }}
+                      style={{ backgroundColor: "var(--adv-input-bg)", border: "1px solid var(--adv-border-input)", color: "var(--adv-text-hi)" }}
                     />
                     {creditError && (
                       <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: "#ef4444" }}>
@@ -2854,8 +2882,8 @@ export default function AdvisorPage() {
                       </div>
                     )}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
-                      <span className="font-mono text-[9px]" style={{ color: "rgba(255,255,255,0.20)" }}>
-                        Uses {reportType === "standard" ? "75" : "150"} credits · saves new version
+                      <span className="font-mono text-[9px]" style={{ color: "var(--adv-text-ghost)" }}>
+                        Charged dynamically (2x API cost) · saves new version
                       </span>
                       <button
                         onClick={refine}
