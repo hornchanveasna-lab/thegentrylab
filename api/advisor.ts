@@ -191,11 +191,10 @@ A 5-point action plan with specific next steps the investor should take within t
 
 Keep each brief 500–900 words for standard. 900–1400 words for comprehensive. Use specific numbers. Be direct. If you don't have exact data for a specific sub-location, give the best range and say so.`;
 
-/* ── Comprehensive mode chart data suffix (site selection) ── */
-const COMPREHENSIVE_CHART_SUFFIX = `
+/* ── Chart data suffixes — ALL reports get structured data ── */
+const SITE_SELECTION_CHART_SUFFIX = `
 
-IMPORTANT — COMPREHENSIVE REPORT MODE:
-After completing the full brief text above, append a machine-readable JSON block EXACTLY as shown below. Do NOT wrap it in markdown code fences. The JSON must be valid. Use your best estimates based on the input parameters and your knowledge.
+IMPORTANT: After completing the full brief text, append a machine-readable JSON block EXACTLY as shown below. Do NOT wrap it in markdown code fences. The JSON must be valid. Fill in all placeholder values with realistic estimates based on the inputs.
 
 <CHART_DATA>
 {
@@ -216,14 +215,20 @@ After completing the full brief text above, append a machine-readable JSON block
     {"zone": "ZONE_2_NAME", "available": 28000},
     {"zone": "ZONE_3_NAME", "available": 12000}
   ],
-  "key_stats": {"min_wage_usd": 204, "power_min": 0.12, "power_max": 0.18, "sez_permit_months": 4, "outside_permit_months": 10}
+  "key_stats": {"min_wage_usd": 204, "power_min": 0.12, "power_max": 0.18, "sez_permit_months": 4, "outside_permit_months": 10},
+  "cost_breakdown": [
+    {"label": "Land Lease (5yr)", "value": 42},
+    {"label": "Construction", "value": 38},
+    {"label": "Utilities Setup", "value": 10},
+    {"label": "Permits & Legal", "value": 6},
+    {"label": "Contingency", "value": 4}
+  ]
 }
 </CHART_DATA>`;
 
-const COMPREHENSIVE_GENERIC_SUFFIX = `
+const GENERIC_CHART_SUFFIX = `
 
-IMPORTANT — COMPREHENSIVE REPORT MODE:
-After completing your full brief, append a structured data JSON block EXACTLY as shown (no markdown fences, valid JSON only):
+IMPORTANT: After completing your full brief, append a structured data JSON block EXACTLY as shown (no markdown fences, valid JSON only). Fill all placeholders with realistic values from your analysis.
 
 <CHART_DATA>
 {
@@ -246,6 +251,12 @@ After completing your full brief, append a structured data JSON block EXACTLY as
     {"label": "PHASE_1", "weeks": 6},
     {"label": "PHASE_2", "weeks": 12},
     {"label": "PHASE_3", "weeks": 10}
+  ],
+  "pie_data": [
+    {"label": "CATEGORY_1", "value": 35},
+    {"label": "CATEGORY_2", "value": 28},
+    {"label": "CATEGORY_3", "value": 20},
+    {"label": "CATEGORY_4", "value": 17}
   ]
 }
 </CHART_DATA>`;
@@ -352,15 +363,16 @@ export default async function handler(req: Request): Promise<Response> {
     .join("\n");
 
   const isComprehensive = reportType === "comprehensive";
-  const comprehensiveSuffix = briefType === "site-selection"
-    ? COMPREHENSIVE_CHART_SUFFIX
-    : COMPREHENSIVE_GENERIC_SUFFIX;
+  // All reports get structured chart data for visualizations
+  const chartSuffix = briefType === "site-selection"
+    ? SITE_SELECTION_CHART_SUFFIX
+    : GENERIC_CHART_SUFFIX;
 
   const refineInstruction = refinePrompt
     ? `\n\n**USER ADJUSTMENT REQUEST:** ${refinePrompt}\n\nPlease regenerate the full brief incorporating this adjustment. Keep all relevant original analysis but apply the requested change throughout.`
     : "";
 
-  const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.${isComprehensive ? comprehensiveSuffix : ""}${refineInstruction}`;
+  const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.${chartSuffix}${refineInstruction}`;
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
@@ -375,7 +387,7 @@ export default async function handler(req: Request): Promise<Response> {
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
-            max_tokens: isComprehensive ? 3500 : 2048,
+            max_tokens: isComprehensive ? 4000 : 2800,
             stream: true,
             system: SYSTEM_PROMPT,
             messages: [{ role: "user", content: userMessage }],
