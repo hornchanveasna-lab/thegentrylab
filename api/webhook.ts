@@ -46,4 +46,4 @@ export default async function handler(req: Request): Promise<Response> {
   return new Response("OK", { status: 200 });
 }
 
-export const runtime = "nodejs";
+// Node.js runtime is default for Vercel Functions — no declaration needed
