@@ -14,7 +14,7 @@ export const Route = createFileRoute("/tools/advisor")({
   component: AdvisorPage,
 });
 
-/* â─â─ Types â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Types ─────────────────────────────────────────────── */
 type Category = "INVEST" | "DEVELOP" | "FINANCE" | "COMPLY" | "PLAN";
 type Step = "select" | "form" | "generating" | "result" | "history";
 
@@ -82,7 +82,7 @@ function extractChartData(text: string): { chartData: ChartData | null; cleanTex
   }
 }
 
-/* â─â─ Chart: Zone Scoring â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Chart: Zone Scoring ─────────────────────────────────── */
 function ZoneScoringChart({ zones }: { zones: ZoneData[] }) {
   const data = zones.map(z => ({
     subject: z.name.length > 22 ? z.name.slice(0, 20) + "..." : z.name,
@@ -113,7 +113,7 @@ function ZoneScoringChart({ zones }: { zones: ZoneData[] }) {
   );
 }
 
-/* â─â─ Chart: Cost Comparison â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Chart: Cost Comparison ──────────────────────────────── */
 function CostComparisonChart({ costs }: { costs: CostData[] }) {
   const data = costs.map(c => ({
     zone: c.zone.length > 20 ? c.zone.slice(0, 18) + "..." : c.zone,
@@ -143,7 +143,7 @@ function CostComparisonChart({ costs }: { costs: CostData[] }) {
   );
 }
 
-/* â─â─ Chart: Timeline â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Chart: Timeline ─────────────────────────────────────── */
 function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timeline_weeks"] }) {
   const phases = [
     { label: "Land Due Diligence",   weeks: timeline.due_diligence,  color: "#3b82f6" },
@@ -181,7 +181,7 @@ function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timelin
   );
 }
 
-/* â─â─ Chart: Key Stats â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Chart: Key Stats ────────────────────────────────────── */
 function KeyStatsPanel({ stats, zones }: { stats: SiteSelectionChartData["key_stats"]; zones: ZoneData[] }) {
   return (
     <div className="rounded-xl p-5" style={{ backgroundColor: "#0d0d0e", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -218,7 +218,7 @@ function KeyStatsPanel({ stats, zones }: { stats: SiteSelectionChartData["key_st
   );
 }
 
-/* â─â─ Generic chart panel â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Generic chart panel ─────────────────────────────────── */
 function GenericChartsPanel({ data }: { data: GenericChartData }) {
   return (
     <div className="space-y-4">
@@ -266,7 +266,7 @@ function GenericChartsPanel({ data }: { data: GenericChartData }) {
   );
 }
 
-/* â─â─ Category config â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Category config ────────────────────────────────────── */
 const CATEGORIES: { id: Category; label: string; color: string; desc: string; icon: React.ReactNode }[] = [
   {
     id: "INVEST", label: "Invest", color: "#ff5100", desc: "International manufacturers & investors",
@@ -295,7 +295,7 @@ const PROVINCES = ["Phnom Penh","Kandal","Kampong Speu","Sihanoukville","Svay Ri
 const BUDGET_RANGES = ["Under USD 1M","USD 1M – 5M","USD 5M – 20M","USD 20M – 50M","USD 50M – 100M","Over USD 100M"];
 const FACTORY_SIZES = ["Under 1,000 m²","1,000 – 3,000 m²","3,000 – 10,000 m²","10,000 – 30,000 m²","30,000 – 65,000 m²","Over 65,000 m²"];
 
-/* â─â─ Brief definitions â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Brief definitions ──────────────────────────────────── */
 const BRIEFS: BriefType[] = [
   /* INVEST */
   {
@@ -507,7 +507,7 @@ const BRIEFS: BriefType[] = [
   },
 ];
 
-/* â─â─ Screen markdown renderer â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Screen markdown renderer ────────────────────────────── */
 function renderMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
@@ -522,9 +522,9 @@ function renderMarkdown(text: string) {
       elements.push(<h4 key={i} className="text-[12px] font-semibold mt-3 mb-1" style={{ color: "rgba(255,255,255,0.75)" }}>{line.slice(5)}</h4>);
     } else if (line.startsWith("> ")) {
       elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(255,81,0,0.08)", borderLeft: "3px solid #ff5100", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line.slice(2))}</div>);
-    } else if (line.startsWith("âš ï¸")) {
+    } else if (line.startsWith("⚠️")) {
       elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(245,158,11,0.08)", borderLeft: "3px solid #f59e0b", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line)}</div>);
-    } else if (line.startsWith("âœ…")) {
+    } else if (line.startsWith("✅")) {
       elements.push(<div key={i} className="my-3 px-4 py-3 rounded-lg text-[12.5px] leading-relaxed" style={{ backgroundColor: "rgba(16,185,129,0.08)", borderLeft: "3px solid #10b981", color: "rgba(255,255,255,0.80)" }}>{inlineMd(line)}</div>);
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
       elements.push(<div key={i} className="flex gap-2 text-[12.5px] my-0.5" style={{ color: "rgba(255,255,255,0.70)" }}><span style={{ color: "#ff5100" }} className="shrink-0 mt-0.5">·</span><span>{inlineMd(line.slice(2))}</span></div>);
@@ -577,7 +577,7 @@ function ScreenTable({ rows }: { rows: string[] }) {
   );
 }
 
-/* â─â─ Print markdown renderer â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Print markdown renderer ─────────────────────────────── */
 function renderPrintMarkdown(text: string) {
   const lines = text.split("\n");
   const elements: React.ReactNode[] = [];
@@ -592,9 +592,9 @@ function renderPrintMarkdown(text: string) {
       elements.push(<div key={i} className="pr-h4">{line.slice(5)}</div>);
     } else if (line.startsWith("> ")) {
       elements.push(<div key={i} className="pr-blockquote">{printInline(line.slice(2))}</div>);
-    } else if (line.startsWith("âš ï¸")) {
+    } else if (line.startsWith("⚠️")) {
       elements.push(<div key={i} className="pr-warn">{printInline(line)}</div>);
-    } else if (line.startsWith("âœ…")) {
+    } else if (line.startsWith("✅")) {
       elements.push(<div key={i} className="pr-good">{printInline(line)}</div>);
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
       elements.push(<div key={i} className="pr-li"><span className="pr-li-dot">·</span><span>{printInline(line.slice(2))}</span></div>);
@@ -639,7 +639,7 @@ function PrintTable({ rows }: { rows: string[] }) {
   );
 }
 
-/* â─â─ SVG Print Charts â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── SVG Print Charts ────────────────────────────────────── */
 const PF = { body: "'Inter','Helvetica Neue',Arial,sans-serif", head: "'Inter','Helvetica Neue',Arial,sans-serif" } as const;
 const PCOLS = ["#cc3300", "#1a5c9e", "#217a4b", "#7b3fa0", "#b86e00"] as const;
 
@@ -847,7 +847,7 @@ function SvgGenericTimeline({ items }: { items: GenericChartData["timeline_items
   );
 }
 
-/* â─â─ SVG Pie Chart â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── SVG Pie Chart ──────────────────────────────────────── */
 function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
   const total = slices.reduce((s, p) => s + p.value, 0);
   const cx = 100, cy = 90, r = 78;
@@ -893,7 +893,7 @@ function SvgPieChart({ slices, title }: { slices: PieSlice[]; title: string }) {
   );
 }
 
-/* â─â─ SVG Cambodia Province Map â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── SVG Cambodia Province Map ──────────────────────────── */
 // Converts lat/lng to SVG x/y within a 400Ã—300 viewport
 // Cambodia bounds: lat 10.4–14.7, lng 102.35–107.62
 function latLngToSvg(lat: number, lng: number): [number, number] {
@@ -962,7 +962,7 @@ function SvgCambodiaMap({ zones }: { zones: ZoneData[] }) {
   );
 }
 
-/* â─â─ SVG Labour Pool Bar Chart â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── SVG Labour Pool Bar Chart ──────────────────────────── */
 function SvgLabourPoolChart({ labour }: { labour: SiteSelectionChartData["labour_pool"] }) {
   const max = Math.max(...labour.map(l => l.available));
   const H = labour.length * 28 + 30;
@@ -987,7 +987,7 @@ function SvgLabourPoolChart({ labour }: { labour: SiteSelectionChartData["labour
   );
 }
 
-/* â─â─ Print Report component â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Print Report component ─────────────────────────────── */
 function PrintReport({
   brief, form, output, savedBriefId, generatedAt, chartData, reportType,
 }: {
@@ -1018,9 +1018,9 @@ function PrintReport({
   return (
     <div className="advisor-print pr-root" style={{ backgroundColor: "#ffffff", color: "#000000" }}>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      {/* ••••••••••••••••••••••••••••••••••••••••••
           PAGE 1 — MINIMAL COVER
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      •••••••••••••••••••••••••••••••••••••••••• */}
       <div style={{ pageBreakAfter: "always", minHeight: "270mm", display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
 
         {/* Thin top accent line */}
@@ -1067,10 +1067,10 @@ function PrintReport({
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      {/* ••••••••••••••••••••••••••••••••••••••••••
           PAGE 2 — INFOGRAPHIC / DATA VISUALISATION
           (all reports get this page)
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      •••••••••••••••••••••••••••••••••••••••••• */}
       <div style={{ pageBreakAfter: "always", backgroundColor: "#ffffff" }}>
         <div className="pr-header">
           <div>
@@ -1098,7 +1098,7 @@ function PrintReport({
           </div>
         )}
 
-        {/* â─â─ Site Selection visualisations â─â─ */}
+        {/* ── Site Selection visualisations ── */}
         {ssd && (
           <>
             {/* Row 1: Key stats infographic + Pie chart */}
@@ -1186,7 +1186,7 @@ function PrintReport({
           </>
         )}
 
-        {/* â─â─ Generic brief visualisations â─â─ */}
+        {/* ── Generic brief visualisations ── */}
         {gd && (
           <>
             {/* Key metrics infographic */}
@@ -1226,9 +1226,9 @@ function PrintReport({
         )}
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      {/* ••••••••••••••••••••••••••••••••••••••••••
           PAGE 3+ — BRIEF CONTENT
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      •••••••••••••••••••••••••••••••••••••••••• */}
       <div style={{ backgroundColor: "#ffffff" }}>
 
         {/* Running header */}
@@ -1248,9 +1248,9 @@ function PrintReport({
         </div>
       </div>
 
-      {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+      {/* ••••••••••••••••••••••••••••••••••••••••••
           LAST PAGE — DISCLAIMER + METADATA
-      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+      •••••••••••••••••••••••••••••••••••••••••• */}
       <div style={{ pageBreakBefore: "always", backgroundColor: "#ffffff", color: "#000000" }}>
 
         {/* Running header */}
@@ -1361,7 +1361,7 @@ function PrintReport({
   );
 }
 
-/* â─â─ Saved Briefs history component â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Saved Briefs history component ─────────────────────── */
 function HistoryView({
   briefs, loading, onOpen, onNew,
 }: {
@@ -1400,7 +1400,7 @@ function HistoryView({
           <p className="text-[13px]" style={{ color: "rgba(255,255,255,0.40)" }}>No saved briefs yet.</p>
           <p className="text-[11px] mt-1" style={{ color: "rgba(255,255,255,0.25)" }}>Generate your first brief to see it here.</p>
           <button onClick={onNew} className="mt-5 px-5 py-2.5 rounded-lg font-bold text-[12px]" style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.25)" }}>
-            Generate a Brief â†’
+            Generate a Brief →
           </button>
         </div>
       )}
@@ -1427,7 +1427,7 @@ function HistoryView({
                     <span className="font-mono text-[9px]" style={{ color: "rgba(255,255,255,0.25)" }}>
                       {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
                     </span>
-                    <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>Open â†’</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>Open →</span>
                   </div>
                 </div>
                 {preview && (
@@ -1442,7 +1442,7 @@ function HistoryView({
   );
 }
 
-/* â─â─ Main page â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─ */
+/* ── Main page ──────────────────────────────────────────── */
 export default function AdvisorPage() {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>("select");
@@ -1532,7 +1532,7 @@ export default function AdvisorPage() {
     const RED = "CC3300", DARK = "111111", GRAY = "666666", LGRAY = "AAAAAA", WHITE = "FFFFFF";
     const cat = CATEGORIES.find(c => c.id === selectedBrief.category)!;
 
-    // â─â─ Slide 1: Cover â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
+    // ── Slide 1: Cover ──────────────────────────────────
     const s1 = pptx.addSlide();
     s1.background = { color: WHITE };
     s1.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
@@ -1545,7 +1545,7 @@ export default function AdvisorPage() {
     s1.addText(`REF #${refId}  ·  AI INDUSTRIAL ADVISOR  ·  CAMBODIA`, { x: 0.6, y: 7.15, w: 9, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial" });
     s1.addText("thegentrylab.io", { x: 10.5, y: 7.15, w: 2.5, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial", align: "right" });
 
-    // â─â─ Slide 2: Analysis Parameters â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
+    // ── Slide 2: Analysis Parameters ─────────────────────
     const labelMap2: Record<string, string> = {};
     selectedBrief.fields.forEach(f => { labelMap2[f.id] = f.label; });
     const inputPairs2 = Object.entries(form).filter(([, v]) => v).map(([k, v]) => ({ key: labelMap2[k] ?? k, val: v }));
@@ -1563,7 +1563,7 @@ export default function AdvisorPage() {
       ], { x: 0.4, y: 1.0, w: 12.5, colW: [3.5, 9], border: { type: "solid", color: "EEEEEE" } as const });
     }
 
-    // â─â─ Slide 3: Key Statistics Infographic â─â─â─â─â─â─â─â─â─â─â─â─â─â─
+    // ── Slide 3: Key Statistics Infographic ──────────────
     const ssd2 = chartData?.type === "site_selection" ? chartData as SiteSelectionChartData : null;
     const gd2 = chartData?.type === "generic" ? chartData as GenericChartData : null;
     if (ssd2) {
@@ -1600,7 +1600,7 @@ export default function AdvisorPage() {
       ], { x: 0.4, y: 2.65, w: 12.5, colW: [0.6, 2.2, 1.5, 1.3, 0.7, 0.8, 0.7, 0.8, 0.7], border: { type: "solid", color: "EEEEEE" } as const });
     }
 
-    // â─â─ Slide 4: Charts â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
+    // ── Slide 4: Charts ───────────────────────────────────
     if (ssd2) {
       const s4 = pptx.addSlide();
       s4.background = { color: WHITE };
@@ -1677,7 +1677,7 @@ export default function AdvisorPage() {
       }
     }
 
-    // â─â─ Content slides â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
+    // ── Content slides ────────────────────────────────────
     const lines = output.split("\n").filter(l => l.trim());
     const LINES_PER_SLIDE = 22;
     for (let i = 0; i < lines.length; i += LINES_PER_SLIDE) {
@@ -1697,7 +1697,7 @@ export default function AdvisorPage() {
       sc.addText(textRuns, { x: 0.4, y: 0.55, w: 12.5, h: 6.8, valign: "top" });
     }
 
-    // â─â─ Last slide: Disclaimer â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─â─
+    // ── Last slide: Disclaimer ────────────────────────────
     const sLast = pptx.addSlide();
     sLast.background = { color: WHITE };
     sLast.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
@@ -1885,7 +1885,7 @@ export default function AdvisorPage() {
 
   const allFilled = selectedBrief?.fields.filter(f => f.required).every(f => form[f.id]?.trim());
 
-  /* â─â─ Render â─â─ */
+  /* ── Render ── */
   return (
     <>
       {/* Print report (hidden on screen, shown on print) */}
@@ -1934,13 +1934,13 @@ export default function AdvisorPage() {
                 {step !== "select" && step !== "history" && (
                   <button onClick={reset} className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest rounded transition"
                     style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
-                    â† New Brief
+                    ← New Brief
                   </button>
                 )}
                 {step === "history" && (
                   <button onClick={reset} className="px-4 py-2 font-mono text-[10px] uppercase tracking-widest rounded transition"
                     style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
-                    â† Back
+                    ← Back
                   </button>
                 )}
               </div>
@@ -1958,7 +1958,7 @@ export default function AdvisorPage() {
                       <div className="flex items-center gap-1.5">
                         <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all"
                           style={{ backgroundColor: isActive ? "#ff5100" : isDone ? "rgba(255,81,0,0.30)" : "rgba(255,255,255,0.08)", color: isActive || isDone ? "#fff" : "rgba(255,255,255,0.30)" }}>
-                          {isDone ? "âœ–" : i + 1}
+                          {isDone ? "✓" : i + 1}
                         </div>
                         <span className="font-mono text-[10px] uppercase tracking-wider hidden sm:block"
                           style={{ color: isActive ? "#ff5100" : "rgba(255,255,255,0.25)" }}>{labels[i]}</span>
@@ -1974,7 +1974,7 @@ export default function AdvisorPage() {
 
         <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-12 py-6 sm:py-10">
 
-          {/* â─â─ Auth gate â─â─ */}
+          {/* ── Auth gate ── */}
           {!user && (
             <div className="max-w-md mx-auto text-center py-16">
               <div className="w-14 h-14 rounded-full mx-auto mb-5 flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
@@ -1984,12 +1984,12 @@ export default function AdvisorPage() {
               <p className="text-[13px] mb-6" style={{ color: "rgba(255,255,255,0.40)" }}>AI Industrial Advisor briefs require a free account.</p>
               <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px]"
                 style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
-                Sign in free â†’
+                Sign in free →
               </Link>
             </div>
           )}
 
-          {/* â─â─ History â─â─ */}
+          {/* ── History ── */}
           {user && step === "history" && (
             <HistoryView
               briefs={savedBriefs}
@@ -1999,7 +1999,7 @@ export default function AdvisorPage() {
             />
           )}
 
-          {/* â─â─ Step 1: Select â─â─ */}
+          {/* ── Step 1: Select ── */}
           {user && step === "select" && (
             <div>
               <div className="flex flex-wrap gap-2 mb-8">
@@ -2033,7 +2033,7 @@ export default function AdvisorPage() {
                     <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: activeCat.color }}>For: {b.audience}</p>
                     <div className="flex items-center gap-1.5 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                       <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.25)" }}>{b.fields.length} inputs · ~30 sec</span>
-                      <span className="ml-auto font-mono text-[9px]" style={{ color: activeCat.color }}>Generate â†’</span>
+                      <span className="ml-auto font-mono text-[9px]" style={{ color: activeCat.color }}>Generate →</span>
                     </div>
                   </button>
                 ))}
@@ -2041,7 +2041,7 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {/* â─â─ Step 2: Form â─â─ */}
+          {/* ── Step 2: Form ── */}
           {user && step === "form" && selectedBrief && (
             <div className="max-w-2xl">
               <div className="flex items-center gap-3 mb-6">
@@ -2128,7 +2128,7 @@ export default function AdvisorPage() {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <div>
                     <p className="font-bold text-[12px] mb-1" style={{ color: "#ef4444" }}>Insufficient credits</p>
-                    <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.50)" }}>Your balance is {creditError.balance} cr. <Link to="/credits" className="underline" style={{ color: "#ff5100" }}>Buy more credits â†’</Link></p>
+                    <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.50)" }}>Your balance is {creditError.balance} cr. <Link to="/credits" className="underline" style={{ color: "#ff5100" }}>Buy more credits →</Link></p>
                   </div>
                 </div>
               )}
@@ -2137,12 +2137,12 @@ export default function AdvisorPage() {
                 <button onClick={() => isEditMode ? setStep("result") : setStep("select")}
                   className="px-5 py-2.5 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
                   style={{ border: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.40)" }}>
-                  â† {isEditMode ? "Cancel" : "Back"}
+                  ← {isEditMode ? "Cancel" : "Back"}
                 </button>
                 <button onClick={generate} disabled={!allFilled}
                   className="flex-1 px-5 py-2.5 rounded-lg font-bold text-[13px] transition disabled:opacity-30 disabled:cursor-not-allowed"
                   style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
-                  {isEditMode ? "Regenerate Brief â†’" : "Generate Brief â†’"}
+                  {isEditMode ? "Regenerate Brief →" : "Generate Brief →"}
                 </button>
               </div>
               <p className="mt-3 text-center font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.20)" }}>
@@ -2151,7 +2151,7 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {/* â─â─ Generating animation â─â─ */}
+          {/* ── Generating animation ── */}
           {step === "generating" && (
             <div className="flex flex-col items-center justify-center py-24 gap-5">
               <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
@@ -2166,7 +2166,7 @@ export default function AdvisorPage() {
             </div>
           )}
 
-          {/* â─â─ Step 3: Result â─â─ */}
+          {/* ── Step 3: Result ── */}
           {user && step === "result" && selectedBrief && (
             <div className="max-w-3xl">
               {/* Actions bar */}
@@ -2221,7 +2221,7 @@ export default function AdvisorPage() {
                   <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#10b981" }}>Saved to your account</span>
                   <span className="font-mono text-[9px] ml-auto" style={{ color: "rgba(255,255,255,0.20)" }}>Ref #{savedBriefId.slice(0, 8).toUpperCase()}</span>
                   <button onClick={openHistory} className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>
-                    View all â†’
+                    View all →
                   </button>
                 </div>
               )}
@@ -2309,7 +2309,7 @@ export default function AdvisorPage() {
                     {creditError && (
                       <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: "#ef4444" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        Insufficient credits ({creditError.balance} cr). <Link to="/credits" className="underline ml-1" style={{ color: "#ff5100" }}>Buy more â†’</Link>
+                        Insufficient credits ({creditError.balance} cr). <Link to="/credits" className="underline ml-1" style={{ color: "#ff5100" }}>Buy more →</Link>
                       </div>
                     )}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">
@@ -2351,7 +2351,7 @@ export default function AdvisorPage() {
                   <a href="mailto:advisory@thegentrylab.io?subject=AI Brief Review Request"
                     className="px-5 py-2.5 rounded-lg font-bold text-[12px] shrink-0 transition"
                     style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
-                    Get Expert Review â†’
+                    Get Expert Review →
                   </a>
                 </div>
               )}
