@@ -151,6 +151,20 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
                     </div>
                   </div>
 
+                  {/* Profile & Settings */}
+                  <div className="px-3 py-2 border-b nav-border">
+                    {[
+                      { label: "Profile",  icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                      { label: "Settings", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
+                    ].map((item) => (
+                      <button key={item.label}
+                        className="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md nav-text-muted hover:nav-text-primary hover:bg-white/5 transition-colors text-left">
+                        <span className="opacity-60">{item.icon}</span>
+                        <span className="text-[11px] font-medium">{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
                   {/* Tools */}
                   <div className="px-3 py-2.5 border-b nav-border">
                     <p className="font-mono text-[8px] uppercase tracking-[0.2em] nav-text-muted px-1 mb-1.5">Tools</p>
