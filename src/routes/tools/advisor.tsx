@@ -635,6 +635,214 @@ function PrintTable({ rows }: { rows: string[] }) {
   );
 }
 
+/* ── SVG Print Charts ────────────────────────────────────── */
+const PF = { body: "Georgia,'Palatino Linotype',serif", head: "'Trebuchet MS','Calibri',Arial,sans-serif" } as const;
+const PCOLS = ["#cc3300", "#1a5c9e", "#217a4b", "#7b3fa0", "#b86e00"] as const;
+
+function SvgHorizBar({ label, value, max, color, width = 460 }: { label: string; value: number; max: number; color: string; width?: number }) {
+  const barW = Math.max(2, Math.round((value / max) * (width - 130)));
+  return (
+    <g>
+      <text x="0" y="11" style={{ fontFamily: PF.body, fontSize: "8pt", fill: "#444" }}>{label}</text>
+      <rect x="130" y="0" width={width - 130} height="13" fill="#f0f0f0" rx="2" />
+      <rect x="130" y="0" width={barW} height="13" fill={color} rx="2" />
+      <text x={130 + barW + 4} y="10" style={{ fontFamily: PF.head, fontSize: "7.5pt", fontWeight: "bold", fill: color }}>{value}</text>
+    </g>
+  );
+}
+
+function SvgZoneScoringChart({ zones }: { zones: ZoneData[] }) {
+  const criteria = [
+    { key: "labour" as const, label: "Labour Pool" },
+    { key: "cost" as const, label: "Cost Index" },
+    { key: "permits" as const, label: "Permit Speed" },
+    { key: "infrastructure" as const, label: "Infrastructure" },
+    { key: "risk" as const, label: "Risk Score" },
+  ];
+  const rowH = 20, groupH = criteria.length * rowH + 14;
+  const totalH = zones.length * groupH + 40;
+  return (
+    <svg width="100%" viewBox={`0 0 540 ${totalH}`} style={{ display: "block", marginBottom: "8pt" }}>
+      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>ZONE SCORING — CRITERIA BREAKDOWN (out of 10)</text>
+      {zones.map((zone, zi) => {
+        const gy = 22 + zi * groupH;
+        return (
+          <g key={zone.name} transform={`translate(0,${gy})`}>
+            <rect x="0" y="0" width="540" height={groupH - 4} fill={zi % 2 === 0 ? "#fff8f6" : "#f9f9f9"} rx="3" />
+            <text x="6" y="11" style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: "bold", fill: PCOLS[zi % PCOLS.length] }}>
+              #{zone.rank} {zone.name}
+            </text>
+            <text x="6" y="21" style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#777" }}>{zone.province} · {zone.zone_type} · Overall: {zone.score}/100</text>
+            {criteria.map((c, ci) => {
+              const val = zone[c.key] * 10;
+              const barX = 140, barMaxW = 360, barW = Math.max(2, Math.round((val / 100) * barMaxW));
+              const y = 26 + ci * rowH;
+              return (
+                <g key={c.key} transform={`translate(0,${y})`}>
+                  <text x="6" y="10" style={{ fontFamily: PF.body, fontSize: "7.5pt", fill: "#555" }}>{c.label}</text>
+                  <rect x={barX} y="1" width={barMaxW} height="11" fill="#ebebeb" rx="2" />
+                  <rect x={barX} y="1" width={barW} height="11" fill={PCOLS[zi % PCOLS.length]} rx="2" opacity="0.85" />
+                  <text x={barX + barW + 4} y="10" style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: "bold", fill: PCOLS[zi % PCOLS.length] }}>{zone[c.key]}/10</text>
+                </g>
+              );
+            })}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function SvgCostChart({ costs }: { costs: CostData[] }) {
+  const fields: { key: keyof CostData; label: string }[] = [
+    { key: "land_lease_m2_yr", label: "Land Lease /m²/yr ($)" },
+    { key: "build_cost_m2", label: "Build Cost /m² ($)" },
+  ];
+  const rowH = 18, groupH = fields.length * rowH + 18;
+  const totalH = costs.length * groupH + 40;
+  const maxVal = Math.max(...costs.flatMap(c => [c.land_lease_m2_yr, c.build_cost_m2]));
+  return (
+    <svg width="100%" viewBox={`0 0 540 ${totalH}`} style={{ display: "block", marginBottom: "8pt" }}>
+      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>COST COMPARISON BY ZONE</text>
+      {costs.map((c, i) => {
+        const gy = 22 + i * groupH;
+        return (
+          <g key={c.zone} transform={`translate(0,${gy})`}>
+            <rect x="0" y="0" width="540" height={groupH - 4} fill={i % 2 === 0 ? "#fff8f6" : "#f9f9f9"} rx="3" />
+            <text x="6" y="13" style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: "bold", fill: PCOLS[i % PCOLS.length] }}>{c.zone}</text>
+            {fields.map((f, fi) => {
+              const val = c[f.key] as number;
+              const barX = 160, barMaxW = 340, barW = Math.max(2, Math.round((val / maxVal) * barMaxW));
+              const y = 17 + fi * rowH;
+              return (
+                <g key={f.key} transform={`translate(0,${y})`}>
+                  <text x="6" y="10" style={{ fontFamily: PF.body, fontSize: "7.5pt", fill: "#555" }}>{f.label}</text>
+                  <rect x={barX} y="1" width={barMaxW} height="11" fill="#ebebeb" rx="2" />
+                  <rect x={barX} y="1" width={barW} height="11" fill={PCOLS[i % PCOLS.length]} rx="2" opacity="0.85" />
+                  <text x={barX + barW + 4} y="10" style={{ fontFamily: PF.head, fontSize: "7pt", fontWeight: "bold", fill: PCOLS[i % PCOLS.length] }}>${val}</text>
+                </g>
+              );
+            })}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function SvgTimeline({ timeline }: { timeline: SiteSelectionChartData["timeline_weeks"] }) {
+  const phases = [
+    { label: "Land Due Diligence", weeks: timeline.due_diligence },
+    { label: "Environmental (MoE)", weeks: timeline.environmental },
+    { label: "MIH Licence", weeks: timeline.mih_licence },
+    { label: "CDC QIP", weeks: timeline.cdc_qip },
+    { label: "Construction", weeks: timeline.construction },
+    { label: "Utility Connection", weeks: timeline.utilities },
+  ];
+  const total = phases.reduce((s, p) => s + p.weeks, 0);
+  const W = 380, H = phases.length * 22 + 50;
+  let off = 0;
+  return (
+    <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "8pt" }}>
+      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>
+        TIMELINE TO FIRST PRODUCTION · TOTAL ~{Math.round(total / 4.33)} MONTHS
+      </text>
+      {phases.map((p, i) => {
+        const x = 150 + Math.round((off / total) * W);
+        const w = Math.max(2, Math.round((p.weeks / total) * W));
+        const y = 20 + i * 22;
+        off += p.weeks;
+        const col = PCOLS[i % PCOLS.length];
+        return (
+          <g key={p.label}>
+            <text x="145" y={y + 13} textAnchor="end" style={{ fontFamily: PF.body, fontSize: "7.5pt", fill: "#555" }}>{p.label}</text>
+            <rect x="150" y={y} width={W} height="15" fill="#ebebeb" rx="2" />
+            <rect x={x} y={y} width={w} height="15" fill={col} rx="2" />
+            {w > 22 && (
+              <text x={x + w / 2} y={y + 11} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "6.5pt", fontWeight: "bold", fill: "#fff" }}>{p.weeks}w</text>
+            )}
+            <text x={x + w + 4} y={y + 11} style={{ fontFamily: PF.head, fontSize: "7pt", fill: col, fontWeight: "bold" }}>{p.weeks}w</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function SvgKeyStats({ stats, zones }: { stats: SiteSelectionChartData["key_stats"]; zones: ZoneData[] }) {
+  const items = [
+    { label: "Min. Wage", value: `$${stats.min_wage_usd}`, unit: "/month" },
+    { label: "Power Tariff", value: `$${stats.power_min}–$${stats.power_max}`, unit: "/kWh" },
+    { label: "SEZ Permits", value: `${stats.sez_permit_months}mo`, unit: "inside SEZ" },
+    { label: "Outside SEZ", value: `${stats.outside_permit_months}mo`, unit: "permit time" },
+  ];
+  return (
+    <svg width="100%" viewBox="0 0 540 70" style={{ display: "block", marginBottom: "8pt" }}>
+      {items.map((item, i) => {
+        const x = i * 135;
+        return (
+          <g key={item.label} transform={`translate(${x},0)`}>
+            <rect x="0" y="0" width="128" height="65" fill={i % 2 === 0 ? "#fff8f6" : "#f5f5f5"} rx="4" />
+            <rect x="0" y="0" width="4" height="65" fill={PCOLS[i % PCOLS.length]} rx="2" />
+            <text x="10" y="15" style={{ fontFamily: PF.head, fontSize: "6.5pt", fill: "#888", textTransform: "uppercase" }}>{item.label}</text>
+            <text x="10" y="40" style={{ fontFamily: PF.head, fontSize: "16pt", fontWeight: "bold", fill: PCOLS[i % PCOLS.length] }}>{item.value}</text>
+            <text x="10" y="56" style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#888" }}>{item.unit}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function SvgGenericMetrics({ metrics }: { metrics: GenericChartData["key_metrics"] }) {
+  const cols = Math.min(metrics.length, 4);
+  const boxW = Math.floor(540 / cols) - 4;
+  return (
+    <svg width="100%" viewBox={`0 0 540 70`} style={{ display: "block", marginBottom: "8pt" }}>
+      {metrics.slice(0, 4).map((m, i) => {
+        const x = i * (boxW + 4);
+        return (
+          <g key={m.label} transform={`translate(${x},0)`}>
+            <rect x="0" y="0" width={boxW} height="65" fill={i % 2 === 0 ? "#fff8f6" : "#f5f5f5"} rx="4" />
+            <rect x="0" y="0" width="4" height="65" fill={PCOLS[i % PCOLS.length]} rx="2" />
+            <text x="10" y="15" style={{ fontFamily: PF.head, fontSize: "6.5pt", fill: "#888" }}>{m.label}</text>
+            <text x="10" y="42" style={{ fontFamily: PF.head, fontSize: "14pt", fontWeight: "bold", fill: PCOLS[i % PCOLS.length] }}>{m.value}</text>
+            <text x="10" y="57" style={{ fontFamily: PF.body, fontSize: "7pt", fill: "#888" }}>{m.unit}</text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function SvgGenericTimeline({ items }: { items: GenericChartData["timeline_items"] }) {
+  const total = items.reduce((s, t) => s + t.weeks, 0);
+  const W = 380, H = items.length * 22 + 50;
+  let off = 0;
+  return (
+    <svg width="100%" viewBox={`0 0 540 ${H}`} style={{ display: "block", marginBottom: "8pt" }}>
+      <text x="0" y="12" style={{ fontFamily: PF.head, fontSize: "7pt", fill: "#888", textTransform: "uppercase", letterSpacing: "1" }}>
+        TIMELINE · TOTAL {total} WEEKS
+      </text>
+      {items.map((item, i) => {
+        const x = 145 + Math.round((off / total) * W);
+        const w = Math.max(2, Math.round((item.weeks / total) * W));
+        const y = 20 + i * 22;
+        off += item.weeks;
+        const col = PCOLS[i % PCOLS.length];
+        return (
+          <g key={i}>
+            <text x="140" y={y + 12} textAnchor="end" style={{ fontFamily: PF.body, fontSize: "7.5pt", fill: "#555" }}>{item.label}</text>
+            <rect x="145" y={y} width={W} height="15" fill="#ebebeb" rx="2" />
+            <rect x={x} y={y} width={w} height="15" fill={col} rx="2" />
+            {w > 22 && <text x={x + w / 2} y={y + 11} textAnchor="middle" style={{ fontFamily: PF.head, fontSize: "6.5pt", fontWeight: "bold", fill: "#fff" }}>{item.weeks}w</text>}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
 /* ── Print Report component ─────────────────────────────── */
 function PrintReport({
   brief, form, output, savedBriefId, generatedAt, chartData, reportType,
@@ -645,256 +853,234 @@ function PrintReport({
 }) {
   const cat = CATEGORIES.find(c => c.id === brief.category)!;
   const refId = savedBriefId ? savedBriefId.slice(0, 8).toUpperCase() : "DRAFT";
-  const dateStr = generatedAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  const dateStr = generatedAt.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   const timeStr = generatedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
 
   const labelMap: Record<string, string> = {};
   brief.fields.forEach(f => { labelMap[f.id] = f.label; });
-
-  const inputPairs = Object.entries(form).filter(([, v]) => v).map(([k, v]) => ({
-    key: labelMap[k] ?? k, val: v,
-  }));
+  const inputPairs = Object.entries(form).filter(([, v]) => v).map(([k, v]) => ({ key: labelMap[k] ?? k, val: v }));
   const half = Math.ceil(inputPairs.length / 2);
   const col1 = inputPairs.slice(0, half);
   const col2 = inputPairs.slice(half);
 
+  /* shared table style helper */
+  const th = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: "4pt 7pt", textAlign: "left", fontFamily: PF.head, fontSize: "7.5pt",
+    color: "#555", borderBottom: "1pt solid #ddd", backgroundColor: "#fff3ee", ...extra,
+  });
+  const td = (extra?: React.CSSProperties): React.CSSProperties => ({
+    padding: "4pt 7pt", fontFamily: PF.body, fontSize: "9pt", borderBottom: "1pt solid #f0f0f0", ...extra,
+  });
+
+  const ssd = chartData?.type === "site_selection" ? chartData as SiteSelectionChartData : null;
+  const gd  = chartData?.type === "generic"        ? chartData as GenericChartData        : null;
+
   return (
     <div className="advisor-print pr-root">
-      {/* Header */}
+
+      {/* ══════════════════════════════════════════
+          PAGE 1 — COVER
+      ══════════════════════════════════════════ */}
+      <div style={{ pageBreakAfter: "always", minHeight: "270mm", display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "0" }}>
+
+        {/* Orange top bar */}
+        <div style={{ backgroundColor: "#cc3300", padding: "18pt 24pt 14pt", marginBottom: "0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontFamily: PF.head, fontSize: "9pt", fontWeight: 900, color: "#fff", letterSpacing: "0.35em", textTransform: "uppercase", opacity: 0.9 }}>THE GENTRY LAB</div>
+              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "rgba(255,255,255,0.7)", letterSpacing: "0.15em", marginTop: "2pt" }}>AI INDUSTRIAL ADVISOR · CAMBODIA</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "rgba(255,255,255,0.65)", letterSpacing: "0.12em" }}>REF #{refId}</div>
+              <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "rgba(255,255,255,0.5)", marginTop: "2pt" }}>{reportType.toUpperCase()} REPORT</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Cover body */}
+        <div style={{ flex: 1, padding: "36pt 24pt 24pt", display: "flex", flexDirection: "column" }}>
+
+          {/* Category badge */}
+          <div style={{ display: "inline-block", fontFamily: PF.head, fontSize: "7pt", fontWeight: 700, color: cat.color, textTransform: "uppercase", letterSpacing: "0.2em", border: `1pt solid ${cat.color}`, padding: "2pt 8pt", borderRadius: "3pt", alignSelf: "flex-start", marginBottom: "16pt" }}>
+            {cat.label} · {brief.audience}
+          </div>
+
+          {/* Main title */}
+          <div style={{ fontFamily: PF.head, fontSize: "28pt", fontWeight: 900, color: "#111", lineHeight: 1.15, marginBottom: "10pt" }}>
+            {brief.title}
+          </div>
+          <div style={{ fontFamily: PF.body, fontSize: "11pt", color: "#555", marginBottom: "28pt", lineHeight: 1.5, maxWidth: "420pt" }}>
+            {brief.desc}
+          </div>
+
+          {/* Input parameters on cover */}
+          {inputPairs.length > 0 && (
+            <div style={{ borderTop: "2pt solid #cc3300", paddingTop: "14pt", marginBottom: "24pt" }}>
+              <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8pt" }}>Analysis Parameters</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4pt 24pt" }}>
+                {inputPairs.map((p, i) => (
+                  <div key={i} style={{ display: "flex", gap: "6pt", alignItems: "baseline" }}>
+                    <span style={{ fontFamily: PF.head, fontSize: "7.5pt", color: "#888", minWidth: "80pt", flexShrink: 0 }}>{p.key}</span>
+                    <span style={{ fontFamily: PF.body, fontSize: "9pt", color: "#222", fontWeight: 600 }}>{p.val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ flex: 1 }} />
+
+          {/* Cover footer row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderTop: "1pt solid #ddd", paddingTop: "12pt" }}>
+            <div>
+              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#888" }}>Generated {dateStr} at {timeStr}</div>
+              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#bbb", marginTop: "2pt" }}>This is an AI-generated advisory brief. Verify all data before making investment decisions.</div>
+            </div>
+            <div style={{ textAlign: "center", flexShrink: 0, marginLeft: "16pt" }}>
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://thegentrylab.io&bgcolor=ffffff&color=111111&format=png&margin=2"
+                alt="thegentrylab.io"
+                style={{ width: "52pt", height: "52pt", display: "block" }}
+              />
+              <div style={{ fontFamily: "monospace", fontSize: "5.5pt", color: "#aaa", marginTop: "2pt" }}>thegentrylab.io</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          PAGE 2+ — BRIEF CONTENT
+      ══════════════════════════════════════════ */}
+
+      {/* Running header on content pages */}
       <div className="pr-header">
         <div>
           <div className="pr-brand-name">THE GENTRY LAB</div>
           <div className="pr-brand-tag">AI Industrial Advisor · Cambodia</div>
-          <div className="pr-brand-city">thegentrylab.io · Phnom Penh</div>
         </div>
-        <div className="pr-meta-block">
-          <div className="pr-meta-text">
-            <div className="pr-meta-cat" style={{ backgroundColor: cat.color }}>{cat.label}</div>
-            <div className="pr-meta-label">Brief Type</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10pt" }}>
+          <div style={{ textAlign: "right" }}>
+            <div className="pr-meta-label">Brief</div>
             <div className="pr-meta-value">{brief.title}</div>
-            <div className="pr-meta-label">Generated</div>
-            <div className="pr-meta-value" style={{ marginBottom: "4pt" }}>{dateStr} · {timeStr}</div>
-            <div className="pr-meta-label">Reference</div>
-            <div style={{ fontFamily: "monospace", fontSize: "8pt", fontWeight: 700, color: "#555", letterSpacing: "0.08em" }}>#{refId}</div>
-          </div>
-          <div className="pr-meta-qr">
-            <img
-              src="https://api.qrserver.com/v1/create-qr-code/?size=124x124&data=https://thegentrylab.io&bgcolor=ffffff&color=111111&format=png&margin=2"
-              alt="thegentrylab.io"
-            />
-            <div style={{ fontFamily: "monospace", fontSize: "6pt", color: "#aaa", marginTop: "2pt", textAlign: "center" }}>thegentrylab.io</div>
+            <div className="pr-meta-label">Ref #{refId} · {dateStr}</div>
           </div>
         </div>
       </div>
-
-      {/* Title */}
-      <div className="pr-title-section">
-        <div className="pr-title">{brief.title}</div>
-        <div className="pr-subtitle">{brief.desc} · For: {brief.audience}</div>
-      </div>
-
-      {/* Input parameters */}
-      {inputPairs.length > 0 && (
-        <div className="pr-inputs">
-          <div className="pr-inputs-title">Input Parameters</div>
-          <div className="pr-inputs-grid">
-            <div>{col1.map((p, i) => (
-              <div key={i} className="pr-input-row">
-                <span className="pr-input-key">{p.key}</span>
-                <span className="pr-input-val">{p.val}</span>
-              </div>
-            ))}</div>
-            <div>{col2.map((p, i) => (
-              <div key={i} className="pr-input-row">
-                <span className="pr-input-key">{p.key}</span>
-                <span className="pr-input-val">{p.val}</span>
-              </div>
-            ))}</div>
-          </div>
-        </div>
-      )}
 
       {/* Brief content */}
       <div style={{ marginBottom: "16pt" }}>
         {renderPrintMarkdown(output)}
       </div>
 
-      {/* Comprehensive charts — screen-rendered into print layout */}
+      {/* ══════════════════════════════════════════
+          COMPREHENSIVE DATA VISUALISATION (SVG)
+      ══════════════════════════════════════════ */}
       {reportType === "comprehensive" && chartData && (
-        <div style={{ marginBottom: "16pt", pageBreakBefore: "always" }}>
-          <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "11pt", fontWeight: 700, color: "#ff5100", textTransform: "uppercase", letterSpacing: "0.1em", borderBottom: "1.5pt solid #ff5100", paddingBottom: "4pt", marginBottom: "12pt" }}>
-            Data Visualisation · Comprehensive Analysis
+        <div style={{ pageBreakBefore: "always", marginTop: "0" }}>
+          {/* Section header */}
+          <div style={{ backgroundColor: "#cc3300", padding: "8pt 12pt", marginBottom: "14pt" }}>
+            <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.2em" }}>
+              Data Visualisation · Comprehensive Analysis
+            </div>
           </div>
-          {chartData.type === "site_selection" ? (
+
+          {ssd && (
             <>
-              {/* Key stats table */}
-              <div style={{ marginBottom: "12pt" }}>
-                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Key Market Indicators</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "#fff3ee" }}>
-                      {["Min. Wage /month", "Power Tariff /kWh", "SEZ Permits", "Outside SEZ"].map(h => (
-                        <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>${(chartData as SiteSelectionChartData).key_stats.min_wage_usd}</td>
-                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>${(chartData as SiteSelectionChartData).key_stats.power_min}–${(chartData as SiteSelectionChartData).key_stats.power_max}</td>
-                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>{(chartData as SiteSelectionChartData).key_stats.sez_permit_months} months</td>
-                      <td style={{ padding: "5pt 8pt", fontWeight: 700, color: "#cc3300" }}>{(chartData as SiteSelectionChartData).key_stats.outside_permit_months} months</td>
-                    </tr>
-                  </tbody>
-                </table>
+              {/* Key stats panel */}
+              <div style={{ marginBottom: "14pt" }}>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Market Indicators</div>
+                <SvgKeyStats stats={ssd.key_stats} zones={ssd.zones} />
               </div>
 
-              {/* Zone rankings table */}
-              <div style={{ marginBottom: "12pt" }}>
-                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Zone Scoring Comparison</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+              {/* Zone scoring chart */}
+              <div style={{ marginBottom: "14pt" }}>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Scoring — Criteria Breakdown</div>
+                <SvgZoneScoringChart zones={ssd.zones} />
+              </div>
+
+              {/* Cost comparison chart */}
+              <div style={{ marginBottom: "14pt" }}>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Cost Comparison by Zone</div>
+                <SvgCostChart costs={ssd.costs} />
+              </div>
+
+              {/* Cost data table */}
+              <div style={{ marginBottom: "14pt" }}>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Estimated Capex Detail (USD)</div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#fff3ee" }}>
-                      {["Rank", "Zone", "Province", "Overall", "Labour", "Cost", "Permits", "Infrastructure", "Risk"].map(h => (
-                        <th key={h} style={{ padding: "4pt 6pt", textAlign: "center", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
-                      ))}
-                    </tr>
+                    <tr>{["Zone", "Land Lease /m²/yr", "Build Cost /m²", "Utilities /mo", "Permits", "Factory Size"].map(h => <th key={h} style={th({ textAlign: h === "Zone" ? "left" : "center" })}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {(chartData as SiteSelectionChartData).zones.map((z, i) => (
-                      <tr key={z.name} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center", fontWeight: 700, color: "#cc3300" }}>#{z.rank}</td>
-                        <td style={{ padding: "4pt 6pt", fontWeight: 600 }}>{z.name}</td>
-                        <td style={{ padding: "4pt 6pt", color: "#666" }}>{z.province}</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center", fontWeight: 700, color: "#cc3300" }}>{z.score}</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.labour}/10</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.cost}/10</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.permits}/10</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.infrastructure}/10</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{z.risk}/10</td>
+                    {ssd.costs.map((c, i) => (
+                      <tr key={c.zone} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                        <td style={td({ fontWeight: 700, color: PCOLS[i % PCOLS.length] })}>{c.zone}</td>
+                        <td style={td({ textAlign: "center" })}>${c.land_lease_m2_yr}</td>
+                        <td style={td({ textAlign: "center" })}>${c.build_cost_m2}</td>
+                        <td style={td({ textAlign: "center" })}>${c.utilities_usd.toLocaleString()}</td>
+                        <td style={td({ textAlign: "center" })}>${c.permits_usd.toLocaleString()}</td>
+                        <td style={td({ textAlign: "center" })}>{c.factory_size_m2.toLocaleString()} m²</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              {/* Cost comparison table */}
-              <div style={{ marginBottom: "12pt" }}>
-                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Estimated Capex by Zone (USD)</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "#fff3ee" }}>
-                      {["Zone", "Land Lease /m²/yr", "Build Cost /m²", "Utilities /mo", "Permits", "Factory Size m²"].map(h => (
-                        <th key={h} style={{ padding: "4pt 6pt", textAlign: "center", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(chartData as SiteSelectionChartData).costs.map((c, i) => (
-                      <tr key={c.zone} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
-                        <td style={{ padding: "4pt 6pt", fontWeight: 600 }}>{c.zone}</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.land_lease_m2_yr}</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.build_cost_m2}</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.utilities_usd.toLocaleString()}</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>${c.permits_usd.toLocaleString()}</td>
-                        <td style={{ padding: "4pt 6pt", textAlign: "center" }}>{c.factory_size_m2.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {/* Timeline Gantt SVG */}
+              <div style={{ marginBottom: "14pt" }}>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Timeline to First Production</div>
+                <SvgTimeline timeline={ssd.timeline_weeks} />
               </div>
 
-              {/* Timeline table */}
-              <div style={{ marginBottom: "12pt" }}>
-                <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>
-                  Timeline to First Production · Total: ~{Math.round(Object.values((chartData as SiteSelectionChartData).timeline_weeks).reduce((a, b) => a + b, 0) / 4.33)} months
-                </div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
+              {/* Zone ranking table */}
+              <div style={{ marginBottom: "14pt" }}>
+                <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Zone Rankings Summary</div>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
-                    <tr style={{ backgroundColor: "#fff3ee" }}>
-                      {["Phase", "Duration (weeks)"].map(h => (
-                        <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
-                      ))}
-                    </tr>
+                    <tr>{["Rank", "Zone", "Province", "Type", "Score", "Labour", "Cost", "Permits", "Infra", "Risk"].map(h => <th key={h} style={th({ textAlign: "center" })}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
-                    {Object.entries((chartData as SiteSelectionChartData).timeline_weeks).map(([phase, weeks], i) => (
-                      <tr key={phase} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
-                        <td style={{ padding: "4pt 8pt" }}>{phase.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</td>
-                        <td style={{ padding: "4pt 8pt", fontWeight: 600, color: "#cc3300" }}>{weeks} weeks</td>
+                    {ssd.zones.map((z, i) => (
+                      <tr key={z.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                        <td style={td({ textAlign: "center", fontWeight: 700, color: PCOLS[i % PCOLS.length] })}>#{z.rank}</td>
+                        <td style={td({ fontWeight: 700 })}>{z.name}</td>
+                        <td style={td({ color: "#666" })}>{z.province}</td>
+                        <td style={td({ color: "#888", fontSize: "8pt" })}>{z.zone_type}</td>
+                        <td style={td({ textAlign: "center", fontWeight: 700, color: "#cc3300" })}>{z.score}</td>
+                        <td style={td({ textAlign: "center" })}>{z.labour}/10</td>
+                        <td style={td({ textAlign: "center" })}>{z.cost}/10</td>
+                        <td style={td({ textAlign: "center" })}>{z.permits}/10</td>
+                        <td style={td({ textAlign: "center" })}>{z.infrastructure}/10</td>
+                        <td style={td({ textAlign: "center" })}>{z.risk}/10</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </>
-          ) : (
+          )}
+
+          {gd && (
             <>
-              {/* Generic key metrics */}
-              {(chartData as GenericChartData).key_metrics?.length > 0 && (
-                <div style={{ marginBottom: "12pt" }}>
-                  <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Key Figures</div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
-                    <thead>
-                      <tr style={{ backgroundColor: "#fff3ee" }}>
-                        {(chartData as GenericChartData).key_metrics.map(m => (
-                          <th key={m.label} style={{ padding: "4pt 8pt", textAlign: "center", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{m.label}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        {(chartData as GenericChartData).key_metrics.map(m => (
-                          <td key={m.label} style={{ padding: "5pt 8pt", textAlign: "center", fontWeight: 700, color: "#cc3300" }}>{m.value} <span style={{ fontWeight: 400, color: "#888", fontSize: "8pt" }}>{m.unit}</span></td>
-                        ))}
-                      </tr>
-                    </tbody>
+              {gd.key_metrics?.length > 0 && (
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Key Figures</div>
+                  <SvgGenericMetrics metrics={gd.key_metrics} />
+                </div>
+              )}
+              {gd.comparison_table?.headers?.length > 0 && (
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Comparison</div>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead><tr>{gd.comparison_table.headers.map(h => <th key={h} style={th()}>{h}</th>)}</tr></thead>
+                    <tbody>{gd.comparison_table.rows.map((row, i) => <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#fafafa" }}>{row.map((cell, j) => <td key={j} style={td()}>{cell}</td>)}</tr>)}</tbody>
                   </table>
                 </div>
               )}
-              {/* Generic comparison table */}
-              {(chartData as GenericChartData).comparison_table?.headers?.length > 0 && (
-                <div style={{ marginBottom: "12pt" }}>
-                  <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Comparison</div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
-                    <thead>
-                      <tr style={{ backgroundColor: "#fff3ee" }}>
-                        {(chartData as GenericChartData).comparison_table.headers.map(h => (
-                          <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(chartData as GenericChartData).comparison_table.rows.map((row, i) => (
-                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
-                          {row.map((cell, j) => <td key={j} style={{ padding: "4pt 8pt" }}>{cell}</td>)}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-              {/* Generic timeline */}
-              {(chartData as GenericChartData).timeline_items?.length > 0 && (
-                <div style={{ marginBottom: "12pt" }}>
-                  <div style={{ fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6pt" }}>Timeline</div>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9pt", fontFamily: "Georgia, serif" }}>
-                    <thead>
-                      <tr style={{ backgroundColor: "#fff3ee" }}>
-                        {["Phase", "Duration (weeks)"].map(h => (
-                          <th key={h} style={{ padding: "4pt 8pt", textAlign: "left", fontFamily: "'Trebuchet MS', Arial, sans-serif", fontSize: "7.5pt", color: "#555", borderBottom: "1pt solid #ddd" }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(chartData as GenericChartData).timeline_items.map((item, i) => (
-                        <tr key={i} style={{ backgroundColor: i % 2 === 0 ? "#ffffff" : "#fafafa" }}>
-                          <td style={{ padding: "4pt 8pt" }}>{item.label}</td>
-                          <td style={{ padding: "4pt 8pt", fontWeight: 600, color: "#cc3300" }}>{item.weeks} weeks</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {gd.timeline_items?.length > 0 && (
+                <div style={{ marginBottom: "14pt" }}>
+                  <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "6pt" }}>Timeline</div>
+                  <SvgGenericTimeline items={gd.timeline_items} />
                 </div>
               )}
             </>
@@ -902,19 +1088,100 @@ function PrintReport({
         </div>
       )}
 
-      {/* Footer */}
+      {/* ══════════════════════════════════════════
+          CITATIONS & DATA SOURCES
+      ══════════════════════════════════════════ */}
+      <div style={{ pageBreakBefore: "always", marginTop: "0" }}>
+        <div style={{ backgroundColor: "#cc3300", padding: "8pt 12pt", marginBottom: "16pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.2em" }}>
+            References & Data Sources
+          </div>
+        </div>
+
+        <div style={{ fontFamily: PF.body, fontSize: "9pt", color: "#444", lineHeight: 1.6, marginBottom: "16pt" }}>
+          This brief was generated using the GentryLab AI Industrial Advisor, which synthesises data from the following primary and secondary sources. All figures should be independently verified prior to any investment decision.
+        </div>
+
+        {/* Primary sources */}
+        <div style={{ marginBottom: "14pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8pt", borderBottom: "1pt solid #ddd", paddingBottom: "4pt" }}>Primary Government & Regulatory Sources</div>
+          {[
+            { ref: "[1]", title: "Cambodia Development Council (CDC) — QIP Investment Approvals & Industrial Zone Registry", url: "cdc.gov.kh", note: "Official source for QIP qualification, tax incentive status, and CDC-registered zones." },
+            { ref: "[2]", title: "Special Economic Zone Board of Cambodia (SEZB) — SEZ Directory & Occupancy Data", url: "sezb.gov.kh", note: "Authoritative registry of all licensed SEZs, developer contacts, and zone-specific regulations." },
+            { ref: "[3]", title: "Ministry of Industry and Handicraft (MIH) — Operating Licence Framework & Permit Guidelines", url: "mih.gov.kh", note: "MIH factory operating licence requirements, environmental compliance categories, and permit sequencing." },
+            { ref: "[4]", title: "Ministry of Environment (MoE) — Environmental Compliance Certificate (ECC) Requirements", url: "moe.gov.kh", note: "ECC categories, IEE and EIA requirements, monitoring obligations, and wastewater discharge standards." },
+            { ref: "[5]", title: "Electricité du Cambodge (EDC) — Industrial Power Tariff Schedule", url: "edc.com.kh", note: "Current industrial electricity tariff by voltage class, provincial substation capacity, and connection lead times." },
+            { ref: "[6]", title: "Ministry of Labour and Vocational Training (MoLVT) — Minimum Wage Orders & Labour Regulations", url: "molvt.gov.kh", note: "Annual minimum wage declarations for the textile, garment, and footwear sectors; general labour law compliance." },
+            { ref: "[7]", title: "General Department of Customs and Excise (GDCE) — Import/Export Duty Schedule", url: "customs.gov.kh", note: "Tariff schedules, SEZ customs procedures, and machinery import duty exemptions under QIP." },
+          ].map(s => (
+            <div key={s.ref} style={{ marginBottom: "6pt", paddingLeft: "20pt", position: "relative" }}>
+              <span style={{ position: "absolute", left: "0", fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#cc3300" }}>{s.ref}</span>
+              <div style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: 600, color: "#222" }}>{s.title}</div>
+              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#888" }}>{s.url}</div>
+              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#666", fontStyle: "italic" }}>{s.note}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Multilateral & research sources */}
+        <div style={{ marginBottom: "14pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#1a5c9e", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8pt", borderBottom: "1pt solid #ddd", paddingBottom: "4pt" }}>Multilateral & Research Institutions</div>
+          {[
+            { ref: "[8]", title: "World Bank Group — Cambodia Economic Monitor & Investment Climate Assessment", url: "worldbank.org/cambodia", note: "Macroeconomic indicators, doing-business rankings, infrastructure gap analysis." },
+            { ref: "[9]", title: "Asian Development Bank (ADB) — Cambodia Country Operations Portfolio", url: "adb.org/countries/cambodia", note: "Infrastructure project pipeline, power sector development plans, logistics corridor assessments." },
+            { ref: "[10]", title: "International Finance Corporation (IFC) — Doing Business in Cambodia", url: "ifc.org", note: "Investment climate, regulatory burden indicators, and SME financing conditions." },
+            { ref: "[11]", title: "Open Development Cambodia (ODC) — GIS Data & Economic Zones Layer", url: "opendevelopmentcambodia.net", note: "Spatial data for SEZs, land concessions, infrastructure, and environmental sensitive areas." },
+            { ref: "[12]", title: "JETRO Cambodia — Japanese Investment Surveys & Factory Cost Comparisons", url: "jetro.go.jp/cambodia", note: "Annual survey of Japanese manufacturers: wage data, utility costs, logistics costs per province." },
+          ].map(s => (
+            <div key={s.ref} style={{ marginBottom: "6pt", paddingLeft: "20pt", position: "relative" }}>
+              <span style={{ position: "absolute", left: "0", fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#1a5c9e" }}>{s.ref}</span>
+              <div style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: 600, color: "#222" }}>{s.title}</div>
+              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#888" }}>{s.url}</div>
+              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#666", fontStyle: "italic" }}>{s.note}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* GentryLab proprietary */}
+        <div style={{ marginBottom: "16pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#217a4b", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: "8pt", borderBottom: "1pt solid #ddd", paddingBottom: "4pt" }}>GentryLab Proprietary Data</div>
+          {[
+            { ref: "[13]", title: "GentryLab Industrial Site Intelligence Database", url: "thegentrylab.io", note: "Scored database of 110+ Cambodia industrial sites: SEZ availability, utility headroom, flood risk, title status, and access quality. Updated quarterly." },
+            { ref: "[14]", title: "GentryLab EPC Benchmark Database — 60+ Delivered Industrial Buildings", url: "thegentrylab.io", note: "Cost-per-m² benchmarks by building type, province, specification level, and contractor tier from projects delivered 2018–2024." },
+            { ref: "[15]", title: "GentryLab Permit Timeline Tracker", url: "thegentrylab.io", note: "Observed permit durations across 40+ projects by sector, province, and SEZ/non-SEZ status. Updated as projects complete milestones." },
+          ].map(s => (
+            <div key={s.ref} style={{ marginBottom: "6pt", paddingLeft: "20pt", position: "relative" }}>
+              <span style={{ position: "absolute", left: "0", fontFamily: PF.head, fontSize: "8pt", fontWeight: 700, color: "#217a4b" }}>{s.ref}</span>
+              <div style={{ fontFamily: PF.head, fontSize: "8.5pt", fontWeight: 600, color: "#222" }}>{s.title}</div>
+              <div style={{ fontFamily: "monospace", fontSize: "7pt", color: "#888" }}>{s.url}</div>
+              <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#666", fontStyle: "italic" }}>{s.note}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Disclaimer box */}
+        <div style={{ border: "1pt solid #ddd", borderLeft: "3pt solid #cc3300", padding: "10pt 12pt", backgroundColor: "#fafafa", marginBottom: "16pt" }}>
+          <div style={{ fontFamily: PF.head, fontSize: "7.5pt", fontWeight: 700, color: "#cc3300", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4pt" }}>Important Disclaimer</div>
+          <div style={{ fontFamily: PF.body, fontSize: "8pt", color: "#555", lineHeight: 1.5 }}>
+            This report was generated by an AI language model (Anthropic Claude) using the GentryLab AI Industrial Advisor platform. While every effort has been made to ensure accuracy, the information contained herein is based on publicly available data and GentryLab's proprietary benchmarks as of the date of generation. It does not constitute legal, financial, or investment advice. Regulations, tariffs, permit timelines, and market conditions in Cambodia can change rapidly. The Gentry Lab Pte. Ltd. accepts no liability for decisions made in reliance on this report. Independent verification with qualified local advisors is strongly recommended before making any investment commitment.
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════════════════════════════════════
+          RUNNING FOOTER
+      ══════════════════════════════════════════ */}
       <div className="pr-footer">
         <div>
           <div className="pr-footer-left">
             <span className="pr-footer-brand">THE GENTRY LAB</span> · AI Industrial Advisor · Ref #{refId}
           </div>
           <div className="pr-disclaimer">
-            AI-generated brief for advisory purposes only. Verify all data before making investment decisions. © {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd.
+            AI-generated advisory brief. Verify all data before making investment decisions. © {generatedAt.getFullYear()} The Gentry Lab Pte. Ltd.
           </div>
         </div>
         <div className="pr-footer-right">
-          advisory@thegentrylab.io<br />
-          thegentrylab.io
+          advisory@thegentrylab.io<br />thegentrylab.io
         </div>
       </div>
     </div>
