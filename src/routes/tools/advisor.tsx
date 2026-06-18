@@ -2007,15 +2007,6 @@ function PrintReport({
         <div className="pr-section-number">Section I</div>
         <div className="pr-h1">Acknowledgements</div>
 
-        {/* Section photo */}
-        <div className="pr-figure" style={{ marginBottom: "12pt" }}>
-          <img src={heroBlueprintImg} alt="Industrial development, Cambodia"
-            style={{ width: "100%", height: "100pt", objectFit: "cover", objectPosition: "center 60%", display: "block" }} />
-          <div className="pr-figure-caption">
-            <strong>Figure I.1</strong> — Industrial development corridor, Kingdom of Cambodia. Source: TheGentryLab.io
-          </div>
-        </div>
-
         <p className="pr-p">
           This report was produced using the GentryLab AI Industrial Advisor — a proprietary intelligence platform developed by The Gentry Lab to support foreign investors, development finance institutions, and government agencies engaged in industrial development across the Kingdom of Cambodia.
         </p>
@@ -2053,11 +2044,6 @@ function PrintReport({
       <ContentPage title={brief.title} refId={refId} dateStr={dateStr} pageNum={4} year={year} bottomAlign>
         <div className="pr-section-number">Section II</div>
         <div className="pr-h1">Foreword</div>
-
-        <img src={principalPortraitImg} alt="Principal, The Gentry Lab"
-          className="pr-foreword-photo"
-          style={{ float: "right", width: "82pt", marginLeft: "16pt", marginBottom: "10pt", border: "0.5pt solid #e0e0e0" }}
-        />
 
         <p className="pr-p">
           Cambodia has undergone a remarkable industrial transformation over the past two decades. From a largely agrarian economy in the early 2000s to Southeast Asia's fastest-growing garment and electronics export platform, the Kingdom has consistently outperformed regional peers in attracting quality manufacturing investment.
