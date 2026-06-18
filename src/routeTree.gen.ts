@@ -13,10 +13,13 @@ import { Route as TrackerRouteImport } from './routes/tracker'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as MapRouteImport } from './routes/map'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthStartRouteImport } from './routes/auth/start'
+import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 
 const TrackerRoute = TrackerRouteImport.update({
   id: '/tracker',
@@ -36,6 +39,11 @@ const NewsRoute = NewsRouteImport.update({
 const MapRoute = MapRouteImport.update({
   id: '/map',
   path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -58,26 +66,42 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthStartRoute = AuthStartRouteImport.update({
+  id: '/auth/start',
+  path: '/auth/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/start': typeof AuthStartRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/start': typeof AuthStartRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -85,10 +109,13 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/contact': typeof ContactRoute
   '/dashboard': typeof DashboardRoute
+  '/login': typeof LoginRoute
   '/map': typeof MapRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
+  '/auth/callback': typeof AuthCallbackRoute
+  '/auth/start': typeof AuthStartRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,30 +124,39 @@ export interface FileRouteTypes {
     | '/about'
     | '/contact'
     | '/dashboard'
+    | '/login'
     | '/map'
     | '/news'
     | '/research'
     | '/tracker'
+    | '/auth/callback'
+    | '/auth/start'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/contact'
     | '/dashboard'
+    | '/login'
     | '/map'
     | '/news'
     | '/research'
     | '/tracker'
+    | '/auth/callback'
+    | '/auth/start'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/contact'
     | '/dashboard'
+    | '/login'
     | '/map'
     | '/news'
     | '/research'
     | '/tracker'
+    | '/auth/callback'
+    | '/auth/start'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -128,10 +164,13 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ContactRoute: typeof ContactRoute
   DashboardRoute: typeof DashboardRoute
+  LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
   NewsRoute: typeof NewsRoute
   ResearchRoute: typeof ResearchRoute
   TrackerRoute: typeof TrackerRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
+  AuthStartRoute: typeof AuthStartRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -164,6 +203,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -192,6 +238,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/start': {
+      id: '/auth/start'
+      path: '/auth/start'
+      fullPath: '/auth/start'
+      preLoaderRoute: typeof AuthStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -200,10 +260,13 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ContactRoute: ContactRoute,
   DashboardRoute: DashboardRoute,
+  LoginRoute: LoginRoute,
   MapRoute: MapRoute,
   NewsRoute: NewsRoute,
   ResearchRoute: ResearchRoute,
   TrackerRoute: TrackerRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
+  AuthStartRoute: AuthStartRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
