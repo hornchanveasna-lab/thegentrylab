@@ -280,14 +280,18 @@ export default async function handler(req: Request): Promise<Response> {
     const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (supabaseUrl && serviceKey) {
       try {
+        const ac = new AbortController();
+        const t = setTimeout(() => ac.abort(), 4000);
         const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
           headers: { Authorization: auth, apikey: serviceKey },
+          signal: ac.signal,
         });
+        clearTimeout(t);
         if (userRes.ok) {
           const { id } = await userRes.json();
           userId = id;
         }
-      } catch { /* proceed */ }
+      } catch { /* proceed anonymous */ }
     }
   }
 
@@ -312,8 +316,11 @@ export default async function handler(req: Request): Promise<Response> {
     const cost = CREDIT_COSTS[reportType] ?? CREDIT_COSTS.standard;
     if (supabaseUrl && serviceKey) {
       try {
+        const ac2 = new AbortController();
+        const t2 = setTimeout(() => ac2.abort(), 4000);
         const rpcRes = await fetch(`${supabaseUrl}/rest/v1/rpc/deduct_credits`, {
           method: "POST",
+          signal: ac2.signal,
           headers: {
             "Content-Type": "application/json",
             apikey: serviceKey,
@@ -326,6 +333,7 @@ export default async function handler(req: Request): Promise<Response> {
             p_description: `${briefTitle} — ${reportType}`,
           }),
         });
+        clearTimeout(t2);
         if (rpcRes.ok) {
           const result = await rpcRes.json();
           if (result.success === false) {

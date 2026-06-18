@@ -16,12 +16,12 @@ export default async function handler(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
 
-  const stripeKey  = process.env.STRIPE_SECRET_KEY;
+  const stripeKey   = process.env.STRIPE_SECRET_KEY;
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!stripeKey)
-    return new Response(JSON.stringify({ error: "Stripe not configured" }), {
+  if (!stripeKey || !supabaseUrl || !serviceKey)
+    return new Response(JSON.stringify({ error: "Server not configured" }), {
       status: 500, headers: { "Content-Type": "application/json", ...CORS },
     });
 
@@ -33,9 +33,13 @@ export default async function handler(req: Request): Promise<Response> {
 
   let userId: string, userEmail: string;
   try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 5000);
     const r = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: { Authorization: auth, apikey: serviceKey! },
+      headers: { Authorization: auth, apikey: serviceKey },
+      signal: ac.signal,
     });
+    clearTimeout(t);
     if (!r.ok) throw new Error("invalid jwt");
     const { id, email } = await r.json();
     userId = id; userEmail = email;
