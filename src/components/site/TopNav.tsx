@@ -132,14 +132,52 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
                 </svg>
               </button>
               {userMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 nav-surface border nav-border rounded-lg shadow-xl overflow-hidden z-50">
-                  <div className="px-4 py-3 border-b nav-border">
-                    <p className="font-mono text-[9px] uppercase tracking-widest nav-text-muted">Signed in as</p>
-                    <p className="text-[11px] nav-text-primary font-semibold truncate mt-0.5">{user.email}</p>
+                <div className="absolute right-0 top-full mt-2 w-56 nav-surface border nav-border rounded-xl shadow-2xl overflow-hidden z-50">
+
+                  {/* User identity */}
+                  <div className="px-4 py-3.5 border-b nav-border flex items-center gap-3">
+                    {user.user_metadata?.avatar_url ? (
+                      <img src={user.user_metadata.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                    ) : (
+                      <span className="w-8 h-8 rounded-full bg-brand-accent flex items-center justify-center text-[10px] font-bold text-black shrink-0">
+                        {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-bold nav-text-primary truncate leading-tight">
+                        {user.user_metadata?.full_name ?? "Account"}
+                      </p>
+                      <p className="font-mono text-[9px] nav-text-muted truncate mt-0.5">{user.email}</p>
+                    </div>
                   </div>
+
+                  {/* Tools */}
+                  <div className="px-3 py-2.5 border-b nav-border">
+                    <p className="font-mono text-[8px] uppercase tracking-[0.2em] nav-text-muted px-1 mb-1.5">Tools</p>
+                    {[
+                      { label: "AI Industrial Advisor", live: true },
+                      { label: "Site Scoring Engine",   live: false },
+                      { label: "Permit Navigator",      live: false },
+                      { label: "Utility Capacity Map",  live: false },
+                      { label: "Cost Heat Map",         live: false },
+                      { label: "Land Market Price",     live: false },
+                    ].map((tool) => (
+                      <div key={tool.label}
+                        className={`flex items-center justify-between px-2 py-1.5 rounded-md group ${tool.live ? "cursor-pointer hover:bg-white/5 transition-colors" : "opacity-40 cursor-not-allowed"}`}>
+                        <span className="text-[11px] nav-text-primary font-medium">{tool.label}</span>
+                        {tool.live ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                        ) : (
+                          <span className="font-mono text-[8px] uppercase tracking-widest nav-text-muted">Soon</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Sign out */}
                   <button
                     onClick={() => { signOut(); setUserMenuOpen(false); }}
-                    className="w-full text-left px-4 py-3 font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary hover:bg-white/5 transition-colors"
+                    className="w-full text-left px-4 py-2.5 font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary hover:bg-white/5 transition-colors"
                   >
                     Sign out
                   </button>
