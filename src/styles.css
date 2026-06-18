@@ -422,31 +422,29 @@
 
 /* ── Screen layout: A4 page appearance, footer always pinned to bottom ── */
 @media screen {
-  /* Flatten the table into a flex column so every layer participates properly */
+  /*
+   * Use CSS Grid on the table: header=auto, body=1fr (fills), footer=auto
+   * Grid items stretch to fill their row by default — no flex chain needed.
+   * This is the only reliable cross-browser approach for table-based layouts.
+   */
   .advisor-print .pr-cpage-table {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 100%;
     min-height: 297mm;
     border: 1px solid #e8e8e8;
     margin-bottom: 10mm;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   }
 
-  /* thead → shrinks to content, never grows */
-  .advisor-print .pr-cpage-thead { display: block !important; flex-shrink: 0; }
+  /* Each section occupies its grid row as a simple block */
+  .advisor-print .pr-cpage-thead { display: block !important; }
+  .advisor-print .pr-cpage-tbody { display: block !important; }
+  .advisor-print .pr-cpage-tfoot { display: block !important; }
 
-  /* tbody → flex column, grows to fill remaining space */
-  .advisor-print .pr-cpage-tbody           { display: flex !important; flex-direction: column; flex: 1; }
-  .advisor-print .pr-cpage-tbody > tr      { display: flex !important; flex: 1; }
-  .advisor-print .pr-cpage-tbody > tr > td { display: flex !important; flex: 1; flex-direction: column; }
-
-  /* content-body td — fills its flex cell */
-  .advisor-print .pr-content-body { flex: 1; box-sizing: border-box; }
-
-  /* tfoot → shrinks to content, ALWAYS at bottom because tbody fills above */
-  .advisor-print .pr-cpage-tfoot           { display: block !important; flex-shrink: 0; }
-  .advisor-print .pr-cpage-tfoot > tr      { display: block !important; }
-  .advisor-print .pr-cpage-tfoot > tr > td { display: block !important; }
+  /* tbody tr and td: also block so they don't create a new table context */
+  .advisor-print .pr-cpage-tbody > tr      { display: block !important; }
+  .advisor-print .pr-cpage-tbody > tr > td { display: block !important; box-sizing: border-box; }
 
   /* ── Mobile: collapse pages to fit narrow screens ── */
   @media (max-width: 700px) {
