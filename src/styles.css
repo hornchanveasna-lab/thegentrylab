@@ -420,8 +420,9 @@
   vertical-align: top;
 }
 
-/* ── Screen layout: full A4 page appearance with footer pinned to bottom ── */
+/* ── Screen layout: A4 page appearance, footer always pinned to bottom ── */
 @media screen {
+  /* Flatten the table into a flex column so every layer participates properly */
   .advisor-print .pr-cpage-table {
     display: flex !important;
     flex-direction: column !important;
@@ -430,12 +431,24 @@
     margin-bottom: 10mm;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   }
-  .advisor-print .pr-cpage-thead { display: block !important; flex-shrink: 0; }
-  .advisor-print .pr-cpage-tfoot { display: block !important; flex-shrink: 0; margin-top: auto; }
-  .advisor-print .pr-cpage-tbody { display: block !important; flex: 1; }
-  .advisor-print .pr-content-body { height: 100%; box-sizing: border-box; }
 
-  /* ── Mobile: scale down A4 pages to fit narrow screens ── */
+  /* thead → shrinks to content, never grows */
+  .advisor-print .pr-cpage-thead { display: block !important; flex-shrink: 0; }
+
+  /* tbody → flex column, grows to fill remaining space */
+  .advisor-print .pr-cpage-tbody           { display: flex !important; flex-direction: column; flex: 1; }
+  .advisor-print .pr-cpage-tbody > tr      { display: flex !important; flex: 1; }
+  .advisor-print .pr-cpage-tbody > tr > td { display: flex !important; flex: 1; flex-direction: column; }
+
+  /* content-body td — fills its flex cell */
+  .advisor-print .pr-content-body { flex: 1; box-sizing: border-box; }
+
+  /* tfoot → shrinks to content, ALWAYS at bottom because tbody fills above */
+  .advisor-print .pr-cpage-tfoot           { display: block !important; flex-shrink: 0; }
+  .advisor-print .pr-cpage-tfoot > tr      { display: block !important; }
+  .advisor-print .pr-cpage-tfoot > tr > td { display: block !important; }
+
+  /* ── Mobile: collapse pages to fit narrow screens ── */
   @media (max-width: 700px) {
     .advisor-print { padding: 0 !important; }
     .advisor-print .pr-cpage-table {
