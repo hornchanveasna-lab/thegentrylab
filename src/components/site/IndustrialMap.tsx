@@ -99,8 +99,7 @@ const BASEMAPS: Record<BasemapKey, BasemapDef> = {
   },
   google: {
     label: "Google",
-    tiles:  `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ""}`,
-    labels: `https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ""}`,
+    tiles:  `https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ""}`,
     isDark: true,
     swatch: "#1a2f1a",
   },
