@@ -877,23 +877,22 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
-        {/* Location + Google Maps */}
-        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-3 px-4 py-3 border-b border-white/8 hover:bg-white/5 transition group">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" className="text-white/30 group-hover:text-[#ff5100] shrink-0 transition">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-            <circle cx="12" cy="9" r="2.5"/>
-          </svg>
-          <div className="flex-1 min-w-0">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition">
-              Coordinates · Open in Maps ↗
-            </p>
-            <p className="font-mono text-[10px] text-white/55 mt-0.5">
-              {site.lat.toFixed(4)}, {site.lng.toFixed(4)}
-            </p>
-          </div>
-        </a>
+        {/* Google Maps button */}
+        <div className="px-4 py-3 border-b border-white/8">
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2.5 w-full py-2.5 border border-white/15 hover:border-white/35 hover:bg-white/5 transition group">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="shrink-0">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#34A853" stroke="none"/>
+              <circle cx="12" cy="9" r="2.5" fill="white" stroke="none"/>
+            </svg>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-white/70 group-hover:text-white transition">
+              Open in Google Maps ↗
+            </span>
+          </a>
+          <p className="font-mono text-[9px] text-white/25 text-center mt-1.5">
+            {site.lat.toFixed(5)}, {site.lng.toFixed(5)}
+          </p>
+        </div>
 
         {/* Footer disclaimer */}
         <div className="px-4 py-2.5">
