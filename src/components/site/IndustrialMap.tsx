@@ -622,10 +622,11 @@ function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean, name: s
   // Label is hidden by CSS until map container gets .tgl-labels-key or .tgl-labels-all class
   const labelClass = `pin-label${isKey ? " pin-label-key" : ""}`;
   const label = `<div class="${labelClass}"
-    style="position:absolute;left:50%;top:${pinH + 4}px;transform:translateX(-50%);
+    style="position:absolute;left:${pinW + 5}px;top:${cy}px;transform:translateY(-50%);
            white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
            font-size:11px;font-weight:700;letter-spacing:0.01em;color:#1a1a2e;
-           text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 4px #fff,0 1px 4px rgba(0,0,0,0.2);
+           background:rgba(255,255,255,0.88);padding:1px 5px;border-radius:3px;
+           text-shadow:none;box-shadow:0 1px 3px rgba(0,0,0,0.18);
            pointer-events:none;">${name}</div>`;
 
   return L.divIcon({
@@ -661,8 +662,8 @@ function ZoomClassController({ useMap }: { useMap: RL["useMap"] }) {
     const update = () => {
       const z  = map.getZoom();
       const el = map.getContainer();
-      el.classList.toggle("tgl-labels-key", z >= 11);
-      el.classList.toggle("tgl-labels-all", z >= 13);
+      el.classList.toggle("tgl-labels-key", z >= 9);
+      el.classList.toggle("tgl-labels-all", z >= 11);
     };
     update();
     map.on("zoomend", update);
