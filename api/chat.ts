@@ -1,3 +1,8 @@
+import {
+  extractKeywords, extractProvince, fetchRagContext, formatRagContext,
+  logChat,
+} from "./lib/rag.js";
+
 const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — Cambodia's industrial intelligence platform. You help foreign manufacturers, investors, and developers make informed decisions about industrial development in Cambodia.
 
 ## Your expertise:
@@ -113,12 +118,42 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   let messages: { role: "user" | "assistant"; content: string }[];
+  let sessionId: string | undefined;
   try {
     const body = await req.json();
-    messages = body.messages;
+    messages   = body.messages;
+    sessionId  = body.session_id;
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400, headers: { "Content-Type": "application/json", ...CORS },
+    });
+  }
+
+  // ── RAG: inject live Supabase context before sending to Claude ─────────────
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content ?? "";
+  const keywords    = extractKeywords(lastUserMsg);
+  const province    = extractProvince(lastUserMsg) ?? undefined;
+
+  let ragCtx = { news: [], projects: [], sites: [] } as Awaited<ReturnType<typeof fetchRagContext>>;
+  if (supabaseUrl && serviceKey && (keywords.length || province)) {
+    ragCtx = await fetchRagContext(supabaseUrl, serviceKey, { keywords, province });
+  }
+
+  const dynamicContext = formatRagContext(ragCtx);
+  const systemPrompt   = SYSTEM_PROMPT + dynamicContext;
+
+  // Fire-and-forget log (never awaited, never blocks)
+  if (supabaseUrl && serviceKey && lastUserMsg) {
+    logChat(supabaseUrl, serviceKey, {
+      session_id:   sessionId,
+      user_message: lastUserMsg.slice(0, 500),
+      keywords,
+      rag_news:     ragCtx.news.length,
+      rag_projects: ragCtx.projects.length,
+      rag_sites:    ragCtx.sites.length,
     });
   }
 
@@ -137,7 +172,7 @@ export default async function handler(req: Request): Promise<Response> {
             model: "claude-haiku-4-5",
             max_tokens: 1024,
             stream: true,
-            system: SYSTEM_PROMPT,
+            system: systemPrompt,
             messages,
           }),
         });

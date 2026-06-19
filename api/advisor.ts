@@ -1,3 +1,7 @@
+import {
+  extractKeywords, fetchRagContext, formatRagContext, logReport,
+} from "./lib/rag.js";
+
 const SYSTEM_PROMPT = `You are the GentryLab AI Industrial Advisor — Cambodia's most advanced industrial intelligence engine. You generate structured, decision-ready investment briefs for manufacturers, investors, developers, banks, and consultants.
 
 ## Your knowledge base
@@ -372,9 +376,33 @@ export default async function handler(req: Request): Promise<Response> {
 
   const userMessage = `Generate a **${briefTitle}** brief for the following inputs:\n\n${fieldLines}\n\nProvide the full structured brief now.${chartSuffix}${refineInstruction}`;
 
-  const encoder = new TextEncoder();
+  const encoder     = new TextEncoder();
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  // ── RAG: pull live news + projects relevant to this report's province/sector ─
+  const province = fields["Province"] ?? fields["province"] ?? fields["Location"] ?? undefined;
+  const sector   = fields["Sector"]   ?? fields["sector"]   ?? fields["Industry"]  ?? undefined;
+  const keywords = extractKeywords(`${briefTitle} ${Object.values(fields).join(" ")}`);
+
+  let ragCtx = { news: [], projects: [], sites: [] } as Awaited<ReturnType<typeof fetchRagContext>>;
+  if (supabaseUrl && serviceKey) {
+    ragCtx = await fetchRagContext(supabaseUrl, serviceKey, { keywords, province, sector });
+  }
+
+  const dynamicContext = formatRagContext(ragCtx);
+  const systemPrompt   = SYSTEM_PROMPT + dynamicContext;
+
+  // Fire-and-forget log
+  if (supabaseUrl && serviceKey) {
+    logReport(supabaseUrl, serviceKey, {
+      report_type:  briefType,
+      province,
+      sector,
+      rag_news:     ragCtx.news.length,
+      rag_projects: ragCtx.projects.length,
+    });
+  }
 
   const readable = new ReadableStream({
     async start(controller) {
@@ -393,7 +421,7 @@ export default async function handler(req: Request): Promise<Response> {
             model: "claude-sonnet-4-6",
             max_tokens: isComprehensive ? 8192 : 4096,
             stream: true,
-            system: SYSTEM_PROMPT,
+            system: systemPrompt,
             messages: [{ role: "user", content: userMessage }],
           }),
         });
