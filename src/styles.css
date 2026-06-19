@@ -426,24 +426,22 @@
 /* ── Screen layout: A4 page appearance, footer always pinned to bottom ── */
 @media screen {
   /*
-   * Use CSS Grid on the table: header=auto, body=1fr (fills), footer=auto
-   * Grid items stretch to fill their row by default — no flex chain needed.
-   * This is the only reliable cross-browser approach for table-based layouts.
+   * Flexbox column: thead=auto, tbody=flex:1 (fills remaining), tfoot=auto.
+   * More reliable than CSS Grid on <table> elements where browser table
+   * formatting interferes with grid-row placement of thead/tfoot.
    */
   .advisor-print .pr-cpage-table {
-    display: grid !important;
-    grid-template-rows: auto 1fr auto;
-    grid-template-columns: 100%;
+    display: flex !important;
+    flex-direction: column;
     min-height: 297mm;
     border: 1px solid #e8e8e8;
     margin-bottom: 10mm;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   }
 
-  /* Each section occupies its grid row as a simple block */
-  .advisor-print .pr-cpage-thead { display: block !important; }
-  .advisor-print .pr-cpage-tbody { display: block !important; }
-  .advisor-print .pr-cpage-tfoot { display: block !important; }
+  .advisor-print .pr-cpage-thead { display: block !important; flex-shrink: 0; }
+  .advisor-print .pr-cpage-tfoot { display: block !important; flex-shrink: 0; margin-top: auto; }
+  .advisor-print .pr-cpage-tbody { display: block !important; flex: 1; }
 
   /* tbody tr and td: also block so they don't create a new table context */
   .advisor-print .pr-cpage-tbody > tr      { display: block !important; }
