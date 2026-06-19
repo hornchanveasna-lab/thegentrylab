@@ -588,26 +588,48 @@ const KIND_COLOR: Record<string, string> = {
   corridor:   "#64748b", // slate
 };
 
-/* ── Flat icon marker — no pin, just the category symbol ── */
+/* ── Google Maps–style teardrop pin ────────────────────── */
 function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
-  const sz   = isKey ? 30 : 24;
+  const pinW  = isKey ? 36 : 28;
+  const r     = (pinW - 6) / 2;          // circle radius
+  const cx    = pinW / 2;
+  const cy    = r + 3;                   // circle centre y
+  const tipY  = cy + r + 10;            // tip of teardrop
+  const pinH  = tipY + 2;
+  const scale = (r * 0.58) / 9;         // icon is ±9 units → fits inside circle
+
   const icon = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
 
-  // viewBox -10 -10 20 20: icons fit within ±9 units, centered on coordinate
+  // Teardrop: arc for top circle, two cubic curves meeting at the tip
+  const path = [
+    `M${cx},${tipY}`,
+    `C${cx - r * 0.32},${cy + r * 0.92} 3,${cy + r * 0.6} 3,${cy}`,
+    `a${r},${r} 0 1,1 ${pinW - 6},0`,
+    `C${pinW - 3},${cy + r * 0.6} ${cx + r * 0.32},${cy + r * 0.92} ${cx},${tipY}Z`,
+  ].join(" ");
+
   const html = `<svg xmlns="http://www.w3.org/2000/svg"
-      width="${sz}" height="${sz}" viewBox="-10 -10 20 20"
-      style="overflow:visible;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.75)) drop-shadow(0 0 2px rgba(0,0,0,0.5))">
-    <g fill="${color}" stroke="${color}" stroke-linecap="round" stroke-linejoin="round">
+      width="${pinW}" height="${pinH}"
+      style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))">
+    <!-- pin body -->
+    <path d="${path}" fill="${color}"/>
+    <!-- inner highlight ring -->
+    <circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+    <!-- category icon (white) -->
+    <g transform="translate(${cx} ${cy}) scale(${scale.toFixed(3)})"
+       fill="white" stroke="none" stroke-linecap="round" stroke-linejoin="round">
       ${icon}
     </g>
+    <!-- tip dot -->
+    <circle cx="${cx}" cy="${tipY}" r="1.8" fill="rgba(0,0,0,0.25)"/>
   </svg>`;
 
   return L.divIcon({
     className:     "",
     html,
-    iconSize:      [sz, sz],
-    iconAnchor:    [sz / 2, sz / 2],
-    tooltipAnchor: [0, -(sz / 2 + 4)],
+    iconSize:      [pinW, pinH],
+    iconAnchor:    [cx, pinH],          // anchor = tip of pin
+    tooltipAnchor: [0, -(pinH - cy)],
   });
 }
 
@@ -628,13 +650,15 @@ function MapView({
 
   const pinIcon = useMemo(() => L.divIcon({
     className: "",
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <circle cx="16" cy="14" r="10" fill="#ff5100" opacity="0.95"/>
-      <polygon points="12,22 16,31 20,22" fill="#ff5100" opacity="0.95"/>
-      <text x="16" y="19" text-anchor="middle" font-size="13" fill="white">★</text>
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
+        style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55))">
+      <path d="M18,46 C12.5,37.5 3,30 3,18 a15,15 0 1,1 30,0 C33,30 23.5,37.5 18,46Z" fill="#ff5100"/>
+      <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <text x="18" y="23" text-anchor="middle" font-size="15" fill="white" font-family="sans-serif">★</text>
+      <circle cx="18" cy="46" r="2" fill="rgba(0,0,0,0.25)"/>
     </svg>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 31],
+    iconSize: [36, 48],
+    iconAnchor: [18, 48],
   }), [L]);
 
   // Pre-build all site icons (memoised by id+score)
