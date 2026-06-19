@@ -11,6 +11,7 @@ import {
   type MapSite,
   type SiteKind,
 } from "@/data/platform";
+// SITES used directly for layer counts (authoritative static data, avoids stale Supabase layer names)
 
 type RL = typeof import("react-leaflet");
 type L  = typeof import("leaflet");
@@ -204,6 +205,17 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [basemap, setBasemap] = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(false);
   const basemapUserPicked = useRef(false);
+
+  /* Sync basemap with page theme toggle (unless user manually picked one) */
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      if (basemapUserPicked.current) return;
+      const theme = document.documentElement.getAttribute("data-theme") ?? "dark";
+      setBasemap(theme === "light" ? "light" : "dark");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
 
   const pickBasemap = (key: BasemapKey) => {
     basemapUserPicked.current = true;
@@ -416,7 +428,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             {ALL_LAYERS.map((g, i) => {
               const meta    = LAYER_META[g];
               const on      = active.has(g);
-              const count   = g === "corridors" ? CORRIDORS.length : sites.filter((s) => s.layer === g).length;
+              const count   = g === "corridors" ? CORRIDORS.length : SITES.filter((s) => s.layer === g).length;
               const subDefs = LAYER_SUBKINDS[g];
               const curSub  = subKinds[g] ?? "all";
               return (

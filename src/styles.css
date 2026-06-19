@@ -717,13 +717,13 @@
 }
 
 /* ── Map: basemap CSS filter treatments ─────────────────── */
-/* Dark: desaturated + blue-shifted satellite — not standard Google look */
+/* Dark: desaturate + slight blue tint on satellite — unique industrial look */
 .tgl-bm-dark .leaflet-tile-pane {
-  filter: saturate(0.25) brightness(0.50) hue-rotate(190deg);
+  filter: saturate(0.35) brightness(0.78) hue-rotate(180deg);
 }
-/* Light: slight warmth reduction for cleaner industrial context */
+/* Light: mild desaturation for clean map reading */
 .tgl-bm-light .leaflet-tile-pane {
-  filter: saturate(0.75) brightness(1.05);
+  filter: saturate(0.80) brightness(1.0);
 }
 
 /* ── Scanlines overlay ──────────────────────────────────── */
