@@ -553,7 +553,6 @@ function PreviewMapView() {
         maxZoom={8}
         mapTypeId="roadmap"
         styles={DARK_STYLES}
-        mapId={gMapId}
         disableDefaultUI
         gestureHandling="none"
         backgroundColor="#0d1117"
