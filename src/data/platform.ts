@@ -44,13 +44,21 @@ export interface MapSite {
   utilities?: string;
   road?: string;
   notes?: string;
-  score?: number; // suitability snapshot 0-100
+  score?: number; // suitability snapshot 0-100 (sum of 4 EIP pillars)
+  eip_management?: number;    // Pillar 1: Park Management (0–25)
+  eip_environmental?: number; // Pillar 2: Environmental (0–25)
+  eip_social?: number;        // Pillar 3: Social (0–25)
+  eip_economic?: number;      // Pillar 4: Economic (0–25)
+  eip_tier?: "bronze" | "silver" | "gold"; // World Bank/UNIDO EIP Framework tier
   strengths?: string[];
   constraints?: string[];
   targetIndustries?: string[];
   recommendation?: string;
-  image_url?: string; // hero image for Inspector panel
-  coordVerified?: boolean; // true = confirmed via Google Maps; false/absent = AI-estimated
+  image_url?: string;
+  coordVerified?: boolean;
+  port_distance_km?: number;
+  elevation_m?: number;
+  flood_risk?: boolean;
 }
 
 export interface Corridor {
