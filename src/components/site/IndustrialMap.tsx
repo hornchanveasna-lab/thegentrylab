@@ -99,8 +99,8 @@ const BASEMAPS: Record<BasemapKey, BasemapDef> = {
   },
   google: {
     label: "Google",
-    tiles:  "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-    labels: "https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}",
+    tiles:  `https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ""}`,
+    labels: `https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ""}`,
     isDark: true,
     swatch: "#1a2f1a",
   },
@@ -163,9 +163,16 @@ function parseCoords(text: string): [number, number] | null {
 
 async function geocodePlace(query: string): Promise<[number, number] | null> {
   try {
-    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=kh&format=json&limit=1`;
-    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const key = import.meta.env.VITE_GOOGLE_MAPS_KEY;
+    const url = key
+      ? `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query + " Cambodia")}&key=${key}`
+      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=kh&format=json&limit=1`;
+    const res = await fetch(url, key ? {} : { headers: { "Accept-Language": "en" } });
     const data = await res.json();
+    if (key) {
+      const loc = data.results?.[0]?.geometry?.location;
+      return loc ? [loc.lat, loc.lng] : null;
+    }
     if (data?.[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
   } catch { /* ignore */ }
   return null;
