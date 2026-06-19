@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useLang } from "@/lib/i18n";
-import { useMapSites } from "@/lib/data";
+import { useMapSites, useNews, useResearch, useProjects } from "@/lib/data";
 import {
   CORRIDORS,
   LAYER_META,
+  NEWS,
+  RESEARCH,
+  PROJECTS,
   SITES,
   type Corridor,
   type LayerGroup,
   type MapSite,
+  type NewsItem,
+  type ResearchBrief,
   type SiteKind,
+  type TrackedProject,
 } from "@/data/platform";
 
 const ALL_LAYERS: LayerGroup[] = [
@@ -517,9 +523,176 @@ function FloodLayer() {
   return null;
 }
 
+/* ── Province centroids for news markers ────────────────── */
+const PROVINCE_CENTROIDS: Record<string, [number, number]> = {
+  "Phnom Penh":        [11.5564, 104.9282],
+  "Kandal":            [11.2833, 104.9500],
+  "Kampong Speu":      [11.4500, 104.5200],
+  "Preah Sihanouk":    [10.6167, 103.5167],
+  "Sihanoukville":     [10.6167, 103.5167],
+  "Svay Rieng":        [11.0833, 105.8000],
+  "Kampong Cham":      [11.9931, 105.4636],
+  "Kampot":            [10.5933, 104.1667],
+  "Takeo":             [10.9833, 104.7833],
+  "Prey Veng":         [11.4833, 105.3333],
+  "Kampong Chhnang":   [12.2500, 104.6667],
+  "Kampong Thom":      [12.7111, 104.8900],
+  "Siem Reap":         [13.3622, 103.8597],
+  "Battambang":        [13.0957, 103.2022],
+  "Preah Vihear":      [13.8000, 104.9833],
+  "Pursat":            [12.5339, 103.9192],
+  "Kratie":            [12.4878, 106.0189],
+  "Stung Treng":       [13.5239, 105.9697],
+  "Ratanakiri":        [13.7394, 106.9875],
+  "Mondulkiri":        [12.4500, 107.1833],
+  "Koh Kong":          [11.6167, 103.0000],
+  "Oddar Meanchey":    [14.1806, 103.5178],
+  "Kep":               [10.4833, 104.3167],
+  "Pailin":            [12.8500, 102.6000],
+  "Nationwide":        [12.5657, 104.9910],
+};
+
+/* ── News marker SVG ────────────────────────────────────── */
+function buildNewsSvg(count: number) {
+  const w = 30, h = 30;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"
+    style="overflow:visible;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.55))">
+    <rect x="1" y="1" width="28" height="28" rx="5" fill="#f59e0b"/>
+    <rect x="1" y="1" width="28" height="28" rx="5" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
+    <text x="15" y="19" text-anchor="middle" font-size="14" font-family="sans-serif">📰</text>
+    ${count > 1 ? `<circle cx="24" cy="6" r="7" fill="#ff5100"/>
+    <text x="24" y="10" text-anchor="middle" font-size="8" font-weight="bold" fill="white" font-family="sans-serif">${count}</text>` : ""}
+  </svg>`;
+}
+
+/* ── Project marker SVG ─────────────────────────────────── */
+function buildProjectSvg(status: string) {
+  const color = STATUS_COLOR[status] ?? "#818cf8";
+  const s = 18;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}"
+    style="overflow:visible;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.55))">
+    <rect x="${s/2}" y="1" width="${s - 2}" height="${s - 2}" rx="2" transform="rotate(45 ${s/2} ${s/2})" fill="${color}"/>
+    <rect x="${s/2}" y="1" width="${s - 2}" height="${s - 2}" rx="2" transform="rotate(45 ${s/2} ${s/2})" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+  </svg>`;
+}
+
+/* ── News marker layer ──────────────────────────────────── */
+function NewsMarkerLayer({
+  news, onSelect,
+}: {
+  news: NewsItem[];
+  onSelect: (province: string, items: NewsItem[]) => void;
+}) {
+  const map = useMap();
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  useEffect(() => {
+    if (!map) return;
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    const byProvince: Record<string, NewsItem[]> = {};
+    for (const item of news) {
+      if (!byProvince[item.province]) byProvince[item.province] = [];
+      byProvince[item.province].push(item);
+    }
+
+    for (const [province, items] of Object.entries(byProvince)) {
+      const coord = PROVINCE_CENTROIDS[province];
+      if (!coord) continue;
+      const svg = buildNewsSvg(items.length);
+      const marker = new google.maps.Marker({
+        position: { lat: coord[0], lng: coord[1] },
+        map,
+        title: `${province} · ${items.length} news`,
+        zIndex: 200,
+        icon: {
+          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+          anchor: new google.maps.Point(15, 15),
+          scaledSize: new google.maps.Size(30, 30),
+        },
+      });
+      marker.addListener("click", () => onSelectRef.current(province, items));
+      markersRef.current.push(marker);
+    }
+
+    return () => {
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+    };
+  }, [map, news]);
+
+  return null;
+}
+
+/* ── Project marker layer ───────────────────────────────── */
+function ProjectMarkerLayer({
+  projects, onSelect,
+}: {
+  projects: TrackedProject[];
+  onSelect: (p: TrackedProject) => void;
+}) {
+  const map = useMap();
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  useEffect(() => {
+    if (!map) return;
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    const placed = projects.filter((p) => p.lat != null && p.lng != null);
+    markersRef.current = placed.map((p) => {
+      const svg = buildProjectSvg(p.status);
+      const marker = new google.maps.Marker({
+        position: { lat: p.lat!, lng: p.lng! },
+        map,
+        title: p.name,
+        zIndex: 150,
+        icon: {
+          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+          anchor: new google.maps.Point(9, 9),
+          scaledSize: new google.maps.Size(18, 18),
+        },
+      });
+      marker.addListener("click", () => onSelectRef.current(p));
+      return marker;
+    });
+
+    return () => {
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+    };
+  }, [map, projects]);
+
+  return null;
+}
+
+/* ── Related research matcher ───────────────────────────── */
+function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchBrief[] {
+  const siteLower = site.province.toLowerCase();
+  const industries = (site.targetIndustries ?? []).map((i) => i.toLowerCase());
+  return research
+    .filter((r) => {
+      const cat = r.category.toLowerCase();
+      const abs = r.abstract.toLowerCase();
+      return (
+        industries.some((ind) => abs.includes(ind) || cat.includes(ind)) ||
+        abs.includes(siteLower) ||
+        (site.kind === "sez" && abs.includes("sez")) ||
+        (site.kind === "solar" && abs.includes("power")) ||
+        (["university", "tvet", "hospital"].includes(site.kind) && abs.includes("labor")) ||
+        (site.kind === "protected" && abs.includes("flood"))
+      );
+    })
+    .slice(0, 3);
+}
+
 /* ── Preview map ────────────────────────────────────────── */
-const gKey   = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
-const gMapId = import.meta.env.VITE_GOOGLE_MAP_ID  as string | undefined;
+const gKey = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
 
 function PreviewMapInner() {
   const map = useMap();
@@ -572,9 +745,16 @@ interface IndustrialMapProps {
 /* ── Main export ────────────────────────────────────────── */
 export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const { t }               = useLang();
-  const { data: sites = SITES } = useMapSites();
+  const { data: sites = SITES }       = useMapSites();
+  const { data: allNews = NEWS }      = useNews();
+  const { data: allResearch = RESEARCH } = useResearch();
+  const { data: allProjects = PROJECTS } = useProjects();
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
   const [selected, setSelected] = useState<MapSite | null>(null);
+  const [selectedProject, setSelectedProject] = useState<TrackedProject | null>(null);
+  const [newsPanel, setNewsPanel] = useState<{ province: string; items: NewsItem[] } | null>(null);
+  const [showNews, setShowNews]         = useState(true);
+  const [showProjects, setShowProjects] = useState(true);
   const [query, setQuery]   = useState("");
   const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
   const [panelOpen, setPanelOpen] = useState(false);
@@ -659,7 +839,23 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     setLocSearching(false);
   };
 
-  const handleSelect = useCallback((s: MapSite) => setSelected(s), []);
+  const handleSelect = useCallback((s: MapSite) => {
+    setSelected(s);
+    setSelectedProject(null);
+    setNewsPanel(null);
+  }, []);
+
+  const handleNewsSelect = useCallback((province: string, items: NewsItem[]) => {
+    setNewsPanel({ province, items });
+    setSelected(null);
+    setSelectedProject(null);
+  }, []);
+
+  const handleProjectSelect = useCallback((p: TrackedProject) => {
+    setSelectedProject(p);
+    setSelected(null);
+    setNewsPanel(null);
+  }, []);
 
   /* ── Preview mode ───────────────────────────────────────── */
   if (previewMode) {
@@ -689,7 +885,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             disableDefaultUI
             gestureHandling="greedy"
             backgroundColor="#0d1117"
-            onClick={() => setSelected(null)}
+            onClick={() => { setSelected(null); setSelectedProject(null); setNewsPanel(null); }}
           >
             <FlyController target={pinTarget} />
             <ZoomLabelController />
@@ -699,6 +895,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} onSelect={handleSelect} />
+            {showNews && <NewsMarkerLayer news={allNews} onSelect={handleNewsSelect} />}
+            {showProjects && <ProjectMarkerLayer projects={allProjects} onSelect={handleProjectSelect} />}
             {pinMarker && <PinMarkerLayer position={pinMarker} />}
           </Map>
         </APIProvider>
@@ -777,11 +975,46 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               />
             </div>
 
-            {/* Flood overlay toggle */}
+            {/* Intelligence overlays */}
             <div className="border-b border-white/10">
+              <p className="px-4 pt-2.5 pb-1 font-mono text-[9px] uppercase tracking-widest text-white/30">Intelligence Layers</p>
+              {/* News */}
+              <button
+                onClick={() => setShowNews((v) => !v)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition"
+              >
+                <span className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: "#f59e0b", opacity: showNews ? 1 : 0.25,
+                    boxShadow: showNews ? "0 0 8px #f59e0b" : "none" }} />
+                <span className="flex-1">
+                  <span className="block text-xs font-bold uppercase tracking-wide">Live News</span>
+                  <span className="block text-[10px] text-white/40 mt-0.5">{allNews.length} articles · province clusters</span>
+                </span>
+                <span className="font-mono text-[9px] px-1.5 py-0.5 mr-1" style={{ backgroundColor: "#f59e0b22", color: "#f59e0b" }}>LIVE</span>
+                <span className={`w-7 h-4 rounded-full relative transition ${showNews ? "bg-[#f59e0b]" : "bg-white/15"}`}>
+                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${showNews ? "left-3.5" : "left-0.5"}`} />
+                </span>
+              </button>
+              {/* Projects */}
+              <button
+                onClick={() => setShowProjects((v) => !v)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition"
+              >
+                <span className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: "#818cf8", opacity: showProjects ? 1 : 0.25,
+                    boxShadow: showProjects ? "0 0 8px #818cf8" : "none" }} />
+                <span className="flex-1">
+                  <span className="block text-xs font-bold uppercase tracking-wide">Tracked Projects</span>
+                  <span className="block text-[10px] text-white/40 mt-0.5">{allProjects.filter((p) => p.lat).length} mapped · {allProjects.length} total</span>
+                </span>
+                <span className={`w-7 h-4 rounded-full relative transition ${showProjects ? "bg-[#818cf8]" : "bg-white/15"}`}>
+                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${showProjects ? "left-3.5" : "left-0.5"}`} />
+                </span>
+              </button>
+              {/* Flood */}
               <button
                 onClick={() => setFloodVisible((v) => !v)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/5 transition"
               >
                 <span className="w-3 h-3 rounded-full shrink-0"
                   style={{ backgroundColor: "#38bdf8", opacity: floodVisible ? 1 : 0.25,
@@ -875,13 +1108,46 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         )}
       </div>
 
-      {selected && <Inspector site={selected} onClose={() => setSelected(null)} t={t} />}
+      {selected && (
+        <Inspector
+          site={selected}
+          research={allResearch}
+          news={allNews}
+          onClose={() => setSelected(null)}
+          t={t}
+        />
+      )}
+      {newsPanel && (
+        <NewsPanel
+          province={newsPanel.province}
+          items={newsPanel.items}
+          onClose={() => setNewsPanel(null)}
+        />
+      )}
+      {selectedProject && (
+        <ProjectInspector
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+        />
+      )}
     </div>
   );
 }
 
 /* ── Inspector ──────────────────────────────────────────── */
-function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t: (key: string) => string }) {
+function Inspector({
+  site, research, news, onClose, t,
+}: {
+  site: MapSite;
+  research: ResearchBrief[];
+  news: NewsItem[];
+  onClose: () => void;
+  t: (key: string) => string;
+}) {
+  const relatedResearch = getRelatedResearch(site, research);
+  const relatedNews = news
+    .filter((n) => n.province === site.province || n.province === "Nationwide")
+    .slice(0, 2);
   const layerColor = LAYER_META[site.layer].color;
   const scoreColor = site.score !== undefined
     ? site.score >= 85 ? "#34d399" : site.score >= 70 ? "#fbbf24" : "#f43f5e"
@@ -1038,6 +1304,48 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
+        {relatedNews.length > 0 && (
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">
+              Latest News · {site.province}
+            </p>
+            <div className="space-y-2">
+              {relatedNews.map((n) => (
+                <a key={n.id} href={n.url !== "#" ? n.url : undefined}
+                  target="_blank" rel="noopener noreferrer"
+                  className="block bg-white/4 hover:bg-white/7 transition px-3 py-2.5 rounded-sm">
+                  <span className="inline-block px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1.5 rounded-sm"
+                    style={{ backgroundColor: "#f59e0b22", color: "#f59e0b" }}>
+                    {n.sector}
+                  </span>
+                  <p className="text-[11px] text-white/85 leading-snug mb-1">{n.headline}</p>
+                  <p className="font-mono text-[9px] text-white/35">{n.source} · {n.date}</p>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {relatedResearch.length > 0 && (
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">
+              Related Research
+            </p>
+            <div className="space-y-2">
+              {relatedResearch.map((r) => (
+                <div key={r.id} className="bg-white/4 px-3 py-2.5 rounded-sm">
+                  <span className="inline-block px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1.5 rounded-sm"
+                    style={{ backgroundColor: "#818cf822", color: "#818cf8" }}>
+                    {r.category}
+                  </span>
+                  <p className="text-[11px] text-white/85 leading-snug mb-1">{r.title}</p>
+                  <p className="font-mono text-[9px] text-white/35">{r.pages} pages</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {site.recommendation && (
           <div className="px-4 py-3 border-b border-white/8 bg-[#ff510008]">
             <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#ff5100" }}>
@@ -1084,6 +1392,171 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
         <div className="px-4 py-2.5">
           <p className="font-mono text-[9px] uppercase tracking-widest text-white/20">
             {t("map.disclaimer")}
+          </p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ── News Panel ─────────────────────────────────────────── */
+function NewsPanel({
+  province, items, onClose,
+}: {
+  province: string;
+  items: NewsItem[];
+  onClose: () => void;
+}) {
+  const SECTOR_COLOR: Record<string, string> = {
+    Infrastructure: "#0ea5e9",
+    Energy:         "#a855f7",
+    Automotive:     "#f97316",
+    Garment:        "#ec4899",
+    "Data Center":  "#818cf8",
+    Warehousing:    "#eab308",
+    Policy:         "#94a3b8",
+  };
+
+  return (
+    <aside className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] bg-[#0d0d0e] backdrop-blur border border-white/12 text-white flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl">
+      <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10"
+        style={{ background: "linear-gradient(135deg, #f59e0b18 0%, #0d0d0e 75%)" }}>
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/50 mb-0.5">
+            Province Intelligence
+          </p>
+          <h3 className="font-extrabold text-[14px] uppercase tracking-tight text-white">{province}</h3>
+          <p className="font-mono text-[10px] mt-0.5" style={{ color: "#f59e0b" }}>
+            {items.length} news item{items.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <button onClick={onClose}
+          className="w-7 h-7 flex items-center justify-center text-white/30 hover:text-white hover:bg-white/8 transition rounded-sm shrink-0">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+            <path d="M1 1l8 8M9 1L1 9"/>
+          </svg>
+        </button>
+      </div>
+
+      <div className="overflow-y-auto flex-1">
+        {items
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .map((n) => (
+            <a
+              key={n.id}
+              href={n.url !== "#" ? n.url : undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block px-4 py-3.5 border-b border-white/6 hover:bg-white/4 transition group"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider rounded-sm"
+                  style={{
+                    backgroundColor: `${SECTOR_COLOR[n.sector] ?? "#94a3b8"}22`,
+                    color: SECTOR_COLOR[n.sector] ?? "#94a3b8",
+                  }}>
+                  {n.sector}
+                </span>
+                <span className="font-mono text-[9px] text-white/30 ml-auto">{n.date}</span>
+              </div>
+              <p className="text-[12px] font-semibold text-white/90 leading-snug mb-1.5 group-hover:text-white transition">
+                {n.headline}
+              </p>
+              <p className="text-[10.5px] text-white/55 leading-relaxed mb-2">{n.summary}</p>
+              <p className="font-mono text-[9px] text-white/30">{n.source}</p>
+            </a>
+          ))}
+        <div className="px-4 py-2.5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/20">
+            News sourced automatically · verify before use
+          </p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ── Project Inspector ──────────────────────────────────── */
+function ProjectInspector({
+  project, onClose,
+}: {
+  project: TrackedProject;
+  onClose: () => void;
+}) {
+  const statusColor = STATUS_COLOR[project.status] ?? "#94a3b8";
+  const mapsUrl = project.maps_url ?? (project.lat
+    ? `https://www.google.com/maps/search/?api=1&query=${project.lat},${project.lng}`
+    : undefined);
+
+  return (
+    <aside className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] bg-[#0d0d0e] backdrop-blur border border-white/12 text-white flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl">
+      <div className="shrink-0 border-b border-white/10"
+        style={{ background: "linear-gradient(135deg, #818cf818 0%, #0d0d0e 75%)" }}>
+        <div className="flex items-center justify-between px-4 pt-3 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/50">
+              Tracked Project
+            </span>
+            <span className="font-mono text-[9px] text-white/25">·</span>
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em]" style={{ color: "#818cf8" }}>
+              {project.sector}
+            </span>
+          </div>
+          <button onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center text-white/30 hover:text-white hover:bg-white/8 transition rounded-sm">
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M1 1l8 8M9 1L1 9"/>
+            </svg>
+          </button>
+        </div>
+        <div className="px-4 pb-3">
+          <h3 className="font-extrabold text-[15px] uppercase tracking-tight leading-tight text-white">{project.name}</h3>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
+            <span className="font-mono text-[10px]" style={{ color: statusColor }}>{project.status}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-y-auto flex-1">
+        <div className="px-4 py-3 border-b border-white/8">
+          <p className="text-[12px] text-white/75 leading-relaxed">{project.summary}</p>
+        </div>
+
+        <div className="border-b border-white/8">
+          <p className="px-4 pt-3 pb-1.5 font-mono text-[9px] uppercase tracking-widest text-white/35">Details</p>
+          <dl className="px-4 pb-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[11px]">
+            <Row k="Investor"  v={project.investor} />
+            <Row k="Origin"    v={project.origin} />
+            <Row k="Province"  v={project.province} />
+            <Row k="Size"      v={project.size} />
+          </dl>
+        </div>
+
+        {project.latest_news_headline && (
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Latest Coverage</p>
+            <a href={project.latest_news_url ?? "#"} target="_blank" rel="noopener noreferrer"
+              className="block bg-white/4 hover:bg-white/7 transition px-3 py-2.5 rounded-sm">
+              <p className="text-[11px] text-white/85 leading-snug">{project.latest_news_headline}</p>
+            </a>
+          </div>
+        )}
+
+        {mapsUrl && (
+          <div className="px-4 py-3 border-b border-white/8">
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2.5 w-full py-2.5 border border-white/15 hover:border-white/35 hover:bg-white/5 transition group">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-white/70 group-hover:text-white transition">
+                Open in Google Maps ↗
+              </span>
+            </a>
+          </div>
+        )}
+
+        <div className="px-4 py-2.5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/20">
+            Updated {project.updated}
           </p>
         </div>
       </div>
