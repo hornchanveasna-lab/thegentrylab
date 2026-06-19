@@ -655,7 +655,7 @@ function ZoomLabelController() {
   return null;
 }
 
-function ZoomClassController() {
+function ZoomClassController({ useMap }: { useMap: RL["useMap"] }) {
   const map = useMap();
   useEffect(() => {
     const update = () => {
@@ -730,7 +730,7 @@ function MapView({
 
       <FlyController useMap={useMap} target={pinTarget} />
       <ZoomLabelController />
-      <ZoomClassController />
+      <ZoomClassController useMap={useMap} />
 
       {corridors.map((c) => (
         <Polyline key={c.id} positions={c.waypoints}

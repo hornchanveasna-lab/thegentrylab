@@ -77,7 +77,7 @@ async function searchPlace(name, province) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-const src   = readFileSync(PLATFORM_PATH.replace(/^\/([A-Z]:)/, "$1"), "utf8");
+const src   = readFileSync(decodeURIComponent(PLATFORM_PATH.replace(/^\/([A-Z]:)/, "$1")), "utf8");
 const sites = parseSites(src);
 
 console.log(`\n🗺  Validating ${sites.length} sites against Google Places API…\n`);
