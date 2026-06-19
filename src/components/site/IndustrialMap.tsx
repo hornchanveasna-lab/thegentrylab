@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { APIProvider, Map, useMap, useMapsLibrary } from "@vis.gl/react-google-maps";
+import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useLang } from "@/lib/i18n";
 import { useMapSites } from "@/lib/data";
 import {
@@ -410,44 +410,6 @@ function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
   return null;
 }
 
-/* ── Build AdvancedMarker content element ───────────────── */
-function buildMarkerElement(s: MapSite): HTMLDivElement {
-  const color  = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
-  const isKey  = (s.score ?? 0) >= 85;
-  const { svg, cx, cy, pinW } = buildPinSvg(s.kind, color, isKey);
-
-  const wrap = document.createElement("div");
-  wrap.style.cssText = "position:relative;cursor:pointer;";
-  if (!s.coordVerified) wrap.style.opacity = "0.6";
-
-  const pinEl = document.createElement("div");
-  pinEl.innerHTML = svg;
-  wrap.appendChild(pinEl);
-
-  const label = document.createElement("div");
-  label.className = `pin-label${isKey ? " pin-label-key" : ""}`;
-  label.style.cssText = [
-    `position:absolute`,
-    `left:${pinW + 5}px`,
-    `top:${cy}px`,
-    `transform:translateY(-50%)`,
-    `white-space:nowrap`,
-    `font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif`,
-    `font-size:11px`,
-    `font-weight:700`,
-    `letter-spacing:0.01em`,
-    `color:#1a1a2e`,
-    `background:rgba(255,255,255,0.88)`,
-    `padding:1px 5px`,
-    `border-radius:3px`,
-    `box-shadow:0 1px 3px rgba(0,0,0,0.18)`,
-    `pointer-events:none`,
-  ].join(";");
-  label.textContent = s.name;
-  wrap.appendChild(label);
-
-  return wrap;
-}
 
 function SiteMarkerLayer({
   sites, onSelect,
@@ -455,100 +417,67 @@ function SiteMarkerLayer({
   sites: MapSite[];
   onSelect: (s: MapSite) => void;
 }) {
-  const map       = useMap();
-  const markerLib = useMapsLibrary("marker");
-  const advMarkersRef  = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-  const legMarkersRef  = useRef<google.maps.Marker[]>([]);
-  const onSelectRef    = useRef(onSelect);
+  const map         = useMap();
+  const markersRef  = useRef<google.maps.Marker[]>([]);
+  const onSelectRef = useRef(onSelect);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
 
   useEffect(() => {
     if (!map) return;
 
-    // cleanup
-    advMarkersRef.current.forEach((m) => { m.map = null; });
-    legMarkersRef.current.forEach((m) => m.setMap(null));
-    advMarkersRef.current = [];
-    legMarkersRef.current = [];
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
 
-    if (markerLib) {
-      // AdvancedMarkerElement path (requires valid mapId)
-      advMarkersRef.current = sites.map((s) => {
-        const content = buildMarkerElement(s);
-        const marker  = new markerLib.AdvancedMarkerElement({
-          map,
-          position: { lat: s.lat, lng: s.lng },
-          content,
-          title: s.name,
-        });
-        marker.addListener("gmp-click", () => onSelectRef.current(s));
-        return marker;
+    markersRef.current = sites.map((s) => {
+      const color  = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
+      const isKey  = (s.score ?? 0) >= 85;
+      const { svg, cx, pinH, pinW } = buildPinSvg(s.kind, color, isKey);
+      const marker = new google.maps.Marker({
+        position: { lat: s.lat, lng: s.lng },
+        map,
+        title:   s.name,
+        opacity: s.coordVerified ? 1 : 0.6,
+        icon: {
+          url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+          anchor:     new google.maps.Point(cx, pinH),
+          scaledSize: new google.maps.Size(pinW, pinH),
+        },
       });
-    } else {
-      // Legacy Marker fallback (no mapId required)
-      legMarkersRef.current = sites.map((s) => {
-        const color  = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
-        const isKey  = (s.score ?? 0) >= 85;
-        const { svg, cx, pinH, pinW } = buildPinSvg(s.kind, color, isKey);
-        const marker = new google.maps.Marker({
-          position: { lat: s.lat, lng: s.lng },
-          map,
-          title:   s.name,
-          opacity: s.coordVerified ? 1 : 0.6,
-          icon: {
-            url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-            anchor:     new google.maps.Point(cx, pinH),
-            scaledSize: new google.maps.Size(pinW, pinH),
-          },
-        });
-        marker.addListener("click", () => onSelectRef.current(s));
-        return marker;
-      });
-    }
+      marker.addListener("click", () => onSelectRef.current(s));
+      return marker;
+    });
 
     return () => {
-      advMarkersRef.current.forEach((m) => { m.map = null; });
-      legMarkersRef.current.forEach((m) => m.setMap(null));
-      advMarkersRef.current = [];
-      legMarkersRef.current = [];
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
     };
-  }, [map, markerLib, sites]);
+  }, [map, sites]);
 
   return null;
 }
 
 function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }) {
-  const map       = useMap();
-  const markerLib = useMapsLibrary("marker");
+  const map = useMap();
 
   useEffect(() => {
     if (!map) return;
-
-    const pinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
       style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55))">
       <path d="M18,46 C12.5,37.5 3,30 3,18 a15,15 0 1,1 30,0 C33,30 23.5,37.5 18,46Z" fill="#ff5100"/>
       <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
       <text x="18" y="23" text-anchor="middle" font-size="15" fill="white" font-family="sans-serif">★</text>
       <circle cx="18" cy="46" r="2" fill="rgba(0,0,0,0.25)"/>
     </svg>`;
-
-    if (markerLib) {
-      const content = document.createElement("div");
-      content.innerHTML = pinSvg;
-      const marker = new markerLib.AdvancedMarkerElement({ map, position, content, title: "Your location" });
-      return () => { marker.map = null; };
-    } else {
-      const marker = new google.maps.Marker({
-        position, map, title: "Your location",
-        icon: {
-          url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(pinSvg),
-          anchor:     new google.maps.Point(18, 48),
-          scaledSize: new google.maps.Size(36, 48),
-        },
-      });
-      return () => { marker.setMap(null); };
-    }
-  }, [map, markerLib, position]);
+    const marker = new google.maps.Marker({
+      position, map, title: "Your location",
+      icon: {
+        url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+        anchor:     new google.maps.Point(18, 48),
+        scaledSize: new google.maps.Size(36, 48),
+      },
+    });
+    return () => { marker.setMap(null); };
+  }, [map, position]);
 
   return null;
 }
@@ -615,7 +544,7 @@ function PreviewMapInner() {
 
 function PreviewMapView() {
   return (
-    <APIProvider apiKey={gKey ?? ""} libraries={["marker"]}>
+    <APIProvider apiKey={gKey ?? ""} >
       <Map
         style={{ height: "100%", width: "100%" }}
         defaultCenter={{ lat: 12.5, lng: 104.9 }}
@@ -749,7 +678,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black" ref={wrapperRef}>
       {/* Map container */}
       <div className="absolute inset-0">
-        <APIProvider apiKey={gKey ?? ""} libraries={["marker"]}>
+        <APIProvider apiKey={gKey ?? ""} >
           <Map
             style={{ height: "100%", width: "100%" }}
             defaultCenter={{ lat: 12.2, lng: 104.9 }}
