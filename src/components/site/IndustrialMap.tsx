@@ -596,7 +596,7 @@ function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean, name: s
   const cy    = r + 3;
   const tipY  = cy + r + 10;
   const pinH  = tipY + 2;
-  const scale = (r * 0.58) / 9;
+  const scale = (r * 0.80) / 9;
 
   const icon = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
 
