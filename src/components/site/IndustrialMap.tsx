@@ -16,6 +16,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           defaultZoom={7}
           mapTypeId="roadmap"
           gestureHandling="greedy"
+          disableDefaultUI
         />
       </APIProvider>
     </div>
