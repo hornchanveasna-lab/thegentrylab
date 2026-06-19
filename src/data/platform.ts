@@ -41,6 +41,7 @@ export interface MapSite {
   targetIndustries?: string[];
   recommendation?: string;
   image_url?: string; // hero image for Inspector panel
+  coordVerified?: boolean; // true = confirmed via Google Maps; false/absent = AI-estimated
 }
 
 export interface Corridor {
@@ -321,6 +322,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps
     lat: 11.520599,
     lng: 104.7788039,
+    coordVerified: true,
     size: "360 ha",
     status: "Operational",
     utilities: "115kV substation, 4,800 m³/d water",
@@ -342,6 +344,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps
     lat: 11.0581075,
     lng: 106.1165239,
+    coordVerified: true,
     size: "180 ha",
     status: "Operational",
     utilities: "Grid + on-site 22kV",
@@ -362,6 +365,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps
     lat: 11.0603031,
     lng: 106.1132461,
+    coordVerified: true,
     size: "125 ha",
     status: "Operational",
     score: 88,
@@ -379,6 +383,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps
     lat: 10.6097817,
     lng: 103.6284517,
+    coordVerified: true,
     size: "1,113 ha",
     status: "Operational",
     image_url: "https://thebettercambodia.com/wp-content/uploads/2025/05/PM-Hun-Manet-Highlights-Economic-Progress-and-Global-Investment-at-Sihanoukville-SEZ-860x573.jpg",
@@ -448,6 +453,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps: Prey Nob district, Plus code QPMQ+47G, isiip.com
     lat: 10.7828081,
     lng: 103.7382236,
+    coordVerified: true,
     size: "800 ha (Phase 1: ~206 ha)",
     status: "Operational",
     utilities: "High-voltage grid connection, water supply, wastewater treatment",
@@ -496,8 +502,10 @@ export const SITES: MapSite[] = [
     kind: "factory",
     layer: "investment",
     province: "Phnom Penh",
-    lat: 11.526,
-    lng: 104.755,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.4932388,
+    lng: 104.779768,
+    coordVerified: true,
     size: "32,000 m²",
     status: "Operational",
     image_url: "https://thebettercambodia.com/wp-content/uploads/2025/08/Minebea-Mitsumi-Expands-Operations-in-Cambodia-with-MISTI-Support-860x562.jpg",
@@ -623,6 +631,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps
     lat: 10.6427153,
     lng: 103.5013705,
+    coordVerified: true,
     status: "Operational",
     image_url: "https://thebettercambodia.com/wp-content/uploads/2026/01/small-edited2-860x484.png",
     utilities: "230kV grid, bonded zone, 24h operations",
@@ -638,8 +647,10 @@ export const SITES: MapSite[] = [
     kind: "port",
     layer: "infrastructure",
     province: "Kandal",
-    lat: 11.583,
-    lng: 104.922,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.583551,
+    lng: 104.9207696,
+    coordVerified: true,
     status: "Operational",
     image_url: "https://thebettercambodia.com/wp-content/uploads/2025/06/Phnom-Penh-Autonomous-Port-.webp",
     utilities: "Grid, bonded zone, 24h operations",
@@ -658,6 +669,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps
     lat: 11.3588601,
     lng: 104.9334971,
+    coordVerified: true,
     status: "Operational",
     image_url: "https://images.adsttc.com/media/images/68f7/6a09/9662/410e/4d46/eadf/large_jpg/techo-international-airport-cambodia-foster-plus-partners_7.jpg",
     utilities: "Full aviation infrastructure, cargo terminal operational",
@@ -676,6 +688,7 @@ export const SITES: MapSite[] = [
     // Verified 2026-06-19 via Google Maps
     lat: 13.3761916,
     lng: 104.2201036,
+    coordVerified: true,
     status: "Operational",
     utilities: "Full aviation infrastructure, cargo terminal",
     road: "NR6, ~48 km east of Siem Reap city",
@@ -836,8 +849,10 @@ export const SITES: MapSite[] = [
     kind: "university",
     layer: "labor",
     province: "Phnom Penh",
-    lat: 11.569,
-    lng: 104.89,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.568676,
+    lng: 104.8907417,
+    coordVerified: true,
     notes: "Royal University of Phnom Penh (RUPP) is Cambodia's flagship public university with ~20,000 students. Key faculties for industrial investors: Science (physics, chemistry, biology), Engineering, and Information Technology. Graduates ~1,200 science/engineering students annually. RUPP has active industry partnership programs with CDC-approved investment firms for internship-to-hire pipelines. Language skills are strong — many graduates speak English and Khmer proficiently.",
     strengths: ["Largest public STEM university in Cambodia", "CDC-supported industry internship programs", "Strong English proficiency vs. regional competitors"],
     targetIndustries: ["Electronics", "Data Centers", "Food Science", "IT Services"],
@@ -848,8 +863,10 @@ export const SITES: MapSite[] = [
     kind: "university",
     layer: "labor",
     province: "Phnom Penh",
-    lat: 11.57,
-    lng: 104.89,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.5703975,
+    lng: 104.8980857,
+    coordVerified: true,
     notes: "Institute of Technology of Cambodia (ITC) is the country's premier engineering university, co-founded by the French government and operating in partnership with major engineering schools (INSA, École Polytechnique network). Produces ~500 engineering graduates annually in civil, mechanical, electrical, and IT engineering. Primary source of graduate engineers for PPSEZ, SSEZ, and large manufacturing operations. Several Japanese and Korean manufacturing companies have dedicated ITC partnership programs.",
     strengths: ["Only dedicated engineering university in Cambodia", "French engineering school curriculum standards", "Japanese/Korean manufacturer partnership programs", "500 engineering graduates/year"],
     constraints: ["Competitive — graduates are recruited heavily by PP-based companies", "Limited postgraduate research capacity"],
@@ -861,8 +878,10 @@ export const SITES: MapSite[] = [
     kind: "university",
     layer: "labor",
     province: "Phnom Penh",
-    lat: 11.568,
-    lng: 104.898,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.5881108,
+    lng: 104.9301205,
+    coordVerified: true,
     notes: "Norton University is Cambodia's largest private university with ~25,000 students across faculties of Business, IT, Law, and Engineering. Strong output of business administration and IT graduates relevant to industrial park management, back-office operations, and supply chain logistics. Lower engineering specialisation vs. ITC but strong pipeline for supervisory and management roles in manufacturing. Industry ties with logistics, banking, and telecoms sectors.",
     strengths: ["Largest university in Cambodia by enrolment", "Strong business + IT graduate output", "Industry ties in logistics and management"],
     targetIndustries: ["Logistics Management", "Industrial Administration", "IT Services", "Finance & Compliance"],
@@ -873,8 +892,10 @@ export const SITES: MapSite[] = [
     kind: "tvet",
     layer: "labor",
     province: "Phnom Penh",
-    lat: 11.568, // Coord verified 2026-06-09 — Russian Federation Blvd, Tuol Kork, Phnom Penh
-    lng: 104.902,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.598406,
+    lng: 104.8007837,
+    coordVerified: true,
     notes: "National Polytechnic Institute of Cambodia (NPIC) is the country's primary technical and vocational education institution under the Ministry of Labour. Offers 2-3 year diploma programs in mechanical engineering, electrical systems, automotive technology, welding, and industrial maintenance. Produces ~1,500 technician-level graduates annually. Major industrial investors (Japanese automotive, Korean electronics) actively recruit from NPIC and sponsor curriculum co-development programs.",
     strengths: ["Primary source of industrial technicians in Cambodia", "Curriculum co-development with Japanese/Korean manufacturers", "1,500 technician graduates/year"],
     constraints: ["Capacity cannot meet growing industrial demand", "Equipment in some labs dated vs. factory floor standards"],

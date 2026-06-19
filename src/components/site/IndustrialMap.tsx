@@ -677,10 +677,14 @@ function MapView({
         if (!icon) return null;
         return (
           <Marker key={s.id} position={[s.lat, s.lng]} icon={icon}
+            opacity={s.coordVerified ? 1 : 0.6}
             eventHandlers={{ click: () => onSelect(s) }}>
             <Tooltip direction="top" offset={[0, -4]} opacity={0.95}>
               <span style={{ fontFamily: "monospace", fontSize: 10, color }}>{s.kind.toUpperCase()}</span>
               <span style={{ fontFamily: "monospace", fontSize: 10, color: "#fff", marginLeft: 6 }}>{s.name}</span>
+              {!s.coordVerified && (
+                <span style={{ fontFamily: "monospace", fontSize: 9, color: "#fbbf24", marginLeft: 6 }}>⚠</span>
+              )}
             </Tooltip>
           </Marker>
         );
@@ -877,7 +881,7 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
-        {/* Google Maps button */}
+        {/* Google Maps button + verification status */}
         <div className="px-4 py-3 border-b border-white/8">
           <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2.5 w-full py-2.5 border border-white/15 hover:border-white/35 hover:bg-white/5 transition group">
@@ -889,9 +893,27 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
               Open in Google Maps ↗
             </span>
           </a>
-          <p className="font-mono text-[9px] text-white/25 text-center mt-1.5">
-            {site.lat.toFixed(5)}, {site.lng.toFixed(5)}
-          </p>
+          <div className="flex items-center justify-between mt-1.5">
+            <p className="font-mono text-[9px] text-white/25">
+              {site.lat.toFixed(5)}, {site.lng.toFixed(5)}
+            </p>
+            {site.coordVerified ? (
+              <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
+                style={{ color: "#34d399", backgroundColor: "#34d39915" }}>
+                ✓ verified
+              </span>
+            ) : (
+              <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
+                style={{ color: "#fbbf24", backgroundColor: "#fbbf2415" }}>
+                ⚠ estimated
+              </span>
+            )}
+          </div>
+          {!site.coordVerified && (
+            <p className="font-mono text-[8px] text-white/30 mt-1">
+              Location approximate — verify on Google Maps before use
+            </p>
+          )}
         </div>
 
         {/* Footer disclaimer */}
