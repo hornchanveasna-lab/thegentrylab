@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useLang } from "@/lib/i18n";
 import { useMapSites } from "@/lib/data";
-import "leaflet/dist/leaflet.css";
 import {
   CORRIDORS,
   LAYER_META,
@@ -11,87 +11,73 @@ import {
   type MapSite,
   type SiteKind,
 } from "@/data/platform";
-// SITES used directly for layer counts (authoritative static data, avoids stale Supabase layer names)
-
-type RL = typeof import("react-leaflet");
-type L  = typeof import("leaflet");
 
 const ALL_LAYERS: LayerGroup[] = [
-  "investment",
-  "infrastructure",
-  "energy",
-  "water",
-  "environment",
-  "risk",
-  "labor",
-  "corridors",
+  "investment", "infrastructure", "energy", "water",
+  "environment", "risk", "labor", "corridors",
 ];
 
 const STATUS_COLOR: Record<string, string> = {
-  Operational:         "#34d399",
-  "Under Construction":"#fbbf24",
-  Planned:             "#94a3b8",
+  Operational:          "#34d399",
+  "Under Construction": "#fbbf24",
+  Planned:              "#94a3b8",
 };
 
-/* ── Basemap definitions ────────────────────────────────── */
+/* ── Google Maps style arrays ───────────────────────────── */
+const DARK_STYLES: google.maps.MapTypeStyle[] = [
+  { elementType: "geometry",            stylers: [{ color: "#0d1117" }] },
+  { elementType: "labels.text.fill",    stylers: [{ color: "#7a8899" }] },
+  { elementType: "labels.text.stroke",  stylers: [{ color: "#0d1117" }] },
+  { featureType: "road.highway",         elementType: "geometry",         stylers: [{ color: "#9b2d00" }] },
+  { featureType: "road.highway",         elementType: "geometry.stroke",  stylers: [{ color: "#ff5100" }, { weight: 1.5 }] },
+  { featureType: "road.highway",         elementType: "labels.text.fill", stylers: [{ color: "#e0c8be" }] },
+  { featureType: "road.arterial",        elementType: "geometry",         stylers: [{ color: "#172030" }] },
+  { featureType: "road.local",           elementType: "geometry",         stylers: [{ color: "#10171f" }] },
+  { featureType: "administrative",       elementType: "geometry.stroke",  stylers: [{ color: "#2a3545" }] },
+  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#445060" }, { weight: 1.5 }] },
+  { featureType: "poi",                  stylers: [{ visibility: "off" }] },
+  { featureType: "transit",              stylers: [{ visibility: "off" }] },
+  { featureType: "water",                elementType: "geometry",         stylers: [{ color: "#0a1628" }] },
+  { featureType: "water",                elementType: "labels.text.fill", stylers: [{ color: "#1e3a5f" }] },
+  { featureType: "landscape",            elementType: "geometry",         stylers: [{ color: "#0f1a22" }] },
+  { featureType: "landscape.natural",    elementType: "geometry",         stylers: [{ color: "#0c1820" }] },
+];
+
+const LIGHT_STYLES: google.maps.MapTypeStyle[] = [
+  { elementType: "geometry",            stylers: [{ color: "#f5f0eb" }] },
+  { elementType: "labels.text.fill",    stylers: [{ color: "#2d3748" }] },
+  { elementType: "labels.text.stroke",  stylers: [{ color: "#f5f0eb" }, { weight: 3 }] },
+  { featureType: "road.highway",         elementType: "geometry",         stylers: [{ color: "#ff5100" }] },
+  { featureType: "road.highway",         elementType: "geometry.stroke",  stylers: [{ color: "#cc4100" }, { weight: 0.6 }] },
+  { featureType: "road.highway",         elementType: "labels.text.fill", stylers: [{ color: "#ffffff" }] },
+  { featureType: "road.arterial",        elementType: "geometry",         stylers: [{ color: "#ddd8d0" }] },
+  { featureType: "road.local",           elementType: "geometry",         stylers: [{ color: "#e8e3dc" }] },
+  { featureType: "poi",                  stylers: [{ visibility: "off" }] },
+  { featureType: "transit",             stylers: [{ visibility: "off" }] },
+  { featureType: "water",               elementType: "geometry",         stylers: [{ color: "#b3d4e8" }] },
+  { featureType: "landscape",           elementType: "geometry",         stylers: [{ color: "#f0ece5" }] },
+  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#b0a090" }, { weight: 1.5 }] },
+];
+
+/* ── Basemap definitions (Google Maps JS API style) ─────── */
 type BasemapKey = "dark" | "light" | "terrain" | "satellite" | "flood";
 interface BasemapDef {
   label: string;
-  tiles: string;
-  labels?: string;
-  subdomains?: string[];
+  mapTypeId: string;
+  styles?: google.maps.MapTypeStyle[];
   isDark: boolean;
   swatch: string;
-  cssClass?: string; // applied to map wrapper for CSS filter effects
-  floodOverlay?: boolean; // auto-enable flood WMS layer
+  floodOverlay?: boolean;
 }
 
-const _gKey = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
-const _gBase = (lyrs: string) =>
-  `https://mt{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}${_gKey ? `&key=${_gKey}` : ""}`;
-
 const BASEMAPS: Record<BasemapKey, BasemapDef> = {
-  dark: {
-    label: "Dark",
-    tiles: _gBase("s"),
-    subdomains: ["0","1","2","3"],
-    isDark: true,
-    swatch: "#0d1117",
-    cssClass: "tgl-bm-dark",
-  },
-  light: {
-    label: "Light",
-    tiles: _gBase("m"),
-    subdomains: ["0","1","2","3"],
-    isDark: false,
-    swatch: "#e8e4dc",
-    cssClass: "tgl-bm-light",
-  },
-  terrain: {
-    label: "Terrain",
-    tiles: _gBase("p"),
-    subdomains: ["0","1","2","3"],
-    isDark: false,
-    swatch: "#c5d5a0",
-  },
-  satellite: {
-    label: "Satellite",
-    tiles: _gBase("y"),
-    subdomains: ["0","1","2","3"],
-    isDark: true,
-    swatch: "#1a2f1a",
-  },
-  flood: {
-    label: "Flood",
-    tiles: _gBase("y"),
-    subdomains: ["0","1","2","3"],
-    isDark: true,
-    swatch: "#0a1a2f",
-    floodOverlay: true,
-  },
+  dark:      { label: "Dark",      mapTypeId: "roadmap",  styles: DARK_STYLES,  isDark: true,  swatch: "#0d1117" },
+  light:     { label: "Light",     mapTypeId: "roadmap",  styles: LIGHT_STYLES, isDark: false, swatch: "#e8e4dc" },
+  terrain:   { label: "Terrain",   mapTypeId: "terrain",  isDark: false, swatch: "#c5d5a0" },
+  satellite: { label: "Satellite", mapTypeId: "hybrid",   isDark: true,  swatch: "#1a2f1a" },
+  flood:     { label: "Flood",     mapTypeId: "hybrid",   isDark: true,  swatch: "#0a1a2f", floodOverlay: true },
 };
 
-/* Theme → default basemap */
 function themeBasemap(): BasemapKey {
   try {
     const stored = localStorage.getItem("tgl_basemap") as BasemapKey | null;
@@ -122,8 +108,8 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
     { label: "Solar",       value: "solar"      },
   ],
   water: [
-    { label: "All",           value: "all"        },
-    { label: "Water Plant",   value: "water_plant"},
+    { label: "All",         value: "all"        },
+    { label: "Water Plant", value: "water_plant"},
   ],
   environment: [
     { label: "All",       value: "all"      },
@@ -138,7 +124,7 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
   ],
 };
 
-/* ── Google Maps URL parser ─────────────────────────────── */
+/* ── Location parsers ───────────────────────────────────── */
 function parseGoogleMapsUrl(url: string): [number, number] | null {
   let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return [parseFloat(m[1]), parseFloat(m[2])];
@@ -172,19 +158,482 @@ async function geocodePlace(query: string): Promise<[number, number] | null> {
   return null;
 }
 
-/* ── FlyController (must be rendered inside MapContainer) ── */
-function FlyController({
-  useMap,
-  target,
-}: {
-  useMap: RL["useMap"];
-  target: { lat: number; lng: number; zoom: number } | null;
-}) {
+/* ── Tile bounds helper for WMS overlay ─────────────────── */
+function tileToBounds(x: number, y: number, z: number) {
+  const n = Math.pow(2, z);
+  const west = (x / n) * 360 - 180;
+  const east = ((x + 1) / n) * 360 - 180;
+  const northRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n)));
+  const southRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n)));
+  const north = (northRad * 180) / Math.PI;
+  const south = (southRad * 180) / Math.PI;
+  return { west, east, north, south };
+}
+
+/* ── Icon SVG paths ─────────────────────────────────────── */
+const KIND_ICON_SVG: Record<string, string> = {
+  sez:
+    `<rect x="-5.5" y="-5" width="11" height="10" rx="1.5" fill="none" stroke-width="2"/>` +
+    `<line x1="-1.8" y1="-5" x2="-1.8" y2="5" stroke-width="1.5"/>` +
+    `<line x1="1.8" y1="-5" x2="1.8" y2="5" stroke-width="1.5"/>`,
+  park:
+    `<rect x="-5.5" y="-0.5" width="5" height="6" rx="1" stroke="none"/>` +
+    `<rect x="-1.5" y="-5.5" width="7" height="6" rx="1" stroke="none"/>`,
+  factory:
+    `<path d="M-5.5,5.5 L-5.5,-1 L-2,-4.5 L0,-1 L2,-4.5 L5.5,-1 L5.5,5.5 Z" stroke="none"/>` +
+    `<rect x="-1.5" y="0.5" width="3" height="5" rx="0.5" fill="rgba(0,0,0,0.28)" stroke="none"/>`,
+  logistics:
+    `<path d="M-6.5,2 L-6.5,-3.5 L2,-3.5 L2,-6 L6.5,-1 L6.5,2 Z" stroke="none"/>` +
+    `<circle cx="-3.5" cy="2" r="2" stroke="none"/>` +
+    `<circle cx="3.5" cy="2" r="2" stroke="none"/>`,
+  port:
+    `<circle cx="0" cy="-4" r="2.2" fill="none" stroke-width="2"/>` +
+    `<line x1="0" y1="-1.8" x2="0" y2="5" stroke-width="2"/>` +
+    `<line x1="-5" y1="0.5" x2="5" y2="0.5" stroke-width="2"/>` +
+    `<path d="M-4.5,5 Q0,3 4.5,5" fill="none" stroke-width="2"/>`,
+  airport:
+    `<path d="M0,-6.5 L1.8,0 L7,2.5 L7,4.5 L1.8,2.5 L1.2,7 L3.5,8 L3.5,9 L0,8 L-3.5,9 L-3.5,8 L-1.2,7 L-1.8,2.5 L-7,4.5 L-7,2.5 L-1.8,0 Z" stroke="none"/>`,
+  substation:
+    `<path d="M2.5,-7 L-4,1.5 L1,1.5 L-2.5,7 L5,-1.5 L0,-1.5 L4,-7 Z" stroke="none"/>`,
+  university:
+    `<path d="M0,-6 L-7.5,0 L0,3.5 L7.5,0 Z" stroke="none"/>` +
+    `<path d="M-5,1.5 L-5,6.5 Q0,9 5,6.5 L5,1.5" fill="none" stroke-width="2"/>` +
+    `<line x1="7.5" y1="0" x2="7.5" y2="6" stroke-width="2"/>`,
+  tvet:
+    `<path d="M-1.5,-7 C-5,-7 -7,-4.5 -6,-2 L4.5,6.5 C5.5,8 8,7.5 7.5,5.5 L-2,-3 C-0.5,-5.5 0.5,-7 -1.5,-7 Z" stroke="none"/>`,
+  corridor:
+    `<line x1="-6.5" y1="-3" x2="6.5" y2="-3" stroke-width="2.5"/>` +
+    `<line x1="-6.5" y1="3" x2="6.5" y2="3" stroke-width="2.5"/>` +
+    `<line x1="-2.5" y1="0" x2="2.5" y2="0" stroke-width="1.5" stroke-dasharray="2,2"/>`,
+  solar:
+    `<circle cx="0" cy="0" r="3.5" stroke="none"/>` +
+    `<line x1="0" y1="-7" x2="0" y2="-5" stroke-width="2"/>` +
+    `<line x1="0" y1="5" x2="0" y2="7" stroke-width="2"/>` +
+    `<line x1="-7" y1="0" x2="-5" y2="0" stroke-width="2"/>` +
+    `<line x1="5" y1="0" x2="7" y2="0" stroke-width="2"/>` +
+    `<line x1="-4.9" y1="-4.9" x2="-3.5" y2="-3.5" stroke-width="2"/>` +
+    `<line x1="3.5" y1="3.5" x2="4.9" y2="4.9" stroke-width="2"/>` +
+    `<line x1="4.9" y1="-4.9" x2="3.5" y2="-3.5" stroke-width="2"/>` +
+    `<line x1="-3.5" y1="3.5" x2="-4.9" y2="4.9" stroke-width="2"/>`,
+  water_plant:
+    `<path d="M0,-7 C-3,-3 -6,0 -6,3 a6,6 0 0,0 12,0 C6,0 3,-3 0,-7Z" stroke="none"/>`,
+  hospital:
+    `<rect x="-6" y="-6" width="12" height="12" rx="1.5" fill="none" stroke-width="2"/>` +
+    `<line x1="0" y1="-3.5" x2="0" y2="3.5" stroke-width="2.5"/>` +
+    `<line x1="-3.5" y1="0" x2="3.5" y2="0" stroke-width="2.5"/>`,
+  waste:
+    `<path d="M-5,-4 L-3,-7 L3,-7 L5,-4 L-5,-4Z" stroke="none"/>` +
+    `<rect x="-5" y="-4" width="10" height="11" rx="1" fill="none" stroke-width="2"/>` +
+    `<line x1="-2" y1="-2" x2="-2" y2="5" stroke-width="1.5"/>` +
+    `<line x1="2" y1="-2" x2="2" y2="5" stroke-width="1.5"/>`,
+  rail:
+    `<line x1="-6" y1="-3.5" x2="6" y2="-3.5" stroke-width="2.5"/>` +
+    `<line x1="-6" y1="3.5" x2="6" y2="3.5" stroke-width="2.5"/>` +
+    `<line x1="-4" y1="-3.5" x2="-4" y2="3.5" stroke-width="1.5"/>` +
+    `<line x1="0" y1="-3.5" x2="0" y2="3.5" stroke-width="1.5"/>` +
+    `<line x1="4" y1="-3.5" x2="4" y2="3.5" stroke-width="1.5"/>`,
+  protected:
+    `<path d="M0,-8 L-7,-4 L-7,2 C-7,6 -3,8 0,9 C3,8 7,6 7,2 L7,-4 Z" fill="none" stroke-width="2"/>`,
+};
+
+const KIND_SVG: Record<string, string> = {
+  sez:        `<path d="M3 19V9l9-6 9 6v10H3z M8 19v-5h3v5 M13 19v-5h3v5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  park:       `<rect x="2" y="7" width="7" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="11" y="3" width="11" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
+  factory:    `<path d="M2 20V12l5-4v4l5-4v4l5-4v12H2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  logistics:  `<rect x="1" y="9" width="14" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M15 12h4l3 4v1h-7V12z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
+  port:       `<path d="M12 3v14M8 7h8M7 17c1 2 2.5 3 5 3s4-1 5-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>`,
+  airport:    `<path d="M12 2l-4 8H2l4 3-2 6 8-2 8 2-2-6 4-3h-6L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  substation: `<path d="M14 2L7 13h6l-2 9 9-12h-6l3-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  powerplant: `<path d="M12 2v4M6.3 4.3l2.8 2.9M4 10H2M4.3 17.7l2.8-2.8M12 22v-4M17.7 17.7l-2.8-2.8M20 10h2M17.7 4.3l-2.8 2.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
+  university: `<path d="M12 3L2 9l10 6 10-6L12 3z M6 12v5c0 2 2.7 3.5 6 3.5s6-1.5 6-3.5v-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
+  tvet:       `<path d="M15 4l5 5-9 9-5-2-2-5 9-9z M19 8l-3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  solar:      `<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  water_plant:`<path d="M12 3C9 8 6 10 6 14a6 6 0 0012 0c0-4-3-6-6-11z" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
+  hospital:   `<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  waste:      `<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  rail:       `<path d="M4 5h16M4 19h16M8 5v14M16 5v14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  protected:  `<path d="M12 2l-9 4v5c0 5 4 9.5 9 11 5-1.5 9-6 9-11V6L12 2z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+};
+
+const KIND_COLOR: Record<string, string> = {
+  sez:         "#f97316",
+  park:        "#fb923c",
+  factory:     "#ef4444",
+  logistics:   "#eab308",
+  port:        "#2563eb",
+  airport:     "#0ea5e9",
+  substation:  "#a855f7",
+  powerplant:  "#c084fc",
+  solar:       "#fbbf24",
+  water_plant: "#38bdf8",
+  hospital:    "#f472b6",
+  waste:       "#78716c",
+  rail:        "#94a3b8",
+  protected:   "#22c55e",
+  university:  "#10b981",
+  tvet:        "#14b8a6",
+  corridor:    "#64748b",
+};
+
+/* ── Build pin SVG string ───────────────────────────────── */
+function buildPinSvg(kind: string, color: string, isKey: boolean) {
+  const pinW  = isKey ? 36 : 28;
+  const r     = (pinW - 6) / 2;
+  const cx    = pinW / 2;
+  const cy    = r + 3;
+  const tipY  = cy + r + 10;
+  const pinH  = tipY + 2;
+  const scale = (r * 0.80) / 9;
+  const icon  = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
+  const path  = [
+    `M${cx},${tipY}`,
+    `C${cx - r * 0.32},${cy + r * 0.92} 3,${cy + r * 0.6} 3,${cy}`,
+    `a${r},${r} 0 1,1 ${pinW - 6},0`,
+    `C${pinW - 3},${cy + r * 0.6} ${cx + r * 0.32},${cy + r * 0.92} ${cx},${tipY}Z`,
+  ].join(" ");
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pinW}" height="${pinH}"
+    style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))">
+    <path d="${path}" fill="${color}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+    <g transform="translate(${cx} ${cy}) scale(${scale.toFixed(3)})" fill="white" stroke="none" stroke-linecap="round" stroke-linejoin="round">
+      ${icon}
+    </g>
+    <circle cx="${cx}" cy="${tipY}" r="1.8" fill="rgba(0,0,0,0.25)"/>
+  </svg>`;
+
+  return { svg, cx, cy, pinH, pinW };
+}
+
+/* ── Inject label CSS once ──────────────────────────────── */
+function ZoomLabelController() {
+  useEffect(() => {
+    const id = "tgl-label-css";
+    if (document.getElementById(id)) return;
+    const s = document.createElement("style");
+    s.id = id;
+    s.textContent = [
+      ".pin-label { display:none; }",
+      ".tgl-labels-key .pin-label-key { display:block; }",
+      ".tgl-labels-all .pin-label { display:block; }",
+    ].join(" ");
+    document.head.appendChild(s);
+    return () => { document.getElementById(id)?.remove(); };
+  }, []);
+  return null;
+}
+
+/* ── Inner map sub-components (must be inside <Map>) ────── */
+
+function FlyController({ target }: { target: { lat: number; lng: number; zoom: number } | null }) {
   const map = useMap();
   useEffect(() => {
-    if (target) map.flyTo([target.lat, target.lng], target.zoom, { duration: 1.2 });
-  }, [target, map]);
+    if (!map || !target) return;
+    map.panTo({ lat: target.lat, lng: target.lng });
+    map.setZoom(target.zoom);
+  }, [map, target]);
   return null;
+}
+
+function ZoomClassController({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElement> }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const update = () => {
+      const z  = map.getZoom() ?? 7;
+      const el = wrapperRef.current;
+      if (!el) return;
+      el.classList.toggle("tgl-labels-key", z >= 9);
+      el.classList.toggle("tgl-labels-all", z >= 11);
+    };
+    update();
+    const listener = map.addListener("zoom_changed", update);
+    return () => google.maps.event.removeListener(listener);
+  }, [map, wrapperRef]);
+  return null;
+}
+
+function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
+  const map = useMap();
+  const polysRef = useRef<google.maps.Polyline[]>([]);
+  const animRef  = useRef<number | null>(null);
+  const offsetRef = useRef(0);
+
+  useEffect(() => {
+    if (!map) return;
+
+    polysRef.current.forEach((p) => p.setMap(null));
+
+    polysRef.current = corridors.map((c) =>
+      new google.maps.Polyline({
+        path: c.waypoints.map(([lat, lng]) => ({ lat, lng })),
+        strokeColor:   c.color,
+        strokeWeight:  3,
+        strokeOpacity: 0,
+        icons: [{
+          icon: {
+            path:          "M 0,-1 0,1",
+            strokeOpacity: 0.85,
+            strokeColor:   c.color,
+            strokeWeight:  3,
+            scale:         4,
+          },
+          offset: "0",
+          repeat: "26px",
+        }],
+        map,
+      })
+    );
+
+    const animate = () => {
+      offsetRef.current = (offsetRef.current + 0.4) % 26;
+      polysRef.current.forEach((p, i) => {
+        const icons = p.get("icons") as google.maps.IconSequence[];
+        if (icons?.[0]) {
+          icons[0].offset = `${offsetRef.current}px`;
+          p.set("icons", icons);
+        }
+        void i;
+      });
+      animRef.current = requestAnimationFrame(animate);
+    };
+    animRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      polysRef.current.forEach((p) => p.setMap(null));
+      polysRef.current = [];
+    };
+  }, [map, corridors]);
+
+  return null;
+}
+
+/* Site labels overlay using Google Maps OverlayView */
+class SiteLabelOverlay extends google.maps.OverlayView {
+  private div: HTMLDivElement | null = null;
+  private sites: MapSite[] = [];
+
+  updateSites(sites: MapSite[]) {
+    this.sites = sites;
+    if (this.div) this.draw();
+  }
+
+  onAdd() {
+    this.div = document.createElement("div");
+    this.div.style.cssText = "position:absolute;top:0;left:0;width:0;height:0;overflow:visible;";
+    this.getPanes()!.floatPane.appendChild(this.div);
+  }
+
+  draw() {
+    if (!this.div) return;
+    const proj = this.getProjection();
+    this.div.innerHTML = "";
+    this.sites.forEach((s) => {
+      const point = proj.fromLatLngToDivPixel(new google.maps.LatLng(s.lat, s.lng));
+      if (!point) return;
+      const isKey = (s.score ?? 0) >= 85;
+      const pinW  = isKey ? 36 : 28;
+      const el    = document.createElement("div");
+      el.className = `pin-label${isKey ? " pin-label-key" : ""}`;
+      el.style.cssText = [
+        `position:absolute`,
+        `left:${point.x + pinW + 2}px`,
+        `top:${point.y - 8}px`,
+        `transform:translateY(-50%)`,
+        `white-space:nowrap`,
+        `font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif`,
+        `font-size:11px`,
+        `font-weight:700`,
+        `letter-spacing:0.01em`,
+        `color:#1a1a2e`,
+        `background:rgba(255,255,255,0.88)`,
+        `padding:1px 5px`,
+        `border-radius:3px`,
+        `box-shadow:0 1px 3px rgba(0,0,0,0.18)`,
+        `pointer-events:none`,
+      ].join(";");
+      el.textContent = s.name;
+      this.div!.appendChild(el);
+    });
+  }
+
+  onRemove() {
+    this.div?.remove();
+    this.div = null;
+  }
+}
+
+function SiteMarkerLayer({
+  sites, onSelect,
+}: {
+  sites: MapSite[];
+  onSelect: (s: MapSite) => void;
+}) {
+  const map     = useMap();
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const overlayRef = useRef<SiteLabelOverlay | null>(null);
+
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    // Cleanup previous markers
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    // Create label overlay once
+    if (!overlayRef.current) {
+      overlayRef.current = new SiteLabelOverlay();
+      overlayRef.current.setMap(map);
+    }
+
+    markersRef.current = sites.map((s) => {
+      const color  = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
+      const isKey  = (s.score ?? 0) >= 85;
+      const { svg, cx, pinH, pinW } = buildPinSvg(s.kind, color, isKey);
+
+      const marker = new google.maps.Marker({
+        position: { lat: s.lat, lng: s.lng },
+        map,
+        title:   s.name,
+        opacity: s.coordVerified ? 1 : 0.6,
+        icon: {
+          url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+          anchor:     new google.maps.Point(cx, pinH),
+          scaledSize: new google.maps.Size(pinW, pinH),
+        },
+      });
+
+      marker.addListener("click", () => onSelectRef.current(s));
+      return marker;
+    });
+
+    overlayRef.current.updateSites(sites);
+
+    return () => {
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+      overlayRef.current?.setMap(null);
+      overlayRef.current = null;
+    };
+  }, [map, sites]);
+
+  return null;
+}
+
+function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
+      style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55))">
+      <path d="M18,46 C12.5,37.5 3,30 3,18 a15,15 0 1,1 30,0 C33,30 23.5,37.5 18,46Z" fill="#ff5100"/>
+      <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <text x="18" y="23" text-anchor="middle" font-size="15" fill="white" font-family="sans-serif">★</text>
+      <circle cx="18" cy="46" r="2" fill="rgba(0,0,0,0.25)"/>
+    </svg>`;
+
+    const marker = new google.maps.Marker({
+      position,
+      map,
+      title: "Your location",
+      icon: {
+        url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+        anchor:     new google.maps.Point(18, 48),
+        scaledSize: new google.maps.Size(36, 48),
+      },
+    });
+
+    return () => { marker.setMap(null); };
+  }, [map, position]);
+
+  return null;
+}
+
+function FloodLayer() {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    const layer = new google.maps.ImageMapType({
+      getTileUrl: (coord, zoom) => {
+        const b    = tileToBounds(coord.x, coord.y, zoom);
+        const bbox = `${b.south},${b.west},${b.north},${b.east}`;
+        return (
+          "https://ows.globalfloods.eu/glofas-ows/ows.py?" +
+          "SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0" +
+          "&LAYERS=GloFAS_rp100&FORMAT=image/png&TRANSPARENT=true" +
+          `&CRS=EPSG:4326&BBOX=${bbox}&WIDTH=256&HEIGHT=256`
+        );
+      },
+      tileSize: new google.maps.Size(256, 256),
+      opacity:  0.45,
+      name:     "GloFAS Flood Risk",
+    });
+
+    map.overlayMapTypes.push(layer);
+
+    return () => {
+      const arr = map.overlayMapTypes;
+      for (let i = 0; i < arr.getLength(); i++) {
+        if (arr.getAt(i) === layer) { arr.removeAt(i); break; }
+      }
+    };
+  }, [map]);
+
+  return null;
+}
+
+/* ── Preview map ────────────────────────────────────────── */
+const gKey = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
+
+function PreviewMapInner() {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const polys = CORRIDORS.map(
+      (c) =>
+        new google.maps.Polyline({
+          path:          c.waypoints.map(([lat, lng]) => ({ lat, lng })),
+          strokeColor:   c.color,
+          strokeWeight:  2,
+          strokeOpacity: 0.6,
+          map,
+        }),
+    );
+    return () => polys.forEach((p) => p.setMap(null));
+  }, [map]);
+
+  return null;
+}
+
+function PreviewMapView() {
+  return (
+    <APIProvider apiKey={gKey ?? ""}>
+      <Map
+        style={{ height: "100%", width: "100%" }}
+        defaultCenter={{ lat: 12.5, lng: 104.9 }}
+        defaultZoom={7}
+        minZoom={6}
+        maxZoom={8}
+        mapTypeId="roadmap"
+        styles={DARK_STYLES}
+        disableDefaultUI
+        gestureHandling="none"
+        backgroundColor="#0d1117"
+        onClick={undefined}
+      >
+        <PreviewMapInner />
+      </Map>
+    </APIProvider>
+  );
 }
 
 /* ── Props ──────────────────────────────────────────────── */
@@ -194,19 +643,19 @@ interface IndustrialMapProps {
 
 /* ── Main export ────────────────────────────────────────── */
 export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
-  const [mods, setMods] = useState<{ rl: RL; L: L } | null>(null);
-  const { t } = useLang();
+  const { t }               = useLang();
   const { data: sites = SITES } = useMapSites();
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
   const [selected, setSelected] = useState<MapSite | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery]   = useState("");
   const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
   const [panelOpen, setPanelOpen] = useState(false);
-  const [basemap, setBasemap] = useState<BasemapKey>(themeBasemap);
+  const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(false);
   const basemapUserPicked = useRef(false);
+  const wrapperRef = useRef<HTMLDivElement>(null!);
 
-  /* Sync basemap with page theme toggle (unless user manually picked one) */
+  /* Sync basemap with page theme */
   useEffect(() => {
     const observer = new MutationObserver(() => {
       if (basemapUserPicked.current) return;
@@ -229,16 +678,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [pinTarget, setPinTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
   const [pinMarker, setPinMarker] = useState<{ lat: number; lng: number } | null>(null);
   const [locSearching, setLocSearching] = useState(false);
-  const [locError, setLocError] = useState("");
-
-  useEffect(() => {
-    let cancel = false;
-    (async () => {
-      const [rl, L] = await Promise.all([import("react-leaflet"), import("leaflet")]);
-      if (!cancel) setMods({ rl, L });
-    })();
-    return () => { cancel = true; };
-  }, []);
+  const [locError, setLocError]         = useState("");
 
   const visible = useMemo(() => {
     if (previewMode) return [];
@@ -250,24 +690,22 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       if (q && !s.name.toLowerCase().includes(q) && !s.province.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [active, query, subKinds, previewMode]);
+  }, [active, query, subKinds, previewMode, sites]);
 
   const visibleCorridors = useMemo(
     () => (active.has("corridors") ? CORRIDORS : []),
     [active],
   );
 
-  const toggle = (g: LayerGroup) => {
+  const toggle = (g: LayerGroup) =>
     setActive((prev) => {
       const next = new Set(prev);
       next.has(g) ? next.delete(g) : next.add(g);
       return next;
     });
-  };
 
-  const setSubKind = (layer: LayerGroup, kind: SiteKind | "all") => {
+  const setSubKind = (layer: LayerGroup, kind: SiteKind | "all") =>
     setSubKinds((prev) => ({ ...prev, [layer]: kind }));
-  };
 
   const handleLocationSearch = async () => {
     const raw = locationInput.trim();
@@ -293,40 +731,49 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     setLocSearching(false);
   };
 
+  const handleSelect = useCallback((s: MapSite) => setSelected(s), []);
+
   /* ── Preview mode ───────────────────────────────────────── */
   if (previewMode) {
     return (
       <div className="relative w-full h-full" style={{ pointerEvents: "none" }}>
-        {mods ? (
-          <PreviewMapView mods={mods} />
-        ) : (
-          <div className="w-full h-full bg-[#0a0a0b]" />
-        )}
+        <PreviewMapView />
       </div>
     );
   }
 
+  const bm = BASEMAPS[basemap];
+
   /* ── Full map ───────────────────────────────────────────── */
   return (
-    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black">
-      {/* Basemap */}
+    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black" ref={wrapperRef}>
+      {/* Map container */}
       <div className="absolute inset-0">
-        {mods ? (
-          <MapView
-            mods={mods}
-            sites={visible}
-            corridors={visibleCorridors}
-            onSelect={setSelected}
-            pinMarker={pinMarker}
-            pinTarget={pinTarget}
-            basemap={BASEMAPS[basemap]}
-            floodVisible={floodVisible}
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-white/40 font-mono text-xs uppercase tracking-widest">
-            Loading Cambodia industrial basemap…
-          </div>
-        )}
+        <APIProvider apiKey={gKey ?? ""}>
+          <Map
+            style={{ height: "100%", width: "100%" }}
+            defaultCenter={{ lat: 12.2, lng: 104.9 }}
+            defaultZoom={7}
+            minZoom={6}
+            maxZoom={17}
+            mapTypeId={bm.mapTypeId}
+            styles={bm.styles}
+            disableDefaultUI
+            gestureHandling="greedy"
+            backgroundColor="#0d1117"
+            onClick={() => setSelected(null)}
+          >
+            <FlyController target={pinTarget} />
+            <ZoomLabelController />
+            <ZoomClassController wrapperRef={wrapperRef} />
+
+            {(floodVisible || bm.floodOverlay) && <FloodLayer />}
+
+            <CorridorLayer corridors={visibleCorridors} />
+            <SiteMarkerLayer sites={visible} onSelect={handleSelect} />
+            {pinMarker && <PinMarkerLayer position={pinMarker} />}
+          </Map>
+        </APIProvider>
       </div>
 
       {/* ── Search bar (top-center) ────────────────────────── */}
@@ -364,9 +811,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         )}
       </div>
 
-      {/* ── Layer panel (left side, open by default) ──────── */}
+      {/* ── Layer panel (left side) ────────────────────────── */}
       <div className="absolute top-4 left-4 z-[500] flex flex-col gap-2">
-        {/* Toggle button */}
         <button
           onClick={() => setPanelOpen((v) => !v)}
           className="flex items-center gap-2 px-3 py-2 bg-black/90 backdrop-blur border border-white/15 text-white hover:border-white/35 transition-all shadow-lg"
@@ -384,7 +830,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           </svg>
         </button>
 
-        {/* Panel */}
         {panelOpen && (
           <div className="w-72 bg-black/95 backdrop-blur border border-white/10 text-white shadow-2xl"
             style={{ maxHeight: "calc(100vh - 7rem)", overflowY: "auto" }}>
@@ -395,7 +840,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               <p className="font-extrabold text-sm uppercase tracking-tight mt-0.5">{t("map.layerControl")}</p>
             </div>
 
-            {/* Search */}
             <div className="border-b border-white/10">
               <input
                 value={query}
@@ -424,7 +868,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               </button>
             </div>
 
-            {/* Layers with sub-kind chips */}
+            {/* Layers */}
             {ALL_LAYERS.map((g, i) => {
               const meta    = LAYER_META[g];
               const on      = active.has(g);
@@ -445,13 +889,11 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
                       <span className="block text-[10px] text-white/40 mt-0.5">{meta.description}</span>
                     </span>
                     <span className="font-mono text-[10px] text-white/40">{count}</span>
-                    {/* Toggle */}
                     <span className={`w-7 h-4 rounded-full relative transition ${on ? "bg-[#ff5100]" : "bg-white/15"}`}>
                       <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${on ? "left-3.5" : "left-0.5"}`} />
                     </span>
                   </button>
 
-                  {/* Sub-kind chips */}
                   {subDefs && on && (
                     <div className="px-4 pb-3 flex flex-wrap gap-1.5">
                       {subDefs.map((k) => (
@@ -461,8 +903,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
                           className="px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest border transition-all"
                           style={{
                             backgroundColor: curSub === k.value ? `${meta.color}22` : "transparent",
-                            borderColor:     curSub === k.value ? meta.color          : "var(--map-subchip-border)",
-                            color:           curSub === k.value ? meta.color          : "var(--map-subchip-text)",
+                            borderColor:     curSub === k.value ? meta.color         : "var(--map-subchip-border)",
+                            color:           curSub === k.value ? meta.color         : "var(--map-subchip-text)",
                           }}
                         >
                           {k.label}
@@ -474,7 +916,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               );
             })}
 
-            {/* Basemap picker — pill row */}
+            {/* Basemap picker */}
             <div className="border-t border-white/10 px-4 py-3">
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Base Map</p>
               <div className="flex gap-1.5 flex-wrap">
@@ -505,345 +947,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         )}
       </div>
 
-      {/* Inspector */}
       {selected && <Inspector site={selected} onClose={() => setSelected(null)} t={t} />}
     </div>
-  );
-}
-
-/* ── Preview map (homepage background) ─────────────────── */
-function PreviewMapView({ mods }: { mods: { rl: RL; L: L } }) {
-  const { MapContainer, TileLayer, Polyline } = mods.rl;
-  const bm = BASEMAPS[themeBasemap()];
-  return (
-    <MapContainer
-      center={[12.5, 104.9]} zoom={7} minZoom={6} maxZoom={8}
-      scrollWheelZoom={false} zoomControl={false} dragging={false}
-      doubleClickZoom={false} keyboard={false}
-      style={{ height: "100%", width: "100%", background: "#0a0a0b" }}
-      attributionControl={false}
-    >
-      <TileLayer
-        url={bm.tiles}
-        subdomains={bm.subdomains ?? ["a","b","c","d"]}
-      />
-      {CORRIDORS.map((c) => (
-        <Polyline key={c.id} positions={c.waypoints}
-          pathOptions={{ color: c.color, weight: 2, opacity: 0.6,
-            dashArray: c.id.includes("ring") ? "6 4" : undefined }} />
-      ))}
-    </MapContainer>
-  );
-}
-
-/* ── Icon SVG — color-agnostic paths, parent g supplies fill/stroke ── */
-const KIND_ICON_SVG: Record<string, string> = {
-  sez:
-    `<rect x="-5.5" y="-5" width="11" height="10" rx="1.5" fill="none" stroke-width="2"/>` +
-    `<line x1="-1.8" y1="-5" x2="-1.8" y2="5" stroke-width="1.5"/>` +
-    `<line x1="1.8" y1="-5" x2="1.8" y2="5" stroke-width="1.5"/>`,
-  park:
-    `<rect x="-5.5" y="-0.5" width="5" height="6" rx="1" stroke="none"/>` +
-    `<rect x="-1.5" y="-5.5" width="7" height="6" rx="1" stroke="none"/>`,
-  factory:
-    `<path d="M-5.5,5.5 L-5.5,-1 L-2,-4.5 L0,-1 L2,-4.5 L5.5,-1 L5.5,5.5 Z" stroke="none"/>` +
-    `<rect x="-1.5" y="0.5" width="3" height="5" rx="0.5" fill="rgba(0,0,0,0.28)" stroke="none"/>`,
-  logistics:
-    `<path d="M-6.5,2 L-6.5,-3.5 L2,-3.5 L2,-6 L6.5,-1 L6.5,2 Z" stroke="none"/>` +
-    `<circle cx="-3.5" cy="2" r="2" stroke="none"/>` +
-    `<circle cx="3.5" cy="2" r="2" stroke="none"/>`,
-  port:
-    `<circle cx="0" cy="-4" r="2.2" fill="none" stroke-width="2"/>` +
-    `<line x1="0" y1="-1.8" x2="0" y2="5" stroke-width="2"/>` +
-    `<line x1="-5" y1="0.5" x2="5" y2="0.5" stroke-width="2"/>` +
-    `<path d="M-4.5,5 Q0,3 4.5,5" fill="none" stroke-width="2"/>`,
-  airport:
-    `<path d="M0,-6.5 L1.8,0 L7,2.5 L7,4.5 L1.8,2.5 L1.2,7 L3.5,8 L3.5,9 L0,8 L-3.5,9 L-3.5,8 L-1.2,7 L-1.8,2.5 L-7,4.5 L-7,2.5 L-1.8,0 Z" stroke="none"/>`,
-  substation:
-    `<path d="M2.5,-7 L-4,1.5 L1,1.5 L-2.5,7 L5,-1.5 L0,-1.5 L4,-7 Z" stroke="none"/>`,
-  university:
-    `<path d="M0,-6 L-7.5,0 L0,3.5 L7.5,0 Z" stroke="none"/>` +
-    `<path d="M-5,1.5 L-5,6.5 Q0,9 5,6.5 L5,1.5" fill="none" stroke-width="2"/>` +
-    `<line x1="7.5" y1="0" x2="7.5" y2="6" stroke-width="2"/>`,
-  tvet:
-    `<path d="M-1.5,-7 C-5,-7 -7,-4.5 -6,-2 L4.5,6.5 C5.5,8 8,7.5 7.5,5.5 L-2,-3 C-0.5,-5.5 0.5,-7 -1.5,-7 Z" stroke="none"/>`,
-  corridor:
-    `<line x1="-6.5" y1="-3" x2="6.5" y2="-3" stroke-width="2.5"/>` +
-    `<line x1="-6.5" y1="3" x2="6.5" y2="3" stroke-width="2.5"/>` +
-    `<line x1="-2.5" y1="0" x2="2.5" y2="0" stroke-width="1.5" stroke-dasharray="2,2"/>`,
-  // EIP framework new kinds
-  solar:
-    `<circle cx="0" cy="0" r="3.5" stroke="none"/>` +
-    `<line x1="0" y1="-7" x2="0" y2="-5" stroke-width="2"/>` +
-    `<line x1="0" y1="5" x2="0" y2="7" stroke-width="2"/>` +
-    `<line x1="-7" y1="0" x2="-5" y2="0" stroke-width="2"/>` +
-    `<line x1="5" y1="0" x2="7" y2="0" stroke-width="2"/>` +
-    `<line x1="-4.9" y1="-4.9" x2="-3.5" y2="-3.5" stroke-width="2"/>` +
-    `<line x1="3.5" y1="3.5" x2="4.9" y2="4.9" stroke-width="2"/>` +
-    `<line x1="4.9" y1="-4.9" x2="3.5" y2="-3.5" stroke-width="2"/>` +
-    `<line x1="-3.5" y1="3.5" x2="-4.9" y2="4.9" stroke-width="2"/>`,
-  water_plant:
-    `<path d="M0,-7 C-3,-3 -6,0 -6,3 a6,6 0 0,0 12,0 C6,0 3,-3 0,-7Z" stroke="none"/>`,
-  hospital:
-    `<rect x="-6" y="-6" width="12" height="12" rx="1.5" fill="none" stroke-width="2"/>` +
-    `<line x1="0" y1="-3.5" x2="0" y2="3.5" stroke-width="2.5"/>` +
-    `<line x1="-3.5" y1="0" x2="3.5" y2="0" stroke-width="2.5"/>`,
-  waste:
-    `<path d="M-5,-4 L-3,-7 L3,-7 L5,-4 L-5,-4Z" stroke="none"/>` +
-    `<rect x="-5" y="-4" width="10" height="11" rx="1" fill="none" stroke-width="2"/>` +
-    `<line x1="-2" y1="-2" x2="-2" y2="5" stroke-width="1.5"/>` +
-    `<line x1="2" y1="-2" x2="2" y2="5" stroke-width="1.5"/>`,
-  rail:
-    `<line x1="-6" y1="-3.5" x2="6" y2="-3.5" stroke-width="2.5"/>` +
-    `<line x1="-6" y1="3.5" x2="6" y2="3.5" stroke-width="2.5"/>` +
-    `<line x1="-4" y1="-3.5" x2="-4" y2="3.5" stroke-width="1.5"/>` +
-    `<line x1="0" y1="-3.5" x2="0" y2="3.5" stroke-width="1.5"/>` +
-    `<line x1="4" y1="-3.5" x2="4" y2="3.5" stroke-width="1.5"/>`,
-  protected:
-    `<path d="M0,-8 L-7,-4 L-7,2 C-7,6 -3,8 0,9 C3,8 7,6 7,2 L7,-4 Z" fill="none" stroke-width="2"/>`,
-};
-
-/* ── KIND_SVG (Inspector placeholder only — currentColor on dark bg) ─── */
-const KIND_SVG: Record<string, string> = {
-  sez:        `<path d="M3 19V9l9-6 9 6v10H3z M8 19v-5h3v5 M13 19v-5h3v5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
-  park:       `<rect x="2" y="7" width="7" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="11" y="3" width="11" height="10" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
-  factory:    `<path d="M2 20V12l5-4v4l5-4v4l5-4v12H2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
-  logistics:  `<rect x="1" y="9" width="14" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M15 12h4l3 4v1h-7V12z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
-  port:       `<path d="M12 3v14M8 7h8M7 17c1 2 2.5 3 5 3s4-1 5-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>`,
-  airport:    `<path d="M12 2l-4 8H2l4 3-2 6 8-2 8 2-2-6 4-3h-6L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
-  substation:  `<path d="M14 2L7 13h6l-2 9 9-12h-6l3-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
-  powerplant:  `<path d="M12 2v4M6.3 4.3l2.8 2.9M4 10H2M4.3 17.7l2.8-2.8M12 22v-4M17.7 17.7l-2.8-2.8M20 10h2M17.7 4.3l-2.8 2.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
-  university: `<path d="M12 3L2 9l10 6 10-6L12 3z M6 12v5c0 2 2.7 3.5 6 3.5s6-1.5 6-3.5v-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
-  tvet:        `<path d="M15 4l5 5-9 9-5-2-2-5 9-9z M19 8l-3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
-  corridor:    `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
-  solar:       `<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
-  water_plant: `<path d="M12 3C9 8 6 10 6 14a6 6 0 0012 0c0-4-3-6-6-11z" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
-  hospital:    `<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
-  waste:       `<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
-  rail:        `<path d="M4 5h16M4 19h16M8 5v14M16 5v14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
-  protected:   `<path d="M12 2l-9 4v5c0 5 4 9.5 9 11 5-1.5 9-6 9-11V6L12 2z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
-};
-
-/* ── Distinct color per site kind ──────────────────────── */
-const KIND_COLOR: Record<string, string> = {
-  sez:         "#f97316", // orange
-  park:        "#fb923c", // amber-orange
-  factory:     "#ef4444", // red
-  logistics:   "#eab308", // yellow
-  port:        "#2563eb", // deep blue
-  airport:     "#0ea5e9", // sky blue
-  substation:  "#a855f7", // purple
-  powerplant:  "#c084fc", // violet
-  solar:       "#fbbf24", // amber-yellow
-  water_plant: "#38bdf8", // sky blue
-  hospital:    "#f472b6", // pink
-  waste:       "#78716c", // stone
-  rail:        "#94a3b8", // slate-blue
-  protected:   "#22c55e", // green
-  university:  "#10b981", // emerald
-  tvet:        "#14b8a6", // teal
-  corridor:    "#64748b", // slate
-};
-
-/* ── Google Maps–style teardrop pin with zoom-controlled name label ── */
-function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean, name: string) {
-  const pinW  = isKey ? 36 : 28;
-  const r     = (pinW - 6) / 2;
-  const cx    = pinW / 2;
-  const cy    = r + 3;
-  const tipY  = cy + r + 10;
-  const pinH  = tipY + 2;
-  const scale = (r * 0.80) / 9;
-
-  const icon = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
-
-  const path = [
-    `M${cx},${tipY}`,
-    `C${cx - r * 0.32},${cy + r * 0.92} 3,${cy + r * 0.6} 3,${cy}`,
-    `a${r},${r} 0 1,1 ${pinW - 6},0`,
-    `C${pinW - 3},${cy + r * 0.6} ${cx + r * 0.32},${cy + r * 0.92} ${cx},${tipY}Z`,
-  ].join(" ");
-
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg"
-      width="${pinW}" height="${pinH}"
-      style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))">
-    <path d="${path}" fill="${color}"/>
-    <circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
-    <g transform="translate(${cx} ${cy}) scale(${scale.toFixed(3)})"
-       fill="white" stroke="none" stroke-linecap="round" stroke-linejoin="round">
-      ${icon}
-    </g>
-    <circle cx="${cx}" cy="${tipY}" r="1.8" fill="rgba(0,0,0,0.25)"/>
-  </svg>`;
-
-  // Label is hidden by CSS until map container gets .tgl-labels-key or .tgl-labels-all class
-  const labelClass = `pin-label${isKey ? " pin-label-key" : ""}`;
-  const label = `<div class="${labelClass}"
-    style="position:absolute;left:${pinW + 5}px;top:${cy}px;transform:translateY(-50%);
-           white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-           font-size:11px;font-weight:700;letter-spacing:0.01em;color:#1a1a2e;
-           background:rgba(255,255,255,0.88);padding:1px 5px;border-radius:3px;
-           text-shadow:none;box-shadow:0 1px 3px rgba(0,0,0,0.18);
-           pointer-events:none;">${name}</div>`;
-
-  return L.divIcon({
-    className:     "",
-    html:          `<div style="position:relative">${svg}${label}</div>`,
-    iconSize:      [pinW, pinH],
-    iconAnchor:    [cx, pinH],
-    tooltipAnchor: [0, -(pinH - cy)],
-  });
-}
-
-/* ── Injects label CSS once into <head> ── */
-function ZoomLabelController() {
-  useEffect(() => {
-    const id = "tgl-label-css";
-    if (document.getElementById(id)) return;
-    const s = document.createElement("style");
-    s.id = id;
-    s.textContent = [
-      ".pin-label { display:none; }",
-      ".tgl-labels-key .pin-label-key { display:block; }",
-      ".tgl-labels-all .pin-label { display:block; }",
-    ].join(" ");
-    document.head.appendChild(s);
-    return () => { document.getElementById(id)?.remove(); };
-  }, []);
-  return null;
-}
-
-function ZoomClassController({ useMap }: { useMap: RL["useMap"] }) {
-  const map = useMap();
-  useEffect(() => {
-    const update = () => {
-      const z  = map.getZoom();
-      const el = map.getContainer();
-      el.classList.toggle("tgl-labels-key", z >= 9);
-      el.classList.toggle("tgl-labels-all", z >= 11);
-    };
-    update();
-    map.on("zoomend", update);
-    return () => { map.off("zoomend", update); };
-  }, [map]);
-  return null;
-}
-
-/* ── Full interactive MapView ───────────────────────────── */
-function MapView({
-  mods, sites, corridors, onSelect, pinMarker, pinTarget, basemap, floodVisible,
-}: {
-  mods: { rl: RL; L: L };
-  sites: MapSite[];
-  corridors: Corridor[];
-  onSelect: (s: MapSite) => void;
-  pinMarker: { lat: number; lng: number } | null;
-  pinTarget: { lat: number; lng: number; zoom: number } | null;
-  basemap: BasemapDef;
-  floodVisible: boolean;
-}) {
-  const { MapContainer, TileLayer, WMSTileLayer, Tooltip, Polyline, Marker, useMap } = mods.rl as RL & { WMSTileLayer: RL["WMSTileLayer"] };
-  const { L } = mods;
-
-  const pinIcon = useMemo(() => L.divIcon({
-    className: "",
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
-        style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55))">
-      <path d="M18,46 C12.5,37.5 3,30 3,18 a15,15 0 1,1 30,0 C33,30 23.5,37.5 18,46Z" fill="#ff5100"/>
-      <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-      <text x="18" y="23" text-anchor="middle" font-size="15" fill="white" font-family="sans-serif">★</text>
-      <circle cx="18" cy="46" r="2" fill="rgba(0,0,0,0.25)"/>
-    </svg>`,
-    iconSize: [36, 48],
-    iconAnchor: [18, 48],
-  }), [L]);
-
-  // Pre-build all site icons (memoised by id+score)
-  const siteIcons = useMemo(() => {
-    const m = new Map<string, ReturnType<typeof L.divIcon>>();
-    sites.forEach((s) => {
-      const color = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
-      const isKey = s.score !== undefined && s.score >= 85;
-      m.set(s.id, makeSiteIcon(L, s.kind, color, isKey, s.name));
-    });
-    return m;
-  }, [sites, L]);
-
-  return (
-    <MapContainer
-      center={[12.2, 104.9]} zoom={7} minZoom={6} maxZoom={17}
-      scrollWheelZoom zoomControl={false}
-      className={basemap.cssClass ?? ""}
-      style={{ height: "100%", width: "100%", background: "#0a0a0b" }}
-      attributionControl={false}
-    >
-      <TileLayer key={basemap.tiles} url={basemap.tiles}
-        subdomains={basemap.subdomains ?? ["0","1","2","3"]}
-        tileSize={256}
-        maxZoom={18}
-      />
-      {basemap.labels && (
-        <TileLayer key={basemap.labels} url={basemap.labels}
-          subdomains={["0","1","2","3"]} />
-      )}
-
-      {/* Flood risk overlay (Copernicus EMS WMS) */}
-      {(floodVisible || basemap.floodOverlay) && WMSTileLayer && (
-        <WMSTileLayer
-          url="https://ows.globalfloods.eu/glofas-ows/ows.py"
-          layers="GloFAS_rp100"
-          format="image/png"
-          transparent
-          opacity={0.45}
-          version="1.3.0"
-        />
-      )}
-
-      <FlyController useMap={useMap} target={pinTarget} />
-      <ZoomLabelController />
-      <ZoomClassController useMap={useMap} />
-
-      {corridors.map((c) => (
-        <Polyline key={c.id} positions={c.waypoints}
-          className="tgl-corridor"
-          pathOptions={{ color: c.color, weight: 3, opacity: 0.75,
-            dashArray: "8 5" }}>
-          <Tooltip sticky direction="top" opacity={0.92}>
-            <span style={{ fontFamily: "monospace", fontSize: 10, color: c.color }}>{c.shortName}</span>
-            <span style={{ fontFamily: "monospace", fontSize: 10, color: "#fff", marginLeft: 6 }}>
-              {c.name.split("—")[1]?.trim()}
-            </span>
-          </Tooltip>
-        </Polyline>
-      ))}
-
-      {sites.map((s) => {
-        const color = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
-        const icon = siteIcons.get(s.id);
-        if (!icon) return null;
-        return (
-          <Marker key={s.id} position={[s.lat, s.lng]} icon={icon}
-            opacity={s.coordVerified ? 1 : 0.6}
-            eventHandlers={{ click: () => onSelect(s) }}>
-            <Tooltip direction="top" offset={[0, -4]} opacity={0.95}>
-              <span style={{ fontFamily: "monospace", fontSize: 10, color }}>{s.kind.toUpperCase()}</span>
-              <span style={{ fontFamily: "monospace", fontSize: 10, color: "#fff", marginLeft: 6 }}>{s.name}</span>
-              {!s.coordVerified && (
-                <span style={{ fontFamily: "monospace", fontSize: 9, color: "#fbbf24", marginLeft: 6 }}>⚠</span>
-              )}
-            </Tooltip>
-          </Marker>
-        );
-      })}
-
-      {pinMarker && pinIcon && (
-        <Marker position={[pinMarker.lat, pinMarker.lng]} icon={pinIcon}>
-          <Tooltip permanent direction="top" offset={[0, -16]} opacity={0.95}>
-            <span style={{ fontFamily: "monospace", fontSize: 10, color: "#ff5100" }}>★ YOUR LOCATION</span>
-          </Tooltip>
-        </Marker>
-      )}
-    </MapContainer>
   );
 }
 
@@ -859,7 +964,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
   return (
     <aside className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] bg-[#0d0d0e] backdrop-blur border border-white/12 text-white flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl">
 
-      {/* ── Visual header: news photo OR styled placeholder ── */}
       {site.image_url ? (
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
           className="relative shrink-0 block overflow-hidden group">
@@ -881,7 +985,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         </a>
       ) : (
-        /* Styled placeholder — kind icon + gradient, no map thumbnail */
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
           className="relative shrink-0 flex items-center justify-center h-[90px] overflow-hidden group border-b border-white/8"
           style={{ background: `linear-gradient(135deg, ${layerColor}22 0%, #0d0d0e 75%)` }}>
@@ -901,9 +1004,7 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
         </a>
       )}
 
-      {/* ── Header ── */}
       <div className="shrink-0 border-b border-white/10">
-        {/* Layer / kind strip */}
         <div className="flex items-center justify-between px-4 pt-3 pb-2">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: layerColor, boxShadow: `0 0 6px ${layerColor}` }} />
@@ -923,7 +1024,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </button>
         </div>
 
-        {/* Name + status */}
         <div className="px-4 pb-3">
           <h3 className="font-extrabold text-[15px] uppercase tracking-tight leading-tight text-white">{site.name}</h3>
           {site.status && (
@@ -935,29 +1035,25 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
         </div>
       </div>
 
-      {/* ── Scrollable body ── */}
       <div className="overflow-y-auto flex-1">
 
-        {/* Notes — always shown first if present */}
         {site.notes && (
           <div className="px-4 py-3 border-b border-white/8">
             <p className="text-[12px] text-white/75 leading-relaxed">{site.notes}</p>
           </div>
         )}
 
-        {/* Key facts grid */}
         {(site.size || site.utilities || site.road) && (
           <div className="border-b border-white/8">
             <p className="px-4 pt-3 pb-1.5 font-mono text-[9px] uppercase tracking-widest text-white/35">Details</p>
             <dl className="px-4 pb-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[11px]">
-              {site.size      && <Row k="Size"       v={site.size}      />}
-              {site.utilities && <Row k="Utilities"  v={site.utilities} />}
-              {site.road      && <Row k="Road Access" v={site.road}     />}
+              {site.size      && <Row k="Size"        v={site.size}      />}
+              {site.utilities && <Row k="Utilities"   v={site.utilities} />}
+              {site.road      && <Row k="Road Access" v={site.road}      />}
             </dl>
           </div>
         )}
 
-        {/* Suitability score */}
         {site.score !== undefined && (
           <div className="px-4 py-3 border-b border-white/8">
             <div className="flex items-center justify-between mb-2">
@@ -973,7 +1069,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
-        {/* Target industries */}
         {!!site.targetIndustries?.length && (
           <div className="px-4 py-3 border-b border-white/8">
             <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Relevant Sectors</p>
@@ -989,7 +1084,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
-        {/* Strengths */}
         {!!site.strengths?.length && (
           <div className="px-4 py-3 border-b border-white/8">
             <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Strengths</p>
@@ -1003,7 +1097,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
-        {/* Constraints */}
         {!!site.constraints?.length && (
           <div className="px-4 py-3 border-b border-white/8">
             <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Constraints</p>
@@ -1017,7 +1110,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
-        {/* GentryLab advisory recommendation */}
         {site.recommendation && (
           <div className="px-4 py-3 border-b border-white/8 bg-[#ff510008]">
             <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#ff5100" }}>
@@ -1027,7 +1119,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           </div>
         )}
 
-        {/* Google Maps button + verification status */}
         <div className="px-4 py-3 border-b border-white/8">
           <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-2.5 w-full py-2.5 border border-white/15 hover:border-white/35 hover:bg-white/5 transition group">
@@ -1062,7 +1153,6 @@ function Inspector({ site, onClose, t }: { site: MapSite; onClose: () => void; t
           )}
         </div>
 
-        {/* Footer disclaimer */}
         <div className="px-4 py-2.5">
           <p className="font-mono text-[9px] uppercase tracking-widest text-white/20">
             {t("map.disclaimer")}

@@ -708,23 +708,6 @@
   background-clip: text;
 }
 
-/* ── Map: corridor flow animation ──────────────────────── */
-@keyframes corridorFlow {
-  to { stroke-dashoffset: -26; }
-}
-.leaflet-overlay-pane path.tgl-corridor {
-  animation: corridorFlow 2s linear infinite;
-}
-
-/* ── Map: basemap CSS filter treatments ─────────────────── */
-/* Dark: desaturate + slight blue tint on satellite — unique industrial look */
-.tgl-bm-dark .leaflet-tile-pane {
-  filter: saturate(0.35) brightness(0.78) hue-rotate(180deg);
-}
-/* Light: mild desaturation for clean map reading */
-.tgl-bm-light .leaflet-tile-pane {
-  filter: saturate(0.80) brightness(1.0);
-}
 
 /* ── Scanlines overlay ──────────────────────────────────── */
 .scanlines::after {
