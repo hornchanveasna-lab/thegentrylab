@@ -31,7 +31,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 /* ── Basemap definitions ────────────────────────────────── */
-type BasemapKey = "dark" | "light" | "streets" | "atlas" | "satellite" | "topo";
+type BasemapKey = "dark" | "light" | "streets" | "atlas" | "satellite" | "topo" | "google";
 interface BasemapDef {
   label: string;
   tiles: string;
@@ -96,6 +96,13 @@ const BASEMAPS: Record<BasemapKey, BasemapDef> = {
     subdomains: ["a","b","c"],
     isDark: false,
     swatch: "#c8d8b0",
+  },
+  google: {
+    label: "Google",
+    tiles:  "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+    labels: "https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}",
+    isDark: true,
+    swatch: "#1a2f1a",
   },
 };
 
