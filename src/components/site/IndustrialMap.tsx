@@ -133,8 +133,9 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
     { label: "Expressway", value: "logistics"},
   ],
   utilities: [
-    { label: "All",         value: "all"        },
-    { label: "Substation",  value: "substation" },
+    { label: "All",          value: "all"         },
+    { label: "Substation",   value: "substation"  },
+    { label: "Power Plant",  value: "powerplant"  },
   ],
   labor: [
     { label: "All",         value: "all"        },
@@ -565,7 +566,8 @@ const KIND_SVG: Record<string, string> = {
   logistics:  `<rect x="1" y="9" width="14" height="8" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M15 12h4l3 4v1h-7V12z" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/><circle cx="18" cy="18" r="2" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
   port:       `<path d="M12 3v14M8 7h8M7 17c1 2 2.5 3 5 3s4-1 5-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>`,
   airport:    `<path d="M12 2l-4 8H2l4 3-2 6 8-2 8 2-2-6 4-3h-6L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
-  substation: `<path d="M14 2L7 13h6l-2 9 9-12h-6l3-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  substation:  `<path d="M14 2L7 13h6l-2 9 9-12h-6l3-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  powerplant:  `<path d="M12 2v4M6.3 4.3l2.8 2.9M4 10H2M4.3 17.7l2.8-2.8M12 22v-4M17.7 17.7l-2.8-2.8M20 10h2M17.7 4.3l-2.8 2.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
   university: `<path d="M12 3L2 9l10 6 10-6L12 3z M6 12v5c0 2 2.7 3.5 6 3.5s6-1.5 6-3.5v-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
   tvet:       `<path d="M15 4l5 5-9 9-5-2-2-5 9-9z M19 8l-3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
   corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
@@ -579,7 +581,8 @@ const KIND_COLOR: Record<string, string> = {
   logistics:  "#eab308", // yellow
   port:       "#2563eb", // deep blue
   airport:    "#0ea5e9", // sky blue
-  substation: "#a855f7", // purple
+  substation:  "#a855f7", // purple
+  powerplant:  "#c084fc", // violet
   university: "#10b981", // emerald
   tvet:       "#14b8a6", // teal
   corridor:   "#64748b", // slate
