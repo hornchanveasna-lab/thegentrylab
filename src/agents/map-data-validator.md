@@ -1,9 +1,29 @@
 # Map Data Validator & Enrichment Agent — TheGentryLab
 
 ## Purpose
-Run monthly. Validate every site coordinate in `src/data/platform.ts`, enrich sparse data,
-and source real news/official **photos** for each site so the Inspector panel shows
-meaningful images instead of map tiles.
+Run monthly. For every site in Supabase `sites` table:
+1. Validate / correct coordinates (Nominatim + Google Places)
+2. Find and store hero photos (OG images from news + official sites)
+3. Calculate road distance + travel time to nearest port (Google Distance Matrix API)
+4. Calculate ground elevation + flood risk flag (Google Elevation API)
+5. Enrich sparse notes/data from web sources
+
+All results written to Supabase `sites` table.
+
+## Supabase connection
+- **Project ID:** `mcxfukjopdnouicwacbn`
+- **MCP:** `mcp__2d9cdc4d-820f-40d1-b353-d5b5fe2deb29`
+
+## Google API key
+`VITE_GOOGLE_MAPS_KEY` — use for Distance Matrix, Elevation, Places, Geocoding calls.
+
+## Nearest port reference points
+```
+Sihanoukville (SAP):  10.6167, 103.5167   ← primary export port
+Phnom Penh Port:      11.5625, 104.9311   ← river port, northern/eastern sites
+```
+Rule: use Phnom Penh Port for sites in Phnom Penh, Kandal, Kampong Cham, Prey Veng, Svay Rieng, Kratie, Stung Treng.
+Use Sihanoukville for all other provinces.
 
 ---
 
@@ -42,6 +62,141 @@ GET https://maps.googleapis.com/maps/api/geocode/json
 | > 5 km | ❌ AUTO-FIX with verified source |
 
 For ❌ sites: write corrected lat/lng + add comment `// Coord verified {DATE} via {SOURCE}`
+
+---
+
+## Step 2b — Load sites from Supabase
+
+```sql
+SELECT id, name, kind, layer, province, lat, lng,
+       image_url, coord_verified, place_id,
+       port_distance_km, elevation_m
+FROM sites
+ORDER BY id;
+```
+
+Process all rows. Steps 2c–2e run per site.
+
+---
+
+## Step 2c — Distance Matrix (Google) — port distance + travel time
+
+Run for EVERY site where `port_distance_km IS NULL`.
+
+### Determine nearest port
+```
+EASTERN_PROVINCES = ['Phnom Penh', 'Kandal', 'Kampong Cham', 'Prey Veng',
+                     'Svay Rieng', 'Kratie', 'Stung Treng', 'Ratanakiri', 'Mondulkiri']
+
+if site.province in EASTERN_PROVINCES:
+    port_lat, port_lng = 11.5625, 104.9311   # Phnom Penh Port
+else:
+    port_lat, port_lng = 10.6167, 103.5167   # Sihanoukville Port
+```
+
+### API call
+```
+GET https://maps.googleapis.com/maps/api/distancematrix/json
+  ?origins={site.lat},{site.lng}
+  &destinations={port_lat},{port_lng}
+  &mode=driving
+  &key={GOOGLE_API_KEY}
+```
+
+### Extract from response
+```
+port_distance_km = response.rows[0].elements[0].distance.value / 1000
+port_time_min    = response.rows[0].elements[0].duration.value / 60
+```
+
+### Write to Supabase
+```sql
+UPDATE sites SET
+  port_distance_km = {port_distance_km},
+  port_time_min    = {port_time_min},
+  updated_at       = NOW()
+WHERE id = '{site.id}';
+```
+
+Rate limit: wait 0.1 seconds between requests.
+
+---
+
+## Step 2d — Elevation API (Google) — ground elevation + flood risk
+
+Run for EVERY site where `elevation_m IS NULL`.
+
+### API call
+```
+GET https://maps.googleapis.com/maps/api/elevation/json
+  ?locations={site.lat},{site.lng}
+  &key={GOOGLE_API_KEY}
+```
+
+### Extract + compute flood risk
+```
+elevation_m = response.results[0].elevation
+flood_risk  = elevation_m < 5.0   # Below 5m = meaningful flood exposure in Cambodia
+```
+
+### Write to Supabase
+```sql
+UPDATE sites SET
+  elevation_m = {elevation_m},
+  flood_risk  = {flood_risk},
+  updated_at  = NOW()
+WHERE id = '{site.id}';
+```
+
+Rate limit: batch up to 512 locations per request using pipe-separated coords:
+```
+?locations={lat1},{lng1}|{lat2},{lng2}|...
+```
+This means all 141 sites can be done in 1 API call. Use batch mode.
+
+---
+
+## Step 2e — Place Details (Google) — verify coord + get place_id + website
+
+Run for EVERY site where `coord_verified = false` AND `place_id IS NULL`.
+
+### Step 1: Find Place
+```
+GET https://maps.googleapis.com/maps/api/place/findplacefromtext/json
+  ?input={site.name} Cambodia
+  &inputtype=textquery
+  &fields=place_id,geometry,name
+  &locationbias=rectangle:9.5,102.0|15.0,108.0
+  &key={GOOGLE_API_KEY}
+```
+
+### Step 2: If found, get Place Details
+```
+GET https://maps.googleapis.com/maps/api/place/details/json
+  ?place_id={place_id}
+  &fields=name,geometry,formatted_address,website,photo
+  &key={GOOGLE_API_KEY}
+```
+
+### Verify coordinate
+```
+haversine_km = distance(site.lat, site.lng, result.lat, result.lng)
+
+if haversine_km < 1.0:   coord_verified = true, keep existing lat/lng
+if haversine_km 1–5 km:  coord_verified = true, UPDATE lat/lng to Google result
+if haversine_km > 5 km:  flag for manual review, do NOT auto-update
+```
+
+### Write to Supabase
+```sql
+UPDATE sites SET
+  place_id       = '{place_id}',
+  coord_verified = {true/false},
+  lat            = {verified_lat},   -- only if within 5km
+  lng            = {verified_lng},
+  updated_at     = NOW()
+WHERE id = '{site.id}';
+```
 
 ---
 
@@ -159,10 +314,20 @@ Write `src/agents/last-validation-report.md`:
 # Validation Report — {DATE}
 
 ## Summary
-- Sites checked: {N}
+- Sites processed: {N}
 - Coordinates corrected: {N}
+- Coordinates verified (unchanged): {N}
 - Images added: {N}
+- Distance Matrix completed: {N} sites
+- Elevation computed: {N} sites
+- Flood risk flagged: {N} sites (elevation < 5m)
 - Notes enriched: {N}
+
+## Distance to Port — Top 10 Longest
+| Site | Province | Port | Distance km | Time min |
+
+## Flood Risk Sites (elevation < 5m)
+| Site ID | Name | Province | Elevation m |
 
 ## Coordinate Corrections
 | Site ID | Old Coords | New Coords | Source | Distance km |
