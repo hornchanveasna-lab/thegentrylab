@@ -66,7 +66,7 @@ const LIGHT_STYLES: google.maps.MapTypeStyle[] = [
 ];
 
 /* ── Basemap definitions (Google Maps JS API style) ─────── */
-type BasemapKey = "dark" | "light" | "terrain" | "satellite" | "flood";
+type BasemapKey = "standard" | "dark" | "light" | "terrain" | "satellite" | "flood";
 interface BasemapDef {
   label: string;
   mapTypeId: string;
@@ -77,6 +77,7 @@ interface BasemapDef {
 }
 
 const BASEMAPS: Record<BasemapKey, BasemapDef> = {
+  standard:  { label: "Standard",  mapTypeId: "roadmap",  isDark: false, swatch: "#e8ecf0" },
   dark:      { label: "Dark",      mapTypeId: "roadmap",  styles: DARK_STYLES,  isDark: true,  swatch: "#0d1117" },
   light:     { label: "Light",     mapTypeId: "roadmap",  styles: LIGHT_STYLES, isDark: false, swatch: "#e8e4dc" },
   terrain:   { label: "Terrain",   mapTypeId: "terrain",  isDark: false, swatch: "#c5d5a0" },
@@ -88,8 +89,8 @@ function themeBasemap(): BasemapKey {
   try {
     const stored = localStorage.getItem("tgl_basemap") as BasemapKey | null;
     if (stored && BASEMAPS[stored]) return stored;
-    return "dark";
-  } catch { return "dark"; }
+    return "standard";
+  } catch { return "standard"; }
 }
 
 /* ── Sub-kind chips per layer ───────────────────────────── */
@@ -768,7 +769,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     const observer = new MutationObserver(() => {
       if (basemapUserPicked.current) return;
       const theme = document.documentElement.getAttribute("data-theme") ?? "dark";
-      setBasemap(theme === "light" ? "light" : "dark");
+      setBasemap(theme === "light" ? "standard" : "dark");
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => observer.disconnect();
