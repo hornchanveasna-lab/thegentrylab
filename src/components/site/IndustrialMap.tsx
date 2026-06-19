@@ -588,19 +588,18 @@ const KIND_COLOR: Record<string, string> = {
   corridor:   "#64748b", // slate
 };
 
-/* ── Google Maps–style teardrop pin ────────────────────── */
-function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
+/* ── Google Maps–style teardrop pin with zoom-controlled name label ── */
+function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean, name: string) {
   const pinW  = isKey ? 36 : 28;
-  const r     = (pinW - 6) / 2;          // circle radius
+  const r     = (pinW - 6) / 2;
   const cx    = pinW / 2;
-  const cy    = r + 3;                   // circle centre y
-  const tipY  = cy + r + 10;            // tip of teardrop
+  const cy    = r + 3;
+  const tipY  = cy + r + 10;
   const pinH  = tipY + 2;
-  const scale = (r * 0.58) / 9;         // icon is ±9 units → fits inside circle
+  const scale = (r * 0.58) / 9;
 
   const icon = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
 
-  // Teardrop: arc for top circle, two cubic curves meeting at the tip
   const path = [
     `M${cx},${tipY}`,
     `C${cx - r * 0.32},${cy + r * 0.92} 3,${cy + r * 0.6} 3,${cy}`,
@@ -608,29 +607,68 @@ function makeSiteIcon(L: L, kind: string, color: string, isKey: boolean) {
     `C${pinW - 3},${cy + r * 0.6} ${cx + r * 0.32},${cy + r * 0.92} ${cx},${tipY}Z`,
   ].join(" ");
 
-  const html = `<svg xmlns="http://www.w3.org/2000/svg"
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg"
       width="${pinW}" height="${pinH}"
       style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))">
-    <!-- pin body -->
     <path d="${path}" fill="${color}"/>
-    <!-- inner highlight ring -->
     <circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
-    <!-- category icon (white) -->
     <g transform="translate(${cx} ${cy}) scale(${scale.toFixed(3)})"
        fill="white" stroke="none" stroke-linecap="round" stroke-linejoin="round">
       ${icon}
     </g>
-    <!-- tip dot -->
     <circle cx="${cx}" cy="${tipY}" r="1.8" fill="rgba(0,0,0,0.25)"/>
   </svg>`;
 
+  // Label is hidden by CSS until map container gets .tgl-labels-key or .tgl-labels-all class
+  const labelClass = `pin-label${isKey ? " pin-label-key" : ""}`;
+  const label = `<div class="${labelClass}"
+    style="position:absolute;left:50%;top:${pinH + 4}px;transform:translateX(-50%);
+           white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+           font-size:11px;font-weight:700;letter-spacing:0.01em;color:#1a1a2e;
+           text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 4px #fff,0 1px 4px rgba(0,0,0,0.2);
+           pointer-events:none;">${name}</div>`;
+
   return L.divIcon({
     className:     "",
-    html,
+    html:          `<div style="position:relative">${svg}${label}</div>`,
     iconSize:      [pinW, pinH],
-    iconAnchor:    [cx, pinH],          // anchor = tip of pin
+    iconAnchor:    [cx, pinH],
     tooltipAnchor: [0, -(pinH - cy)],
   });
+}
+
+/* ── Injects label CSS once into <head> ── */
+function ZoomLabelController() {
+  useEffect(() => {
+    const id = "tgl-label-css";
+    if (document.getElementById(id)) return;
+    const s = document.createElement("style");
+    s.id = id;
+    s.textContent = [
+      ".pin-label { display:none; }",
+      ".tgl-labels-key .pin-label-key { display:block; }",
+      ".tgl-labels-all .pin-label { display:block; }",
+    ].join(" ");
+    document.head.appendChild(s);
+    return () => { document.getElementById(id)?.remove(); };
+  }, []);
+  return null;
+}
+
+function ZoomClassController() {
+  const map = useMap();
+  useEffect(() => {
+    const update = () => {
+      const z  = map.getZoom();
+      const el = map.getContainer();
+      el.classList.toggle("tgl-labels-key", z >= 11);
+      el.classList.toggle("tgl-labels-all", z >= 13);
+    };
+    update();
+    map.on("zoomend", update);
+    return () => { map.off("zoomend", update); };
+  }, [map]);
+  return null;
 }
 
 /* ── Full interactive MapView ───────────────────────────── */
@@ -667,7 +705,7 @@ function MapView({
     sites.forEach((s) => {
       const color = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
       const isKey = s.score !== undefined && s.score >= 85;
-      m.set(s.id, makeSiteIcon(L, s.kind, color, isKey));
+      m.set(s.id, makeSiteIcon(L, s.kind, color, isKey, s.name));
     });
     return m;
   }, [sites, L]);
@@ -691,6 +729,8 @@ function MapView({
       )}
 
       <FlyController useMap={useMap} target={pinTarget} />
+      <ZoomLabelController />
+      <ZoomClassController />
 
       {corridors.map((c) => (
         <Polyline key={c.id} positions={c.waypoints}
