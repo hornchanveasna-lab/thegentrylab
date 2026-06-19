@@ -2791,7 +2791,7 @@ function HistoryView({
   function sendToChat(b: SavedBrief, e: React.MouseEvent) {
     e.stopPropagation();
     const preview = b.output?.replace(/[#>*`|]/g, "").replace(/\s+/g, " ").slice(0, 600) ?? "";
-    const msg = `I'd like to discuss my "${b.brief_title}" brief (${b.category} category). Here's a summary:\n\n${preview}...\n\nCan you help me dig deeper, explore alternative approaches, or answer follow-up questions?`;
+    const msg = `I'd like to discuss my "${formatReportName(b)}" report (${b.category} category). Here's a summary:\n\n${preview}...\n\nCan you help me dig deeper, explore alternative approaches, or answer follow-up questions?`;
     window.dispatchEvent(new CustomEvent("tgl:chat-brief", { detail: { message: msg } }));
   }
 
@@ -2808,11 +2808,27 @@ function HistoryView({
     grouped["all"] = displayed;
   }
 
+  /* Build a structured report name from the brief type + key form fields */
+  function formatReportName(b: SavedBrief): string {
+    const fields = b.fields ?? {};
+    const province = fields.province_preference || fields.location || fields.province || fields.target_province || "";
+    const sector = fields.industry || fields.sector || fields.product_type || fields.investment_type || "";
+    const size = fields.land_size || fields.factory_size || fields.project_size || "";
+    const parts = [b.brief_title];
+    if (province) parts.push(province.replace("Preah Sihanouk (Sihanoukville)", "Sihanoukville"));
+    if (sector) parts.push(sector.length > 22 ? sector.slice(0, 22) + "…" : sector);
+    else if (size) parts.push(size);
+    return parts.join(" · ");
+  }
+
   function BriefCard({ b }: { b: SavedBrief }) {
     const color = catColors[b.category] ?? "#ff5100";
     const date = new Date(b.created_at);
+    const reportName = formatReportName(b);
     const preview = b.output?.replace(/[#>*`|]/g, "").replace(/\n/g, " ").slice(0, 110) ?? "";
     const isFav = favs.has(b.id);
+    const timeStr = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const dateStr = date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" });
 
     if (viewMode === "list") {
       return (
@@ -2822,10 +2838,11 @@ function HistoryView({
           onMouseEnter={e => (e.currentTarget.style.borderColor = `${color}40`)}
           onMouseLeave={e => (e.currentTarget.style.borderColor = "var(--adv-border)")}>
           <span className="font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>{b.category}</span>
-          <span className="text-[12.5px] font-semibold flex-1 truncate" style={{ color: "var(--adv-text-hi)" }}>{b.brief_title}</span>
-          <span className="font-mono text-[9px] shrink-0" style={{ color: "var(--adv-text-faint)" }}>
-            {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
-          </span>
+          <span className="text-[12.5px] font-semibold flex-1 truncate" style={{ color: "var(--adv-text-hi)" }}>{reportName}</span>
+          <div className="text-right shrink-0">
+            <div className="font-mono text-[9px]" style={{ color: "var(--adv-text-faint)" }}>{dateStr}</div>
+            <div className="font-mono text-[8px]" style={{ color: "var(--adv-text-dim)" }}>{timeStr}</div>
+          </div>
           <button onClick={e => sendToChat(b, e)} title="Discuss in AiChat"
             className="flex items-center gap-1 px-2 py-1 rounded transition shrink-0"
             style={{ backgroundColor: "rgba(255,81,0,0.08)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.20)" }}>
@@ -2863,13 +2880,14 @@ function HistoryView({
         </div>
         <div className="flex items-center gap-2 mb-2 pr-14">
           <span className="font-mono text-[8px] uppercase tracking-widest px-2 py-0.5 rounded shrink-0" style={{ backgroundColor: `${color}15`, color, border: `1px solid ${color}30` }}>{b.category}</span>
-          <span className="text-[13px] font-semibold truncate" style={{ color: "var(--adv-text-hi)" }}>{b.brief_title}</span>
         </div>
+        <p className="text-[13px] font-semibold mb-1.5 pr-14 leading-snug" style={{ color: "var(--adv-text-hi)" }}>{reportName}</p>
         {preview && <p className="text-[11px] leading-relaxed line-clamp-2 mb-3" style={{ color: "var(--adv-text-dim)" }}>{preview}…</p>}
         <div className="flex items-center justify-between pt-2.5" style={{ borderTop: "1px solid var(--adv-border-sub)" }}>
-          <span className="font-mono text-[9px]" style={{ color: "var(--adv-text-faint)" }}>
-            {date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "2-digit" })}
-          </span>
+          <div>
+            <div className="font-mono text-[9px]" style={{ color: "var(--adv-text-faint)" }}>{dateStr}</div>
+            <div className="font-mono text-[8px]" style={{ color: "var(--adv-text-dim)" }}>{timeStr}</div>
+          </div>
           <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>Open →</span>
         </div>
       </div>
@@ -2881,13 +2899,13 @@ function HistoryView({
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
         <div>
-          <h2 className="text-[16px] font-bold" style={{ color: "var(--adv-text-hi)" }}>My Briefs</h2>
+          <h2 className="text-[16px] font-bold" style={{ color: "var(--adv-text-hi)" }}>My Reports</h2>
           <p className="text-[11px] mt-0.5" style={{ color: "var(--adv-text-sub)" }}>
-            {briefs.length} brief{briefs.length !== 1 ? "s" : ""} saved · Reopen to view, edit, or regenerate
+            {briefs.length} report{briefs.length !== 1 ? "s" : ""} saved · Reopen to view, edit, or regenerate
           </p>
         </div>
         <button onClick={onNew} className="px-4 py-2 rounded-lg font-bold text-[12px] shrink-0" style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
-          + New Brief
+          + New Report
         </button>
       </div>
 
@@ -3518,7 +3536,7 @@ export default function AdvisorPage() {
                   <button onClick={openHistory} className="flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest transition"
                     style={{ border: "1px solid var(--adv-border-input)", color: "var(--adv-text-sec)" }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    My Briefs
+                    My Reports
                   </button>
                 )}
                 {step !== "select" && step !== "history" && (
