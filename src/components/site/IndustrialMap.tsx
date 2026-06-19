@@ -457,31 +457,60 @@ function SiteMarkerLayer({
 }) {
   const map       = useMap();
   const markerLib = useMapsLibrary("marker");
-  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-  const onSelectRef = useRef(onSelect);
+  const advMarkersRef  = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const legMarkersRef  = useRef<google.maps.Marker[]>([]);
+  const onSelectRef    = useRef(onSelect);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
 
   useEffect(() => {
-    if (!map || !markerLib) return;
+    if (!map) return;
 
-    markersRef.current.forEach((m) => { m.map = null; });
-    markersRef.current = [];
+    // cleanup
+    advMarkersRef.current.forEach((m) => { m.map = null; });
+    legMarkersRef.current.forEach((m) => m.setMap(null));
+    advMarkersRef.current = [];
+    legMarkersRef.current = [];
 
-    markersRef.current = sites.map((s) => {
-      const content = buildMarkerElement(s);
-      const marker  = new markerLib.AdvancedMarkerElement({
-        map,
-        position: { lat: s.lat, lng: s.lng },
-        content,
-        title: s.name,
+    if (markerLib) {
+      // AdvancedMarkerElement path (requires valid mapId)
+      advMarkersRef.current = sites.map((s) => {
+        const content = buildMarkerElement(s);
+        const marker  = new markerLib.AdvancedMarkerElement({
+          map,
+          position: { lat: s.lat, lng: s.lng },
+          content,
+          title: s.name,
+        });
+        marker.addListener("gmp-click", () => onSelectRef.current(s));
+        return marker;
       });
-      marker.addListener("click", () => onSelectRef.current(s));
-      return marker;
-    });
+    } else {
+      // Legacy Marker fallback (no mapId required)
+      legMarkersRef.current = sites.map((s) => {
+        const color  = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
+        const isKey  = (s.score ?? 0) >= 85;
+        const { svg, cx, pinH, pinW } = buildPinSvg(s.kind, color, isKey);
+        const marker = new google.maps.Marker({
+          position: { lat: s.lat, lng: s.lng },
+          map,
+          title:   s.name,
+          opacity: s.coordVerified ? 1 : 0.6,
+          icon: {
+            url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+            anchor:     new google.maps.Point(cx, pinH),
+            scaledSize: new google.maps.Size(pinW, pinH),
+          },
+        });
+        marker.addListener("click", () => onSelectRef.current(s));
+        return marker;
+      });
+    }
 
     return () => {
-      markersRef.current.forEach((m) => { m.map = null; });
-      markersRef.current = [];
+      advMarkersRef.current.forEach((m) => { m.map = null; });
+      legMarkersRef.current.forEach((m) => m.setMap(null));
+      advMarkersRef.current = [];
+      legMarkersRef.current = [];
     };
   }, [map, markerLib, sites]);
 
@@ -493,10 +522,9 @@ function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }
   const markerLib = useMapsLibrary("marker");
 
   useEffect(() => {
-    if (!map || !markerLib) return;
+    if (!map) return;
 
-    const content = document.createElement("div");
-    content.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
+    const pinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
       style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55))">
       <path d="M18,46 C12.5,37.5 3,30 3,18 a15,15 0 1,1 30,0 C33,30 23.5,37.5 18,46Z" fill="#ff5100"/>
       <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
@@ -504,14 +532,22 @@ function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }
       <circle cx="18" cy="46" r="2" fill="rgba(0,0,0,0.25)"/>
     </svg>`;
 
-    const marker = new markerLib.AdvancedMarkerElement({
-      map,
-      position,
-      content,
-      title: "Your location",
-    });
-
-    return () => { marker.map = null; };
+    if (markerLib) {
+      const content = document.createElement("div");
+      content.innerHTML = pinSvg;
+      const marker = new markerLib.AdvancedMarkerElement({ map, position, content, title: "Your location" });
+      return () => { marker.map = null; };
+    } else {
+      const marker = new google.maps.Marker({
+        position, map, title: "Your location",
+        icon: {
+          url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(pinSvg),
+          anchor:     new google.maps.Point(18, 48),
+          scaledSize: new google.maps.Size(36, 48),
+        },
+      });
+      return () => { marker.setMap(null); };
+    }
   }, [map, markerLib, position]);
 
   return null;
@@ -722,7 +758,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             maxZoom={17}
             mapTypeId={bm.mapTypeId}
             styles={bm.styles}
-            mapId={gMapId}
             disableDefaultUI
             gestureHandling="greedy"
             backgroundColor="#0d1117"
