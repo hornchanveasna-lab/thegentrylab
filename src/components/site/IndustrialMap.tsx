@@ -18,7 +18,9 @@ type L  = typeof import("leaflet");
 const ALL_LAYERS: LayerGroup[] = [
   "investment",
   "infrastructure",
-  "utilities",
+  "energy",
+  "water",
+  "environment",
   "risk",
   "labor",
   "corridors",
@@ -31,7 +33,7 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 /* ── Basemap definitions ────────────────────────────────── */
-type BasemapKey = "dark" | "light" | "streets" | "atlas" | "satellite" | "topo" | "google";
+type BasemapKey = "dark" | "light" | "terrain" | "satellite" | "flood";
 interface BasemapDef {
   label: string;
   tiles: string;
@@ -39,69 +41,52 @@ interface BasemapDef {
   subdomains?: string[];
   isDark: boolean;
   swatch: string;
-  mapbox?: boolean; // requires VITE_MAPBOX_TOKEN
+  cssClass?: string; // applied to map wrapper for CSS filter effects
+  floodOverlay?: boolean; // auto-enable flood WMS layer
 }
 
-const _mbToken = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
+const _gKey = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
+const _gBase = (lyrs: string) =>
+  `https://mt{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}${_gKey ? `&key=${_gKey}` : ""}`;
 
 const BASEMAPS: Record<BasemapKey, BasemapDef> = {
-  streets: {
-    label: "Streets",
-    tiles: _mbToken
-      ? `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${_mbToken}`
-      : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    subdomains: ["a","b","c","d"],
-    isDark: false,
-    swatch: "#e8e0d4",
-    mapbox: true,
-  },
   dark: {
     label: "Dark",
-    tiles:  "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
-    labels: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
-    subdomains: ["a","b","c","d"],
+    tiles: _gBase("s"),
+    subdomains: ["0","1","2","3"],
     isDark: true,
-    swatch: "#1a1a2e",
+    swatch: "#0d1117",
+    cssClass: "tgl-bm-dark",
   },
   light: {
     label: "Light",
-    tiles:  "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
-    labels: "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-    subdomains: ["a","b","c","d"],
+    tiles: _gBase("m"),
+    subdomains: ["0","1","2","3"],
     isDark: false,
-    swatch: "#dde8ef",
+    swatch: "#e8e4dc",
+    cssClass: "tgl-bm-light",
   },
-  atlas: {
-    label: "Atlas",
-    tiles:  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
-    labels: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png",
-    subdomains: ["a","b","c","d"],
+  terrain: {
+    label: "Terrain",
+    tiles: _gBase("p"),
+    subdomains: ["0","1","2","3"],
     isDark: false,
-    swatch: "#b8cfc8",
+    swatch: "#c5d5a0",
   },
   satellite: {
     label: "Satellite",
-    tiles: _mbToken
-      ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${_mbToken}`
-      : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    labels: _mbToken ? undefined : "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
-    subdomains: ["a","b","c","d"],
-    isDark: true,
-    swatch: "#2a3d1e",
-    mapbox: true,
-  },
-  topo: {
-    label: "Topo",
-    tiles:  "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    subdomains: ["a","b","c"],
-    isDark: false,
-    swatch: "#c8d8b0",
-  },
-  google: {
-    label: "Google",
-    tiles:  `https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}&key=${import.meta.env.VITE_GOOGLE_MAPS_KEY ?? ""}`,
+    tiles: _gBase("y"),
+    subdomains: ["0","1","2","3"],
     isDark: true,
     swatch: "#1a2f1a",
+  },
+  flood: {
+    label: "Flood",
+    tiles: _gBase("y"),
+    subdomains: ["0","1","2","3"],
+    isDark: true,
+    swatch: "#0a1a2f",
+    floodOverlay: true,
   },
 };
 
@@ -110,9 +95,7 @@ function themeBasemap(): BasemapKey {
   try {
     const stored = localStorage.getItem("tgl_basemap") as BasemapKey | null;
     if (stored && BASEMAPS[stored]) return stored;
-    const theme = document.documentElement.getAttribute("data-theme") ?? localStorage.getItem("tgl_theme") ?? "dark";
-    // Default to Streets (Mapbox) if token available, otherwise dark
-    return _mbToken ? "streets" : (theme === "light" ? "light" : "dark");
+    return "dark";
   } catch { return "dark"; }
 }
 
@@ -126,20 +109,31 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
     { label: "Logistics", value: "logistics"},
   ],
   infrastructure: [
-    { label: "All",        value: "all"      },
-    { label: "Port",       value: "port"     },
-    { label: "Airport",    value: "airport"  },
-    { label: "Expressway", value: "logistics"},
+    { label: "All",     value: "all"    },
+    { label: "Port",    value: "port"   },
+    { label: "Airport", value: "airport"},
+    { label: "Rail",    value: "rail"   },
   ],
-  utilities: [
-    { label: "All",          value: "all"         },
-    { label: "Substation",   value: "substation"  },
-    { label: "Power Plant",  value: "powerplant"  },
+  energy: [
+    { label: "All",         value: "all"        },
+    { label: "Substation",  value: "substation" },
+    { label: "Power Plant", value: "powerplant" },
+    { label: "Solar",       value: "solar"      },
+  ],
+  water: [
+    { label: "All",           value: "all"        },
+    { label: "Water Plant",   value: "water_plant"},
+  ],
+  environment: [
+    { label: "All",       value: "all"      },
+    { label: "Protected", value: "protected"},
+    { label: "Waste",     value: "waste"    },
   ],
   labor: [
-    { label: "All",         value: "all"        },
-    { label: "University",  value: "university" },
-    { label: "TVET",        value: "tvet"       },
+    { label: "All",        value: "all"       },
+    { label: "University", value: "university"},
+    { label: "TVET",       value: "tvet"      },
+    { label: "Hospital",   value: "hospital"  },
   ],
 };
 
@@ -208,22 +202,13 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap] = useState<BasemapKey>(themeBasemap);
+  const [floodVisible, setFloodVisible] = useState(false);
   const basemapUserPicked = useRef(false);
-
-  /* Sync basemap with theme toggle (unless user manually picked one) */
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      if (basemapUserPicked.current) return;
-      const theme = document.documentElement.getAttribute("data-theme") ?? "dark";
-      setBasemap(theme === "light" ? "light" : "dark");
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => observer.disconnect();
-  }, []);
 
   const pickBasemap = (key: BasemapKey) => {
     basemapUserPicked.current = true;
     setBasemap(key);
+    if (BASEMAPS[key].floodOverlay) setFloodVisible(true);
     try { localStorage.setItem("tgl_basemap", key); } catch { /* */ }
   };
 
@@ -323,6 +308,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             pinMarker={pinMarker}
             pinTarget={pinTarget}
             basemap={BASEMAPS[basemap]}
+            floodVisible={floodVisible}
           />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-white/40 font-mono text-xs uppercase tracking-widest">
@@ -407,6 +393,25 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               />
             </div>
 
+            {/* Flood overlay toggle */}
+            <div className="border-b border-white/10">
+              <button
+                onClick={() => setFloodVisible((v) => !v)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition"
+              >
+                <span className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: "#38bdf8", opacity: floodVisible ? 1 : 0.25,
+                    boxShadow: floodVisible ? "0 0 8px #38bdf8" : "none" }} />
+                <span className="flex-1">
+                  <span className="block text-xs font-bold uppercase tracking-wide">Flood Risk</span>
+                  <span className="block text-[10px] text-white/40 mt-0.5">Global flood depth overlay (1-in-100yr)</span>
+                </span>
+                <span className={`w-7 h-4 rounded-full relative transition ${floodVisible ? "bg-[#38bdf8]" : "bg-white/15"}`}>
+                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${floodVisible ? "left-3.5" : "left-0.5"}`} />
+                </span>
+              </button>
+            </div>
+
             {/* Layers with sub-kind chips */}
             {ALL_LAYERS.map((g, i) => {
               const meta    = LAYER_META[g];
@@ -457,32 +462,24 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               );
             })}
 
-            {/* Basemap picker */}
+            {/* Basemap picker — pill row */}
             <div className="border-t border-white/10 px-4 py-3">
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-2">Base Map</p>
-              <div className="grid grid-cols-5 gap-1.5">
+              <div className="flex gap-1.5 flex-wrap">
                 {(Object.entries(BASEMAPS) as [BasemapKey, BasemapDef][]).map(([key, bm]) => {
-                  const active = basemap === key;
+                  const isActive = basemap === key;
                   return (
                     <button
                       key={key}
                       onClick={() => pickBasemap(key)}
-                      className="flex flex-col items-center gap-1 group"
+                      className="px-2.5 py-1 text-[9px] font-mono uppercase tracking-widest border transition-all"
+                      style={{
+                        backgroundColor: isActive ? "#ff5100" : `${bm.swatch}44`,
+                        borderColor:     isActive ? "#ff5100" : "rgba(255,255,255,0.12)",
+                        color:           isActive ? "#000"    : "rgba(255,255,255,0.55)",
+                      }}
                     >
-                      <span
-                        className="w-full aspect-square border-2 transition-all"
-                        style={{
-                          backgroundColor: bm.swatch,
-                          borderColor: active ? "#ff5100" : "transparent",
-                          boxShadow: active ? "0 0 0 1px #ff5100" : "none",
-                        }}
-                      />
-                      <span
-                        className="font-mono text-[8px] uppercase tracking-wider leading-none"
-                        style={{ color: active ? "#ff5100" : "rgba(255,255,255,0.35)" }}
-                      >
-                        {bm.label}
-                      </span>
+                      {bm.label}
                     </button>
                   );
                 })}
@@ -562,6 +559,36 @@ const KIND_ICON_SVG: Record<string, string> = {
     `<line x1="-6.5" y1="-3" x2="6.5" y2="-3" stroke-width="2.5"/>` +
     `<line x1="-6.5" y1="3" x2="6.5" y2="3" stroke-width="2.5"/>` +
     `<line x1="-2.5" y1="0" x2="2.5" y2="0" stroke-width="1.5" stroke-dasharray="2,2"/>`,
+  // EIP framework new kinds
+  solar:
+    `<circle cx="0" cy="0" r="3.5" stroke="none"/>` +
+    `<line x1="0" y1="-7" x2="0" y2="-5" stroke-width="2"/>` +
+    `<line x1="0" y1="5" x2="0" y2="7" stroke-width="2"/>` +
+    `<line x1="-7" y1="0" x2="-5" y2="0" stroke-width="2"/>` +
+    `<line x1="5" y1="0" x2="7" y2="0" stroke-width="2"/>` +
+    `<line x1="-4.9" y1="-4.9" x2="-3.5" y2="-3.5" stroke-width="2"/>` +
+    `<line x1="3.5" y1="3.5" x2="4.9" y2="4.9" stroke-width="2"/>` +
+    `<line x1="4.9" y1="-4.9" x2="3.5" y2="-3.5" stroke-width="2"/>` +
+    `<line x1="-3.5" y1="3.5" x2="-4.9" y2="4.9" stroke-width="2"/>`,
+  water_plant:
+    `<path d="M0,-7 C-3,-3 -6,0 -6,3 a6,6 0 0,0 12,0 C6,0 3,-3 0,-7Z" stroke="none"/>`,
+  hospital:
+    `<rect x="-6" y="-6" width="12" height="12" rx="1.5" fill="none" stroke-width="2"/>` +
+    `<line x1="0" y1="-3.5" x2="0" y2="3.5" stroke-width="2.5"/>` +
+    `<line x1="-3.5" y1="0" x2="3.5" y2="0" stroke-width="2.5"/>`,
+  waste:
+    `<path d="M-5,-4 L-3,-7 L3,-7 L5,-4 L-5,-4Z" stroke="none"/>` +
+    `<rect x="-5" y="-4" width="10" height="11" rx="1" fill="none" stroke-width="2"/>` +
+    `<line x1="-2" y1="-2" x2="-2" y2="5" stroke-width="1.5"/>` +
+    `<line x1="2" y1="-2" x2="2" y2="5" stroke-width="1.5"/>`,
+  rail:
+    `<line x1="-6" y1="-3.5" x2="6" y2="-3.5" stroke-width="2.5"/>` +
+    `<line x1="-6" y1="3.5" x2="6" y2="3.5" stroke-width="2.5"/>` +
+    `<line x1="-4" y1="-3.5" x2="-4" y2="3.5" stroke-width="1.5"/>` +
+    `<line x1="0" y1="-3.5" x2="0" y2="3.5" stroke-width="1.5"/>` +
+    `<line x1="4" y1="-3.5" x2="4" y2="3.5" stroke-width="1.5"/>`,
+  protected:
+    `<path d="M0,-8 L-7,-4 L-7,2 C-7,6 -3,8 0,9 C3,8 7,6 7,2 L7,-4 Z" fill="none" stroke-width="2"/>`,
 };
 
 /* ── KIND_SVG (Inspector placeholder only — currentColor on dark bg) ─── */
@@ -575,23 +602,35 @@ const KIND_SVG: Record<string, string> = {
   substation:  `<path d="M14 2L7 13h6l-2 9 9-12h-6l3-8z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
   powerplant:  `<path d="M12 2v4M6.3 4.3l2.8 2.9M4 10H2M4.3 17.7l2.8-2.8M12 22v-4M17.7 17.7l-2.8-2.8M20 10h2M17.7 4.3l-2.8 2.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
   university: `<path d="M12 3L2 9l10 6 10-6L12 3z M6 12v5c0 2 2.7 3.5 6 3.5s6-1.5 6-3.5v-5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/>`,
-  tvet:       `<path d="M15 4l5 5-9 9-5-2-2-5 9-9z M19 8l-3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
-  corridor:   `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  tvet:        `<path d="M15 4l5 5-9 9-5-2-2-5 9-9z M19 8l-3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
+  corridor:    `<path d="M4 12h16M9 7l-5 5 5 5M15 7l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  solar:       `<circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  water_plant: `<path d="M12 3C9 8 6 10 6 14a6 6 0 0012 0c0-4-3-6-6-11z" stroke="currentColor" stroke-width="1.5" fill="none"/>`,
+  hospital:    `<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  waste:       `<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/><path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  rail:        `<path d="M4 5h16M4 19h16M8 5v14M16 5v14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
+  protected:   `<path d="M12 2l-9 4v5c0 5 4 9.5 9 11 5-1.5 9-6 9-11V6L12 2z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linejoin="round"/>`,
 };
 
 /* ── Distinct color per site kind ──────────────────────── */
 const KIND_COLOR: Record<string, string> = {
-  sez:        "#f97316", // orange
-  park:       "#fb923c", // amber-orange
-  factory:    "#ef4444", // red
-  logistics:  "#eab308", // yellow
-  port:       "#2563eb", // deep blue
-  airport:    "#0ea5e9", // sky blue
+  sez:         "#f97316", // orange
+  park:        "#fb923c", // amber-orange
+  factory:     "#ef4444", // red
+  logistics:   "#eab308", // yellow
+  port:        "#2563eb", // deep blue
+  airport:     "#0ea5e9", // sky blue
   substation:  "#a855f7", // purple
   powerplant:  "#c084fc", // violet
-  university: "#10b981", // emerald
-  tvet:       "#14b8a6", // teal
-  corridor:   "#64748b", // slate
+  solar:       "#fbbf24", // amber-yellow
+  water_plant: "#38bdf8", // sky blue
+  hospital:    "#f472b6", // pink
+  waste:       "#78716c", // stone
+  rail:        "#94a3b8", // slate-blue
+  protected:   "#22c55e", // green
+  university:  "#10b981", // emerald
+  tvet:        "#14b8a6", // teal
+  corridor:    "#64748b", // slate
 };
 
 /* ── Google Maps–style teardrop pin with zoom-controlled name label ── */
@@ -680,7 +719,7 @@ function ZoomClassController({ useMap }: { useMap: RL["useMap"] }) {
 
 /* ── Full interactive MapView ───────────────────────────── */
 function MapView({
-  mods, sites, corridors, onSelect, pinMarker, pinTarget, basemap,
+  mods, sites, corridors, onSelect, pinMarker, pinTarget, basemap, floodVisible,
 }: {
   mods: { rl: RL; L: L };
   sites: MapSite[];
@@ -689,8 +728,9 @@ function MapView({
   pinMarker: { lat: number; lng: number } | null;
   pinTarget: { lat: number; lng: number; zoom: number } | null;
   basemap: BasemapDef;
+  floodVisible: boolean;
 }) {
-  const { MapContainer, TileLayer, Tooltip, Polyline, Marker, useMap } = mods.rl;
+  const { MapContainer, TileLayer, WMSTileLayer, Tooltip, Polyline, Marker, useMap } = mods.rl as RL & { WMSTileLayer: RL["WMSTileLayer"] };
   const { L } = mods;
 
   const pinIcon = useMemo(() => L.divIcon({
@@ -721,18 +761,30 @@ function MapView({
     <MapContainer
       center={[12.2, 104.9]} zoom={7} minZoom={6} maxZoom={17}
       scrollWheelZoom zoomControl={false}
+      className={basemap.cssClass ?? ""}
       style={{ height: "100%", width: "100%", background: "#0a0a0b" }}
       attributionControl={false}
     >
       <TileLayer key={basemap.tiles} url={basemap.tiles}
-        subdomains={basemap.subdomains ?? ["a","b","c","d"]}
-        tileSize={basemap.mapbox ? 256 : 256}
-        zoomOffset={0}
+        subdomains={basemap.subdomains ?? ["0","1","2","3"]}
+        tileSize={256}
         maxZoom={18}
       />
       {basemap.labels && (
         <TileLayer key={basemap.labels} url={basemap.labels}
-          subdomains={["a","b","c","d"]} />
+          subdomains={["0","1","2","3"]} />
+      )}
+
+      {/* Flood risk overlay (Copernicus EMS WMS) */}
+      {(floodVisible || basemap.floodOverlay) && WMSTileLayer && (
+        <WMSTileLayer
+          url="https://ows.globalfloods.eu/glofas-ows/ows.py"
+          layers="GloFAS_rp100"
+          format="image/png"
+          transparent
+          opacity={0.45}
+          version="1.3.0"
+        />
       )}
 
       <FlyController useMap={useMap} target={pinTarget} />
@@ -741,8 +793,9 @@ function MapView({
 
       {corridors.map((c) => (
         <Polyline key={c.id} positions={c.waypoints}
+          className="tgl-corridor"
           pathOptions={{ color: c.color, weight: 3, opacity: 0.75,
-            dashArray: c.id.includes("ring") ? "6 4" : undefined }}>
+            dashArray: "8 5" }}>
           <Tooltip sticky direction="top" opacity={0.92}>
             <span style={{ fontFamily: "monospace", fontSize: 10, color: c.color }}>{c.shortName}</span>
             <span style={{ fontFamily: "monospace", fontSize: 10, color: "#fff", marginLeft: 6 }}>

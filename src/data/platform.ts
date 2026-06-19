@@ -5,7 +5,9 @@
 export type LayerGroup =
   | "investment"
   | "infrastructure"
-  | "utilities"
+  | "energy"
+  | "water"
+  | "environment"
   | "risk"
   | "labor"
   | "corridors";
@@ -19,6 +21,12 @@ export type SiteKind =
   | "airport"
   | "substation"
   | "powerplant"
+  | "solar"
+  | "water_plant"
+  | "hospital"
+  | "waste"
+  | "rail"
+  | "protected"
   | "university"
   | "tvet"
   | "corridor";
@@ -66,27 +74,37 @@ export const LAYER_META: Record<
   infrastructure: {
     label: "Infrastructure",
     color: "#facc15",
-    description: "Ports · Airports · Expressways",
+    description: "Ports · Airports · Rail · Expressways",
   },
-  utilities: {
-    label: "Utilities",
+  energy: {
+    label: "Energy",
+    color: "#a855f7",
+    description: "EDC substations · Power plants · Solar farms",
+  },
+  water: {
+    label: "Water",
     color: "#38bdf8",
-    description: "EDC substations · Water treatment plants",
+    description: "Water treatment plants · River infrastructure",
+  },
+  environment: {
+    label: "Environment",
+    color: "#22c55e",
+    description: "Protected areas · Waste treatment · Ecological zones",
   },
   risk: {
-    label: "Risk",
+    label: "Risk Zones",
     color: "#f43f5e",
-    description: "Flood plains · Coastal erosion · Environmental zones",
+    description: "Flood plains · Coastal erosion · Environmental hazards",
   },
   labor: {
-    label: "Labor",
+    label: "Labor & Social",
     color: "#a78bfa",
-    description: "Universities · TVET centres — 9 provinces",
+    description: "Universities · TVET centres · Hospitals — 9 provinces",
   },
   corridors: {
     label: "Corridors",
     color: "#34d399",
-    description: "9 national road & industrial development corridors",
+    description: "National road & industrial development corridors",
   },
 };
 
@@ -866,7 +884,7 @@ export const SITES: MapSite[] = [
     id: "sub-gs1",
     name: "GS1 230kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Phnom Penh",
     lat: 11.58,
     lng: 104.88,
@@ -879,7 +897,7 @@ export const SITES: MapSite[] = [
     id: "sub-takmao",
     name: "Takmao 115kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Kandal",
     lat: 11.475,
     lng: 104.95,
@@ -892,7 +910,7 @@ export const SITES: MapSite[] = [
     id: "sub-bavet",
     name: "Bavet 115kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Svay Rieng",
     lat: 11.056,
     lng: 106.112,
@@ -906,7 +924,7 @@ export const SITES: MapSite[] = [
     id: "sub-sville",
     name: "Sihanoukville 230kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Preah Sihanouk",
     lat: 10.70,
     lng: 103.62,
@@ -919,7 +937,7 @@ export const SITES: MapSite[] = [
     id: "sub-kampot",
     name: "Kampot 115kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Kampot",
     lat: 10.61,
     lng: 104.17,
@@ -933,7 +951,7 @@ export const SITES: MapSite[] = [
     id: "sub-siemreap",
     name: "Siem Reap 115kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Siem Reap",
     lat: 13.362,
     lng: 103.86,
@@ -947,7 +965,7 @@ export const SITES: MapSite[] = [
     id: "sub-ksep",
     name: "Kampong Speu 115kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Kampong Speu",
     lat: 11.453,
     lng: 104.521,
@@ -961,7 +979,7 @@ export const SITES: MapSite[] = [
     id: "sub-battambang",
     name: "Battambang 115kV Substation",
     kind: "substation",
-    layer: "utilities",
+    layer: "energy",
     province: "Battambang",
     lat: 13.095,
     lng: 103.210,
@@ -976,7 +994,7 @@ export const SITES: MapSite[] = [
     id: "hydro-sesan2",
     name: "Lower Sesan 2 Hydropower",
     kind: "powerplant",
-    layer: "utilities",
+    layer: "energy",
     province: "Stung Treng",
     lat: 13.730,
     lng: 106.468,
@@ -992,7 +1010,7 @@ export const SITES: MapSite[] = [
     id: "hydro-kamchay",
     name: "Kamchay Hydropower Dam",
     kind: "powerplant",
-    layer: "utilities",
+    layer: "energy",
     province: "Kampot",
     lat: 10.726,
     lng: 104.208,
@@ -1008,7 +1026,7 @@ export const SITES: MapSite[] = [
     id: "hydro-tatay",
     name: "Stung Tatay Hydropower",
     kind: "powerplant",
-    layer: "utilities",
+    layer: "energy",
     province: "Koh Kong",
     lat: 11.370,
     lng: 103.242,
@@ -1138,6 +1156,115 @@ export const SITES: MapSite[] = [
     strengths: ["ADB-funded upgrade — new CNC/automation tracks", "Port logistics curriculum serving SAP", "Serves both SSEZ and new ISI SEZ worker pipeline"],
     constraints: ["600/year capacity is insufficient for SSEZ + ISI SEZ combined demand", "Hospitality track competes with industrial programs for trainee slots"],
     targetIndustries: ["Port Logistics", "Industrial Maintenance", "Electronics Manufacturing", "Welding & Fabrication"],
+  },
+
+  // Water infrastructure
+  {
+    id: "water-ppsea",
+    name: "Phnom Penh Water Supply Authority — Main Plant",
+    kind: "water_plant",
+    layer: "water",
+    province: "Phnom Penh",
+    lat: 11.5815,
+    lng: 104.9254,
+    size: "330,000 m³/day capacity",
+    status: "Operational",
+    notes: "PPWSA Phnom Penh main water treatment plant — one of the largest in Southeast Asia. Supplies clean water to industrial zones, SEZs, and 2.3 million residents. Water quality rated among the best in ASEAN. Key EIP metric: industrial water access within city limits.",
+    strengths: ["Reliable 24/7 supply to SEZs and factories", "World Bank–recognised water quality", "Treated effluent reuse programs available"],
+    constraints: ["Seasonal Mekong water level variation", "Capacity expansion needed for new northern industrial clusters"],
+    targetIndustries: ["Food Processing", "Pharmaceuticals", "Textile Dyeing", "Electronics"],
+  },
+  {
+    id: "water-sville",
+    name: "Sihanoukville Water Treatment Plant",
+    kind: "water_plant",
+    layer: "water",
+    province: "Preah Sihanouk",
+    lat: 10.6283,
+    lng: 103.5293,
+    size: "40,000 m³/day",
+    status: "Operational",
+    notes: "Serves SSEZ, SAP port, and Sihanoukville urban area. Capacity was upgraded by ADB-funded program in 2022 to support industrial growth at ISI SEZ and the expanded SSEZ Phase III. Wastewater treatment upgrade to MIME Class B standards is ongoing.",
+    strengths: ["ADB-upgraded — 40,000 m³/day capacity", "MIME Class B wastewater compliance upgrade underway"],
+    constraints: ["Supply chain dependent on single catchment reservoir", "Wet/dry season variance"],
+    targetIndustries: ["Textile Dyeing", "Food Processing", "Industrial Cooling"],
+  },
+
+  // Environment layer
+  {
+    id: "env-waste-pnom",
+    name: "Dangkor Sanitary Landfill & Waste Management",
+    kind: "waste",
+    layer: "environment",
+    province: "Phnom Penh",
+    lat: 11.4908,
+    lng: 104.8401,
+    size: "120 ha",
+    status: "Operational",
+    notes: "Cambodia's largest engineered sanitary landfill, operated by CINTRI under municipal contract. Receives ~2,000 tonnes/day MSW + industrial waste streams from Phnom Penh SEZs. EIP requirement: industrial parks must demonstrate compliant waste disposal pathway. CINTRI offers gate contract for SEZ waste haul.",
+    strengths: ["Only engineered sanitary landfill in Phnom Penh", "Industrial waste acceptance under SEZ contract"],
+    constraints: ["Near capacity — Phase 3 expansion pending land acquisition", "No hazardous waste cell on-site (HazWaste must go to licensed handlers)"],
+    targetIndustries: ["All industrial zones — MSW disposal", "Light manufacturing"],
+  },
+  {
+    id: "env-cardamom",
+    name: "Cardamom Mountains Protected Corridor",
+    kind: "protected",
+    layer: "environment",
+    province: "Koh Kong",
+    lat: 11.620,
+    lng: 103.190,
+    notes: "The Cardamom Mountains form Cambodia's largest intact forest ecosystem (~4M ha) and are a UNESCO-recognized biodiversity hotspot. Industrial projects within 10 km of the boundary require MoE EIA clearance with enhanced biodiversity impact assessment. The Stung Tatay dam sits at the eastern edge; ongoing monitoring by WWF and MoE required. EIP framework: proximity to protected areas triggers highest-tier environmental management requirements.",
+    strengths: ["Intact forest provides watershed protection for Koh Kong industrial water supply"],
+    constraints: ["10 km buffer zone restricts industrial siting", "Tier 1 EIA mandatory — 18–24 month process", "No industrial land clearing permitted within buffer"],
+    targetIndustries: ["Eco-tourism adjacent", "Water-dependent industries (watershed service zone only)"],
+  },
+
+  // Labor — hospital kinds
+  {
+    id: "hosp-calmette",
+    name: "Calmette Hospital",
+    kind: "hospital",
+    layer: "labor",
+    province: "Phnom Penh",
+    lat: 11.5687,
+    lng: 104.9213,
+    size: "498 beds",
+    status: "Operational",
+    notes: "Cambodia's principal national referral hospital. EIP framework Labor & Social dimension: proximity to tertiary healthcare is a key criterion for industrial park worker welfare assessment. Calmette provides emergency, occupational health, and specialist care serving factories and SEZ workers in greater Phnom Penh.",
+    strengths: ["Largest hospital in Cambodia", "Occupational health unit — handles factory injury cases", "French-managed specialist wing with international standards"],
+    targetIndustries: ["All industrial zones — worker healthcare coverage"],
+  },
+  {
+    id: "hosp-sseville",
+    name: "Preah Sihanouk Provincial Referral Hospital",
+    kind: "hospital",
+    layer: "labor",
+    province: "Preah Sihanouk",
+    lat: 10.6344,
+    lng: 103.5036,
+    size: "350 beds",
+    status: "Operational",
+    notes: "The main provincial referral hospital for Sihanoukville, serving SSEZ, SAP, and ISI SEZ workers. Underwent capacity upgrade with JICA support in 2023. EIP worker welfare indicator: target <15 minutes emergency response time from SSEZ main gate.",
+    strengths: ["JICA-upgraded capacity", "Covers SSEZ and ISI SEZ worker base", "Occupational health and emergency services"],
+    targetIndustries: ["SSEZ Tenants", "SAP Logistics", "ISI SEZ Manufacturers"],
+  },
+
+  // Energy — solar
+  {
+    id: "solar-kspeu",
+    name: "GreenPower Cambodia Solar Farm",
+    kind: "solar",
+    layer: "energy",
+    province: "Kampong Speu",
+    lat: 11.3512,
+    lng: 104.4813,
+    size: "60 MW",
+    status: "Operational",
+    notes: "One of Cambodia's first utility-scale solar farms, commissioned 2022 under EDC's renewable energy program. Feeds into the 115kV grid serving Kampong Speu and southern Phnom Penh industrial belt. Under EIP energy criteria, solar proximity contributes to the renewable energy share metric for industrial park assessments.",
+    strengths: ["60 MW grid-connected — largest solar in Kampong Speu", "115kV interconnect to Phnom Penh industrial belt", "Reduces carbon intensity for adjacent SEZ tenants"],
+    constraints: ["Intermittent generation — no storage; baseload still from grid", "Dry season output elevated, wet season reduced"],
+    targetIndustries: ["Electronics", "Garment", "All SEZ tenants (regional grid)"],
   },
 ];
 
