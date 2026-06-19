@@ -318,9 +318,9 @@ export const SITES: MapSite[] = [
     kind: "sez",
     layer: "investment",
     province: "Phnom Penh / Kandal",
-    // Verified: Phum Kamrieng, Sangkat Kantok, Khan Kamboul — NR4 at 11°30'29"N, 104°46'41"E
-    lat: 11.4885,
-    lng: 104.7818,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.520599,
+    lng: 104.7788039,
     size: "360 ha",
     status: "Operational",
     utilities: "115kV substation, 4,800 m³/d water",
@@ -339,8 +339,9 @@ export const SITES: MapSite[] = [
     kind: "sez",
     layer: "investment",
     province: "Svay Rieng",
-    lat: 11.046,
-    lng: 106.119,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.0581075,
+    lng: 106.1165239,
     size: "180 ha",
     status: "Operational",
     utilities: "Grid + on-site 22kV",
@@ -358,8 +359,9 @@ export const SITES: MapSite[] = [
     kind: "sez",
     layer: "investment",
     province: "Svay Rieng",
-    lat: 11.064,
-    lng: 106.116,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.0603031,
+    lng: 106.1132461,
     size: "125 ha",
     status: "Operational",
     score: 88,
@@ -374,8 +376,9 @@ export const SITES: MapSite[] = [
     kind: "sez",
     layer: "investment",
     province: "Preah Sihanouk",
-    lat: 10.622,
-    lng: 103.636,
+    // Verified 2026-06-19 via Google Maps
+    lat: 10.6097817,
+    lng: 103.6284517,
     size: "1,113 ha",
     status: "Operational",
     image_url: "https://thebettercambodia.com/wp-content/uploads/2025/05/PM-Hun-Manet-Highlights-Economic-Progress-and-Global-Investment-at-Sihanoukville-SEZ-860x573.jpg",
@@ -442,10 +445,9 @@ export const SITES: MapSite[] = [
     kind: "sez",
     layer: "investment",
     province: "Preah Sihanouk",
-    // Cheung Kou commune (Trapeang Kou village), Prey Nob district — along PP-SVK Expressway corridor
-    // Coord verified 2026-06 via Nominatim (Prey Nob district 10.72,103.80) + expressway alignment
-    lat: 10.855,
-    lng: 103.745,
+    // Verified 2026-06-19 via Google Maps: Prey Nob district, Plus code QPMQ+47G, isiip.com
+    lat: 10.7828081,
+    lng: 103.7382236,
     size: "800 ha (Phase 1: ~206 ha)",
     status: "Operational",
     utilities: "High-voltage grid connection, water supply, wastewater treatment",
@@ -618,8 +620,9 @@ export const SITES: MapSite[] = [
     kind: "port",
     layer: "infrastructure",
     province: "Preah Sihanouk",
-    lat: 10.646,
-    lng: 103.508,
+    // Verified 2026-06-19 via Google Maps
+    lat: 10.6427153,
+    lng: 103.5013705,
     status: "Operational",
     image_url: "https://thebettercambodia.com/wp-content/uploads/2026/01/small-edited2-860x484.png",
     utilities: "230kV grid, bonded zone, 24h operations",
@@ -652,8 +655,9 @@ export const SITES: MapSite[] = [
     kind: "airport",
     layer: "infrastructure",
     province: "Kandal",
-    lat: 11.356,
-    lng: 104.932,
+    // Verified 2026-06-19 via Google Maps
+    lat: 11.3588601,
+    lng: 104.9334971,
     status: "Operational",
     image_url: "https://images.adsttc.com/media/images/68f7/6a09/9662/410e/4d46/eadf/large_jpg/techo-international-airport-cambodia-foster-plus-partners_7.jpg",
     utilities: "Full aviation infrastructure, cargo terminal operational",
@@ -669,8 +673,9 @@ export const SITES: MapSite[] = [
     kind: "airport",
     layer: "infrastructure",
     province: "Siem Reap",
-    lat: 13.3680,
-    lng: 104.216,
+    // Verified 2026-06-19 via Google Maps
+    lat: 13.3761916,
+    lng: 104.2201036,
     status: "Operational",
     utilities: "Full aviation infrastructure, cargo terminal",
     road: "NR6, ~48 km east of Siem Reap city",
