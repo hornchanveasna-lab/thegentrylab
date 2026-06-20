@@ -34,16 +34,40 @@ const BRIEF_STATS: Record<string, string[]> = {
   r11: ["#1 global FDI ranking", "575 projects in 2025", "66% YoY investment growth"],
 };
 
+/* ── Per-brief photos — topic-matched ───────────────────── */
+const BRIEF_PHOTOS: Record<string, string> = {
+  // SEZ Landscape — aerial industrial park
+  r1:  "https://images.unsplash.com/photo-1565043589221-1a6fd9ae45c7?w=900&q=80&fit=crop",
+  // Power Capacity — solar + power lines
+  r2:  "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=900&q=80&fit=crop",
+  // Permit / Incentives — formal meeting / government
+  r3:  "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=900&q=80&fit=crop",
+  // Construction Cost — cranes, structure
+  r4:  "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=900&q=80&fit=crop",
+  // Labor — workers / garment production
+  r5:  "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&q=80&fit=crop",
+  // Land Due Diligence — land / field aerial
+  r6:  "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=900&q=80&fit=crop",
+  // Logistics Cost Map — trucks / port / containers
+  r7:  "https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=900&q=80&fit=crop",
+  // Flood Risk Atlas — water / river / aerial flood
+  r8:  "https://images.unsplash.com/photo-1547683905-f686c993aae5?w=900&q=80&fit=crop",
+  // ISI SEZ brief — modern industrial zone
+  r9:  "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=900&q=80&fit=crop",
+  // Investment Climate — Phnom Penh / city skyline
+  r10: "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=900&q=80&fit=crop",
+  // Greenfield FDI trends — construction growth
+  r11: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=900&q=80&fit=crop",
+};
+
 /* ── Cover art by category ───────────────────────────────── */
 const CATEGORY_STYLE: Record<string, {
   gradient: string;
-  photo: string;
   accent: string;
   icon: React.ReactNode;
 }> = {
   Sector: {
-    gradient: "linear-gradient(145deg,#0a0a0b 0%,#7c2d12 50%,#ff5100 100%)",
-    photo: "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=800&q=80&fit=crop",
+    gradient: "linear-gradient(145deg,#0a0a0b 0%,#7c2d12 60%,#ff5100 100%)",
     accent: "#ff5100",
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
@@ -56,8 +80,7 @@ const CATEGORY_STYLE: Record<string, {
     ),
   },
   Province: {
-    gradient: "linear-gradient(145deg,#0c1a2e 0%,#0d4a6b 50%,#38bdf8 100%)",
-    photo: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80&fit=crop",
+    gradient: "linear-gradient(145deg,#0c1a2e 0%,#0d4a6b 60%,#38bdf8 100%)",
     accent: "#38bdf8",
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
@@ -67,8 +90,7 @@ const CATEGORY_STYLE: Record<string, {
     ),
   },
   Regulation: {
-    gradient: "linear-gradient(145deg,#1c1917 0%,#292524 50%,#57534e 100%)",
-    photo: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&q=80&fit=crop",
+    gradient: "linear-gradient(145deg,#1c1917 0%,#292524 60%,#78716c 100%)",
     accent: "#a8a29e",
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
@@ -81,8 +103,7 @@ const CATEGORY_STYLE: Record<string, {
     ),
   },
   Cost: {
-    gradient: "linear-gradient(145deg,#1a1200 0%,#713f12 50%,#d97706 100%)",
-    photo: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800&q=80&fit=crop",
+    gradient: "linear-gradient(145deg,#1a1200 0%,#713f12 60%,#d97706 100%)",
     accent: "#fbbf24",
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
@@ -91,6 +112,18 @@ const CATEGORY_STYLE: Record<string, {
         <rect x="13" y="13" width="5" height="15"/>
         <rect x="21" y="6"  width="5" height="22"/>
         <path d="M7.5 14l5.5-5 5 4 5-7" strokeWidth="1.6"/>
+      </svg>
+    ),
+  },
+  Policy: {
+    gradient: "linear-gradient(145deg,#0a1628 0%,#1e3a5f 60%,#3b82f6 100%)",
+    accent: "#60a5fa",
+    icon: (
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.7">
+        <circle cx="16" cy="16" r="12"/>
+        <line x1="2" y1="16" x2="30" y2="16"/>
+        <path d="M16 4c-4 4-6 8-6 12s2 8 6 12"/>
+        <path d="M16 4c4 4 6 8 6 12s-2 8-6 12"/>
       </svg>
     ),
   },
@@ -112,20 +145,23 @@ function ResearchCard({
 }) {
   const style = getCategoryStyle(brief.category);
   const stats = BRIEF_STATS[brief.id] ?? [];
+  const photo = BRIEF_PHOTOS[brief.id];
 
   return (
     <article className="group relative overflow-hidden border border-white/10 hover:border-white/20 transition-all duration-300 flex flex-col bg-[#0d0d0e]">
 
       {/* ── Cover image ── */}
-      <div className="relative overflow-hidden flex-shrink-0" style={{ height: featured ? 280 : 180 }}>
+      <div className="relative overflow-hidden flex-shrink-0" style={{ height: featured ? 280 : 200 }}>
         <div className="absolute inset-0" style={{ background: style.gradient }} />
-        <img
-          src={style.photo}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ opacity: 0.2, mixBlendMode: "luminosity" }}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-        />
+        {photo && (
+          <img
+            src={photo}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            style={{ opacity: 0.35, mixBlendMode: "luminosity" }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        )}
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: `linear-gradient(${style.accent}07 1px,transparent 1px),linear-gradient(90deg,${style.accent}07 1px,transparent 1px)`,
           backgroundSize: "32px 32px",
