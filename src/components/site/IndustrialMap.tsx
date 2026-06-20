@@ -1278,9 +1278,6 @@ function LocationCallout({
                 <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>Cambodia</p>
               </>
             )}
-            <p className="font-mono text-[9px] mt-1.5" style={{ color: textDim }}>
-              {lat.toFixed(6)}, {lng.toFixed(6)}
-            </p>
           </div>
           <button onClick={onClose}
             className="shrink-0 w-5 h-5 flex items-center justify-center rounded-sm hover:opacity-70 transition mt-0.5"
