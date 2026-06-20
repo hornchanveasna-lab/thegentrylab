@@ -79,6 +79,14 @@ const getGradient    = (sector: string) => getSectorMeta(sector).gradient;
 const getAccent      = (sector: string) => getSectorMeta(sector).accent;
 const getItemPhoto   = (item: NewsItem) => item.image_url || getPhoto(item.sector);
 const isRealUrl      = (url: string) => url && url !== "#";
+
+function fmtDate(iso: string) {
+  try {
+    return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
 const linkProps      = (url: string) => isRealUrl(url)
   ? { href: url, target: "_blank", rel: "noopener noreferrer" }
   : { href: "#" };
@@ -259,12 +267,11 @@ function NewsCard({ item }: { item: NewsItem }) {
         {/* Sector colour wash — plain overlay, no blend mode */}
         <div className="absolute inset-0" style={{ backgroundColor: getAccent(item.sector), opacity: 0.28 }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-        {/* Sector badge — sector accent color */}
+        {/* Sector badge */}
         <div className="absolute top-3 left-3 px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest font-bold"
           style={{ backgroundColor: accent, color: "#000" }}>
           {item.sector}
         </div>
-        <div className="absolute bottom-3 right-3 font-mono text-[9px] text-white/40">{item.date}</div>
         {/* Bottom accent line */}
         <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
           style={{ backgroundColor: accent }} />
@@ -272,9 +279,14 @@ function NewsCard({ item }: { item: NewsItem }) {
 
       {/* Content */}
       <div className="p-5 flex flex-col flex-1">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mb-2">{item.province}</p>
+        {/* Province + date row */}
+        <div className="flex items-center justify-between mb-2">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/30">{item.province}</p>
+          <p className="font-mono text-[10px] tabular-nums" style={{ color: accent }}>
+            {fmtDate(item.date)}
+          </p>
+        </div>
         <a {...linkProps(item.url)} className="text-[13px] font-extrabold uppercase tracking-tight leading-snug transition line-clamp-2 mb-3 text-white/90"
-          style={{ ["--hover-color" as string]: accent }}
           onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = accent)}
           onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--news-headline)")}>
           {item.headline}
