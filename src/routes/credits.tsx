@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import QRCode from "react-qr-code";
+import { useEffect, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { useAuth } from "@/lib/auth";
 import { useCredits, CREDIT_PACKAGES, CREDIT_COSTS, formatCredits } from "@/lib/credits";
@@ -10,175 +9,13 @@ export const Route = createFileRoute("/credits")({
   component: CreditsPage,
 });
 
-/* ── KHQR types ─────────────────────────── */
-interface KhqrSession {
-  tran_id: string;
-  qr_string: string;
-  amount: number;
-  credits: number;
-  pkg_label: string;
-}
-
-/* ── KHQR Modal ─────────────────────────── */
-function KhqrModal({ session, onSuccess, onClose }: {
-  session: KhqrSession;
-  onSuccess: (credits: number) => void;
-  onClose: () => void;
-}) {
-  const { user } = useAuth();
-  const [status, setStatus] = useState<"waiting" | "approved" | "declined">("waiting");
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-
-  useEffect(() => {
-    const ticker = setInterval(() => setElapsed(s => s + 1), 1000);
-    return () => clearInterval(ticker);
-  }, []);
-
-  useEffect(() => {
-    async function poll() {
-      if (!user) return;
-      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
-      const res = await fetch("/api/payway-check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ tran_id: session.tran_id }),
-      });
-      if (!res.ok) return;
-      const { status: s, credits } = await res.json();
-      if (s === "approved") {
-        setStatus("approved");
-        clearInterval(pollRef.current!);
-        setTimeout(() => onSuccess(credits), 1200);
-      } else if (s === "declined" || s === "cancelled") {
-        setStatus("declined");
-        clearInterval(pollRef.current!);
-      }
-    }
-    pollRef.current = setInterval(poll, 3000);
-    return () => clearInterval(pollRef.current!);
-  }, [session.tran_id, user]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
-  const secs = String(elapsed % 60).padStart(2, "0");
-
-  return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)" }}>
-      <div className="relative w-full max-w-sm rounded-2xl overflow-hidden"
-        style={{ backgroundColor: "#111113", border: "1px solid rgba(255,255,255,0.10)" }}>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.12)" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.8" strokeLinecap="round">
-                <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                <path d="M14 14h.01M14 18h.01M18 14h.01M18 18h.01M21 14h.01M14 21h.01M18 21h.01M21 21h.01"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-[13px] font-bold" style={{ color: "#ffffff" }}>Scan to pay</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.30)" }}>Bakong · ABA · Wing · Any KHQR Bank</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full transition-colors"
-            style={{ color: "rgba(255,255,255,0.40)" }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="px-5 py-5 flex flex-col items-center gap-4">
-          {status === "waiting" && (
-            <>
-              {/* QR code */}
-              <div className="p-3 rounded-xl" style={{ backgroundColor: "#ffffff" }}>
-                <QRCode value={session.qr_string} size={200} />
-              </div>
-
-              {/* Amount + credits */}
-              <div className="w-full flex items-center justify-between px-4 py-3 rounded-xl"
-                style={{ backgroundColor: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <div>
-                  <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Amount</p>
-                  <p className="text-[22px] font-extrabold leading-none" style={{ color: "#ffffff" }}>${session.amount.toFixed(2)} <span className="text-[12px] font-normal" style={{ color: "rgba(255,255,255,0.40)" }}>USD</span></p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>Credits</p>
-                  <p className="text-[22px] font-extrabold leading-none" style={{ color: "#ff5100" }}>{session.credits.toLocaleString()}</p>
-                </div>
-              </div>
-
-              {/* Waiting indicator */}
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: "#f59e0b" }} />
-                <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.40)" }}>
-                  Waiting for payment · {mins}:{secs}
-                </p>
-              </div>
-
-              <p className="text-center text-[11px]" style={{ color: "rgba(255,255,255,0.30)" }}>
-                Open your banking app and scan the QR code above.<br />
-                This page updates automatically when payment is detected.
-              </p>
-            </>
-          )}
-
-          {status === "approved" && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(16,185,129,0.15)" }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <p className="text-[18px] font-bold" style={{ color: "#10b981" }}>Payment confirmed!</p>
-              <p className="text-[12px] text-center" style={{ color: "rgba(255,255,255,0.50)" }}>
-                {session.credits.toLocaleString()} credits are being added to your account…
-              </p>
-            </div>
-          )}
-
-          {status === "declined" && (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,0.15)" }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </div>
-              <p className="text-[18px] font-bold" style={{ color: "#ef4444" }}>Payment declined</p>
-              <p className="text-[12px] text-center" style={{ color: "rgba(255,255,255,0.50)" }}>
-                The payment was declined or cancelled. Please try again.
-              </p>
-              <button onClick={onClose} className="px-5 py-2 rounded-xl font-mono text-[11px] uppercase tracking-widest transition"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.70)" }}>
-                Close
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {status === "waiting" && (
-          <div className="px-5 pb-4 flex items-center justify-center gap-2">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.22)" }}>
-              Secured by ABA PayWay · KHQR standard
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function CreditsPage() {
   const { user } = useAuth();
   const { credits, loading, refresh } = useCredits();
   const navigate = useNavigate();
   const [buying, setBuying] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [khqrSession, setKhqrSession] = useState<KhqrSession | null>(null);
-  const [khqrBuying, setKhqrBuying] = useState<string | null>(null);
+  const [khqrBuying] = useState<string | null>(null);
 
   // Handle Stripe return
   const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
@@ -197,35 +34,11 @@ export default function CreditsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function buyWithKhqr(pkgId: string) {
+  function buyWithKhqr(pkgId: string) {
     if (!user) { navigate({ to: "/login" }); return; }
-    setKhqrBuying(pkgId);
-    try {
-      const session = await supabase?.auth.getSession();
-      const token = session?.data.session?.access_token;
-      const res = await fetch("/api/payway-create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ packageId: pkgId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId);
-        setKhqrSession({
-          tran_id:   data.tran_id,
-          qr_string: data.qr_string,
-          amount:    data.amount,
-          credits:   data.credits,
-          pkg_label: pkg?.label ?? pkgId,
-        });
-      } else {
-        const { error } = await res.json().catch(() => ({ error: "Unknown error" }));
-        setToastMsg(error ?? "Failed to create KHQR. Please try again.");
-      }
-    } catch {
-      setToastMsg("Network error. Please try again.");
-    }
-    setKhqrBuying(null);
+    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId);
+    window.open("https://link.payway.com.kh/ABAPAYaN463948Z", "_blank");
+    setToastMsg(`Opening PayWay checkout for ${pkg?.label ?? pkgId}. Credits will be added after payment confirmation.`);
   }
 
   async function buyCredits(pkgId: string) {
@@ -251,24 +64,9 @@ export default function CreditsPage() {
     setBuying(null);
   }
 
-  function handleKhqrSuccess(creditsAdded: number) {
-    setKhqrSession(null);
-    refresh();
-    setToastMsg(`${creditsAdded.toLocaleString()} credits added to your account!`);
-  }
-
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0a0a0b", color: "#ffffff" }}>
       <TopNav />
-
-      {/* KHQR modal */}
-      {khqrSession && (
-        <KhqrModal
-          session={khqrSession}
-          onSuccess={handleKhqrSuccess}
-          onClose={() => setKhqrSession(null)}
-        />
-      )}
 
       {/* Toast */}
       {toastMsg && (
