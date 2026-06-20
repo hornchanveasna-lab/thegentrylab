@@ -285,24 +285,32 @@ const KIND_COLOR: Record<string, string> = {
 
 /* ── Build pin SVG string ───────────────────────────────── */
 function buildPinSvg(kind: string, color: string, isKey: boolean) {
+  // Extra padding around the pin so the SVG-internal shadow doesn't clip
+  const pad   = 6;
   const pinW  = isKey ? 36 : 28;
   const r     = (pinW - 6) / 2;
-  const cx    = pinW / 2;
-  const cy    = r + 3;
+  const cx    = pinW / 2 + pad;
+  const cy    = r + 3 + pad;
   const tipY  = cy + r + 10;
-  const pinH  = tipY + 2;
+  const pinH  = tipY + pad + 4;
+  const totalW = pinW + pad * 2;
   const scale = (r * 0.80) / 9;
   const icon  = KIND_ICON_SVG[kind] ?? KIND_ICON_SVG.factory;
   const path  = [
     `M${cx},${tipY}`,
-    `C${cx - r * 0.32},${cy + r * 0.92} 3,${cy + r * 0.6} 3,${cy}`,
+    `C${cx - r * 0.32},${cy + r * 0.92} ${pad + 3},${cy + r * 0.6} ${pad + 3},${cy}`,
     `a${r},${r} 0 1,1 ${pinW - 6},0`,
-    `C${pinW - 3},${cy + r * 0.6} ${cx + r * 0.32},${cy + r * 0.92} ${cx},${tipY}Z`,
+    `C${pinW - 3 + pad},${cy + r * 0.6} ${cx + r * 0.32},${cy + r * 0.92} ${cx},${tipY}Z`,
   ].join(" ");
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pinW}" height="${pinH}"
-    style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55)) drop-shadow(0 1px 3px rgba(0,0,0,0.4))">
-    <path d="${path}" fill="${color}"/>
+  // Shadow lives inside the SVG — no CSS filter, no overflow:visible, no gray box
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${pinH}">
+    <defs>
+      <filter id="ps" x="-40%" y="-20%" width="180%" height="160%">
+        <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.5)"/>
+      </filter>
+    </defs>
+    <path d="${path}" fill="${color}" filter="url(#ps)"/>
     <circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
     <g transform="translate(${cx} ${cy}) scale(${scale.toFixed(3)})" fill="white" stroke="none" stroke-linecap="round" stroke-linejoin="round">
       ${icon}
@@ -310,7 +318,7 @@ function buildPinSvg(kind: string, color: string, isKey: boolean) {
     <circle cx="${cx}" cy="${tipY}" r="1.8" fill="rgba(0,0,0,0.25)"/>
   </svg>`;
 
-  return { svg, cx, cy, pinH, pinW };
+  return { svg, cx, cy, pinH, pinW: totalW };
 }
 
 /* ── Inject label CSS once ──────────────────────────────── */
@@ -472,19 +480,23 @@ function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }
 
   useEffect(() => {
     if (!map) return;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48"
-      style="overflow:visible;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.55))">
-      <path d="M18,46 C12.5,37.5 3,30 3,18 a15,15 0 1,1 30,0 C33,30 23.5,37.5 18,46Z" fill="#ff5100"/>
-      <circle cx="18" cy="18" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
-      <text x="18" y="23" text-anchor="middle" font-size="15" fill="white" font-family="sans-serif">★</text>
-      <circle cx="18" cy="46" r="2" fill="rgba(0,0,0,0.25)"/>
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="58">
+      <defs>
+        <filter id="ps2" x="-40%" y="-20%" width="180%" height="160%">
+          <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.5)"/>
+        </filter>
+      </defs>
+      <path d="M24,54 C18.5,45.5 9,38 9,26 a15,15 0 1,1 30,0 C39,38 29.5,45.5 24,54Z" fill="#ff5100" filter="url(#ps2)"/>
+      <circle cx="24" cy="26" r="14" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <text x="24" y="31" text-anchor="middle" font-size="15" fill="white" font-family="sans-serif">★</text>
+      <circle cx="24" cy="54" r="2" fill="rgba(0,0,0,0.25)"/>
     </svg>`;
     const marker = new google.maps.Marker({
       position, map, title: "Your location",
       icon: {
         url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-        anchor:     new google.maps.Point(18, 48),
-        scaledSize: new google.maps.Size(36, 48),
+        anchor:     new google.maps.Point(24, 56),
+        scaledSize: new google.maps.Size(48, 58),
       },
     });
     return () => { marker.setMap(null); };
