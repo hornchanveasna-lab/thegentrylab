@@ -773,7 +773,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const handleMapClick = useCallback(async (e: { detail: { latLng: { lat: number; lng: number } | null } }) => {
     const ll = e.detail.latLng;
     if (!ll) return;
-    setSelected(null); setSelectedProject(null); setNewsPanel(null);
+    setSelected(null);
     setLocCallout({ lat: ll.lat, lng: ll.lng, address: null, plusCode: null, loading: true });
     try {
       const r = await fetch(
@@ -845,8 +845,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
   const handleSelect = useCallback((s: MapSite) => {
     setSelected(s);
-    setSelectedProject(null);
-    setNewsPanel(null);
     setLocCallout(null);
     setPanelOpen(false);
   }, []);
