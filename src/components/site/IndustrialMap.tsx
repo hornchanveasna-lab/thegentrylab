@@ -1,21 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useLang } from "@/lib/i18n";
-import { useMapSites, useNews, useResearch, useProjects } from "@/lib/data";
+import { useMapSites, useResearch } from "@/lib/data";
 import {
   CORRIDORS,
   LAYER_META,
-  NEWS,
   RESEARCH,
-  PROJECTS,
   SITES,
   type Corridor,
   type LayerGroup,
   type MapSite,
-  type NewsItem,
   type ResearchBrief,
   type SiteKind,
-  type TrackedProject,
 } from "@/data/platform";
 
 const ALL_LAYERS: LayerGroup[] = [
@@ -593,101 +589,6 @@ function buildProjectSvg(status: string) {
   </svg>`;
 }
 
-/* ── News marker layer ──────────────────────────────────── */
-function NewsMarkerLayer({
-  news, onSelect,
-}: {
-  news: NewsItem[];
-  onSelect: (province: string, items: NewsItem[]) => void;
-}) {
-  const map = useMap();
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const onSelectRef = useRef(onSelect);
-  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
-
-  useEffect(() => {
-    if (!map) return;
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
-
-    const byProvince: Record<string, NewsItem[]> = {};
-    for (const item of news) {
-      if (!byProvince[item.province]) byProvince[item.province] = [];
-      byProvince[item.province].push(item);
-    }
-
-    for (const [province, items] of Object.entries(byProvince)) {
-      const coord = PROVINCE_CENTROIDS[province];
-      if (!coord) continue;
-      const svg = buildNewsSvg(items.length);
-      const marker = new google.maps.Marker({
-        position: { lat: coord[0], lng: coord[1] },
-        map,
-        title: `${province} · ${items.length} news`,
-        zIndex: 200,
-        icon: {
-          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-          anchor: new google.maps.Point(15, 15),
-          scaledSize: new google.maps.Size(30, 30),
-        },
-      });
-      marker.addListener("click", () => onSelectRef.current(province, items));
-      markersRef.current.push(marker);
-    }
-
-    return () => {
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
-    };
-  }, [map, news]);
-
-  return null;
-}
-
-/* ── Project marker layer ───────────────────────────────── */
-function ProjectMarkerLayer({
-  projects, onSelect,
-}: {
-  projects: TrackedProject[];
-  onSelect: (p: TrackedProject) => void;
-}) {
-  const map = useMap();
-  const markersRef = useRef<google.maps.Marker[]>([]);
-  const onSelectRef = useRef(onSelect);
-  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
-
-  useEffect(() => {
-    if (!map) return;
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
-
-    const placed = projects.filter((p) => p.lat != null && p.lng != null);
-    markersRef.current = placed.map((p) => {
-      const svg = buildProjectSvg(p.status);
-      const marker = new google.maps.Marker({
-        position: { lat: p.lat!, lng: p.lng! },
-        map,
-        title: p.name,
-        zIndex: 150,
-        icon: {
-          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-          anchor: new google.maps.Point(9, 9),
-          scaledSize: new google.maps.Size(18, 18),
-        },
-      });
-      marker.addListener("click", () => onSelectRef.current(p));
-      return marker;
-    });
-
-    return () => {
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
-    };
-  }, [map, projects]);
-
-  return null;
-}
-
 /* ── Related research matcher ───────────────────────────── */
 function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchBrief[] {
   const siteLower = site.province.toLowerCase();
@@ -763,15 +664,9 @@ interface IndustrialMapProps {
 export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const { t }               = useLang();
   const { data: sites = SITES }          = useMapSites();
-  const { data: allNews = NEWS }         = useNews();
   const { data: allResearch = RESEARCH } = useResearch();
-  const { data: allProjects = PROJECTS } = useProjects();
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
   const [selected, setSelected] = useState<MapSite | null>(null);
-  const [selectedProject, setSelectedProject] = useState<TrackedProject | null>(null);
-  const [newsPanel, setNewsPanel] = useState<{ province: string; items: NewsItem[] } | null>(null);
-  const [showNews, setShowNews]         = useState(true);
-  const [showProjects, setShowProjects] = useState(true);
   const [query, setQuery]   = useState("");
   const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
   const [panelOpen, setPanelOpen] = useState(false);
@@ -949,20 +844,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     setPanelOpen(false);
   }, []);
 
-  const handleNewsSelect = useCallback((province: string, items: NewsItem[]) => {
-    setNewsPanel({ province, items });
-    setSelected(null);
-    setSelectedProject(null);
-    setLocCallout(null);
-  }, []);
-
-  const handleProjectSelect = useCallback((p: TrackedProject) => {
-    setSelectedProject(p);
-    setSelected(null);
-    setNewsPanel(null);
-    setLocCallout(null);
-  }, []);
-
   /* layer counts per group */
   const layerCounts = useMemo(() => {
     const counts: Partial<Record<LayerGroup, number>> = {};
@@ -1014,8 +895,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} onSelect={handleSelect} onHover={setHoveredSite} />
-            {showNews && <NewsMarkerLayer news={allNews} onSelect={handleNewsSelect} />}
-            {showProjects && <ProjectMarkerLayer projects={allProjects} onSelect={handleProjectSelect} />}
             {pinMarker && <PinMarkerLayer position={pinMarker} />}
           </Map>
         </APIProvider>
@@ -1160,32 +1039,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             })}
           </div>
 
-          {/* News + Projects toggles */}
-          <div className="border-t border-white/8 p-2 space-y-0.5">
-            <button
-              onClick={() => setShowNews((n) => !n)}
-              className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
-            >
-              <span className="w-2.5 h-2.5 rounded-full shrink-0 transition-opacity"
-                style={{ backgroundColor: "#f59e0b", opacity: showNews ? 1 : 0.25 }} />
-              <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${showNews ? "text-white/80" : "text-white/25"}`}>
-                News
-              </span>
-              <span className={`font-mono text-[8px] ${showNews ? "text-white/50" : "text-white/20"}`}>{showNews ? "ON" : "OFF"}</span>
-            </button>
-            <button
-              onClick={() => setShowProjects((n) => !n)}
-              className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
-            >
-              <span className="w-2.5 h-2.5 rounded-full shrink-0 transition-opacity"
-                style={{ backgroundColor: "#818cf8", opacity: showProjects ? 1 : 0.25 }} />
-              <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${showProjects ? "text-white/80" : "text-white/25"}`}>
-                Tracked Projects
-              </span>
-              <span className={`font-mono text-[8px] ${showProjects ? "text-white/50" : "text-white/20"}`}>{showProjects ? "ON" : "OFF"}</span>
-            </button>
-          </div>
-
           {/* Basemap switcher */}
           <div className="border-t border-white/8 p-2">
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Basemap</p>
@@ -1230,33 +1083,18 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         <Inspector
           site={selected}
           research={allResearch}
-          news={allNews}
           onClose={() => setSelected(null)}
           t={t}
           isDark={isDark}
         />
       )}
-      {newsPanel && (
-        <NewsPanel
-          province={newsPanel.province}
-          items={newsPanel.items}
-          onClose={() => setNewsPanel(null)}
-        />
-      )}
-      {selectedProject && (
-        <ProjectInspector
-          project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-        />
-      )}
-
       {/* ── Site hover tooltip ───────────────────────────────── */}
       {hoveredSite && !selected && mousePos && (
         <SiteHoverTooltip site={hoveredSite} isDark={isDark} x={mousePos.x} y={mousePos.y} />
       )}
 
       {/* ── Location callout (empty-map click) ───────────────── */}
-      {locCallout && !selected && !selectedProject && !newsPanel && (
+      {locCallout && !selected && (
         <LocationCallout
           lat={locCallout.lat}
           lng={locCallout.lng}
