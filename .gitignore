@@ -34,3 +34,4 @@ dist-ssr
 validation-results.json
 
 .vercel
+.env*

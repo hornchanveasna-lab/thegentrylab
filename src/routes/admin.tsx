@@ -20,6 +20,43 @@ function AdminPage() {
   const { data: sites = [], isLoading } = useMapSites();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<MapSite | null>(null);
+  const [batchStatus, setBatchStatus] = useState<string | null>(null);
+  const [batching, setBatching] = useState(false);
+
+  async function handleBatchSatellite() {
+    if (batching) return;
+    setBatching(true);
+    setBatchStatus("Querying sites missing images...");
+    try {
+      if (!supabase) throw new Error("No supabase client");
+      // Get all site_ids that already have images
+      const { data: existing } = await supabase
+        .from("site_images")
+        .select("site_id");
+      const withImages = new Set((existing ?? []).map((r: { site_id: string }) => r.site_id));
+
+      const missing = sites.filter((s) => s.lat && s.lng && !withImages.has(s.id));
+      setBatchStatus(`Found ${missing.length} sites without photos. Processing...`);
+
+      let done = 0;
+      const kindZoom: Record<string, number> = { sez: 14, park: 15 };
+      for (const site of missing) {
+        const zoom = kindZoom[site.kind] ?? 16;
+        try {
+          await fetchAndUploadSatellite(site.id, site.lat, site.lng, zoom, "Satellite view", 0);
+          await fetchAndUploadSatellite(site.id, site.lat, site.lng, Math.max(zoom - 2, 12), "Area context", 1);
+          done++;
+          setBatchStatus(`${done}/${missing.length} done — ${site.name}`);
+        } catch {
+          // skip failures silently, continue batch
+        }
+      }
+      setBatchStatus(`Done — ${done} sites updated.`);
+    } catch (e: unknown) {
+      setBatchStatus(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setBatching(false);
+  }
 
   if (!user) {
     return (
@@ -53,6 +90,19 @@ function AdminPage() {
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/40 group-hover:text-white/70 transition">Map Admin</span>
         </a>
         <div className="flex-1" />
+        {batchStatus && (
+          <span className="font-mono text-[10px] text-blue-400/70 max-w-xs truncate">{batchStatus}</span>
+        )}
+        <button
+          onClick={handleBatchSatellite}
+          disabled={batching || isLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-blue-500/30 rounded font-mono text-[9px] uppercase tracking-wider text-blue-400 hover:border-blue-400/60 hover:text-blue-300 transition disabled:opacity-40"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 010 20M2 12h20"/>
+          </svg>
+          {batching ? "Batching..." : "Satellite all"}
+        </button>
         <span className="font-mono text-[10px] text-white/30">{user.email}</span>
         <a href="/map" className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/70 transition">← Map</a>
       </header>
@@ -257,7 +307,7 @@ function SiteEditor({ site, onSaved }: { site: MapSite; onSaved: (s: MapSite) =>
       </section>
 
       {/* Images */}
-      <ImageManager siteId={site.id} images={images} onRefetch={refetchImages} />
+      <ImageManager siteId={site.id} lat={site.lat} lng={site.lng} images={images} onRefetch={refetchImages} />
 
       {/* Read-only info */}
       <section className="mt-8 pt-6 border-t border-white/8">
@@ -307,9 +357,47 @@ function compressImage(file: File, maxPx: number, quality: number): Promise<Blob
   });
 }
 
+/* ── Satellite fetch via Edge Function ──────────────────── */
+const EDGE_URL = "https://mcxfukjopdnouicwacbn.supabase.co/functions/v1/satellite-fetch";
+
+async function fetchAndUploadSatellite(
+  siteId: string,
+  lat: number,
+  lng: number,
+  zoom: number,
+  caption: string,
+  sortOrder: number,
+): Promise<string> {
+  if (!supabase) throw new Error("No supabase client");
+
+  // 1. Fetch image via edge function proxy (key lives server-side)
+  const res = await fetch(`${EDGE_URL}?lat=${lat}&lng=${lng}&zoom=${zoom}&size=800x450`);
+  if (!res.ok) throw new Error(`Satellite fetch failed: ${res.status}`);
+  const blob = await res.blob();
+
+  // 2. Compress to max 1920px JPEG
+  const file = new File([blob], "satellite.jpg", { type: "image/jpeg" });
+  const compressed = await compressImage(file, 1920, 0.88);
+
+  // 3. Upload to Supabase Storage
+  const path = `satellite/${siteId}/${zoom}-${Date.now()}.jpg`;
+  const { error: upErr } = await supabase.storage
+    .from("site-images")
+    .upload(path, compressed, { upsert: false, contentType: "image/jpeg" });
+  if (upErr) throw upErr;
+
+  const { data: { publicUrl } } = supabase.storage.from("site-images").getPublicUrl(path);
+
+  // 4. Insert site_images record
+  await addSiteImage({ site_id: siteId, url: publicUrl, caption, source: "google_satellite", sort_order: sortOrder });
+  return publicUrl;
+}
+
 /* ── Image Manager ──────────────────────────────────────── */
-function ImageManager({ siteId, images, onRefetch }: {
+function ImageManager({ siteId, lat, lng, images, onRefetch }: {
   siteId: string;
+  lat: number;
+  lng: number;
   images: SiteImage[];
   onRefetch: () => void;
 }) {
@@ -317,6 +405,7 @@ function ImageManager({ siteId, images, onRefetch }: {
   const [caption, setCaption] = useState("");
   const [adding, setAdding] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [fetchingSat, setFetchingSat] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -364,6 +453,21 @@ function ImageManager({ siteId, images, onRefetch }: {
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function handleFetchSatellite() {
+    if (!lat || !lng) return;
+    setFetchingSat(true); setErr("");
+    try {
+      const kindZoom: Record<string, number> = { sez: 14, park: 15, factory: 16, powerplant: 16, substation: 16 };
+      const zoom = kindZoom[siteId.split("-")[0]] ?? 15;
+      await fetchAndUploadSatellite(siteId, lat, lng, zoom, "Satellite view", images.length);
+      await fetchAndUploadSatellite(siteId, lat, lng, zoom - 2, "Area context", images.length + 1);
+      onRefetch();
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "Satellite fetch failed");
+    }
+    setFetchingSat(false);
   }
 
   async function handleDelete(id: string) {
@@ -467,6 +571,32 @@ function ImageManager({ siteId, images, onRefetch }: {
           </label>
           <p className="font-mono text-[9px] text-white/25">Any size · auto-compressed to 1920px JPEG</p>
         </div>
+
+        {/* Satellite auto-fetch */}
+        {lat && lng ? (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-white/8" />
+              <span className="font-mono text-[9px] text-white/25">or fetch from satellite</span>
+              <div className="flex-1 h-px bg-white/8" />
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleFetchSatellite}
+                disabled={fetchingSat}
+                className="flex items-center gap-2 px-4 py-2 border border-blue-500/30 rounded font-mono text-[10px] uppercase tracking-wider text-blue-400 hover:border-blue-400/60 hover:text-blue-300 transition disabled:opacity-40"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 010 20M2 12h20"/>
+                </svg>
+                {fetchingSat ? "Fetching..." : "Fetch satellite + context"}
+              </button>
+              <p className="font-mono text-[9px] text-white/25">2 photos · satellite zoom + area overview</p>
+            </div>
+          </>
+        ) : (
+          <p className="font-mono text-[9px] text-white/20">No coordinates — cannot fetch satellite</p>
+        )}
       </div>
     </section>
   );

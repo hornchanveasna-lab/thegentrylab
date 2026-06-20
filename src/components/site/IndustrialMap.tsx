@@ -1222,6 +1222,12 @@ function Inspector({
     : site.image_url ? [site.image_url] : [];
   const [imgIdx, setImgIdx] = useState(0);
   useEffect(() => { setImgIdx(0); }, [site.id]);
+  // Auto-scroll every 4s when multiple images
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const t = setInterval(() => setImgIdx((i) => (i + 1) % images.length), 4000);
+    return () => clearInterval(t);
+  }, [images.length, site.id]);
 
   const layerColor = LAYER_META[site.layer].color;
   const scoreColor = site.score !== undefined

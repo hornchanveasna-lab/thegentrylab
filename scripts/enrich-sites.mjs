@@ -11,6 +11,19 @@
  * Or set env var: GOOGLE_MAPS_KEY=... node scripts/enrich-sites.mjs
  */
 
+import { readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dir = dirname(fileURLToPath(import.meta.url));
+try {
+  const env = readFileSync(resolve(__dir, '../.env'), 'utf8');
+  for (const line of env.split('\n')) {
+    const [k, ...v] = line.split('=');
+    if (k && v.length) process.env[k.trim()] = v.join('=').trim();
+  }
+} catch {}
+
 const GOOGLE_KEY = process.argv[2] || process.env.GOOGLE_MAPS_KEY || process.env.VITE_GOOGLE_MAPS_KEY;
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
