@@ -1536,14 +1536,16 @@ function Inspector({
         </div>
 
         {/* Key info table */}
-        {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned) && (
+        {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
+          site.tenant_count || site.export_value_usd || site.employee_count || site.zone_types ||
+          site.on_site_facilities || site.airport_distance_km || site.stock_ticker) && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
               <tbody>
                 {site.operator && (
                   <tr>
-                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "30%" }}>Operator</td>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "32%" }}>Operator</td>
                     <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.operator}</td>
                   </tr>
                 )}
@@ -1553,10 +1555,64 @@ function Inspector({
                     <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.year_commissioned}</td>
                   </tr>
                 )}
+                {site.stock_ticker && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Listed</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top", fontFamily: "var(--font-mono)" }}>{site.stock_ticker}</td>
+                  </tr>
+                )}
+                {site.tenant_count && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Tenants</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>
+                      {site.tenant_count} companies{site.country_count ? ` · ${site.country_count} countries` : ""}
+                    </td>
+                  </tr>
+                )}
+                {site.employee_count && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Workers</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>~{site.employee_count.toLocaleString()}</td>
+                  </tr>
+                )}
+                {site.export_value_usd && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Exports</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>
+                      USD {site.export_value_usd >= 1_000_000_000
+                        ? `${(site.export_value_usd / 1_000_000_000).toFixed(2)}B`
+                        : `${(site.export_value_usd / 1_000_000).toFixed(0)}M`} / yr
+                    </td>
+                  </tr>
+                )}
+                {site.zone_types && site.zone_types.length > 0 && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Zones</td>
+                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.zone_types.join(" · ")}</td>
+                  </tr>
+                )}
+                {(site.airport_distance_km || site.city_distance_km) && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Distance</td>
+                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>
+                      {site.airport_distance_km ? `Airport ${site.airport_distance_km} km` : ""}
+                      {site.airport_distance_km && site.city_distance_km ? " · " : ""}
+                      {site.city_distance_km ? `City ${site.city_distance_km} km` : ""}
+                    </td>
+                  </tr>
+                )}
                 {site.utilities && (
                   <tr>
                     <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Utilities</td>
                     <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.utilities}</td>
+                  </tr>
+                )}
+                {site.on_site_facilities && site.on_site_facilities.length > 0 && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Facilities</td>
+                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top", lineHeight: "1.6" }}>
+                      {site.on_site_facilities.join(" · ")}
+                    </td>
                   </tr>
                 )}
                 {site.website && (
@@ -1574,6 +1630,18 @@ function Inspector({
                   <tr>
                     <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Phone</td>
                     <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.phone}</td>
+                  </tr>
+                )}
+                {site.data_verified_at && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Verified</td>
+                    <td style={{ color: textDim, paddingBottom: "6px", verticalAlign: "top", fontFamily: "var(--font-mono)", fontSize: "10px" }}>
+                      {new Date(site.data_verified_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                      {site.data_source_url && (
+                        <a href={site.data_source_url} target="_blank" rel="noopener noreferrer"
+                          style={{ marginLeft: "8px", color: accentBlue, textDecoration: "none" }}>source ↗</a>
+                      )}
+                    </td>
                   </tr>
                 )}
               </tbody>

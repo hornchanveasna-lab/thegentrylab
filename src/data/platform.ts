@@ -80,6 +80,20 @@ export interface MapSite {
   year_commissioned?: number;
   website?: string;
   phone?: string;
+  // Richer site detail fields
+  tenant_count?: number;
+  country_count?: number;
+  employee_count?: number;
+  export_value_usd?: number;
+  stock_ticker?: string;
+  on_site_facilities?: string[];
+  airport_distance_km?: number;
+  city_distance_km?: number;
+  zone_types?: string[];
+  lease_rate_usd?: string;
+  plot_size_min_ha?: number;
+  data_source_url?: string;
+  data_verified_at?: string;
 }
 
 export interface Corridor {
