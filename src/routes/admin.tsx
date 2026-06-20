@@ -73,9 +73,18 @@ async function importWebImage(
   siteId: string, imageUrl: string, caption: string, sortOrder: number,
 ) {
   if (!supabase) throw new Error("No supabase");
-  const res = await fetch(imageUrl);
-  if (!res.ok) throw new Error(`Image download failed: ${res.status}`);
-  const blob = await res.blob();
+  const proxyRes = await fetch(WEB_IMAGE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ download: imageUrl }),
+  });
+  if (!proxyRes.ok) throw new Error(`Proxy failed: ${proxyRes.status}`);
+  const ct = proxyRes.headers.get("content-type") ?? "";
+  if (!ct.startsWith("image/")) {
+    const err = await proxyRes.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? "Not an image");
+  }
+  const blob = await proxyRes.blob();
   const ext  = blob.type.includes("png") ? "png" : "jpg";
   const compressed = await compressImage(new File([blob], `img.${ext}`, { type: blob.type }), 1920, 0.88);
   const path = `web/${siteId}/${Date.now()}.jpg`;
