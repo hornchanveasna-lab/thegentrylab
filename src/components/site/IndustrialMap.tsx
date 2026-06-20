@@ -543,7 +543,6 @@ function FloodLayer() {
   return null;
 }
 
-/* ── Province centroids for news markers ────────────────── */
 /* ── Related research matcher ───────────────────────────── */
 function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchBrief[] {
   const siteLower = site.province.toLowerCase();
@@ -1208,19 +1207,15 @@ function LocationCallout({
 
 /* ── Inspector ──────────────────────────────────────────── */
 function Inspector({
-  site, research, news, onClose, t, isDark,
+  site, research, onClose, t, isDark,
 }: {
   site: MapSite;
   research: ResearchBrief[];
-  news: NewsItem[];
   onClose: () => void;
   t: (key: string) => string;
   isDark: boolean;
 }) {
   const relatedResearch = getRelatedResearch(site, research);
-  const relatedNews = news
-    .filter((n) => n.province === site.province || n.province === "Nationwide")
-    .slice(0, 2);
   const layerColor = LAYER_META[site.layer].color;
   const scoreColor = site.score !== undefined
     ? site.score >= 80 ? "#34d399" : site.score >= 65 ? "#fbbf24" : site.score >= 40 ? "#fb923c" : "#f43f5e"
@@ -1610,34 +1605,6 @@ function Inspector({
               <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
             </div>
             <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.recommendation}</p>
-          </div>
-        )}
-
-        {/* Latest news */}
-        {relatedNews.length > 0 && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>
-              Latest News · {site.province}
-            </p>
-            <div className="space-y-2">
-              {relatedNews.map((n) => (
-                <a key={n.id} href={n.url !== "#" ? n.url : undefined}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex gap-3 py-2 transition hover:opacity-80">
-                  <div className="flex-1 min-w-0">
-                    <span className="inline-block px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1 rounded-full"
-                      style={{ backgroundColor: "#f59e0b18", color: "#f59e0b" }}>
-                      {n.sector}
-                    </span>
-                    <p className="text-[12px] leading-snug" style={{ color: textMain }}>{n.headline}</p>
-                    <p className="font-mono text-[10px] mt-1" style={{ color: textDim }}>{n.source} · {n.date}</p>
-                  </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" className="shrink-0 mt-4">
-                    <path d="M7 17L17 7M17 7H7M17 7v10"/>
-                  </svg>
-                </a>
-              ))}
-            </div>
           </div>
         )}
 
