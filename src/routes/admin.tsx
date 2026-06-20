@@ -17,10 +17,10 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-const ADMIN_EMAIL  = "horn.chanveasna@gmail.com";
-const GMAPS_KEY    = import.meta.env.VITE_GOOGLE_MAPS_KEY as string;
-const EDGE_URL     = "https://mcxfukjopdnouicwacbn.supabase.co/functions/v1/satellite-fetch";
-const STATUS_OPTS  = ["Operational", "Under Construction", "Planned"] as const;
+const ADMIN_EMAIL     = "horn.chanveasna@gmail.com";
+const GMAPS_KEY       = import.meta.env.VITE_GOOGLE_MAPS_KEY as string;
+const WEB_IMAGE_URL   = "https://mcxfukjopdnouicwacbn.supabase.co/functions/v1/web-image-fetch";
+const STATUS_OPTS     = ["Operational", "Under Construction", "Planned"] as const;
 
 /* ── Category groups ─────────────────────────────────────── */
 const KIND_GROUP = (kind: string): "investment" | "energy-gen" | "energy-grid" | "infrastructure" | "environment" | "labor" | "other" => {
@@ -55,19 +55,34 @@ function compressImage(file: File, maxPx: number, quality: number): Promise<Blob
   });
 }
 
-async function fetchAndUploadSatellite(
-  siteId: string, lat: number, lng: number,
-  zoom: number, caption: string, sortOrder: number,
+/** Fetch candidate images from an official website or by site name via the edge function. */
+async function fetchWebImages(urlOrQuery: string, isUrl: boolean): Promise<string[]> {
+  const body = isUrl ? { url: urlOrQuery } : { query: urlOrQuery };
+  const res = await fetch(WEB_IMAGE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Edge function error: ${res.status}`);
+  const data = await res.json();
+  return (data.images ?? []) as string[];
+}
+
+/** Download an image URL and upload it to Supabase Storage, then insert site_images row. */
+async function importWebImage(
+  siteId: string, imageUrl: string, caption: string, sortOrder: number,
 ) {
   if (!supabase) throw new Error("No supabase");
-  const res = await fetch(`${EDGE_URL}?lat=${lat}&lng=${lng}&zoom=${zoom}&size=800x450`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const compressed = await compressImage(new File([await res.blob()], "s.jpg", { type: "image/jpeg" }), 1920, 0.88);
-  const path = `satellite/${siteId}/${zoom}-${Date.now()}.jpg`;
+  const res = await fetch(imageUrl);
+  if (!res.ok) throw new Error(`Image download failed: ${res.status}`);
+  const blob = await res.blob();
+  const ext  = blob.type.includes("png") ? "png" : "jpg";
+  const compressed = await compressImage(new File([blob], `img.${ext}`, { type: blob.type }), 1920, 0.88);
+  const path = `web/${siteId}/${Date.now()}.jpg`;
   const { error } = await supabase.storage.from("site-images").upload(path, compressed, { upsert: false, contentType: "image/jpeg" });
   if (error) throw error;
   const { data: { publicUrl } } = supabase.storage.from("site-images").getPublicUrl(path);
-  await addSiteImage({ site_id: siteId, url: publicUrl, caption, source: "google_satellite", sort_order: sortOrder });
+  await addSiteImage({ site_id: siteId, url: publicUrl, caption, source: "web", sort_order: sortOrder });
 }
 
 /* ── Login ───────────────────────────────────────────────── */
@@ -107,38 +122,11 @@ function AdminPage() {
   const [denied, setDenied]       = useState(false);
   const [tab, setTab]             = useState<AdminTab>("map");
   const [selected, setSelected]   = useState<MapSite | null>(null);
-  const [batchMsg, setBatchMsg]   = useState<string | null>(null);
-  const [batching, setBatching]   = useState(false);
-
   useEffect(() => {
     if (user && user.email !== ADMIN_EMAIL) { setDenied(true); signOut(); }
   }, [user, signOut]);
 
   if (!user || denied) return <LoginScreen onSignIn={signInWithGoogle} denied={denied} />;
-
-  async function handleBatchSatellite() {
-    if (batching || !supabase) return;
-    setBatching(true); setBatchMsg("Scanning...");
-    try {
-      const { data: existing } = await supabase.from("site_images").select("site_id");
-      const withImg = new Set((existing ?? []).map((r: { site_id: string }) => r.site_id));
-      const missing = sites.filter(s => s.lat && s.lng && !withImg.has(s.id));
-      setBatchMsg(`${missing.length} sites queued`);
-      const zoomFor: Record<string, number> = { sez: 14, park: 15 };
-      let done = 0;
-      for (const s of missing) {
-        const z = zoomFor[s.kind] ?? 16;
-        try {
-          await fetchAndUploadSatellite(s.id, s.lat, s.lng, z, "Satellite view", 0);
-          await fetchAndUploadSatellite(s.id, s.lat, s.lng, Math.max(z - 2, 12), "Area context", 1);
-          done++; setBatchMsg(`${done}/${missing.length} — ${s.name}`);
-        } catch { /* skip */ }
-      }
-      qc.invalidateQueries({ queryKey: ["site_images"] });
-      setBatchMsg(`Done — ${done} updated`);
-    } catch (e) { setBatchMsg(`Error: ${e instanceof Error ? e.message : e}`); }
-    setBatching(false);
-  }
 
   const stats = {
     total:       sites.length,
@@ -172,16 +160,6 @@ function AdminPage() {
         </div>
 
         <div className="flex-1" />
-
-        {batchMsg && <span className="font-mono text-[10px] text-blue-400/60 max-w-xs truncate">{batchMsg}</span>}
-
-        <button onClick={handleBatchSatellite} disabled={batching || isLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[9px] uppercase tracking-wider border border-blue-500/25 text-blue-400/70 hover:border-blue-400/50 hover:text-blue-300 transition disabled:opacity-35">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 010 20M2 12h20"/>
-          </svg>
-          {batching ? "Running…" : "Satellite all"}
-        </button>
 
         <div className="w-px h-4 bg-white/8" />
         <span className="font-mono text-[9px] text-white/20">{user.email}</span>
@@ -670,7 +648,7 @@ function SiteEditor({ site, onSaved, onClose }: {
         </Sec>
 
         {/* Photos */}
-        <ImageManager siteId={site.id} lat={site.lat} lng={site.lng} images={images} onRefetch={refetchImages} />
+        <ImageManager siteId={site.id} siteName={site.name} website={site.website} images={images} onRefetch={refetchImages} />
       </div>
     </div>
   );
@@ -819,7 +797,7 @@ function ImagesTab({ sites, isLoading }: { sites: MapSite[]; isLoading: boolean 
               <p className="text-[14px] font-semibold text-white">{sel.name}</p>
               <p className="font-mono text-[10px] text-white/30">{images.length} photos</p>
             </div>
-            <ImageManager siteId={sel.id} lat={sel.lat} lng={sel.lng} images={images} onRefetch={refetch} />
+            <ImageManager siteId={sel.id} siteName={sel.name} website={sel.website} images={images} onRefetch={refetch} />
           </div>
         ) : (
           <div className="h-full flex items-center justify-center text-white/15 font-mono text-[11px]">Select a site</div>
@@ -832,29 +810,41 @@ function ImagesTab({ sites, isLoading }: { sites: MapSite[]; isLoading: boolean 
 /* ══════════════════════════════════════════════════════════
    IMAGE MANAGER
 ══════════════════════════════════════════════════════════ */
-function ImageManager({ siteId, lat, lng, images, onRefetch }: {
-  siteId: string; lat: number; lng: number;
+function ImageManager({ siteId, siteName, website, images, onRefetch }: {
+  siteId: string; siteName: string; website?: string;
   images: SiteImage[]; onRefetch: () => void;
 }) {
-  const [urlInput, setUrlInput] = useState("");
-  const [caption,  setCaption]  = useState("");
-  const [adding,   setAdding]   = useState(false);
-  const [uploading,setUploading]= useState(false);
-  const [fetching, setFetching] = useState(false);
-  const [err,      setErr]      = useState("");
+  const [urlInput,   setUrlInput]   = useState("");
+  const [caption,    setCaption]    = useState("");
+  const [adding,     setAdding]     = useState(false);
+  const [uploading,  setUploading]  = useState(false);
+  const [searching,  setSearching]  = useState(false);
+  const [importing,  setImporting]  = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<string[]>([]);
+  const [err,        setErr]        = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleSatellite() {
-    if (!lat || !lng) return;
-    setFetching(true); setErr("");
+  async function handleFetchWeb() {
+    setSearching(true); setErr(""); setCandidates([]);
     try {
-      const zoomFor: Record<string, number> = { sez: 14, park: 15 };
-      const zoom = zoomFor[siteId.split("-")[0]] ?? 16;
-      await fetchAndUploadSatellite(siteId, lat, lng, zoom, "Satellite view", images.length);
-      await fetchAndUploadSatellite(siteId, lat, lng, Math.max(zoom - 2, 12), "Area context", images.length + 1);
+      // Prefer official website; fall back to name search
+      const imgs = website
+        ? await fetchWebImages(website, true)
+        : await fetchWebImages(`${siteName} Cambodia industrial`, false);
+      if (imgs.length === 0) setErr("No images found — try pasting a URL manually.");
+      else setCandidates(imgs);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Fetch failed"); }
+    setSearching(false);
+  }
+
+  async function handleImportCandidate(imgUrl: string) {
+    setImporting(imgUrl); setErr("");
+    try {
+      await importWebImage(siteId, imgUrl, "Official photo", images.length);
+      setCandidates(c => c.filter(u => u !== imgUrl));
       onRefetch();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Satellite failed"); }
-    setFetching(false);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Import failed"); }
+    setImporting(null);
   }
 
   async function handleAddUrl() {
@@ -891,19 +881,43 @@ function ImageManager({ siteId, lat, lng, images, onRefetch }: {
 
   return (
     <div className="space-y-3">
+      {/* Header + fetch button */}
       <div className="flex items-center justify-between">
         <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">Photos · {images.length}</p>
-        {lat && lng && (
-          <button onClick={handleSatellite} disabled={fetching}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[9px] uppercase tracking-wide border border-blue-500/25 text-blue-400/70 hover:border-blue-400/50 hover:text-blue-300 transition disabled:opacity-35">
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 010 20M2 12h20"/>
-            </svg>
-            {fetching ? "Fetching…" : "Satellite"}
-          </button>
-        )}
+        <button onClick={handleFetchWeb} disabled={searching}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[9px] uppercase tracking-wide border border-orange-500/30 text-orange-400/80 hover:border-orange-400/60 hover:text-orange-300 transition disabled:opacity-35">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          {searching ? "Searching…" : website ? "Fetch from website" : "Search web photos"}
+        </button>
       </div>
 
+      {/* Candidate images to pick from */}
+      {candidates.length > 0 && (
+        <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3 space-y-2">
+          <p className="font-mono text-[8px] uppercase tracking-widest text-orange-400/70">
+            {candidates.length} photos found — click to import
+          </p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {candidates.map(url => (
+              <button key={url} onClick={() => handleImportCandidate(url)} disabled={importing === url}
+                className="relative group aspect-video rounded overflow-hidden bg-white/5 border border-white/10 hover:border-orange-400/50 transition disabled:opacity-50">
+                <img src={url} alt="" className="w-full h-full object-cover"
+                  onError={e => { (e.currentTarget as HTMLImageElement).parentElement!.style.display = "none"; }} />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                  <span className="font-mono text-[8px] text-white uppercase tracking-wide">
+                    {importing === url ? "Importing…" : "+ Import"}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setCandidates([])} className="font-mono text-[8px] text-white/25 hover:text-white/50 transition">Dismiss</button>
+        </div>
+      )}
+
+      {/* Current photos */}
       {images.length > 0 && (
         <div className="grid grid-cols-3 gap-1.5">
           {images.map((img, i) => (
@@ -923,8 +937,9 @@ function ImageManager({ siteId, lat, lng, images, onRefetch }: {
 
       {err && <p className="text-[10px] text-red-400 font-mono bg-red-500/8 px-2 py-1.5 rounded">{err}</p>}
 
+      {/* Add controls */}
       <div className="bg-white/[0.025] border border-white/8 rounded-xl p-3 space-y-2.5">
-        <p className="font-mono text-[8px] uppercase tracking-widest text-white/20">Add Photo</p>
+        <p className="font-mono text-[8px] uppercase tracking-widest text-white/20">Add by URL</p>
         <div className="flex gap-2">
           <input type="url" placeholder="https://…" value={urlInput} onChange={e => setUrlInput(e.target.value)}
             className="flex-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/22"
@@ -939,7 +954,7 @@ function ImageManager({ siteId, lat, lng, images, onRefetch }: {
           className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/22" />
         <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-white/8" />
-          <span className="font-mono text-[8px] text-white/18">or</span>
+          <span className="font-mono text-[8px] text-white/18">or upload file</span>
           <div className="flex-1 h-px bg-white/8" />
         </div>
         <div className="flex items-center gap-2.5">
