@@ -19,6 +19,21 @@ export const Route = createFileRoute("/research")({
 
 const EMAIL = "advisory@thegentrylab.io";
 
+/* ── Teaser stat chips per brief ─────────────────────────── */
+const BRIEF_STATS: Record<string, string[]> = {
+  r1:  ["71 active SEZs", "$9.2B approved (2025)", "#1 Greenfield FDI Index"],
+  r2:  ["24 provinces mapped", "Grid uptime by zone", "Capacity shortage flags"],
+  r3:  ["Up to 9-yr tax holiday", "0% export duty (QIP)", "19 eligible sectors"],
+  r4:  ["Factory cost per m²", "3 construction types", "Q1 2026 benchmarks"],
+  r5:  ["$210/mo min wage (2026)", "60% workforce under 35", "6 labor provinces ranked"],
+  r6:  ["4 land title types", "Due diligence checklist", "Red flag risk matrix"],
+  r7:  ["6 trade corridors", "Port distance by province", "Cost per tonne/km"],
+  r8:  ["141 sites flood-rated", "Province risk tiers", "Seasonal elevation data"],
+  r9:  ["800 ha master plan", "1,200 workers on-site", "35% renewable energy"],
+  r10: ["5% GDP growth (2026e)", "$8.1B FDI inflows", "RCEP: 2.3B consumers"],
+  r11: ["#1 global FDI ranking", "575 projects in 2025", "66% YoY investment growth"],
+};
+
 /* ── Cover art by category ───────────────────────────────── */
 const CATEGORY_STYLE: Record<string, {
   gradient: string;
@@ -96,88 +111,88 @@ function ResearchCard({
   featured?: boolean;
 }) {
   const style = getCategoryStyle(brief.category);
+  const stats = BRIEF_STATS[brief.id] ?? [];
 
   return (
-    <article
-      className="group relative overflow-hidden border border-white/10 hover:border-white/25 transition-all flex flex-col bg-[#0d0d0e]"
-    >
-      {/* ── Cover ── */}
-      <div
-        className="relative overflow-hidden flex-shrink-0"
-        style={{ height: featured ? 300 : 200 }}
-      >
-        {/* Gradient base */}
-        <div className="absolute inset-0" style={{ background: style.gradient }} />
+    <article className="group relative overflow-hidden border border-white/10 hover:border-white/20 transition-all duration-300 flex flex-col bg-[#0d0d0e]">
 
-        {/* Photo overlay */}
+      {/* ── Cover image ── */}
+      <div className="relative overflow-hidden flex-shrink-0" style={{ height: featured ? 280 : 180 }}>
+        <div className="absolute inset-0" style={{ background: style.gradient }} />
         <img
           src={style.photo}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ opacity: 0.25, mixBlendMode: "luminosity" }}
+          style={{ opacity: 0.2, mixBlendMode: "luminosity" }}
           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
         />
-
-        {/* Grid pattern */}
         <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: `linear-gradient(${style.accent}08 1px,transparent 1px),linear-gradient(90deg,${style.accent}08 1px,transparent 1px)`,
+          backgroundImage: `linear-gradient(${style.accent}07 1px,transparent 1px),linear-gradient(90deg,${style.accent}07 1px,transparent 1px)`,
           backgroundSize: "32px 32px",
         }} />
+        <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 60% 60% at 80% 20%,${style.accent}20 0%,transparent 70%)` }} />
+        <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-[#0d0d0e] to-transparent" />
 
-        {/* Corner glow */}
-        <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 60% 60% at 80% 20%,${style.accent}25 0%,transparent 70%)` }} />
+        <div className="absolute top-4 left-4 text-white" style={{ color: style.accent }}>{style.icon}</div>
 
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-[#0d0d0e] to-transparent" />
-
-        {/* Icon + page count */}
-        <div className="absolute top-5 left-5 text-white" style={{ color: style.accent }}>
-          {style.icon}
-        </div>
-        <div className="absolute top-5 right-5 font-mono text-[9px] uppercase tracking-widest bg-black/50 px-2 py-1 border border-white/10" style={{ color: style.accent }}>
-          {brief.pages} pg
+        {/* Lock badge */}
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1">
+          <svg width="8" height="9" viewBox="0 0 8 9" fill="none"><rect x="1" y="4" width="6" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.1"/><path d="M2.5 4V2.5a1.5 1.5 0 013 0V4" stroke="currentColor" strokeWidth="1.1"/></svg>
+          <span className="font-mono text-[8px] uppercase tracking-widest text-white/50">{brief.pages}p · Advisory</span>
         </div>
 
-        {/* Category badge */}
-        <div className="absolute bottom-4 left-5">
-          <span className="px-2.5 py-1 font-mono text-[9px] uppercase tracking-widest border" style={{
-            borderColor: `${style.accent}50`,
-            color: style.accent,
-            backgroundColor: `${style.accent}15`,
-          }}>
+        {featured && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 font-mono text-[8px] uppercase tracking-widest text-black font-bold px-3 py-1" style={{ backgroundColor: "#ff5100" }}>
+            Latest Brief
+          </div>
+        )}
+
+        <div className="absolute bottom-3 left-4">
+          <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-widest border" style={{ borderColor: `${style.accent}40`, color: style.accent, backgroundColor: `${style.accent}12` }}>
             {brief.category}
           </span>
         </div>
-
-        {/* Featured label */}
-        {featured && (
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 font-mono text-[9px] uppercase tracking-widest text-black font-bold px-3 py-1" style={{ backgroundColor: "#ff5100" }}>
-            Featured Brief
-          </div>
-        )}
       </div>
 
       {/* ── Body ── */}
-      <div className="p-6 flex flex-col flex-1">
-        <h3 className={`font-extrabold uppercase tracking-tight leading-tight mb-3 ${featured ? "text-xl" : "text-sm"}`}>
+      <div className="p-5 flex flex-col flex-1">
+
+        <h3 className={`font-extrabold uppercase tracking-tight leading-tight mb-4 ${featured ? "text-lg" : "text-sm"}`}>
           {brief.title}
         </h3>
-        <p className="text-[12px] text-white/55 leading-relaxed flex-1">{brief.abstract}</p>
 
-        <div className={`flex items-center gap-4 mt-5 pt-4 border-t border-white/8 ${featured ? "flex-row" : "flex-col sm:flex-row"}`}>
+        {/* Stat chips — the hook */}
+        {stats.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {stats.map((s) => (
+              <span key={s} className="px-2 py-0.5 font-mono text-[9px] tracking-wide border border-white/10 text-white/60 bg-white/[0.03]">
+                {s}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Abstract — faded/blurred teaser */}
+        <div className="relative flex-1 overflow-hidden" style={{ maxHeight: featured ? 72 : 52 }}>
+          <p className="text-[11px] text-white/40 leading-relaxed">{brief.abstract}</p>
+          <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none" style={{ background: "linear-gradient(to bottom, transparent, #0d0d0e)" }} />
+        </div>
+
+        {/* CTA */}
+        <div className="mt-4 pt-4 border-t border-white/6 flex items-center justify-between gap-3">
+          <p className="text-[10px] text-white/20 font-mono leading-snug">
+            Full analysis available<br/>to advisory clients
+          </p>
           <a
-            href={`mailto:${EMAIL}?subject=Research%20access%20-%20${encodeURIComponent(brief.title)}`}
-            className="inline-flex items-center gap-2 px-5 py-2.5 font-mono text-[9px] uppercase tracking-widest transition-all border"
+            href={`mailto:${EMAIL}?subject=Brief%20request%3A%20${encodeURIComponent(brief.title)}&body=I'd%20like%20access%20to%20this%20research%20brief.`}
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2 font-mono text-[9px] uppercase tracking-widest transition-all border"
             style={{ borderColor: style.accent, color: style.accent }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = style.accent; (e.currentTarget as HTMLAnchorElement).style.color = "#000"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLAnchorElement).style.color = style.accent; }}
+            onMouseEnter={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.backgroundColor = style.accent; el.style.color = "#000"; }}
+            onMouseLeave={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.backgroundColor = "transparent"; el.style.color = style.accent; }}
           >
-            Request access
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M5.5 1.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Get brief
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M5.5 1.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </a>
-          {featured && (
-            <p className="text-[11px] text-white/30 font-mono">Proprietary · Not available in public domain</p>
-          )}
         </div>
       </div>
     </article>
@@ -209,19 +224,19 @@ function ResearchPage() {
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 py-14 md:py-20">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-widest mb-4" style={{ color: "#ff5100" }}>Research Library</p>
+              <p className="font-mono text-[10px] uppercase tracking-widest mb-4" style={{ color: "#ff5100" }}>Intelligence Library · Restricted Access</p>
               <h1 className="text-4xl md:text-6xl font-extrabold uppercase tracking-tighter leading-[0.9]">
-                Decision-grade<br /><span style={{ color: "#ff5100" }}>briefs.</span>
+                What Google<br />doesn't <span style={{ color: "#ff5100" }}>index.</span>
               </h1>
-              <p className="text-white/50 max-w-lg mt-5 text-sm leading-relaxed">
-                Proprietary research from the field, not desk-research summaries. Written for investment committees, not analysts.
+              <p className="text-white/40 max-w-md mt-5 text-sm leading-relaxed">
+                Field-verified numbers, risk flags, and site-level intelligence on Cambodia's industrial landscape. Not available in the public domain.
               </p>
             </div>
 
             {/* Stats */}
             <div className="flex gap-8 shrink-0">
               {[
-                { n: briefs.length, label: "Briefs available" },
+                { n: briefs.length, label: "Restricted briefs" },
                 { n: briefs.reduce((a, r) => a + r.pages, 0), label: "Pages of intel" },
               ].map((s) => (
                 <div key={s.label} className="text-right">
@@ -274,17 +289,28 @@ function ResearchPage() {
         )}
 
         {/* Access note */}
-        <div className="mt-12 border border-white/8 bg-[#0d0d0e] px-8 py-6 flex flex-col md:flex-row md:items-center gap-4">
-          <div className="flex-1">
-            <p className="font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "#ff5100" }}>Advisory Access</p>
-            <p className="text-sm text-white/60 leading-relaxed">All research briefs are available to GentryLab advisory clients. Request access via email and receive the relevant brief within 24 hours.</p>
+        <div className="mt-12 border border-white/8 bg-[#0d0d0e] relative overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse 50% 120% at 100% 50%, #ff510010 0%, transparent 60%)" }} />
+          <div className="relative px-8 py-7 flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <svg width="10" height="11" viewBox="0 0 8 9" fill="none"><rect x="1" y="4" width="6" height="5" rx="0.5" stroke="#ff5100" strokeWidth="1.1"/><path d="M2.5 4V2.5a1.5 1.5 0 013 0V4" stroke="#ff5100" strokeWidth="1.1"/></svg>
+                <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>Advisory Access Only</p>
+              </div>
+              <p className="text-[13px] text-white/50 leading-relaxed max-w-lg">
+                These briefs contain data points, risk flags, and site-level findings we don't publish openly. If you're evaluating an investment in Cambodia, this is the difference between a site visit and a real decision.
+              </p>
+            </div>
+            <div className="shrink-0 flex flex-col items-start md:items-end gap-2">
+              <a
+                href={`mailto:${EMAIL}?subject=Research%20Library%20Access%20Request&body=I'd%20like%20access%20to%20the%20full%20research%20library.`}
+                className="px-6 py-3 font-mono text-[10px] uppercase tracking-widest bg-[#ff5100] text-black hover:brightness-110 transition font-bold"
+              >
+                Request full access →
+              </a>
+              <p className="font-mono text-[9px] text-white/20 uppercase tracking-widest">Response within 24 hours</p>
+            </div>
           </div>
-          <a
-            href={`mailto:${EMAIL}?subject=Research%20Library%20Access%20Request`}
-            className="shrink-0 px-6 py-3 font-mono text-[10px] uppercase tracking-widest bg-[#ff5100] text-black hover:brightness-110 transition font-bold"
-          >
-            Request all access →
-          </a>
         </div>
       </main>
 
