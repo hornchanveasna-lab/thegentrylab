@@ -766,6 +766,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(false);
   const [hoveredSite, setHoveredSite] = useState<MapSite | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const basemapUserPicked = useRef(false);
   const wrapperRef = useRef<HTMLDivElement>(null!);
 
@@ -971,7 +972,12 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
   /* ── Full map ───────────────────────────────────────────── */
   return (
-    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black" ref={wrapperRef}>
+    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black" ref={wrapperRef}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      }}
+    >
       {/* Map canvas */}
       <div className="absolute inset-0">
         <APIProvider apiKey={gKey ?? ""}>
@@ -1233,8 +1239,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       )}
 
       {/* ── Site hover tooltip ───────────────────────────────── */}
-      {hoveredSite && !selected && (
-        <SiteHoverTooltip site={hoveredSite} isDark={isDark} />
+      {hoveredSite && !selected && mousePos && (
+        <SiteHoverTooltip site={hoveredSite} isDark={isDark} x={mousePos.x} y={mousePos.y} />
       )}
 
       {/* ── Location callout (empty-map click) ───────────────── */}
@@ -1254,7 +1260,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 }
 
 /* ── Site Hover Tooltip ──────────────────────────────────── */
-function SiteHoverTooltip({ site, isDark }: { site: MapSite; isDark: boolean }) {
+function SiteHoverTooltip({ site, isDark, x, y }: { site: MapSite; isDark: boolean; x: number; y: number }) {
   const layerColor = LAYER_META[site.layer].color;
   const scoreColor = site.score !== undefined
     ? site.score >= 80 ? "#34d399" : site.score >= 65 ? "#fbbf24" : site.score >= 40 ? "#fb923c" : "#f43f5e"
@@ -1264,10 +1270,15 @@ function SiteHoverTooltip({ site, isDark }: { site: MapSite; isDark: boolean }) 
   const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
   const borderCol = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
 
+  // Position above the cursor; clamp to left edge so it never goes off-screen
+  const tooltipW = 260;
+  const left = Math.max(8, Math.min(x - tooltipW / 2, window.innerWidth - tooltipW - 8));
+  const top  = y - 16; // offset upward from cursor — translateY(-100%) handles the rest
+
   return (
     <div
-      className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[450] pointer-events-none"
-      style={{ minWidth: 220, maxWidth: 300 }}
+      className="absolute z-[450] pointer-events-none"
+      style={{ left, top, width: tooltipW, transform: "translateY(calc(-100% - 12px))" }}
     >
       <div className="shadow-2xl backdrop-blur-sm px-4 py-3"
         style={{ backgroundColor: panelBg, border: `1px solid ${borderCol}` }}>
@@ -1298,7 +1309,7 @@ function SiteHoverTooltip({ site, isDark }: { site: MapSite; isDark: boolean }) 
           Click to view details
         </p>
       </div>
-      {/* Tail */}
+      {/* Downward tail pointing at the marker */}
       <div className="absolute -bottom-[9px] left-1/2 -translate-x-1/2 w-0 h-0"
         style={{ borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderTop: `9px solid ${borderCol}` }} />
       <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-0 h-0"
