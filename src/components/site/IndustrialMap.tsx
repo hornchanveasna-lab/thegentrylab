@@ -418,15 +418,18 @@ function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
 }
 
 function SiteMarkerLayer({
-  sites, onSelect,
+  sites, onSelect, onHover,
 }: {
   sites: MapSite[];
   onSelect: (s: MapSite) => void;
+  onHover: (s: MapSite | null) => void;
 }) {
   const map         = useMap();
   const markersRef  = useRef<google.maps.Marker[]>([]);
   const onSelectRef = useRef(onSelect);
+  const onHoverRef  = useRef(onHover);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+  useEffect(() => { onHoverRef.current  = onHover;  }, [onHover]);
 
   useEffect(() => {
     if (!map) return;
@@ -450,6 +453,8 @@ function SiteMarkerLayer({
         },
       });
       marker.addListener("click", () => onSelectRef.current(s));
+      marker.addListener("mouseover", () => onHoverRef.current(s));
+      marker.addListener("mouseout",  () => onHoverRef.current(null));
       return marker;
     });
 
@@ -760,6 +765,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(false);
+  const [hoveredSite, setHoveredSite] = useState<MapSite | null>(null);
   const basemapUserPicked = useRef(false);
   const wrapperRef = useRef<HTMLDivElement>(null!);
 
@@ -806,10 +812,12 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${ll.lat},${ll.lng}&key=${gKey}`
       );
       const j = await r.json();
-      const result = j.results?.[0];
-      const plusEntry = j.results?.find((x: { types: string[] }) => x.types?.includes("plus_code"));
-      const plusCode = plusEntry?.plus_code?.global_code ?? j.plus_code?.global_code ?? null;
-      const address = result?.formatted_address ?? null;
+      /* Prefer a named locality over Plus Code */
+      const named = j.results?.find((x: { types: string[] }) =>
+        x.types?.some((t: string) => ["locality","sublocality","neighborhood","natural_feature","establishment","point_of_interest"].includes(t))
+      );
+      const plusCode = j.plus_code?.global_code ?? null;
+      const address = named?.address_components?.[0]?.long_name ?? j.results?.[0]?.formatted_address?.split(",")[0] ?? null;
       setLocCallout({ lat: ll.lat, lng: ll.lng, address, plusCode, loading: false });
     } catch {
       setLocCallout((c) => c ? { ...c, loading: false } : null);
@@ -934,7 +942,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
             <CorridorLayer corridors={visibleCorridors} />
-            <SiteMarkerLayer sites={visible} onSelect={handleSelect} />
+            <SiteMarkerLayer sites={visible} onSelect={handleSelect} onHover={setHoveredSite} />
             {showNews && <NewsMarkerLayer news={allNews} onSelect={handleNewsSelect} />}
             {showProjects && <ProjectMarkerLayer projects={allProjects} onSelect={handleProjectSelect} />}
             {pinMarker && <PinMarkerLayer position={pinMarker} />}
@@ -1137,6 +1145,11 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         />
       )}
 
+      {/* ── Site hover tooltip ───────────────────────────────── */}
+      {hoveredSite && !selected && (
+        <SiteHoverTooltip site={hoveredSite} isDark={isDark} />
+      )}
+
       {/* ── Location callout (empty-map click) ───────────────── */}
       {locCallout && !selected && !selectedProject && !newsPanel && (
         <LocationCallout
@@ -1149,6 +1162,60 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           onClose={() => setLocCallout(null)}
         />
       )}
+    </div>
+  );
+}
+
+/* ── Site Hover Tooltip ──────────────────────────────────── */
+function SiteHoverTooltip({ site, isDark }: { site: MapSite; isDark: boolean }) {
+  const layerColor = LAYER_META[site.layer].color;
+  const scoreColor = site.score !== undefined
+    ? site.score >= 80 ? "#34d399" : site.score >= 65 ? "#fbbf24" : site.score >= 40 ? "#fb923c" : "#f43f5e"
+    : null;
+  const panelBg   = isDark ? "rgba(15,15,17,0.97)" : "rgba(255,255,255,0.97)";
+  const textMain  = isDark ? "#f8fafc" : "#0f172a";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
+  const borderCol = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
+
+  return (
+    <div
+      className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[450] pointer-events-none"
+      style={{ minWidth: 220, maxWidth: 300 }}
+    >
+      <div className="shadow-2xl backdrop-blur-sm px-4 py-3"
+        style={{ backgroundColor: panelBg, border: `1px solid ${borderCol}` }}>
+        {/* Marker color dot + layer */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: layerColor }} />
+          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: layerColor }}>
+            {LAYER_META[site.layer].label} · {site.kind}
+          </span>
+        </div>
+        {/* Name */}
+        <p className="font-bold text-[14px] leading-snug mb-1" style={{ color: textMain }}>{site.name}</p>
+        {/* Province + status */}
+        <p className="text-[11px] mb-1.5" style={{ color: textMuted }}>
+          {site.province}{site.status ? ` · ${site.status}` : ""}
+        </p>
+        {/* Score */}
+        {site.score !== undefined && scoreColor && (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" }}>
+              <div className="h-full rounded-full" style={{ width: `${site.score}%`, backgroundColor: scoreColor }} />
+            </div>
+            <span className="font-mono text-[10px] font-bold" style={{ color: scoreColor }}>{site.score}/100</span>
+          </div>
+        )}
+        {/* Click hint */}
+        <p className="font-mono text-[8px] uppercase tracking-widest mt-2" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.25)" }}>
+          Click to view details
+        </p>
+      </div>
+      {/* Tail */}
+      <div className="absolute -bottom-[9px] left-1/2 -translate-x-1/2 w-0 h-0"
+        style={{ borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderTop: `9px solid ${borderCol}` }} />
+      <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-0 h-0"
+        style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: `8px solid ${panelBg}` }} />
     </div>
   );
 }
@@ -1194,16 +1261,19 @@ function LocationCallout({
           <div className="flex-1 min-w-0">
             {loading ? (
               <div className="space-y-1.5">
-                <div className="h-3 w-3/4 rounded animate-pulse" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" }} />
+                <div className="h-4 w-3/4 rounded animate-pulse" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" }} />
                 <div className="h-2.5 w-1/2 rounded animate-pulse" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" }} />
               </div>
             ) : (
               <>
-                {plusCode && (
+                {/* Place name first (like Google Maps), Plus Code only if no name */}
+                {shortAddress ? (
+                  <p className="font-semibold text-[15px] leading-tight" style={{ color: textMain }}>{shortAddress}</p>
+                ) : plusCode ? (
                   <p className="font-mono font-bold text-[14px] leading-tight" style={{ color: textMain }}>{plusCode}</p>
-                )}
-                {shortAddress && (
-                  <p className="text-[11px] leading-snug mt-0.5 truncate" style={{ color: textMuted }}>{shortAddress}</p>
+                ) : null}
+                {shortAddress && plusCode && (
+                  <p className="font-mono text-[10px] mt-0.5" style={{ color: textMuted }}>{plusCode}</p>
                 )}
                 <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>Cambodia</p>
               </>
