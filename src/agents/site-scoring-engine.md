@@ -41,7 +41,10 @@ SELECT
   lat, lng,
   status, size, utilities, road, notes,
   score,
-  port_distance_km, port_time_min,
+  port_distance_km, port_time_min, nearest_port,
+  airport_distance_km, nearest_airport,
+  rail_distance_km, nearest_rail,
+  border_distance_km, nearest_border,
   elevation_m, flood_risk,
   coord_verified, place_id,
   strengths, constraints, target_industries
@@ -151,17 +154,24 @@ tvet_score  = 7 if nearest_tvet_km <= 30 else (3 if nearest_tvet_km <= 60 else 0
 
 | Check | Points | Data Source |
 |-------|--------|-------------|
-| Port distance ≤ 100km | 7 | `port_distance_km <= 100` → 7 pts; `<= 200` → 4 pts; `<= 300` → 2 pts; `> 300` → 0 pts; `IS NULL` → 3 pts |
-| Road access to national highway | 5 | `road ILIKE '%NR%' OR road ILIKE '%National%' OR road ILIKE '%Highway%' OR road ILIKE '%Expressway%'` → 5 pts; `road NOT NULL` → 2 pts; `road IS NULL` → 0 pts |
+| Port distance ≤ 100km | 6 | `port_distance_km <= 50` → 6 pts; `<= 100` → 4 pts; `<= 200` → 2 pts; `> 200` → 0 pts; `IS NULL` → 2 pts |
+| Road access to national highway | 4 | `road ILIKE '%NR%' OR road ILIKE '%National%' OR road ILIKE '%Highway%' OR road ILIKE '%Expressway%'` → 4 pts; `road NOT NULL` → 2 pts; `road IS NULL` → 0 pts |
 | Site is operational (not planned/construction) | 5 | `status = 'Operational'` → 5 pts; `'Under Construction'` → 3 pts; `'Planned'` → 0 pts |
-| Named anchor tenant or developer (in notes) | 5 | `notes` contains a company name (ILIKE check against known major investors): Texhong, SL, PPSEZ, WHA, Garuda, Longli, etc. → 5 pts; name suggests private developer → 3 pts; unknown → 0 pts |
-| Site size ≥ 100 ha (scale advantage) | 3 | Parse `size` field: extract numeric value, if ≥ 100 → 3 pts; ≥ 50 → 1 pt; < 50 or unknown → 0 pts |
+| Named anchor tenant or developer (in notes) | 4 | `notes` contains a company name (ILIKE check against known major investors) → 4 pts; private developer implied → 2 pts; unknown → 0 pts |
+| Site size ≥ 100 ha (scale advantage) | 3 | Parse `size` field: ≥ 100 ha → 3 pts; ≥ 50 ha → 1 pt; < 50 or unknown → 0 pts |
+| Rail station within 20km | 2 | `rail_distance_km <= 20` → 2 pts; `<= 50` → 1 pt; `> 50 or NULL` → 0 pts |
+| Border crossing within 10km (cross-border trade) | 1 | `border_distance_km <= 10` → 1 pt; else → 0 pts |
+
+**Rail proximity rationale:** Cambodia's Southern Line (Phnom Penh↔Sihanoukville) and Northern Line (Phnom Penh↔Poipet) carry growing freight volumes. Sites within 20km of an active station have multimodal advantage. Sites >80km from any station are effectively rail-inaccessible.
+
+**Border proximity rationale:** SEZs at Poipet, Bavet, and Prek Chak benefit from adjacent border trade. Bonus applies only when the crossing is actually adjacent (≤10km) — not a general regional advantage.
 
 **Known anchor investor keywords (for check 4):**
 ```
 Texhong, SL Group, PPSEZ, WHA, Tian Rui, Garuda, Longli, Goldfame,
 Huali, Flying Fish, ISI, Bavet, Poipet, SSEZ, Dangkor, Stung Meanchey,
-Phnom Penh SEZ, Kampot SEZ, Sihanoukville Port, PAS, Megenta, Yangon
+Phnom Penh SEZ, Kampot SEZ, Sihanoukville Port, PAS, Sailun, Techo,
+JinCheng, Jiangsu, Suzhou, Shandong, QiLu, Pacific, Manhattan, HI-Park
 ```
 
 **Size parsing:**
@@ -171,7 +181,6 @@ import re
 def parse_size_ha(size_str):
     if not size_str:
         return None
-    # Match patterns like "120 ha", "1,200 ha", "350ha", "50 hectares"
     m = re.search(r'([\d,]+)\s*(?:ha|hectare)', size_str, re.IGNORECASE)
     if m:
         return float(m.group(1).replace(',', ''))
@@ -230,15 +239,17 @@ WHERE id = '{site.id}';
 
 After scoring, auto-populate `strengths` and `constraints` arrays where they are NULL or empty.
 
-### Strengths (pick top 3 from earned points)
+### Strengths (pick top 4 from earned points)
 
 ```python
 def derive_strengths(site, scores, univ_km, tvet_km):
     strengths = []
     if scores['p2'] >= 15:
         strengths.append("Low flood risk — elevation above 5m")
-    if scores['p4_port'] >= 5:
-        strengths.append(f"Port access — {round(site.port_distance_km)} km to nearest export port")
+    if site.port_distance_km and site.port_distance_km <= 50:
+        strengths.append(f"Port proximity — {round(site.port_distance_km)} km to {site.nearest_port}")
+    elif site.port_distance_km and site.port_distance_km <= 100:
+        strengths.append(f"Good port access — {round(site.port_distance_km)} km to {site.nearest_port}")
     if scores['p3_univ'] >= 6 and univ_km <= 30:
         strengths.append(f"University within {round(univ_km)} km — graduate labor pipeline")
     if scores['p4_road'] >= 4:
@@ -249,6 +260,12 @@ def derive_strengths(site, scores, univ_km, tvet_km):
         strengths.append(f"Large site ({site.size}) — room for phased expansion")
     if scores['p3_province'] >= 4:
         strengths.append(f"Strong labor market in {site.province}")
+    if site.rail_distance_km and site.rail_distance_km <= 20:
+        strengths.append(f"Rail access — {round(site.rail_distance_km)} km to {site.nearest_rail} (multimodal freight)")
+    if site.border_distance_km and site.border_distance_km <= 10:
+        strengths.append(f"Adjacent border crossing — {site.nearest_border} ({round(site.border_distance_km)} km)")
+    if site.airport_distance_km and site.airport_distance_km <= 15:
+        strengths.append(f"Near {site.nearest_airport} airport — {round(site.airport_distance_km)} km (executive travel, air freight)")
     return strengths[:4]  # max 4
 ```
 
@@ -260,14 +277,18 @@ def derive_constraints(site, scores):
     if site.flood_risk:
         constraints.append("Flood risk — elevation below 5m; drainage infrastructure critical")
     if site.port_distance_km and site.port_distance_km > 200:
-        constraints.append(f"Remote from port — {round(site.port_distance_km)} km logistics cost premium")
+        constraints.append(f"Remote from port — {round(site.port_distance_km)} km to {site.nearest_port}; logistics cost premium")
     if scores['p3_univ'] == 0:
         constraints.append("No university within 60 km — skilled labor must be relocated")
     if site.status == 'Planned':
         constraints.append("Site not yet operational — execution and timeline risk")
     if not site.road:
         constraints.append("Road access details unconfirmed — require verification")
-    return constraints[:3]  # max 3
+    if site.rail_distance_km and site.rail_distance_km > 80:
+        constraints.append(f"No practical rail access — nearest station {round(site.rail_distance_km)} km ({site.nearest_rail})")
+    if site.airport_distance_km and site.airport_distance_km > 100:
+        constraints.append(f"Remote from airport — {round(site.airport_distance_km)} km to {site.nearest_airport}; limits executive access")
+    return constraints[:4]  # max 4 (increased from 3)
 ```
 
 Write back:
@@ -315,6 +336,16 @@ Write `src/agents/last-scoring-report.md`:
 ## Top 10 Sites by Score
 | Rank | Name | Province | Kind | Score | Tier | P1 | P2 | P3 | P4 |
 |------|------|----------|------|-------|------|----|----|----|----|
+
+## Logistics Highlights
+| Name | Port km | Airport km | Rail km | Border km | Nearest Rail |
+|------|---------|------------|---------|-----------|--------------|
+
+## Rail-Accessible Sites (≤ 20km to station)
+| Name | Province | Nearest Rail | Distance km |
+
+## Border-Adjacent Sites (≤ 10km to crossing)
+| Name | Province | Nearest Border | Distance km |
 
 ## Flood Risk Sites (scored 0 on Environmental)
 | Name | Province | Elevation m | Score |

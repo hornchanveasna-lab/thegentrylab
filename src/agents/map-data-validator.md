@@ -6,31 +6,86 @@ Run monthly. For every site in Supabase `sites` table:
 2. Find and store hero photos (OG images from news + official sites)
 3. Calculate road distance + travel time to nearest port (Google Distance Matrix API)
 4. Calculate ground elevation + flood risk flag (Google Elevation API)
-5. Enrich sparse notes/data from web sources
+5. Calculate logistics connectivity matrix — Port, Airport, Rail, Border (Haversine SQL)
+6. Enrich sparse notes/data from web sources
 
-All results written to Supabase `sites` table.
+All results written to Supabase `sites` table via MCP.
 
 ## Supabase connection
 - **Project ID:** `mcxfukjopdnouicwacbn`
 - **MCP:** `mcp__2d9cdc4d-820f-40d1-b353-d5b5fe2deb29`
 
 ## Google API key
-`VITE_GOOGLE_MAPS_KEY` — use for Distance Matrix, Elevation, Places, Geocoding calls.
-
-## Nearest port reference points
-```
-Sihanoukville (SAP):  10.6167, 103.5167   ← primary export port
-Phnom Penh Port:      11.5625, 104.9311   ← river port, northern/eastern sites
-```
-Rule: use Phnom Penh Port for sites in Phnom Penh, Kandal, Kampong Cham, Prey Veng, Svay Rieng, Kratie, Stung Treng.
-Use Sihanoukville for all other provinces.
+`VITE_GOOGLE_MAPS_KEY` — stored as Supabase Edge Function secret. Use for Distance Matrix, Elevation, Places, Geocoding calls.
 
 ---
 
-## Step 1 — Load site list
+## Reference infrastructure points
 
-Read `src/data/platform.ts`. Extract `export const SITES: MapSite[]`.
-Record: `{ id, name, kind, province, lat, lng, image_url }` for each site.
+### Ports (3)
+```
+Sihanoukville / APSEZ:  10.6167, 103.5167   ← primary deep-sea export port
+Phnom Penh Port:        11.5625, 104.9311   ← river port, east/north sites
+Koh Kong Port:          11.6236, 102.9837   ← west coast, Koh Kong / Cardamom sites
+```
+
+### Airports (4)
+```
+KTI  Techo International (new Phnom Penh):  11.3589, 104.9335   ← opened 2025
+SAI  Siem Reap Angkor Intl. (new):          13.3762, 104.2201   ← opened Nov 2023
+KOS  Sihanoukville Intl.:                   10.5797, 103.6368
+BBM  Battambang:                            13.0956, 103.2242
+```
+> **IMPORTANT:** KTI and SAI are the NEW airports. Old PNH (11.546, 104.848) and old REP (13.40, 103.81) are closed/decommissioned — never use those coordinates.
+
+### Rail stations (7 — Cambodia's limited network)
+```
+Phnom Penh Station:      11.5689, 104.9281
+Takeo Station:           10.9824, 104.7965
+Kampot Station:          10.6122, 104.1725
+Sihanoukville Station:   10.6217, 103.5293
+Poipet Station:          13.6447, 102.5593
+Pursat Station:          12.5394, 103.9157
+Battambang Station:      13.0989, 103.1989
+```
+> Rail coverage is sparse — only Southern Line (Phnom Penh↔Sihanoukville via Kampot/Takeo) and Northern Line (Phnom Penh↔Poipet via Pursat/Battambang) are active. Most sites will show 40–150 km to nearest station.
+
+### Border crossings (12 — major freight crossings only)
+```
+Poipet / Aranyaprathet (TH):    13.6519, 102.5664
+Cham Yeam / Hat Lek (TH):       11.7033, 102.8894
+O'Smach / Chong Jom (TH):       14.1611, 103.0761
+Psar Pruhm / Ban Pakard (TH):   12.5497, 102.5572
+Bavet / Moc Bai (VN):           11.0768, 106.1098
+Prek Chak / Xa Xia (VN):        10.4614, 104.0217
+Phnom Den / Tinh Bien (VN):     10.5083, 104.9472
+Kaam Samnor / Vinh Xuong (VN):  11.1619, 105.2153
+Trapang Sre / Loc Ninh (VN):    11.8489, 106.5806
+Trapang Phlong / Xa Mat (VN):   11.8600, 106.0269
+Veun Kham / Don Kralor (LA):    13.9867, 105.8278
+O'Yadav / Le Thanh (VN):        13.7500, 107.5333
+```
+
+---
+
+## Step 1 — Load all sites from Supabase
+
+```sql
+SELECT
+  id, name, kind, layer, province, lat, lng,
+  image_url, coord_verified, place_id,
+  port_distance_km, port_time_min,
+  airport_distance_km, nearest_airport,
+  rail_distance_km, nearest_rail,
+  border_distance_km, nearest_border,
+  nearest_port,
+  elevation_m, flood_risk,
+  notes, status, size, utilities, road
+FROM sites
+ORDER BY id;
+```
+
+Process all rows. Steps 2–5 run per site.
 
 ---
 
@@ -45,9 +100,9 @@ GET https://nominatim.openstreetmap.org/search
   &countrycodes=kh&format=json&limit=1
 User-Agent: TheGentryLab-MapAgent/1.0
 ```
-Wait **1.1 seconds between requests**.
+Wait **1.1 seconds between requests** (Nominatim rate limit).
 
-### 2b. Google Maps Geocoding (if VITE_GOOGLE_MAPS_KEY set)
+### 2b. Google Maps Geocoding (if key set)
 ```
 GET https://maps.googleapis.com/maps/api/geocode/json
   ?address={site.name}+{site.province}+Cambodia
@@ -58,62 +113,47 @@ GET https://maps.googleapis.com/maps/api/geocode/json
 | Distance | Action |
 |---|---|
 | < 1 km | ✅ PASS |
-| 1–5 km | ⚠️ REVIEW — log |
-| > 5 km | ❌ AUTO-FIX with verified source |
-
-For ❌ sites: write corrected lat/lng + add comment `// Coord verified {DATE} via {SOURCE}`
+| 1–5 km | ⚠️ REVIEW — log but do not auto-fix |
+| > 5 km | ❌ AUTO-FIX — update lat/lng from verified source |
 
 ---
 
-## Step 2b — Load sites from Supabase
-
-```sql
-SELECT id, name, kind, layer, province, lat, lng,
-       image_url, coord_verified, place_id,
-       port_distance_km, elevation_m
-FROM sites
-ORDER BY id;
-```
-
-Process all rows. Steps 2c–2e run per site.
-
----
-
-## Step 2c — Distance Matrix (Google) — port distance + travel time
+## Step 3 — Distance Matrix (Google) — port road distance + travel time
 
 Run for EVERY site where `port_distance_km IS NULL`.
 
-### Determine nearest port
-```
-EASTERN_PROVINCES = ['Phnom Penh', 'Kandal', 'Kampong Cham', 'Prey Veng',
-                     'Svay Rieng', 'Kratie', 'Stung Treng', 'Ratanakiri', 'Mondulkiri']
+### Determine nearest port (road distance via Distance Matrix)
+Calculate to all 3 ports, pick shortest road distance:
+- Sihanoukville / APSEZ: 10.6167, 103.5167
+- Phnom Penh Port: 11.5625, 104.9311
+- Koh Kong Port: 11.6236, 102.9837
 
-if site.province in EASTERN_PROVINCES:
-    port_lat, port_lng = 11.5625, 104.9311   # Phnom Penh Port
-else:
-    port_lat, port_lng = 10.6167, 103.5167   # Sihanoukville Port
-```
-
-### API call
 ```
 GET https://maps.googleapis.com/maps/api/distancematrix/json
   ?origins={site.lat},{site.lng}
-  &destinations={port_lat},{port_lng}
+  &destinations=10.6167,103.5167|11.5625,104.9311|11.6236,102.9837
   &mode=driving
-  &key={GOOGLE_API_KEY}
+  &key={VITE_GOOGLE_MAPS_KEY}
 ```
 
-### Extract from response
+Extract:
 ```
-port_distance_km = response.rows[0].elements[0].distance.value / 1000
-port_time_min    = response.rows[0].elements[0].duration.value / 60
+distances = [elem.distance.value / 1000 for elem in response.rows[0].elements]
+durations = [elem.duration.value / 60   for elem in response.rows[0].elements]
+port_names = ['Sihanoukville Port', 'Phnom Penh Port', 'Koh Kong Port']
+
+idx = distances.index(min(distances))
+port_distance_km = distances[idx]
+port_time_min    = durations[idx]
+nearest_port     = port_names[idx]
 ```
 
-### Write to Supabase
+Write to Supabase:
 ```sql
 UPDATE sites SET
   port_distance_km = {port_distance_km},
   port_time_min    = {port_time_min},
+  nearest_port     = '{nearest_port}',
   updated_at       = NOW()
 WHERE id = '{site.id}';
 ```
@@ -122,24 +162,24 @@ Rate limit: wait 0.1 seconds between requests.
 
 ---
 
-## Step 2d — Elevation API (Google) — ground elevation + flood risk
+## Step 4 — Elevation API (Google) — ground elevation + flood risk
 
 Run for EVERY site where `elevation_m IS NULL`.
 
-### API call
+Batch all eligible sites in one request (pipe-separated, up to 512 locations):
 ```
 GET https://maps.googleapis.com/maps/api/elevation/json
-  ?locations={site.lat},{site.lng}
-  &key={GOOGLE_API_KEY}
+  ?locations={lat1},{lng1}|{lat2},{lng2}|...
+  &key={VITE_GOOGLE_MAPS_KEY}
 ```
 
-### Extract + compute flood risk
+Extract + compute:
 ```
-elevation_m = response.results[0].elevation
-flood_risk  = elevation_m < 5.0   # Below 5m = meaningful flood exposure in Cambodia
+elevation_m = response.results[i].elevation
+flood_risk  = elevation_m < 5.0   # < 5m = meaningful flood exposure in Cambodia
 ```
 
-### Write to Supabase
+Write to Supabase:
 ```sql
 UPDATE sites SET
   elevation_m = {elevation_m},
@@ -148,51 +188,149 @@ UPDATE sites SET
 WHERE id = '{site.id}';
 ```
 
-Rate limit: batch up to 512 locations per request using pipe-separated coords:
+---
+
+## Step 5 — Logistics connectivity matrix (Haversine SQL)
+
+Run ONE batch SQL for ALL sites simultaneously using the `haversine_km` PostgreSQL function
+(already installed in the DB). This recalculates airport, rail, and border distances for every site
+with new or corrected coordinates.
+
+### 5a — Airport distances
+```sql
+WITH airport_dists AS (
+  SELECT
+    s.id,
+    UNNEST(ARRAY['KTI','SAI','KOS','BBM']) AS acode,
+    UNNEST(ARRAY[
+      haversine_km(s.lat, s.lng, 11.3589, 104.9335),  -- KTI (Techo, new Phnom Penh)
+      haversine_km(s.lat, s.lng, 13.3762, 104.2201),  -- SAI (Siem Reap Angkor, new)
+      haversine_km(s.lat, s.lng, 10.5797, 103.6368),  -- KOS (Sihanoukville)
+      haversine_km(s.lat, s.lng, 13.0956, 103.2242)   -- BBM (Battambang)
+    ]) AS dist
+  FROM sites s
+),
+nearest AS (
+  SELECT DISTINCT ON (id) id, acode, dist
+  FROM airport_dists
+  ORDER BY id, dist
+)
+UPDATE sites s SET
+  airport_distance_km = n.dist,
+  nearest_airport     = n.acode
+FROM nearest n WHERE s.id = n.id;
 ```
-?locations={lat1},{lng1}|{lat2},{lng2}|...
+
+### 5b — Rail station distances
+```sql
+WITH rail_dists AS (
+  SELECT
+    s.id,
+    UNNEST(ARRAY[
+      'Phnom Penh Stn','Takeo Stn','Kampot Stn','Sihanoukville Stn',
+      'Poipet Stn','Pursat Stn','Battambang Stn'
+    ]) AS rname,
+    UNNEST(ARRAY[
+      haversine_km(s.lat, s.lng, 11.5689, 104.9281),  -- Phnom Penh
+      haversine_km(s.lat, s.lng, 10.9824, 104.7965),  -- Takeo
+      haversine_km(s.lat, s.lng, 10.6122, 104.1725),  -- Kampot
+      haversine_km(s.lat, s.lng, 10.6217, 103.5293),  -- Sihanoukville
+      haversine_km(s.lat, s.lng, 13.6447, 102.5593),  -- Poipet
+      haversine_km(s.lat, s.lng, 12.5394, 103.9157),  -- Pursat
+      haversine_km(s.lat, s.lng, 13.0989, 103.1989)   -- Battambang
+    ]) AS dist
+  FROM sites s
+),
+nearest AS (
+  SELECT DISTINCT ON (id) id, rname, dist
+  FROM rail_dists
+  ORDER BY id, dist
+)
+UPDATE sites s SET
+  rail_distance_km = n.dist,
+  nearest_rail     = n.rname
+FROM nearest n WHERE s.id = n.id;
 ```
-This means all 141 sites can be done in 1 API call. Use batch mode.
+
+### 5c — Border crossing distances
+```sql
+WITH border_dists AS (
+  SELECT
+    s.id,
+    UNNEST(ARRAY[
+      'Poipet/Aranyaprathet (TH)','Cham Yeam/Hat Lek (TH)',
+      'O''Smach/Chong Jom (TH)','Psar Pruhm/Ban Pakard (TH)',
+      'Bavet/Moc Bai (VN)','Prek Chak/Xa Xia (VN)',
+      'Phnom Den/Tinh Bien (VN)','Kaam Samnor/Vinh Xuong (VN)',
+      'Trapang Sre/Loc Ninh (VN)','Trapang Phlong/Xa Mat (VN)',
+      'Veun Kham/Don Kralor (LA)','O''Yadav/Le Thanh (VN)'
+    ]) AS bname,
+    UNNEST(ARRAY[
+      haversine_km(s.lat, s.lng, 13.6519, 102.5664),  -- Poipet/TH
+      haversine_km(s.lat, s.lng, 11.7033, 102.8894),  -- Cham Yeam/TH
+      haversine_km(s.lat, s.lng, 14.1611, 103.0761),  -- O'Smach/TH
+      haversine_km(s.lat, s.lng, 12.5497, 102.5572),  -- Psar Pruhm/TH
+      haversine_km(s.lat, s.lng, 11.0768, 106.1098),  -- Bavet/VN
+      haversine_km(s.lat, s.lng, 10.4614, 104.0217),  -- Prek Chak/VN
+      haversine_km(s.lat, s.lng, 10.5083, 104.9472),  -- Phnom Den/VN
+      haversine_km(s.lat, s.lng, 11.1619, 105.2153),  -- Kaam Samnor/VN
+      haversine_km(s.lat, s.lng, 11.8489, 106.5806),  -- Trapang Sre/VN
+      haversine_km(s.lat, s.lng, 11.8600, 106.0269),  -- Trapang Phlong/VN
+      haversine_km(s.lat, s.lng, 13.9867, 105.8278),  -- Veun Kham/LA
+      haversine_km(s.lat, s.lng, 13.7500, 107.5333)   -- O'Yadav/VN
+    ]) AS dist
+  FROM sites s
+),
+nearest AS (
+  SELECT DISTINCT ON (id) id, bname, dist
+  FROM border_dists
+  ORDER BY id, dist
+)
+UPDATE sites s SET
+  border_distance_km = n.dist,
+  nearest_border     = n.bname
+FROM nearest n WHERE s.id = n.id;
+```
+
+> Re-run steps 5a–5c whenever any site's coordinates are corrected in Step 2.
 
 ---
 
-## Step 2e — Place Details (Google) — verify coord + get place_id + website
+## Step 6 — Place Details (Google) — verify coord + get place_id + website
 
 Run for EVERY site where `coord_verified = false` AND `place_id IS NULL`.
 
-### Step 1: Find Place
+### Find Place
 ```
 GET https://maps.googleapis.com/maps/api/place/findplacefromtext/json
   ?input={site.name} Cambodia
   &inputtype=textquery
   &fields=place_id,geometry,name
   &locationbias=rectangle:9.5,102.0|15.0,108.0
-  &key={GOOGLE_API_KEY}
+  &key={VITE_GOOGLE_MAPS_KEY}
 ```
 
-### Step 2: If found, get Place Details
+### Get Place Details
 ```
 GET https://maps.googleapis.com/maps/api/place/details/json
   ?place_id={place_id}
   &fields=name,geometry,formatted_address,website,photo
-  &key={GOOGLE_API_KEY}
+  &key={VITE_GOOGLE_MAPS_KEY}
 ```
 
-### Verify coordinate
+### Verify
 ```
-haversine_km = distance(site.lat, site.lng, result.lat, result.lng)
-
 if haversine_km < 1.0:   coord_verified = true, keep existing lat/lng
 if haversine_km 1–5 km:  coord_verified = true, UPDATE lat/lng to Google result
 if haversine_km > 5 km:  flag for manual review, do NOT auto-update
 ```
 
-### Write to Supabase
+Write to Supabase:
 ```sql
 UPDATE sites SET
   place_id       = '{place_id}',
   coord_verified = {true/false},
-  lat            = {verified_lat},   -- only if within 5km
+  lat            = {verified_lat},
   lng            = {verified_lng},
   updated_at     = NOW()
 WHERE id = '{site.id}';
@@ -200,22 +338,18 @@ WHERE id = '{site.id}';
 
 ---
 
-## Step 3 — News image sourcing (PRIORITY — run for ALL sites missing `image_url`)
+## Step 7 — News image sourcing (run for ALL sites missing `image_url`)
 
-For each site where `image_url` is undefined or empty:
+Work through source tiers — stop as soon as a valid image is found for each site.
 
-### 3a. Search for news coverage
-
-Work through sources in **tier order** — stop as soon as a valid image is found for each site.
-
-**Tier 1 — Cambodia-specialist (highest hit rate):**
+**Tier 1 — Cambodia-specialist:**
 ```
 thebettercambodia.com: "{site.name}"
 cambodiainvestmentreview.com: "{site.name}"
 phnompenhpost.com: "{site.name}" Cambodia
 ```
 
-**Tier 2 — Regional English-language media:**
+**Tier 2 — Regional English-language:**
 ```
 asia.nikkei.com: "{site.name}" Cambodia
 aseanbriefing.com: "{site.name}" Cambodia
@@ -223,83 +357,41 @@ bangkokpost.com: "{site.name}" Cambodia
 reuters.com: "{site.name}" Cambodia
 ```
 
-**Tier 3 — Trade & investment sources:**
+**Tier 3 — Trade & investment:**
 ```
 investasean.com: "{site.name}" Cambodia
 jetro.go.jp: "{site.name}" Cambodia
 china-briefing.com: "{site.name}" Cambodia
-vietnam-briefing.com: "{site.name}" Cambodia
 ```
 
-**Tier 4 — General web search fallback:**
-```
-WebSearch: site:thebettercambodia.com OR site:phnompenhpost.com OR site:reuters.com "{site.name}" Cambodia
-WebSearch: "{site.name}" Cambodia factory OR SEZ OR port OR airport photo
-```
+**Tier 4 — Official sites (by kind):**
+- SEZ/Parks: operator website from `notes` or `website` field
+- Substations: `https://www.edc.com.kh/` — search news/gallery for substation name
+- Airports: `https://techo-airport.gov.kh/` (KTI), `https://siemreapairport.com/` (SAI)
+- Ports: `https://www.sihanoukvilleport.com.kh/`
 
-> **Skip known-blocked sources:** `khmertimeskh.com` and `cambodianess.com` both return HTTP 403
-> on automated fetches — do not attempt these.
+> **Skip known-blocked sources:** `khmertimeskh.com` and `cambodianess.com` return HTTP 403.
 
-For each article found:
-1. WebFetch the article URL
-2. Extract `<meta property="og:image" content="...">` — this is the article hero photo
-3. Verify the URL ends in .jpg/.jpeg/.png/.webp OR is a CDN URL (wp-content, cloudfront, imgix, etc.)
-4. Confirm URL is publicly accessible (no auth redirect, no login wall)
-
-### 3b. Official site images
-If no news image found after all tiers, try the official developer/operator website:
-- PPSEZ: `https://www.ppsez.com.kh/en/`
-- SSEZ: `http://www.ssez.com/en/`
-- WHA: `https://www.wha-industrialestate.com/en/cambodia`
-- Techo Airport: `https://techo-airport.gov.kh/`
-- SAP Port: `https://www.sihanoukvilleport.com.kh/`
-- Siem Reap Airport: `https://siemreapairport.com/`
-- ITC: `https://itc.edu.kh/`
-- RUPP: `https://www.rupp.edu.kh/`
-- NPIC: `https://www.npic.edu.kh/`
-- **All substations** — EDC (Électricité du Cambodge) official website: `https://www.edc.com.kh/`
-  - Primary source for substation locations, voltage levels, capacity specs, and official photos
-  - Check EDC Photo Gallery and News sections for substation imagery
-  - WebSearch: `site:edc.com.kh "{substation name}" OR "{province} substation"`
-  - Also try: `site:edc.com.kh "230kV" OR "115kV" OR "substation"` for technical details
-- For factories: search `{company name} investor relations Cambodia` — look for press release with photo
-
-Extract `<meta property="og:image">` from the fetched page.
-
-### 3c. Image quality rules
-- Must be a direct image URL (not a redirect, not a search result)
-- Prefer aerial/overview/exterior shots over interior
-- Minimum implied size: 400px wide (check if URL has size params)
-- No watermarked stock photos
-
-### 3d. Write image_url
-Once found, write to `src/data/platform.ts`:
-```typescript
-image_url: "https://example.com/path/to/image.jpg",
-```
-Add the field directly after the `id:` line of the matching site object.
+Extract `<meta property="og:image">`. Verify URL is a direct image (jpg/png/webp) or CDN path.
+Write valid URL to `image_url` field in Supabase.
 
 ---
 
-## Step 4 — Data enrichment
+## Step 8 — Data enrichment
 
 For sites with `notes` under 100 characters:
 1. Search: `{site.name} Cambodia investment {current_year}`
-2. Extract from top 3 results:
-   - Operational status, total area, developer/operator
-   - Key tenants, utility details, road access
-   - Recent news (expansion, new tenants)
-3. Write enriched `notes` (2–4 sentences, factual, no marketing language)
+2. Extract from top 3 results: operational status, area, developer, tenants, utilities, road access
+3. Write enriched `notes` (2–4 sentences, factual only)
 4. Update `status`, `size`, `utilities`, `road` if better data found
 
 ---
 
-## Step 5 — Corridor endpoint validation
+## Step 9 — Corridor endpoint validation
 
 For each corridor in `CORRIDORS`:
-1. Geocode start city — confirm first waypoint within 3km
-2. Geocode end city/border — confirm last waypoint within 3km
-3. If wrong, re-fetch from OSRM and apply RDP (ε=0.001°):
+1. Geocode start and end city — confirm waypoints within 3km
+2. If wrong, re-fetch from OSRM with RDP smoothing (ε=0.001°):
 ```
 GET https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}
   ?overview=full&geometries=geojson
@@ -307,7 +399,7 @@ GET https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}
 
 ---
 
-## Step 6 — Output report
+## Step 10 — Output report
 
 Write `src/agents/last-validation-report.md`:
 ```markdown
@@ -318,13 +410,16 @@ Write `src/agents/last-validation-report.md`:
 - Coordinates corrected: {N}
 - Coordinates verified (unchanged): {N}
 - Images added: {N}
-- Distance Matrix completed: {N} sites
-- Elevation computed: {N} sites
-- Flood risk flagged: {N} sites (elevation < 5m)
+- Port distances calculated: {N}
+- Airport distances recalculated: {N}
+- Rail distances recalculated: {N}
+- Border distances recalculated: {N}
+- Elevation computed: {N}
+- Flood risk flagged: {N} (elevation < 5m)
 - Notes enriched: {N}
 
-## Distance to Port — Top 10 Longest
-| Site | Province | Port | Distance km | Time min |
+## Logistics Summary — Nearest by Category
+| Category | Avg distance km | Closest site | Farthest site |
 
 ## Flood Risk Sites (elevation < 5m)
 | Site ID | Name | Province | Elevation m |
@@ -348,36 +443,44 @@ Write `src/agents/last-validation-report.md`:
 
 1. Google Maps Places API (highest accuracy — requires key)
 2. Nominatim / OpenStreetMap (free, Cambodia coverage improving)
-3. **EDC (Électricité du Cambodge)** — `https://www.edc.com.kh/` — **primary source for all substation sites**
-   - Official substation locations, voltage (115kV / 230kV), capacity (MVA), operational status
-   - Search: `site:edc.com.kh "{substation name}"` for press releases, project announcements
-   - EDC news and photo gallery contain aerial/exterior substation photos with location context
+3. **EDC (Électricité du Cambodge)** — `https://www.edc.com.kh/` — primary for all substation sites
 4. Open Development Cambodia — `opendevelopmentcambodia.net/profiles/special-economic-zones/`
 5. CDC Cambodia — `cdc.gov.kh/sez-smart-search/`
 6. SEZB — `sezb.gov.kh`
 7. Khmer Times / PP Post — for article coordinates
 8. Wikidata — structured data with coordinates
 
+---
+
 ## Province centroid fallback (when no specific data found)
 ```
-Phnom Penh:      11.5564, 104.9282
-Kandal:          11.2833, 104.9500
-Kampong Speu:    11.4533, 104.5209
-Preah Sihanouk:  10.6167, 103.5167
-Svay Rieng:      11.0883, 105.7993
-Kampong Cham:    11.9931, 105.4636
-Kampong Thom:    12.7111, 104.8889
-Siem Reap:       13.3671, 103.8448
-Battambang:      13.0957, 103.2022
-Banteay Meanchey:13.5860, 102.9830
-Kampot:          10.6042, 104.1800
-Takeo:           10.9920, 104.7907
-Pursat:          12.5388, 103.9193
-Kampong Chhnang: 12.2508, 104.6681
+Phnom Penh:       11.5564, 104.9282
+Kandal:           11.2833, 104.9500
+Kampong Speu:     11.4533, 104.5209
+Preah Sihanouk:   10.6167, 103.5167
+Svay Rieng:       11.0883, 105.7993
+Kampong Cham:     11.9931, 105.4636
+Kampong Thom:     12.7111, 104.8889
+Siem Reap:        13.3671, 103.8448
+Battambang:       13.0957, 103.2022
+Banteay Meanchey: 13.5860, 102.9830
+Kampot:           10.6042, 104.1800
+Takeo:            10.9920, 104.7907
+Pursat:           12.5388, 103.9193
+Kampong Chhnang:  12.2508, 104.6681
+Kratié:           12.4833, 106.0167
+Stung Treng:      13.5232, 105.9699
+Ratanakiri:       13.7300, 107.0050
+Mondulkiri:       12.4564, 107.1878
+Koh Kong:         11.6167, 103.0000
 ```
 
+---
+
 ## Known tricky sites (extra care required)
-- **ISI SEZ**: Trapeang Kou village, Cheung Kou commune, Prey Nob district, Preah Sihanouk. Along PP-SVK Expressway ~30 min north of SAP port. Nominatim Prey Nob district centroid: 10.7197, 103.7985
-- **Siem Reap Airport**: NEW airport at 13.368, 104.216 (opened Nov 2023) — NOT old airport at 13.40, 103.81
-- **Techo Airport**: New airport at 11.356, 104.932 in Kandal — NOT old PNH at 11.546, 104.848
+- **ISI SEZ**: Trapeang Kou village, Prey Nob district, Preah Sihanouk. Along PP–SVK Expressway ~30 min north of APSEZ port. Coords: 10.7828, 103.7382
+- **Techo International Airport (KTI)**: 11.3589, 104.9335 in Kandal — **NOT** old PNH at 11.546, 104.848
+- **Siem Reap Angkor Intl. Airport (SAI)**: 13.3762, 104.2201 — **NOT** old REP at 13.40, 103.81
 - **Bavet SEZ cluster**: All around 106.10–106.12E — NOT 105.94E
+- **Poipet SEZ cluster**: Near Thai border 13.64–13.66N, 102.55–102.57E
+- **Koh Kong SEZs**: Neang Kok at 11.593, 103.000 — Koh Kong town, not Koh Kong province centroid
