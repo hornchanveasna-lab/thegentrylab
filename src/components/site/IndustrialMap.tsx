@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useLang } from "@/lib/i18n";
-import { useMapSites, useResearch } from "@/lib/data";
+import { useMapSites, useResearch, useSiteImages } from "@/lib/data";
 import {
   CORRIDORS,
   LAYER_META,
@@ -1216,6 +1216,13 @@ function Inspector({
   isDark: boolean;
 }) {
   const relatedResearch = getRelatedResearch(site, research);
+  const { data: siteImages = [] } = useSiteImages(site.id);
+  const images = siteImages.length > 0
+    ? siteImages.map((i) => i.url)
+    : site.image_url ? [site.image_url] : [];
+  const [imgIdx, setImgIdx] = useState(0);
+  useEffect(() => { setImgIdx(0); }, [site.id]);
+
   const layerColor = LAYER_META[site.layer].color;
   const scoreColor = site.score !== undefined
     ? site.score >= 80 ? "#34d399" : site.score >= 65 ? "#fbbf24" : site.score >= 40 ? "#fb923c" : "#f43f5e"
@@ -1269,18 +1276,55 @@ function Inspector({
       className="absolute top-0 right-0 z-[400] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col h-full max-h-full overflow-hidden shadow-2xl"
       style={{ backgroundColor: panelBg, borderLeft: `1px solid ${borderCol}` }}
     >
-      {/* ── Hero image / gradient header ── */}
-      <div className="relative shrink-0">
-        {site.image_url ? (
-          <img
-            src={site.image_url}
-            alt={site.name}
-            className="w-full h-[180px] object-cover object-center"
-            style={{ filter: "brightness(0.78) contrast(1.1)" }}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-          />
+      {/* ── Hero image carousel ── */}
+      <div className="relative shrink-0 h-[180px] overflow-hidden bg-black">
+        {images.length > 0 ? (
+          <>
+            <img
+              key={images[imgIdx]}
+              src={images[imgIdx]}
+              alt={site.name}
+              className="w-full h-full object-cover object-center"
+              style={{ filter: "brightness(0.78) contrast(1.1)" }}
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+            />
+            {/* Prev / Next arrows */}
+            {images.length > 1 && (
+              <>
+                <button
+                  onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm"
+                  style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 2L4 6l4 4"/></svg>
+                </button>
+                <button
+                  onClick={() => setImgIdx((i) => (i + 1) % images.length)}
+                  className="absolute right-10 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm"
+                  style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 2l4 4-4 4"/></svg>
+                </button>
+                {/* Dot indicators */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                  {images.map((_, i) => (
+                    <button key={i} onClick={() => setImgIdx(i)}
+                      className="w-1.5 h-1.5 rounded-full transition-all"
+                      style={{ backgroundColor: i === imgIdx ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)" }} />
+                  ))}
+                </div>
+              </>
+            )}
+            {/* Image count badge */}
+            {images.length > 1 && (
+              <div className="absolute bottom-2 right-10">
+                <span className="font-mono text-[8px] px-1.5 py-0.5 rounded-sm"
+                  style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.6)" }}>
+                  {imgIdx + 1}/{images.length}
+                </span>
+              </div>
+            )}
+          </>
         ) : (
-          <div className="w-full h-[120px] flex items-center justify-center"
+          <div className="w-full h-full flex items-center justify-center"
             style={{ background: `linear-gradient(145deg, ${layerColor}28 0%, ${panelBg} 100%)` }}>
             <div dangerouslySetInnerHTML={{ __html:
               `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" style="opacity:0.2">
@@ -1289,7 +1333,7 @@ function Inspector({
             }} />
           </div>
         )}
-        {/* Close button floated top-right over image */}
+        {/* Close button */}
         <button onClick={onClose}
           className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition"
           style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>

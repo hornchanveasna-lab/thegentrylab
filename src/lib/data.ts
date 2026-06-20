@@ -136,6 +136,53 @@ export function useResearch() {
   });
 }
 
+/* ── Site images ────────────────────────────────────────── */
+export interface SiteImage {
+  id: string;
+  site_id: string;
+  url: string;
+  caption?: string;
+  source?: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export function useSiteImages(siteId: string | null) {
+  return useQuery<SiteImage[]>({
+    queryKey: ["site_images", siteId],
+    enabled: !!siteId,
+    queryFn: async () => {
+      if (!supabase || !siteId) return [];
+      const { data, error } = await supabase
+        .from("site_images")
+        .select("*")
+        .eq("site_id", siteId)
+        .order("sort_order");
+      if (error) return [];
+      return data as SiteImage[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function addSiteImage(img: Omit<SiteImage, "id" | "created_at">) {
+  if (!supabase) throw new Error("No supabase client");
+  const { error } = await supabase.from("site_images").insert(img);
+  if (error) throw error;
+}
+
+export async function deleteSiteImage(id: string) {
+  if (!supabase) throw new Error("No supabase client");
+  const { error } = await supabase.from("site_images").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateSiteField(siteId: string, patch: Record<string, unknown>) {
+  if (!supabase) throw new Error("No supabase client");
+  const { error } = await supabase.from("sites").update(patch).eq("id", siteId);
+  if (error) throw error;
+}
+
 /* ── Connection status (for dashboard) ─────────────────── */
 export function useSupabaseStatus() {
   return useQuery({
