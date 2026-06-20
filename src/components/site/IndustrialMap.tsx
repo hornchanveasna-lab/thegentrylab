@@ -1257,16 +1257,20 @@ function Inspector({
   const scoreColor = site.score !== undefined
     ? site.score >= 80 ? "#34d399" : site.score >= 65 ? "#fbbf24" : site.score >= 40 ? "#fb923c" : "#f43f5e"
     : "#94a3b8";
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lng}`;
+  const mapsUrl        = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lng}`;
+  const directionsUrl  = `https://www.google.com/maps/dir/?api=1&destination=${site.lat},${site.lng}`;
+  const shareUrl       = `${window.location.origin}/map?site=${site.id}`;
   const kindSvg = KIND_SVG[site.kind] ?? KIND_SVG.factory;
 
-  const panelBg    = isDark ? "#0d0d0e" : "#ffffff";
-  const borderCol  = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
-  const textMain   = isDark ? "#ffffff" : "#0f172a";
-  const textMuted  = isDark ? "rgba(255,255,255,0.5)"  : "rgba(0,0,0,0.45)";
-  const textDim    = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)";
-  const dividerCol = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+  const panelBg    = isDark ? "#111113" : "#ffffff";
+  const panelBg2   = isDark ? "#18181b" : "#f8f9fa";
+  const borderCol  = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.09)";
+  const textMain   = isDark ? "#f8fafc" : "#0f172a";
+  const textMuted  = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)";
+  const textDim    = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.28)";
+  const dividerCol = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
   const cardBg     = isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)";
+  const accentBlue = isDark ? "#60a5fa" : "#1a73e8";
 
   const eipPillars = [
     { label: "Management",   value: site.eip_management,   color: "#818cf8" },
@@ -1276,156 +1280,282 @@ function Inspector({
   ];
   const hasEip = eipPillars.some((p) => p.value != null);
 
+  /* Feature chips derived from data */
+  const featureChips: string[] = [];
+  if (site.status) featureChips.push(site.status);
+  if (site.utilities?.toLowerCase().includes("edc") || site.utilities?.toLowerCase().includes("electric")) featureChips.push("EDC Power");
+  if (site.utilities?.toLowerCase().includes("water")) featureChips.push("Water Supply");
+  if (site.road) featureChips.push("Road Access");
+  if (site.flood_risk === false) featureChips.push("Low Flood Risk");
+  if (site.flood_risk === true) featureChips.push("⚠ Flood Risk");
+  if (site.coordVerified) featureChips.push("GPS Verified");
+
+  const handleCopyCoords = () => {
+    navigator.clipboard.writeText(`${site.lat.toFixed(6)}, ${site.lng.toFixed(6)}`).catch(() => {});
+  };
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({ title: site.name, url: shareUrl }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(shareUrl).catch(() => {});
+    }
+  };
+
   return (
     <aside
-      className="absolute top-4 right-4 z-[400] w-[340px] max-w-[calc(100vw-2rem)] flex flex-col max-h-[calc(100vh-5rem)] overflow-hidden shadow-2xl"
-      style={{ backgroundColor: panelBg, border: `1px solid ${borderCol}` }}
+      className="absolute top-0 right-0 z-[400] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col h-full max-h-full overflow-hidden shadow-2xl"
+      style={{ backgroundColor: panelBg, borderLeft: `1px solid ${borderCol}` }}
     >
-      {site.image_url ? (
-        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-          className="relative shrink-0 block overflow-hidden group">
+      {/* ── Hero image / gradient header ── */}
+      <div className="relative shrink-0">
+        {site.image_url ? (
           <img
             src={site.image_url}
             alt={site.name}
-            className="w-full h-[140px] object-cover object-center"
-            style={{ filter: "brightness(0.82) contrast(1.08)" }}
-            onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }}
+            className="w-full h-[180px] object-cover object-center"
+            style={{ filter: "brightness(0.78) contrast(1.1)" }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-          <div className="absolute bottom-2 right-3 opacity-0 group-hover:opacity-100 transition">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/80">Open in Maps ↗</span>
+        ) : (
+          <div className="w-full h-[120px] flex items-center justify-center"
+            style={{ background: `linear-gradient(145deg, ${layerColor}28 0%, ${panelBg} 100%)` }}>
+            <div dangerouslySetInnerHTML={{ __html:
+              `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" style="opacity:0.2">
+                <g fill="none" stroke="${layerColor}" stroke-width="1">${kindSvg}</g>
+              </svg>`
+            }} />
           </div>
-          <div className="absolute top-2 left-3">
-            <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider bg-black/60 text-white/70 backdrop-blur-sm">
-              {site.province}
-            </span>
-          </div>
-        </a>
-      ) : (
-        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-          className="relative shrink-0 flex items-center justify-center h-[90px] overflow-hidden group"
-          style={{
-            background: `linear-gradient(135deg, ${layerColor}22 0%, ${panelBg} 75%)`,
-            borderBottom: `1px solid ${dividerCol}`,
-          }}>
-          <div dangerouslySetInnerHTML={{ __html:
-            `<svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" style="opacity:0.25">
-              <g fill="none" stroke="${layerColor}" stroke-width="1">${kindSvg}</g>
-            </svg>`
-          }} />
-          <div className="absolute top-2 left-3">
-            <span className="px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider backdrop-blur-sm"
-              style={{ backgroundColor: `${layerColor}22`, color: textMuted }}>
-              {site.province}
-            </span>
-          </div>
-          <div className="absolute bottom-2 right-3 opacity-0 group-hover:opacity-100 transition">
-            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Open in Maps ↗</span>
-          </div>
-        </a>
-      )}
-
-      <div className="shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-        <div className="flex items-center justify-between px-4 pt-3 pb-2">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: layerColor, boxShadow: `0 0 6px ${layerColor}` }} />
-            <span className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: textMuted }}>
-              {LAYER_META[site.layer].label}
-            </span>
-            <span style={{ color: textDim }} className="font-mono text-[9px]">·</span>
-            <span className="font-mono text-[9px] uppercase tracking-[0.18em]" style={{ color: layerColor }}>
-              {site.kind}
-            </span>
-          </div>
-          <button onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center hover:bg-white/8 transition rounded-sm"
-            style={{ color: textDim }}>
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-              <path d="M1 1l8 8M9 1L1 9"/>
-            </svg>
-          </button>
-        </div>
-        <div className="px-4 pb-3">
-          <h3 className="font-extrabold text-[15px] uppercase tracking-tight leading-tight" style={{ color: textMain }}>{site.name}</h3>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            {site.status && (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[site.status] ?? "#94a3b8" }} />
-                <span className="font-mono text-[10px]" style={{ color: STATUS_COLOR[site.status] ?? "#94a3b8" }}>{site.status}</span>
-              </>
-            )}
-            {site.flood_risk === true && (
-              <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm ml-1"
-                style={{ backgroundColor: "#f43f5e22", color: "#f43f5e" }}>⚠ Flood Risk</span>
-            )}
-            {site.flood_risk === false && (
-              <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm ml-1"
-                style={{ backgroundColor: "#34d39915", color: "#34d399" }}>✓ Low Flood Risk</span>
-            )}
-          </div>
+        )}
+        {/* Close button floated top-right over image */}
+        <button onClick={onClose}
+          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition"
+          style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M1 1l8 8M9 1L1 9"/>
+          </svg>
+        </button>
+        {/* Province badge */}
+        <div className="absolute top-3 left-3">
+          <span className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider backdrop-blur-sm rounded-sm"
+            style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.8)" }}>
+            {site.province}
+          </span>
         </div>
       </div>
 
-      {/* ── Quick-stats tile row ── */}
-      {(site.port_distance_km != null || site.elevation_m != null || site.size || site.road) && (
-        <div className="grid grid-cols-2 gap-px shrink-0"
-          style={{ borderTop: `1px solid ${dividerCol}`, borderBottom: `1px solid ${dividerCol}`, backgroundColor: dividerCol }}>
-          {site.port_distance_km != null && (
-            <div className="flex flex-col px-3 py-2.5" style={{ backgroundColor: panelBg }}>
-              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Port Distance</span>
-              <span className="font-bold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="font-mono text-[9px] font-normal" style={{ color: textMuted }}>km</span></span>
-            </div>
-          )}
-          {site.elevation_m != null && (
-            <div className="flex flex-col px-3 py-2.5" style={{ backgroundColor: panelBg }}>
-              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Elevation</span>
-              <span className="font-bold text-[13px] leading-none" style={{ color: site.elevation_m >= 5 ? "#34d399" : site.elevation_m >= 2 ? "#fbbf24" : "#f43f5e" }}>
-                {Math.round(site.elevation_m)} <span className="font-mono text-[9px] font-normal" style={{ color: textMuted }}>m asl</span>
-              </span>
-            </div>
-          )}
-          {site.size && (
-            <div className="flex flex-col px-3 py-2.5" style={{ backgroundColor: panelBg }}>
-              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Area</span>
-              <span className="font-bold text-[13px] leading-none" style={{ color: textMain }}>{site.size}</span>
-            </div>
-          )}
-          {site.road && (
-            <div className="flex flex-col px-3 py-2.5 col-span-1" style={{ backgroundColor: panelBg }}>
-              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Road Access</span>
-              <span className="font-semibold text-[11px] leading-snug truncate" style={{ color: textMain }}>{site.road}</span>
-            </div>
+      {/* ── Name + meta ── */}
+      <div className="px-4 pt-4 pb-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        <h2 className="font-bold text-[17px] leading-tight mb-1" style={{ color: textMain }}>{site.name}</h2>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[12px]" style={{ color: textMuted }}>
+            {LAYER_META[site.layer].label}
+          </span>
+          <span style={{ color: textDim }}>·</span>
+          <span className="text-[12px] capitalize" style={{ color: textMuted }}>{site.kind}</span>
+          {site.score !== undefined && (
+            <>
+              <span style={{ color: textDim }}>·</span>
+              <span className="font-bold text-[12px]" style={{ color: scoreColor }}>{site.score}/100</span>
+              {site.eip_tier && (
+                <span className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+                  style={{
+                    color: site.eip_tier === "gold" ? "#fbbf24" : site.eip_tier === "silver" ? "#94a3b8" : "#f97316",
+                    backgroundColor: site.eip_tier === "gold" ? "#fbbf2418" : site.eip_tier === "silver" ? "#94a3b818" : "#f9731618",
+                  }}>
+                  {site.eip_tier}
+                </span>
+              )}
+            </>
           )}
         </div>
-      )}
+      </div>
 
+      {/* ── Action buttons (Google Maps style) ── */}
+      <div className="flex items-center justify-around px-3 py-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        {[
+          {
+            label: "Directions",
+            href: directionsUrl,
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="3 11 22 2 13 21 11 13 3 11" fill="currentColor" stroke="none"/>
+              </svg>
+            ),
+          },
+          {
+            label: "Maps",
+            href: mapsUrl,
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#34A853"/>
+                <circle cx="12" cy="9" r="2.5" fill="white"/>
+              </svg>
+            ),
+          },
+          {
+            label: "Coords",
+            onClick: handleCopyCoords,
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            ),
+          },
+          {
+            label: "Share",
+            onClick: handleShare,
+            icon: (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+              </svg>
+            ),
+          },
+        ].map((btn) => (
+          btn.href ? (
+            <a key={btn.label} href={btn.href} target="_blank" rel="noopener noreferrer"
+              className="flex flex-col items-center gap-1.5 group">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center transition group-hover:brightness-90"
+                style={{ backgroundColor: panelBg2, color: accentBlue }}>
+                {btn.icon}
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: accentBlue }}>{btn.label}</span>
+            </a>
+          ) : (
+            <button key={btn.label} onClick={btn.onClick}
+              className="flex flex-col items-center gap-1.5 group">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center transition group-hover:brightness-90"
+                style={{ backgroundColor: panelBg2, color: accentBlue }}>
+                {btn.icon}
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: accentBlue }}>{btn.label}</span>
+            </button>
+          )
+        ))}
+      </div>
+
+      {/* ── Scrollable content ── */}
       <div className="overflow-y-auto flex-1">
 
+        {/* Feature chips row */}
+        {featureChips.length > 0 && (
+          <div className="px-4 py-3 flex flex-wrap gap-1.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            {featureChips.map((chip) => (
+              <span key={chip}
+                className="text-[11px] px-2.5 py-1 rounded-full border"
+                style={{
+                  borderColor: chip.includes("⚠") ? "#f43f5e55" : chip === "Low Flood Risk" ? "#34d39955" : borderCol,
+                  color: chip.includes("⚠") ? "#f43f5e" : chip === "Low Flood Risk" ? "#34d399" : textMuted,
+                  backgroundColor: chip.includes("⚠") ? "#f43f5e0a" : chip === "Low Flood Risk" ? "#34d3990a" : "transparent",
+                }}>
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Quick stat tiles: port, elevation, area, road */}
+        {(site.port_distance_km != null || site.elevation_m != null || site.size || site.road) && (
+          <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: dividerCol, borderBottom: `1px solid ${dividerCol}` }}>
+            {site.port_distance_km != null && (
+              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 17h18M5 17V7l7-4 7 4v10"/><rect x="9" y="11" width="6" height="6"/>
+                </svg>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Port</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                </div>
+              </div>
+            )}
+            {site.elevation_m != null && (
+              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 2 20 22 20"/>
+                </svg>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Elevation</p>
+                  <p className="font-semibold text-[13px] leading-none"
+                    style={{ color: site.elevation_m >= 5 ? "#34d399" : site.elevation_m >= 2 ? "#fbbf24" : "#f43f5e" }}>
+                    {Math.round(site.elevation_m)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>m</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            {site.size && (
+              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                </svg>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Area</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{site.size}</p>
+                </div>
+              </div>
+            )}
+            {site.road && (
+              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 20V4M21 20V4M8 20V4M16 20V4"/>
+                </svg>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Road</p>
+                  <p className="font-semibold text-[11px] leading-snug truncate max-w-[100px]" style={{ color: textMain }}>{site.road}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Location row */}
+        <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill={layerColor + "bb"}/>
+            <circle cx="12" cy="9" r="2.5" fill="white"/>
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px]" style={{ color: textMain }}>{site.province}, Cambodia</p>
+            <button onClick={handleCopyCoords} className="font-mono text-[10px] mt-0.5 hover:underline text-left" style={{ color: textDim }}>
+              {site.lat.toFixed(5)}, {site.lng.toFixed(5)}
+            </button>
+          </div>
+          {site.coordVerified ? (
+            <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5"
+              style={{ color: "#34d399", backgroundColor: "#34d39912" }}>✓ GPS</span>
+          ) : (
+            <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5"
+              style={{ color: "#fbbf24", backgroundColor: "#fbbf2412" }}>est.</span>
+          )}
+        </div>
+
+        {/* Notes / description */}
         {site.notes && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="text-[12px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.7)" }}>{site.notes}</p>
+          <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.notes}</p>
           </div>
         )}
 
-        {(site.utilities) && (
-          <div style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="px-4 pt-3 pb-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Utilities</p>
-            <dl className="px-4 pb-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[11px]">
-              {site.utilities && <Row k="Utilities" v={site.utilities} isDark={isDark} />}
-            </dl>
+        {/* Utilities */}
+        {site.utilities && (
+          <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.utilities}</p>
           </div>
         )}
 
-        {/* EIP 4-pillar score breakdown */}
+        {/* EIP 4-pillar score */}
         {(site.score !== undefined || hasEip) && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>
-                EIP Suitability Score
-              </p>
+          <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>EIP Suitability Score</p>
               <div className="flex items-baseline gap-1">
                 {site.eip_tier && (
-                  <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 mr-1"
+                  <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded mr-1"
                     style={{
                       color: site.eip_tier === "gold" ? "#fbbf24" : site.eip_tier === "silver" ? "#94a3b8" : "#f97316",
                       backgroundColor: site.eip_tier === "gold" ? "#fbbf2415" : site.eip_tier === "silver" ? "#94a3b815" : "#f9731615",
@@ -1433,39 +1563,38 @@ function Inspector({
                     {site.eip_tier}
                   </span>
                 )}
-                <span className="text-2xl font-extrabold leading-none" style={{ color: scoreColor }}>{site.score ?? "—"}</span>
+                <span className="text-[22px] font-extrabold leading-none" style={{ color: scoreColor }}>{site.score ?? "—"}</span>
                 <span className="font-mono text-[9px]" style={{ color: textDim }}>/100</span>
               </div>
             </div>
-            <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }}>
-              <div className="h-full rounded-full transition-all" style={{ width: `${site.score ?? 0}%`, backgroundColor: scoreColor }} />
+            <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }}>
+              <div className="h-full rounded-full" style={{ width: `${site.score ?? 0}%`, backgroundColor: scoreColor }} />
             </div>
             {hasEip && (
-              <div className="space-y-1.5">
-                {eipPillars.map((p) => (
-                  p.value != null ? (
-                    <div key={p.label} className="flex items-center gap-2">
-                      <span className="font-mono text-[8px] w-20 shrink-0" style={{ color: textDim }}>{p.label}</span>
-                      <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)" }}>
-                        <div className="h-full rounded-full" style={{ width: `${(p.value / 25) * 100}%`, backgroundColor: p.color }} />
-                      </div>
-                      <span className="font-mono text-[9px] w-6 text-right shrink-0" style={{ color: p.color }}>{p.value}</span>
+              <div className="space-y-2">
+                {eipPillars.map((p) => p.value != null ? (
+                  <div key={p.label} className="flex items-center gap-2">
+                    <span className="font-mono text-[8px] w-[76px] shrink-0" style={{ color: textDim }}>{p.label}</span>
+                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${(p.value / 25) * 100}%`, backgroundColor: p.color }} />
                     </div>
-                  ) : null
-                ))}
+                    <span className="font-mono text-[9px] w-5 text-right shrink-0" style={{ color: p.color }}>{p.value}</span>
+                  </div>
+                ) : null)}
               </div>
             )}
           </div>
         )}
 
+        {/* Target industries */}
         {!!site.targetIndustries?.length && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Relevant Sectors</p>
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>Target Industries</p>
             <div className="flex flex-wrap gap-1.5">
               {site.targetIndustries.map((ind) => (
                 <span key={ind}
-                  className="px-2 py-1 font-mono text-[9px] uppercase tracking-wider border"
-                  style={{ backgroundColor: `${layerColor}12`, borderColor: `${layerColor}35`, color: layerColor }}>
+                  className="px-2.5 py-1 text-[11px] rounded-full border"
+                  style={{ backgroundColor: `${layerColor}10`, borderColor: `${layerColor}40`, color: layerColor }}>
                   {ind}
                 </span>
               ))}
@@ -1473,114 +1602,103 @@ function Inspector({
           </div>
         )}
 
-        {!!site.strengths?.length && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Strengths</p>
-            <ul className="space-y-1.5">
-              {site.strengths.map((s) => (
-                <li key={s} className="flex items-start gap-2 text-[11px] leading-snug" style={{ color: isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.7)" }}>
-                  <span className="font-bold shrink-0 mt-0.5 text-[10px]" style={{ color: "#34d399" }}>✓</span>{s}
-                </li>
-              ))}
-            </ul>
+        {/* Strengths + Constraints */}
+        {(!!site.strengths?.length || !!site.constraints?.length) && (
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            {!!site.strengths?.length && (
+              <>
+                <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Strengths</p>
+                <ul className="space-y-2 mb-3">
+                  {site.strengths.map((s) => (
+                    <li key={s} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}>
+                      <span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] mt-0.5" style={{ backgroundColor: "#34d39918", color: "#34d399" }}>✓</span>
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {!!site.constraints?.length && (
+              <>
+                <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Constraints</p>
+                <ul className="space-y-2">
+                  {site.constraints.map((c) => (
+                    <li key={c} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}>
+                      <span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] mt-0.5" style={{ backgroundColor: "#f43f5e18", color: "#f43f5e" }}>!</span>
+                      {c}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         )}
 
-        {!!site.constraints?.length && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Constraints</p>
-            <ul className="space-y-1.5">
-              {site.constraints.map((c) => (
-                <li key={c} className="flex items-start gap-2 text-[11px] leading-snug" style={{ color: isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.7)" }}>
-                  <span className="font-bold shrink-0 mt-0.5 text-[10px]" style={{ color: "#f43f5e" }}>!</span>{c}
-                </li>
-              ))}
-            </ul>
+        {/* GentryLab Advisory */}
+        {site.recommendation && (
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[11px]" style={{ color: "#ff5100" }}>◈</span>
+              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
+            </div>
+            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.recommendation}</p>
           </div>
         )}
 
+        {/* Latest news */}
         {relatedNews.length > 0 && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>
               Latest News · {site.province}
             </p>
             <div className="space-y-2">
               {relatedNews.map((n) => (
                 <a key={n.id} href={n.url !== "#" ? n.url : undefined}
                   target="_blank" rel="noopener noreferrer"
-                  className="block transition px-3 py-2.5 rounded-sm hover:opacity-80"
-                  style={{ backgroundColor: cardBg }}>
-                  <span className="inline-block px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1.5 rounded-sm"
-                    style={{ backgroundColor: "#f59e0b22", color: "#f59e0b" }}>
-                    {n.sector}
-                  </span>
-                  <p className="text-[11px] leading-snug mb-1" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.8)" }}>{n.headline}</p>
-                  <p className="font-mono text-[9px]" style={{ color: textDim }}>{n.source} · {n.date}</p>
+                  className="flex gap-3 py-2 transition hover:opacity-80">
+                  <div className="flex-1 min-w-0">
+                    <span className="inline-block px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1 rounded-full"
+                      style={{ backgroundColor: "#f59e0b18", color: "#f59e0b" }}>
+                      {n.sector}
+                    </span>
+                    <p className="text-[12px] leading-snug" style={{ color: textMain }}>{n.headline}</p>
+                    <p className="font-mono text-[10px] mt-1" style={{ color: textDim }}>{n.source} · {n.date}</p>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" className="shrink-0 mt-4">
+                    <path d="M7 17L17 7M17 7H7M17 7v10"/>
+                  </svg>
                 </a>
               ))}
             </div>
           </div>
         )}
 
+        {/* Related research */}
         {relatedResearch.length > 0 && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>
               Related Research
             </p>
             <div className="space-y-2">
               {relatedResearch.map((r) => (
-                <div key={r.id} className="px-3 py-2.5 rounded-sm" style={{ backgroundColor: cardBg }}>
-                  <span className="inline-block px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1.5 rounded-sm"
-                    style={{ backgroundColor: "#818cf822", color: "#818cf8" }}>
-                    {r.category}
-                  </span>
-                  <p className="text-[11px] leading-snug mb-1" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.8)" }}>{r.title}</p>
-                  <p className="font-mono text-[9px]" style={{ color: textDim }}>{r.pages} pages</p>
+                <div key={r.id} className="flex gap-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <span className="inline-block px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1 rounded-full"
+                      style={{ backgroundColor: "#818cf818", color: "#818cf8" }}>
+                      {r.category}
+                    </span>
+                    <p className="text-[12px] leading-snug" style={{ color: textMain }}>{r.title}</p>
+                    <p className="font-mono text-[10px] mt-1" style={{ color: textDim }}>{r.pages} pages</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {site.recommendation && (
-          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: "#ff510008" }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: "#ff5100" }}>
-              ◈ GentryLab Advisory
-            </p>
-            <p className="text-[11.5px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.75)" }}>{site.recommendation}</p>
-          </div>
-        )}
-
-        <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-          <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2.5 w-full py-2.5 border transition group"
-            style={{ borderColor: borderCol }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round" className="shrink-0">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#34A853" stroke="none"/>
-              <circle cx="12" cy="9" r="2.5" fill="white" stroke="none"/>
-            </svg>
-            <span className="font-mono text-[10px] uppercase tracking-widest transition" style={{ color: textMuted }}>
-              Open in Google Maps ↗
-            </span>
-          </a>
-          <div className="flex items-center justify-between mt-1.5">
-            <p className="font-mono text-[9px]" style={{ color: textDim }}>
-              {site.lat.toFixed(5)}, {site.lng.toFixed(5)}
-            </p>
-            {site.coordVerified ? (
-              <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
-                style={{ color: "#34d399", backgroundColor: "#34d39915" }}>✓ verified</span>
-            ) : (
-              <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
-                style={{ color: "#fbbf24", backgroundColor: "#fbbf2415" }}>⚠ estimated</span>
-            )}
-          </div>
-        </div>
-
-        <div className="px-4 py-2.5">
-          <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>
-            {t("map.disclaimer")}
-          </p>
+        {/* Disclaimer footer */}
+        <div className="px-4 py-3">
+          <p className="font-mono text-[9px]" style={{ color: textDim }}>{t("map.disclaimer")}</p>
         </div>
       </div>
     </aside>
