@@ -1218,14 +1218,57 @@ function Inspector({
         </div>
         <div className="px-4 pb-3">
           <h3 className="font-extrabold text-[15px] uppercase tracking-tight leading-tight" style={{ color: textMain }}>{site.name}</h3>
-          {site.status && (
-            <div className="flex items-center gap-2 mt-1.5">
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[site.status] ?? "#94a3b8" }} />
-              <span className="font-mono text-[10px]" style={{ color: STATUS_COLOR[site.status] ?? "#94a3b8" }}>{site.status}</span>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {site.status && (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: STATUS_COLOR[site.status] ?? "#94a3b8" }} />
+                <span className="font-mono text-[10px]" style={{ color: STATUS_COLOR[site.status] ?? "#94a3b8" }}>{site.status}</span>
+              </>
+            )}
+            {site.flood_risk === true && (
+              <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm ml-1"
+                style={{ backgroundColor: "#f43f5e22", color: "#f43f5e" }}>⚠ Flood Risk</span>
+            )}
+            {site.flood_risk === false && (
+              <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded-sm ml-1"
+                style={{ backgroundColor: "#34d39915", color: "#34d399" }}>✓ Low Flood Risk</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Quick-stats tile row ── */}
+      {(site.port_distance_km != null || site.elevation_m != null || site.size || site.road) && (
+        <div className="grid grid-cols-2 gap-px shrink-0"
+          style={{ borderTop: `1px solid ${dividerCol}`, borderBottom: `1px solid ${dividerCol}`, backgroundColor: dividerCol }}>
+          {site.port_distance_km != null && (
+            <div className="flex flex-col px-3 py-2.5" style={{ backgroundColor: panelBg }}>
+              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Port Distance</span>
+              <span className="font-bold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="font-mono text-[9px] font-normal" style={{ color: textMuted }}>km</span></span>
+            </div>
+          )}
+          {site.elevation_m != null && (
+            <div className="flex flex-col px-3 py-2.5" style={{ backgroundColor: panelBg }}>
+              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Elevation</span>
+              <span className="font-bold text-[13px] leading-none" style={{ color: site.elevation_m >= 5 ? "#34d399" : site.elevation_m >= 2 ? "#fbbf24" : "#f43f5e" }}>
+                {Math.round(site.elevation_m)} <span className="font-mono text-[9px] font-normal" style={{ color: textMuted }}>m asl</span>
+              </span>
+            </div>
+          )}
+          {site.size && (
+            <div className="flex flex-col px-3 py-2.5" style={{ backgroundColor: panelBg }}>
+              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Area</span>
+              <span className="font-bold text-[13px] leading-none" style={{ color: textMain }}>{site.size}</span>
+            </div>
+          )}
+          {site.road && (
+            <div className="flex flex-col px-3 py-2.5 col-span-1" style={{ backgroundColor: panelBg }}>
+              <span className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: textDim }}>Road Access</span>
+              <span className="font-semibold text-[11px] leading-snug truncate" style={{ color: textMain }}>{site.road}</span>
             </div>
           )}
         </div>
-      </div>
+      )}
 
       <div className="overflow-y-auto flex-1">
 
@@ -1235,13 +1278,11 @@ function Inspector({
           </div>
         )}
 
-        {(site.size || site.utilities || site.road) && (
+        {(site.utilities) && (
           <div style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="px-4 pt-3 pb-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Details</p>
+            <p className="px-4 pt-3 pb-1.5 font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Utilities</p>
             <dl className="px-4 pb-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[11px]">
-              {site.size      && <Row k="Size"        v={site.size}      isDark={isDark} />}
-              {site.utilities && <Row k="Utilities"   v={site.utilities} isDark={isDark} />}
-              {site.road      && <Row k="Road Access" v={site.road}      isDark={isDark} />}
+              {site.utilities && <Row k="Utilities" v={site.utilities} isDark={isDark} />}
             </dl>
           </div>
         )}
