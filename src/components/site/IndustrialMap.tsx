@@ -788,6 +788,34 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [locSearching, setLocSearching] = useState(false);
   const [locError, setLocError]         = useState("");
 
+  /* Location callout (empty-map click, Google Maps style) */
+  const [locCallout, setLocCallout] = useState<{
+    lat: number; lng: number;
+    address: string | null;
+    plusCode: string | null;
+    loading: boolean;
+  } | null>(null);
+
+  const handleMapClick = useCallback(async (e: { detail: { latLng: { lat: number; lng: number } | null } }) => {
+    const ll = e.detail.latLng;
+    if (!ll) return;
+    setSelected(null); setSelectedProject(null); setNewsPanel(null);
+    setLocCallout({ lat: ll.lat, lng: ll.lng, address: null, plusCode: null, loading: true });
+    try {
+      const r = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${ll.lat},${ll.lng}&key=${gKey}`
+      );
+      const j = await r.json();
+      const result = j.results?.[0];
+      const plusEntry = j.results?.find((x: { types: string[] }) => x.types?.includes("plus_code"));
+      const plusCode = plusEntry?.plus_code?.global_code ?? j.plus_code?.global_code ?? null;
+      const address = result?.formatted_address ?? null;
+      setLocCallout({ lat: ll.lat, lng: ll.lng, address, plusCode, loading: false });
+    } catch {
+      setLocCallout((c) => c ? { ...c, loading: false } : null);
+    }
+  }, [gKey]);
+
   const visible = useMemo(() => {
     if (previewMode) return [];
     const q = query.trim().toLowerCase();
@@ -843,6 +871,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     setSelected(s);
     setSelectedProject(null);
     setNewsPanel(null);
+    setLocCallout(null);
     setPanelOpen(false);
   }, []);
 
@@ -850,12 +879,14 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     setNewsPanel({ province, items });
     setSelected(null);
     setSelectedProject(null);
+    setLocCallout(null);
   }, []);
 
   const handleProjectSelect = useCallback((p: TrackedProject) => {
     setSelectedProject(p);
     setSelected(null);
     setNewsPanel(null);
+    setLocCallout(null);
   }, []);
 
   /* layer counts per group */
@@ -894,7 +925,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             disableDefaultUI
             gestureHandling="greedy"
             backgroundColor="#0d1117"
-            onClick={() => { setSelected(null); setSelectedProject(null); setNewsPanel(null); }}
+            onClick={handleMapClick}
           >
             <FlyController target={pinTarget} />
             <ZoomLabelController />
@@ -1105,6 +1136,104 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           onClose={() => setSelectedProject(null)}
         />
       )}
+
+      {/* ── Location callout (empty-map click) ───────────────── */}
+      {locCallout && !selected && !selectedProject && !newsPanel && (
+        <LocationCallout
+          lat={locCallout.lat}
+          lng={locCallout.lng}
+          address={locCallout.address}
+          plusCode={locCallout.plusCode}
+          loading={locCallout.loading}
+          isDark={isDark}
+          onClose={() => setLocCallout(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Location Callout (empty-map click) ─────────────────── */
+function LocationCallout({
+  lat, lng, address, plusCode, loading, isDark, onClose,
+}: {
+  lat: number; lng: number;
+  address: string | null;
+  plusCode: string | null;
+  loading: boolean;
+  isDark: boolean;
+  onClose: () => void;
+}) {
+  const panelBg   = isDark ? "#0d0d0e" : "#ffffff";
+  const textMain  = isDark ? "#ffffff" : "#0f172a";
+  const textMuted = isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)";
+  const textDim   = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)";
+  const borderCol = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.1)";
+  const dividerCol = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+  /* Strip country suffix for cleaner display */
+  const shortAddress = address
+    ? address.replace(/, Cambodia$/, "").replace(/^Cambodia$/, "")
+    : null;
+
+  return (
+    <div
+      className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[450] w-[300px] shadow-2xl"
+      style={{ backgroundColor: panelBg, border: `1px solid ${borderCol}` }}
+    >
+      {/* Callout tail */}
+      <div className="absolute -bottom-[9px] left-1/2 -translate-x-1/2 w-0 h-0"
+        style={{ borderLeft: "9px solid transparent", borderRight: "9px solid transparent", borderTop: `9px solid ${borderCol}` }} />
+      <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-0 h-0"
+        style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: `8px solid ${panelBg}` }} />
+
+      <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <div className="space-y-1.5">
+                <div className="h-3 w-3/4 rounded animate-pulse" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)" }} />
+                <div className="h-2.5 w-1/2 rounded animate-pulse" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.05)" }} />
+              </div>
+            ) : (
+              <>
+                {plusCode && (
+                  <p className="font-mono font-bold text-[14px] leading-tight" style={{ color: textMain }}>{plusCode}</p>
+                )}
+                {shortAddress && (
+                  <p className="text-[11px] leading-snug mt-0.5 truncate" style={{ color: textMuted }}>{shortAddress}</p>
+                )}
+                <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>Cambodia</p>
+              </>
+            )}
+            <p className="font-mono text-[9px] mt-1.5" style={{ color: textDim }}>
+              {lat.toFixed(6)}, {lng.toFixed(6)}
+            </p>
+          </div>
+          <button onClick={onClose}
+            className="shrink-0 w-5 h-5 flex items-center justify-center rounded-sm hover:opacity-70 transition mt-0.5"
+            style={{ color: textDim }}>
+            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <path d="M1 1l8 8M9 1L1 9"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 py-2.5">
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-2 hover:opacity-80 transition">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#34A853"/>
+            <circle cx="12" cy="9" r="2.5" fill="white"/>
+          </svg>
+          <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#4285F4" }}>
+            View on Google Maps ↗
+          </span>
+        </a>
+      </div>
     </div>
   );
 }
