@@ -1,10 +1,14 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState, useRef } from "react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useAuth } from "@/lib/auth";
-import { useMapSites, useSiteImages, addSiteImage, deleteSiteImage, updateSiteField } from "@/lib/data";
+import {
+  useMapSites, useSiteImages, addSiteImage,
+  deleteSiteImage, updateSiteField,
+} from "@/lib/data";
 import { supabase } from "@/lib/supabase";
-import type { MapSite } from "@/data/platform";
+import { LAYER_META, type MapSite } from "@/data/platform";
 import type { SiteImage } from "@/lib/data";
 import { GentryMark } from "@/components/site/GentryMark";
 
@@ -12,10 +16,23 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-const ADMIN_EMAIL = "horn.chanveasna@gmail.com";
-const EDGE_URL = "https://mcxfukjopdnouicwacbn.supabase.co/functions/v1/satellite-fetch";
+const ADMIN_EMAIL  = "horn.chanveasna@gmail.com";
+const GMAPS_KEY    = import.meta.env.VITE_GOOGLE_MAPS_KEY as string;
+const EDGE_URL     = "https://mcxfukjopdnouicwacbn.supabase.co/functions/v1/satellite-fetch";
+const STATUS_OPTS  = ["Operational", "Under Construction", "Planned"] as const;
 
-/* ── Image compression ──────────────────────────────────────────── */
+/* ── Category groups ─────────────────────────────────────── */
+const KIND_GROUP = (kind: string): "investment" | "energy-gen" | "energy-grid" | "infrastructure" | "environment" | "labor" | "other" => {
+  if (["sez", "park", "factory", "logistics"].includes(kind)) return "investment";
+  if (["powerplant", "solar"].includes(kind))                  return "energy-gen";
+  if (["substation"].includes(kind))                           return "energy-grid";
+  if (["port", "airport", "rail"].includes(kind))              return "infrastructure";
+  if (["protected", "waste", "water_plant"].includes(kind))    return "environment";
+  if (["hospital", "university", "tvet"].includes(kind))       return "labor";
+  return "other";
+};
+
+/* ── Image helpers ───────────────────────────────────────── */
 function compressImage(file: File, maxPx: number, quality: number): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -30,413 +47,293 @@ function compressImage(file: File, maxPx: number, quality: number): Promise<Blob
       const canvas = document.createElement("canvas");
       canvas.width = width; canvas.height = height;
       canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => blob ? resolve(blob) : reject(new Error("Canvas compression failed")),
-        "image/jpeg", quality
-      );
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("Compression failed")), "image/jpeg", quality);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load failed")); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Load failed")); };
     img.src = url;
   });
 }
 
-/* ── Satellite fetch via Edge Function ──────────────────────────── */
 async function fetchAndUploadSatellite(
   siteId: string, lat: number, lng: number,
   zoom: number, caption: string, sortOrder: number,
-): Promise<string> {
-  if (!supabase) throw new Error("No supabase client");
+) {
+  if (!supabase) throw new Error("No supabase");
   const res = await fetch(`${EDGE_URL}?lat=${lat}&lng=${lng}&zoom=${zoom}&size=800x450`);
-  if (!res.ok) throw new Error(`Satellite fetch failed: ${res.status}`);
-  const blob = await res.blob();
-  const file = new File([blob], "satellite.jpg", { type: "image/jpeg" });
-  const compressed = await compressImage(file, 1920, 0.88);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const compressed = await compressImage(new File([await res.blob()], "s.jpg", { type: "image/jpeg" }), 1920, 0.88);
   const path = `satellite/${siteId}/${zoom}-${Date.now()}.jpg`;
-  const { error: upErr } = await supabase.storage
-    .from("site-images")
-    .upload(path, compressed, { upsert: false, contentType: "image/jpeg" });
-  if (upErr) throw upErr;
+  const { error } = await supabase.storage.from("site-images").upload(path, compressed, { upsert: false, contentType: "image/jpeg" });
+  if (error) throw error;
   const { data: { publicUrl } } = supabase.storage.from("site-images").getPublicUrl(path);
   await addSiteImage({ site_id: siteId, url: publicUrl, caption, source: "google_satellite", sort_order: sortOrder });
-  return publicUrl;
 }
 
-/* ── Login screen ───────────────────────────────────────────────── */
+/* ── Login ───────────────────────────────────────────────── */
 function LoginScreen({ onSignIn, denied }: { onSignIn: () => void; denied: boolean }) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#080809]">
-      <div className="w-full max-w-sm px-8 py-10 rounded-2xl border border-white/8 bg-white/[0.02] flex flex-col items-center gap-6">
+    <div className="min-h-screen flex items-center justify-center bg-[#080809]">
+      <div className="w-sm px-8 py-10 rounded-2xl border border-white/8 bg-white/[0.02] flex flex-col items-center gap-6">
         <GentryMark color="#ff5100" size={40} />
         <div className="text-center">
-          <h1 className="text-white font-bold text-lg tracking-tight">Admin Access</h1>
-          <p className="text-white/35 text-[12px] font-mono mt-1">The Gentry Lab · Intelligence Platform</p>
+          <h1 className="text-white font-bold text-lg">Admin Access</h1>
+          <p className="text-white/30 text-[11px] font-mono mt-1">The Gentry Lab · Cambodia Industrial Intelligence</p>
         </div>
         {denied && (
           <div className="w-full px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
-            <p className="text-red-400 text-[11px] font-mono">Access denied. Authorized accounts only.</p>
+            <p className="text-red-400 text-[11px] font-mono">Unauthorized account.</p>
           </div>
         )}
-        <button
-          onClick={onSignIn}
-          className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl bg-white text-black font-semibold text-[13px] hover:bg-white/90 transition"
-        >
-          <svg width="18" height="18" viewBox="0 0 48 48">
-            <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
-            <path fill="#34A853" d="M6.3 14.7l7 5.1C15 16.1 19.1 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 16.3 2 9.7 7.4 6.3 14.7z" opacity=".5"/>
-          </svg>
+        <button onClick={onSignIn}
+          className="w-full flex items-center justify-center gap-3 px-5 py-3 rounded-xl bg-white text-black font-semibold text-[13px] hover:bg-white/90 transition">
+          <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
           Sign in with Google
         </button>
-        <p className="text-white/20 text-[10px] font-mono text-center">Restricted to authorized accounts</p>
+        <p className="text-white/15 text-[10px] font-mono">Restricted access</p>
       </div>
     </div>
   );
 }
 
-/* ── Main admin page ────────────────────────────────────────────── */
+/* ── Admin root ──────────────────────────────────────────── */
+type AdminTab = "overview" | "map" | "images";
+
 function AdminPage() {
   const { user, signInWithGoogle, signOut } = useAuth();
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: sites = [], isLoading } = useMapSites();
 
-  const [denied, setDenied] = useState(false);
-  const [tab, setTab] = useState<"overview" | "sites" | "images">("overview");
-  const [search, setSearch] = useState("");
-  const [kindFilter, setKindFilter] = useState("all");
-  const [selected, setSelected] = useState<MapSite | null>(null);
+  const [denied, setDenied]       = useState(false);
+  const [tab, setTab]             = useState<AdminTab>("map");
+  const [selected, setSelected]   = useState<MapSite | null>(null);
+  const [batchMsg, setBatchMsg]   = useState<string | null>(null);
+  const [batching, setBatching]   = useState(false);
 
-  const [batchStatus, setBatchStatus] = useState<string | null>(null);
-  const [batching, setBatching] = useState(false);
-
-  // Enforce whitelist
   useEffect(() => {
-    if (user && user.email !== ADMIN_EMAIL) {
-      setDenied(true);
-      signOut();
-    }
+    if (user && user.email !== ADMIN_EMAIL) { setDenied(true); signOut(); }
   }, [user, signOut]);
 
-  if (!user || denied) {
-    return <LoginScreen onSignIn={signInWithGoogle} denied={denied} />;
-  }
+  if (!user || denied) return <LoginScreen onSignIn={signInWithGoogle} denied={denied} />;
 
   async function handleBatchSatellite() {
     if (batching || !supabase) return;
-    setBatching(true); setBatchStatus("Scanning sites...");
+    setBatching(true); setBatchMsg("Scanning...");
     try {
       const { data: existing } = await supabase.from("site_images").select("site_id");
-      const withImages = new Set((existing ?? []).map((r: { site_id: string }) => r.site_id));
-      const missing = sites.filter((s) => s.lat && s.lng && !withImages.has(s.id));
-      setBatchStatus(`${missing.length} sites need photos. Starting...`);
-      const kindZoom: Record<string, number> = { sez: 14, park: 15 };
+      const withImg = new Set((existing ?? []).map((r: { site_id: string }) => r.site_id));
+      const missing = sites.filter(s => s.lat && s.lng && !withImg.has(s.id));
+      setBatchMsg(`${missing.length} sites queued`);
+      const zoomFor: Record<string, number> = { sez: 14, park: 15 };
       let done = 0;
-      for (const site of missing) {
-        const zoom = kindZoom[site.kind] ?? 16;
+      for (const s of missing) {
+        const z = zoomFor[s.kind] ?? 16;
         try {
-          await fetchAndUploadSatellite(site.id, site.lat, site.lng, zoom, "Satellite view", 0);
-          await fetchAndUploadSatellite(site.id, site.lat, site.lng, Math.max(zoom - 2, 12), "Area context", 1);
-          done++;
-          setBatchStatus(`${done}/${missing.length} — ${site.name}`);
-        } catch { /* skip failures */ }
+          await fetchAndUploadSatellite(s.id, s.lat, s.lng, z, "Satellite view", 0);
+          await fetchAndUploadSatellite(s.id, s.lat, s.lng, Math.max(z - 2, 12), "Area context", 1);
+          done++; setBatchMsg(`${done}/${missing.length} — ${s.name}`);
+        } catch { /* skip */ }
       }
       qc.invalidateQueries({ queryKey: ["site_images"] });
-      setBatchStatus(`Done — ${done} sites updated`);
-    } catch (e: unknown) {
-      setBatchStatus(`Error: ${e instanceof Error ? e.message : String(e)}`);
-    }
+      setBatchMsg(`Done — ${done} updated`);
+    } catch (e) { setBatchMsg(`Error: ${e instanceof Error ? e.message : e}`); }
     setBatching(false);
   }
 
-  const filtered = sites.filter((s) => {
-    const matchSearch = !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.province.toLowerCase().includes(search.toLowerCase());
-    const matchKind = kindFilter === "all" || s.kind === kindFilter;
-    return matchSearch && matchKind;
-  });
-
-  const kinds = ["all", ...Array.from(new Set(sites.map((s) => s.kind))).sort()];
-  const withScore = sites.filter((s) => s.score != null).length;
-  const withImages = sites.filter((s) => s.image_url).length;
-  const operational = sites.filter((s) => s.status === "Operational").length;
+  const stats = {
+    total:       sites.length,
+    operational: sites.filter(s => s.status === "Operational").length,
+    scored:      sites.filter(s => s.score != null).length,
+    avgScore:    Math.round(sites.filter(s => s.score != null).reduce((a, s) => a + s.score!, 0) / (sites.filter(s => s.score != null).length || 1)),
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#080809] text-white">
-      {/* Top nav */}
-      <header className="flex items-center gap-4 px-6 py-3 border-b border-white/8 shrink-0 bg-[#080809]/95 backdrop-blur sticky top-0 z-50">
-        <a href="/map" className="flex items-center gap-2.5 group">
+    <div className="h-screen flex flex-col bg-[#080809] text-white overflow-hidden">
+      {/* ── Top nav ── */}
+      <header className="flex items-center gap-4 px-5 py-2.5 border-b border-white/8 shrink-0 z-50">
+        <a href="/map" className="flex items-center gap-2 group">
           <GentryMark color="#ff5100" size={20} />
-          <span className="font-mono text-[10px] uppercase tracking-widest text-white/30 group-hover:text-white/60 transition">Admin</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/25 group-hover:text-white/50 transition">Admin</span>
         </a>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 ml-6">
-          {(["overview", "sites", "images"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => { setTab(t); setSelected(null); }}
+        <div className="flex items-center gap-1 ml-4">
+          {(["overview", "map", "images"] as AdminTab[]).map(t => (
+            <button key={t} onClick={() => setTab(t)}
               className="px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-wider transition"
               style={{
-                background: tab === t ? "rgba(255,81,0,0.12)" : "transparent",
-                color: tab === t ? "#ff5100" : "rgba(255,255,255,0.3)",
-                border: tab === t ? "1px solid rgba(255,81,0,0.25)" : "1px solid transparent",
-              }}
-            >
-              {t}
+                background: tab === t ? "rgba(255,81,0,0.1)" : "transparent",
+                color:      tab === t ? "#ff5100" : "rgba(255,255,255,0.28)",
+                border:     tab === t ? "1px solid rgba(255,81,0,0.22)" : "1px solid transparent",
+              }}>
+              {t === "map" ? "Map + Edit" : t}
             </button>
           ))}
         </div>
 
         <div className="flex-1" />
 
-        {/* Batch satellite */}
-        <div className="flex items-center gap-3">
-          {batchStatus && (
-            <span className="font-mono text-[10px] text-blue-400/70 max-w-[260px] truncate">{batchStatus}</span>
-          )}
-          <button
-            onClick={handleBatchSatellite}
-            disabled={batching || isLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[9px] uppercase tracking-wider transition border"
-            style={{
-              borderColor: batching ? "rgba(96,165,250,0.2)" : "rgba(96,165,250,0.35)",
-              color: batching ? "rgba(96,165,250,0.4)" : "rgba(96,165,250,0.8)",
-            }}
-          >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 010 20M2 12h20"/>
-            </svg>
-            {batching ? "Running..." : "Satellite all"}
-          </button>
-        </div>
+        {batchMsg && <span className="font-mono text-[10px] text-blue-400/60 max-w-xs truncate">{batchMsg}</span>}
 
-        <div className="w-px h-4 bg-white/10" />
-        <span className="font-mono text-[10px] text-white/25">{user.email}</span>
-        <button onClick={signOut} className="font-mono text-[9px] uppercase tracking-wider text-white/25 hover:text-white/60 transition px-2 py-1 rounded border border-white/8 hover:border-white/20">
-          Sign out
+        <button onClick={handleBatchSatellite} disabled={batching || isLoading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[9px] uppercase tracking-wider border border-blue-500/25 text-blue-400/70 hover:border-blue-400/50 hover:text-blue-300 transition disabled:opacity-35">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 010 20M2 12h20"/>
+          </svg>
+          {batching ? "Running…" : "Satellite all"}
         </button>
-        <a href="/map" className="font-mono text-[9px] uppercase tracking-wider text-white/25 hover:text-white/60 transition">← Map</a>
+
+        <div className="w-px h-4 bg-white/8" />
+        <span className="font-mono text-[9px] text-white/20">{user.email}</span>
+        <button onClick={signOut} className="font-mono text-[9px] text-white/20 hover:text-white/50 transition px-2 py-1 rounded border border-white/8 hover:border-white/18">Out</button>
       </header>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden flex">
-        {tab === "overview" && (
-          <OverviewTab
+      {/* ── Body ── */}
+      <div className="flex-1 overflow-hidden">
+        {tab === "overview" && <OverviewTab sites={sites} stats={stats} isLoading={isLoading} />}
+        {tab === "map"      && (
+          <MapEditTab
             sites={sites}
-            withScore={withScore}
-            operational={operational}
-            withImages={withImages}
-            isLoading={isLoading}
+            selected={selected}
+            onSelect={setSelected}
+            onSaved={(updated) => {
+              setSelected(updated);
+              qc.invalidateQueries({ queryKey: ["sites"] });
+            }}
           />
         )}
-
-        {tab === "sites" && (
-          <>
-            {/* Sidebar */}
-            <aside className="w-[260px] shrink-0 flex flex-col border-r border-white/8 bg-[#080809]">
-              <div className="p-3 space-y-2 border-b border-white/8">
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white placeholder:text-white/20 focus:outline-none focus:border-white/25"
-                />
-                <div className="flex gap-1 flex-wrap">
-                  {kinds.map((k) => (
-                    <button
-                      key={k}
-                      onClick={() => setKindFilter(k)}
-                      className="px-2 py-0.5 rounded font-mono text-[9px] uppercase tracking-wide transition"
-                      style={{
-                        background: kindFilter === k ? "rgba(255,81,0,0.15)" : "rgba(255,255,255,0.04)",
-                        color: kindFilter === k ? "#ff5100" : "rgba(255,255,255,0.3)",
-                        border: kindFilter === k ? "1px solid rgba(255,81,0,0.3)" : "1px solid transparent",
-                      }}
-                    >
-                      {k}
-                    </button>
-                  ))}
-                </div>
-                <p className="font-mono text-[9px] text-white/20 text-right">{filtered.length} sites</p>
-              </div>
-              <div className="overflow-y-auto flex-1">
-                {isLoading ? (
-                  <p className="p-4 font-mono text-[10px] text-white/25">Loading...</p>
-                ) : filtered.map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSelected(s)}
-                    className="w-full text-left px-3 py-2.5 border-b border-white/5 transition group"
-                    style={{ background: selected?.id === s.id ? "rgba(255,81,0,0.06)" : undefined }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0 transition"
-                        style={{ backgroundColor: s.status === "Operational" ? "#34d399" : s.status === "Under Construction" ? "#fbbf24" : "#475569" }} />
-                      <span className="text-[12px] font-medium text-white/80 group-hover:text-white truncate transition">{s.name}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-0.5 pl-3.5">
-                      <span className="font-mono text-[9px] text-white/25">{s.province}</span>
-                      <span className="font-mono text-[9px] text-white/15">·</span>
-                      <span className="font-mono text-[9px] text-white/20">{s.kind}</span>
-                      {s.score != null && (
-                        <>
-                          <span className="font-mono text-[9px] text-white/15">·</span>
-                          <span className="font-mono text-[9px]" style={{ color: s.score >= 70 ? "#34d399" : s.score >= 50 ? "#fbbf24" : "#94a3b8" }}>
-                            {s.score}pt
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </aside>
-
-            {/* Editor */}
-            <main className="flex-1 overflow-y-auto bg-[#0a0a0b]">
-              {selected ? (
-                <SiteEditor
-                  site={selected}
-                  key={selected.id}
-                  onSaved={(updated) => {
-                    setSelected(updated);
-                    qc.invalidateQueries({ queryKey: ["sites"] });
-                  }}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full gap-3 text-white/15">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round">
-                    <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                    <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                  </svg>
-                  <p className="font-mono text-[11px]">Select a site to edit</p>
-                </div>
-              )}
-            </main>
-          </>
-        )}
-
-        {tab === "images" && (
-          <ImageBrowserTab sites={sites} isLoading={isLoading} />
-        )}
+        {tab === "images"   && <ImagesTab sites={sites} isLoading={isLoading} />}
       </div>
     </div>
   );
 }
 
-/* ── Overview tab ───────────────────────────────────────────────── */
-function OverviewTab({ sites, withScore, operational, withImages, isLoading }: {
-  sites: MapSite[]; withScore: number; operational: number; withImages: number; isLoading: boolean;
+/* ══════════════════════════════════════════════════════════
+   MAP + EDIT TAB
+══════════════════════════════════════════════════════════ */
+const DARK_MAP_STYLES = [
+  { elementType: "geometry",               stylers: [{ color: "#0d1117" }] },
+  { elementType: "labels.text.fill",       stylers: [{ color: "#7a8899" }] },
+  { elementType: "labels.text.stroke",     stylers: [{ color: "#0d1117" }] },
+  { featureType: "road.highway",           elementType: "geometry",         stylers: [{ color: "#1e2d3a" }] },
+  { featureType: "poi",                    stylers: [{ visibility: "off" }] },
+  { featureType: "transit",                stylers: [{ visibility: "off" }] },
+  { featureType: "water",                  elementType: "geometry",         stylers: [{ color: "#0a1628" }] },
+  { featureType: "landscape",              elementType: "geometry",         stylers: [{ color: "#0f1a22" }] },
+  { featureType: "administrative.country", elementType: "geometry.stroke",  stylers: [{ color: "#445060" }, { weight: 1.5 }] },
+] as google.maps.MapTypeStyle[];
+
+function MapEditTab({ sites, selected, onSelect, onSaved }: {
+  sites: MapSite[];
+  selected: MapSite | null;
+  onSelect: (s: MapSite) => void;
+  onSaved: (s: MapSite) => void;
 }) {
-  const byKind = sites.reduce<Record<string, number>>((acc, s) => {
-    acc[s.kind] = (acc[s.kind] ?? 0) + 1; return acc;
-  }, {});
-
-  const byLayer = sites.reduce<Record<string, number>>((acc, s) => {
-    acc[s.layer] = (acc[s.layer] ?? 0) + 1; return acc;
-  }, {});
-
-  const avgScore = sites.filter((s) => s.score != null).reduce((a, s) => a + s.score!, 0) / (withScore || 1);
-
-  const tierColors: Record<string, string> = {
-    "EIP+": "#34d399", "Advanced": "#60a5fa", "Developing": "#fbbf24", "Basic": "#94a3b8",
-  };
-
-  if (isLoading) return <div className="flex-1 flex items-center justify-center"><p className="font-mono text-[11px] text-white/20">Loading...</p></div>;
-
   return (
-    <div className="flex-1 overflow-y-auto p-8">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div>
-          <h2 className="text-[22px] font-bold text-white mb-1">Platform Overview</h2>
-          <p className="font-mono text-[11px] text-white/30">The Gentry Lab — Cambodia Industrial Intelligence</p>
+    <div className="flex h-full">
+      {/* Map pane */}
+      <div className="flex-1 relative">
+        <APIProvider apiKey={GMAPS_KEY} libraries={["places"]}>
+          <Map
+            defaultCenter={{ lat: 12.5657, lng: 104.991 }}
+            defaultZoom={7}
+            mapTypeId="roadmap"
+            styles={DARK_MAP_STYLES}
+            disableDefaultUI
+            className="w-full h-full"
+          >
+            <AdminPins sites={sites} selected={selected} onSelect={onSelect} />
+          </Map>
+        </APIProvider>
+
+        {/* Legend */}
+        <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-1.5">
+          {(Object.entries(LAYER_META) as [string, { label: string; color: string }][])
+            .filter(([k]) => k !== "corridors" && k !== "risk")
+            .map(([, v]) => (
+              <div key={v.label} className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
+                <span className="font-mono text-[9px] text-white/50">{v.label}</span>
+              </div>
+            ))}
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-4 gap-4">
-          <StatCard label="Total Sites" value={sites.length} sub="across all layers" />
-          <StatCard label="Operational" value={operational} sub={`${Math.round(operational / sites.length * 100)}% of total`} color="#34d399" />
-          <StatCard label="EIP Scored" value={withScore} sub={`avg ${Math.round(avgScore)}/100`} color="#60a5fa" />
-          <StatCard label="With Photos" value={withImages} sub={`${sites.length - withImages} still missing`} color="#fbbf24" />
+        {/* Site count */}
+        <div className="absolute top-3 left-3 bg-black/60 backdrop-blur border border-white/8 rounded-lg px-3 py-1.5">
+          <span className="font-mono text-[9px] text-white/40">{sites.length} sites · click pin to edit</span>
         </div>
+      </div>
 
-        {/* By kind */}
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-white/[0.03] border border-white/8 rounded-xl p-5">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-4">Sites by Kind</p>
-            <div className="space-y-2.5">
-              {Object.entries(byKind).sort((a, b) => b[1] - a[1]).map(([kind, count]) => (
-                <div key={kind} className="flex items-center gap-3">
-                  <span className="font-mono text-[10px] text-white/50 w-24 truncate capitalize">{kind}</span>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${count / sites.length * 100}%`, backgroundColor: "#ff5100", opacity: 0.7 }} />
-                  </div>
-                  <span className="font-mono text-[10px] text-white/40 w-6 text-right">{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="bg-white/[0.03] border border-white/8 rounded-xl p-5">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-4">Sites by Layer</p>
-            <div className="space-y-2.5">
-              {Object.entries(byLayer).sort((a, b) => b[1] - a[1]).map(([layer, count]) => (
-                <div key={layer} className="flex items-center gap-3">
-                  <span className="font-mono text-[10px] text-white/50 w-24 truncate capitalize">{layer}</span>
-                  <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${count / sites.length * 100}%`, backgroundColor: "#60a5fa", opacity: 0.7 }} />
-                  </div>
-                  <span className="font-mono text-[10px] text-white/40 w-6 text-right">{count}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* EIP tiers */}
-        <div className="bg-white/[0.03] border border-white/8 rounded-xl p-5">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-4">EIP Tier Distribution</p>
-          <div className="flex items-end gap-4">
-            {Object.entries(tierColors).map(([tier, color]) => {
-              const count = sites.filter((s) => s.eip_tier === tier).length;
-              return (
-                <div key={tier} className="flex flex-col items-center gap-2 flex-1">
-                  <span className="font-mono text-[11px]" style={{ color }}>{count}</span>
-                  <div className="w-full rounded-t" style={{ height: `${Math.max(count / sites.length * 120, 4)}px`, backgroundColor: color, opacity: 0.5 }} />
-                  <span className="font-mono text-[9px] text-white/30">{tier}</span>
-                </div>
-              );
-            })}
-            <div className="flex flex-col items-center gap-2 flex-1">
-              <span className="font-mono text-[11px] text-white/30">{sites.filter((s) => !s.eip_tier).length}</span>
-              <div className="w-full rounded-t bg-white/8" style={{ height: `${Math.max(sites.filter((s) => !s.eip_tier).length / sites.length * 120, 4)}px` }} />
-              <span className="font-mono text-[9px] text-white/20">Unscored</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick links */}
-        <div className="flex gap-3">
-          <a href="/map" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition font-mono text-[10px] uppercase tracking-wider">
-            Open Map ↗
-          </a>
-          <a href="/tracker" target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition font-mono text-[10px] uppercase tracking-wider">
-            Tracker ↗
-          </a>
-        </div>
+      {/* Editor pane */}
+      <div
+        className="shrink-0 border-l border-white/8 overflow-y-auto bg-[#0a0a0b] transition-all duration-300"
+        style={{ width: selected ? "420px" : "0px", minWidth: selected ? "420px" : "0px" }}
+      >
+        {selected && (
+          <SiteEditor key={selected.id} site={selected} onSaved={onSaved} onClose={() => onSelect(null as unknown as MapSite)} />
+        )}
       </div>
     </div>
   );
 }
 
-/* ── Site editor ────────────────────────────────────────────────── */
-const STATUS_OPTIONS = ["Operational", "Under Construction", "Planned"] as const;
+/* ── Map pins rendered inside the Map context ──────────── */
+function AdminPins({ sites, selected, onSelect }: {
+  sites: MapSite[];
+  selected: MapSite | null;
+  onSelect: (s: MapSite) => void;
+}) {
+  const map = useMap();
 
-function SiteEditor({ site, onSaved }: { site: MapSite; onSaved: (s: MapSite) => void }) {
+  useEffect(() => {
+    if (!map || !sites.length) return;
+    const markers: google.maps.Marker[] = [];
+
+    sites.forEach(site => {
+      if (!site.lat || !site.lng) return;
+      const color = LAYER_META[site.layer as keyof typeof LAYER_META]?.color ?? "#94a3b8";
+      const isSelected = selected?.id === site.id;
+      const size = isSelected ? 12 : 8;
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size * 2 + 4}" height="${size * 2 + 4}">
+        <circle cx="${size + 2}" cy="${size + 2}" r="${size}" fill="${color}" fill-opacity="${isSelected ? 1 : 0.75}" stroke="#fff" stroke-width="${isSelected ? 2 : 1}" stroke-opacity="0.6"/>
+      </svg>`;
+
+      const marker = new google.maps.Marker({
+        position: { lat: site.lat, lng: site.lng },
+        map,
+        title: site.name,
+        icon: {
+          url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+          anchor: new google.maps.Point(size + 2, size + 2),
+        },
+        zIndex: isSelected ? 100 : 1,
+      });
+      marker.addListener("click", () => {
+        onSelect(site);
+        map.panTo({ lat: site.lat, lng: site.lng });
+      });
+      markers.push(marker);
+    });
+
+    return () => markers.forEach(m => m.setMap(null));
+  }, [map, sites, selected, onSelect]);
+
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════
+   SITE EDITOR — category-aware
+══════════════════════════════════════════════════════════ */
+function SiteEditor({ site, onSaved, onClose }: {
+  site: MapSite;
+  onSaved: (s: MapSite) => void;
+  onClose: () => void;
+}) {
   const { data: images = [], refetch: refetchImages } = useSiteImages(site.id);
+  const group = KIND_GROUP(site.kind);
 
-  const [fields, setFields] = useState({
+  // Common fields
+  const [f, setF] = useState({
     name:              site.name,
     status:            site.status ?? "",
     size:              site.size ?? "",
@@ -446,251 +343,516 @@ function SiteEditor({ site, onSaved }: { site: MapSite; onSaved: (s: MapSite) =>
     website:           site.website ?? "",
     phone:             site.phone ?? "",
     notes:             site.notes ?? "",
-    target_industries: (site.targetIndustries ?? []).join(", "),
-    utilities:         site.utilities ?? "",
     road:              site.road ?? "",
+    utilities:         site.utilities ?? "",
+    target_industries: (site.targetIndustries ?? []).join(", "),
     strengths:         (site.strengths ?? []).join("\n"),
     constraints:       (site.constraints ?? []).join("\n"),
+    recommendation:    site.recommendation ?? "",
+    // Investment
+    tenant_count:      site.tenant_count?.toString() ?? "",
+    country_count:     site.country_count?.toString() ?? "",
+    employee_count:    site.employee_count?.toString() ?? "",
+    export_value_usd:  site.export_value_usd?.toString() ?? "",
+    stock_ticker:      site.stock_ticker ?? "",
+    zone_types:        (site.zone_types ?? []).join(", "),
+    lease_rate_usd:    site.lease_rate_usd ?? "",
+    plot_size_min_ha:  site.plot_size_min_ha?.toString() ?? "",
+    airport_distance_km: site.airport_distance_km?.toString() ?? "",
+    city_distance_km:  site.city_distance_km?.toString() ?? "",
+    on_site_facilities: (site.on_site_facilities ?? []).join(", "),
+    // Energy EIP
+    energy_tariff_usd: site.energy_tariff_usd?.toString() ?? "",
+    grid_uptime_pct:   site.grid_uptime_pct?.toString() ?? "",
+    renewable_pct:     site.renewable_pct?.toString() ?? "",
+    own_generation_mw: site.own_generation_mw?.toString() ?? "",
+    substation_dist_km: site.substation_dist_km?.toString() ?? "",
+    grid_capacity_mw:  site.grid_capacity_mw?.toString() ?? "",
+    // Powerplant / substation
+    capacity_mw:       site.capacity_mw?.toString() ?? "",
+    energy_type:       site.energy_type ?? "",
+    voltage_kv:        site.voltage_kv?.toString() ?? "",
+    provinces_served:  (site.provinces_served ?? []).join(", "),
+    seasonal_output_pct: site.seasonal_output_pct?.toString() ?? "",
+    // Booleans as string
+    backup_power:      site.backup_power != null ? (site.backup_power ? "Yes" : "No") : "",
+    energy_policy:     site.energy_policy != null ? (site.energy_policy ? "Yes" : "No") : "",
+    tenant_metering:   site.tenant_metering != null ? (site.tenant_metering ? "Yes" : "No") : "",
+    // Source
+    data_source_url:   site.data_source_url ?? "",
   });
 
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [err, setErr] = useState("");
+  const set = (k: string, v: string) => setF(prev => ({ ...prev, [k]: v }));
 
-  function set(k: string, v: string) { setFields((f) => ({ ...f, [k]: v })); }
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+  const [err,    setErr]    = useState("");
 
   async function handleSave() {
     setSaving(true); setErr("");
+    const parseBool = (v: string) => v === "Yes" ? true : v === "No" ? false : null;
+    const parseArr  = (v: string) => v.split(",").map(s => s.trim()).filter(Boolean);
+    const parseLines = (v: string) => v.split("\n").map(s => s.trim()).filter(Boolean);
+
+    const patch: Record<string, unknown> = {
+      name:              f.name,
+      status:            f.status || null,
+      size:              f.size || null,
+      province:          f.province,
+      operator:          f.operator || null,
+      year_commissioned: f.year_commissioned ? +f.year_commissioned : null,
+      website:           f.website || null,
+      phone:             f.phone || null,
+      notes:             f.notes || null,
+      road:              f.road || null,
+      utilities:         f.utilities || null,
+      target_industries: f.target_industries ? parseArr(f.target_industries) : null,
+      strengths:         f.strengths  ? parseLines(f.strengths)  : null,
+      constraints:       f.constraints ? parseLines(f.constraints) : null,
+      recommendation:    f.recommendation || null,
+      tenant_count:      f.tenant_count   ? +f.tenant_count   : null,
+      country_count:     f.country_count  ? +f.country_count  : null,
+      employee_count:    f.employee_count ? +f.employee_count : null,
+      export_value_usd:  f.export_value_usd ? +f.export_value_usd : null,
+      stock_ticker:      f.stock_ticker || null,
+      zone_types:        f.zone_types ? parseArr(f.zone_types) : null,
+      lease_rate_usd:    f.lease_rate_usd || null,
+      plot_size_min_ha:  f.plot_size_min_ha  ? +f.plot_size_min_ha  : null,
+      airport_distance_km: f.airport_distance_km ? +f.airport_distance_km : null,
+      city_distance_km:  f.city_distance_km ? +f.city_distance_km : null,
+      on_site_facilities: f.on_site_facilities ? parseArr(f.on_site_facilities) : null,
+      energy_tariff_usd: f.energy_tariff_usd ? +f.energy_tariff_usd : null,
+      grid_uptime_pct:   f.grid_uptime_pct   ? +f.grid_uptime_pct   : null,
+      renewable_pct:     f.renewable_pct     ? +f.renewable_pct     : null,
+      own_generation_mw: f.own_generation_mw ? +f.own_generation_mw : null,
+      substation_dist_km: f.substation_dist_km ? +f.substation_dist_km : null,
+      grid_capacity_mw:  f.grid_capacity_mw  ? +f.grid_capacity_mw  : null,
+      capacity_mw:       f.capacity_mw   ? +f.capacity_mw   : null,
+      energy_type:       f.energy_type   || null,
+      voltage_kv:        f.voltage_kv    ? +f.voltage_kv    : null,
+      provinces_served:  f.provinces_served ? parseArr(f.provinces_served) : null,
+      seasonal_output_pct: f.seasonal_output_pct ? +f.seasonal_output_pct : null,
+      backup_power:      parseBool(f.backup_power),
+      energy_policy:     parseBool(f.energy_policy),
+      tenant_metering:   parseBool(f.tenant_metering),
+      data_source_url:   f.data_source_url || null,
+      updated_at:        new Date().toISOString(),
+    };
+
     try {
-      const patch: Record<string, unknown> = {
-        name:              fields.name,
-        status:            fields.status || null,
-        size:              fields.size || null,
-        province:          fields.province,
-        operator:          fields.operator || null,
-        year_commissioned: fields.year_commissioned ? parseInt(fields.year_commissioned) : null,
-        website:           fields.website || null,
-        phone:             fields.phone || null,
-        notes:             fields.notes || null,
-        target_industries: fields.target_industries ? fields.target_industries.split(",").map((s) => s.trim()).filter(Boolean) : null,
-        utilities:         fields.utilities || null,
-        road:              fields.road || null,
-        strengths:         fields.strengths ? fields.strengths.split("\n").map((s) => s.trim()).filter(Boolean) : null,
-        constraints:       fields.constraints ? fields.constraints.split("\n").map((s) => s.trim()).filter(Boolean) : null,
-        updated_at:        new Date().toISOString(),
-      };
       await updateSiteField(site.id, patch);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
       onSaved({ ...site, ...patch, targetIndustries: patch.target_industries as string[] } as MapSite);
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Save failed");
-    }
+    } catch (e) { setErr(e instanceof Error ? e.message : "Save failed"); }
     setSaving(false);
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-8 py-8">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/20 mb-1">{site.id}</p>
-          <h2 className="text-[20px] font-bold text-white leading-tight">{site.name}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="font-mono text-[10px] text-white/30">{site.province}</span>
-            <span className="text-white/15">·</span>
-            <span className="font-mono text-[10px] text-white/25 capitalize">{site.kind}</span>
-            <span className="text-white/15">·</span>
-            <span className="font-mono text-[10px] text-white/20 capitalize">{site.layer}</span>
-          </div>
+    <div className="flex flex-col h-full">
+      {/* Editor header */}
+      <div className="flex items-center gap-3 px-5 py-3 border-b border-white/8 shrink-0">
+        <button onClick={onClose} className="text-white/30 hover:text-white/70 transition">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-[9px] text-white/20 uppercase tracking-widest truncate">{site.id}</p>
+          <p className="text-[13px] font-semibold text-white truncate leading-tight">{site.name}</p>
         </div>
-        <div className="flex items-center gap-3">
-          {site.website && (
-            <a href={site.website} target="_blank" rel="noopener noreferrer"
-              className="font-mono text-[10px] text-blue-400/70 hover:text-blue-300 transition">↗ Site</a>
-          )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-5 py-2 font-mono text-[11px] uppercase tracking-wider rounded-lg transition font-bold"
-            style={{ backgroundColor: saved ? "#059669" : "#ff5100", color: "#fff", opacity: saving ? 0.6 : 1 }}
-          >
-            {saving ? "Saving..." : saved ? "Saved ✓" : "Save"}
-          </button>
-        </div>
+        <button onClick={handleSave} disabled={saving}
+          className="shrink-0 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider rounded-lg transition font-bold"
+          style={{ backgroundColor: saved ? "#059669" : "#ff5100", color: "#fff", opacity: saving ? 0.6 : 1 }}>
+          {saving ? "…" : saved ? "Saved ✓" : "Save"}
+        </button>
       </div>
-      {err && <p className="mb-5 text-[11px] text-red-400 font-mono bg-red-500/10 px-3 py-2 rounded-lg">{err}</p>}
 
-      <div className="space-y-6">
-        {/* Basic */}
-        <Section label="Basic Info">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Name" value={fields.name} onChange={(v) => set("name", v)} />
-            <Field label="Province" value={fields.province} onChange={(v) => set("province", v)} />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">Status</label>
-              <select
-                value={fields.status}
-                onChange={(e) => set("status", e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white focus:outline-none focus:border-white/25"
-              >
-                <option value="">—</option>
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
+      {/* Kind badge */}
+      <div className="px-5 pt-3 pb-1 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <KindBadge kind={site.kind} />
+          <span className="font-mono text-[9px] text-white/25">{site.province}</span>
+          <span className="font-mono text-[9px] text-white/15">·</span>
+          <span className="font-mono text-[9px] text-white/25 capitalize">{site.layer}</span>
+          {site.score != null && (
+            <>
+              <span className="font-mono text-[9px] text-white/15">·</span>
+              <span className="font-mono text-[9px]" style={{ color: site.score >= 70 ? "#34d399" : site.score >= 50 ? "#fbbf24" : "#94a3b8" }}>
+                EIP {site.score}/100
+              </span>
+            </>
+          )}
+        </div>
+        {err && <p className="mt-2 text-[11px] text-red-400 font-mono bg-red-500/8 px-2 py-1.5 rounded">{err}</p>}
+      </div>
+
+      {/* Scrollable fields */}
+      <div className="flex-1 overflow-y-auto px-5 pb-8 space-y-5 pt-3">
+
+        {/* ── COMMON ── */}
+        <Sec label="Basic">
+          <Row>
+            <FI label="Name"     val={f.name}     set={v => set("name", v)} />
+            <FI label="Province" val={f.province}  set={v => set("province", v)} />
+          </Row>
+          <Row>
+            <Select label="Status" val={f.status} set={v => set("status", v)} opts={["", ...STATUS_OPTS]} />
+            <FI label="Size"   val={f.size}   set={v => set("size", v)}   hint="800 ha" />
+            <FI label="Est."   val={f.year_commissioned} set={v => set("year_commissioned", v)} hint="2010" />
+          </Row>
+          <Row>
+            <FI label="Operator" val={f.operator} set={v => set("operator", v)} />
+            <FI label="Phone"    val={f.phone}    set={v => set("phone", v)} hint="+855 …" />
+          </Row>
+          <FI label="Website" val={f.website} set={v => set("website", v)} hint="https://…" />
+        </Sec>
+
+        {/* ── INVESTMENT — SEZ / PARK / FACTORY / LOGISTICS ── */}
+        {group === "investment" && <>
+          {(site.kind === "sez" || site.kind === "park") && <>
+            <Sec label="Tenants & Output">
+              <Row>
+                <FI label="Tenant Companies" val={f.tenant_count}   set={v => set("tenant_count", v)}   hint="45" />
+                <FI label="Countries"        val={f.country_count}  set={v => set("country_count", v)}  hint="12" />
+                <FI label="Employees"        val={f.employee_count} set={v => set("employee_count", v)} hint="25000" />
+              </Row>
+              <Row>
+                <FI label="Annual Exports (USD)" val={f.export_value_usd} set={v => set("export_value_usd", v)} hint="1200000000" />
+                <FI label="Stock Ticker"         val={f.stock_ticker}     set={v => set("stock_ticker", v)}     hint="CSEZ" />
+              </Row>
+            </Sec>
+
+            <Sec label="Zone & Lease">
+              <Row>
+                <FI label="Zone Types (comma)"    val={f.zone_types}    set={v => set("zone_types", v)}    hint="Manufacturing, Logistics" />
+                <FI label="Lease Rate (USD/sqm)"  val={f.lease_rate_usd} set={v => set("lease_rate_usd", v)} hint="3.5–6.0" />
+              </Row>
+              <Row>
+                <FI label="Min Plot (ha)" val={f.plot_size_min_ha} set={v => set("plot_size_min_ha", v)} hint="0.5" />
+                <FI label="Airport Dist (km)" val={f.airport_distance_km} set={v => set("airport_distance_km", v)} hint="35" />
+                <FI label="City Dist (km)"    val={f.city_distance_km}    set={v => set("city_distance_km", v)}    hint="12" />
+              </Row>
+              <FI label="On-site Facilities (comma)" val={f.on_site_facilities} set={v => set("on_site_facilities", v)} hint="Dormitory, Canteen, Clinic, Bank" />
+            </Sec>
+
+            <Sec label="Energy (EIP)">
+              <Row>
+                <FI label="Tariff (USD/kWh)"  val={f.energy_tariff_usd} set={v => set("energy_tariff_usd", v)} hint="0.09" />
+                <FI label="Grid Uptime (%)"   val={f.grid_uptime_pct}   set={v => set("grid_uptime_pct", v)}   hint="99.2" />
+                <FI label="Renewable (%)"     val={f.renewable_pct}     set={v => set("renewable_pct", v)}     hint="15" />
+              </Row>
+              <Row>
+                <FI label="Own Gen (MW)"      val={f.own_generation_mw}  set={v => set("own_generation_mw", v)}  hint="5" />
+                <FI label="Substation Dist (km)" val={f.substation_dist_km} set={v => set("substation_dist_km", v)} hint="2.5" />
+                <FI label="Grid Cap (MW)"     val={f.grid_capacity_mw}   set={v => set("grid_capacity_mw", v)}   hint="50" />
+              </Row>
+              <Row>
+                <Select label="Backup Power"    val={f.backup_power}    set={v => set("backup_power", v)}    opts={["", "Yes", "No"]} />
+                <Select label="Energy Policy"   val={f.energy_policy}   set={v => set("energy_policy", v)}   opts={["", "Yes", "No"]} />
+                <Select label="Tenant Metering" val={f.tenant_metering} set={v => set("tenant_metering", v)} opts={["", "Yes", "No"]} />
+              </Row>
+            </Sec>
+          </>}
+
+          {site.kind === "factory" && (
+            <Sec label="Factory Detail">
+              <FI label="Employees" val={f.employee_count} set={v => set("employee_count", v)} hint="500" />
+            </Sec>
+          )}
+
+          <Sec label="Target Industries">
+            <FI label="Industries (comma)" val={f.target_industries} set={v => set("target_industries", v)} hint="Garment, Electronics, Food Processing" />
+          </Sec>
+        </>}
+
+        {/* ── ENERGY — POWERPLANT / SOLAR ── */}
+        {group === "energy-gen" && (
+          <Sec label="Power Generation">
+            <Row>
+              <FI label="Capacity (MW)"    val={f.capacity_mw}   set={v => set("capacity_mw", v)}   hint="246" />
+              <FI label="Energy Type"      val={f.energy_type}   set={v => set("energy_type", v)}   hint="Hydro / Solar / Coal" />
+              <FI label="Seasonal Out (%)" val={f.seasonal_output_pct} set={v => set("seasonal_output_pct", v)} hint="72" />
+            </Row>
+            <Row>
+              <FI label="Tariff (USD/kWh)" val={f.energy_tariff_usd} set={v => set("energy_tariff_usd", v)} hint="0.075" />
+              <FI label="Voltage (kV)"     val={f.voltage_kv}         set={v => set("voltage_kv", v)}         hint="115" />
+            </Row>
+            <FI label="Provinces Served (comma)" val={f.provinces_served} set={v => set("provinces_served", v)} hint="Phnom Penh, Kandal" />
+          </Sec>
+        )}
+
+        {/* ── ENERGY — SUBSTATION ── */}
+        {group === "energy-grid" && (
+          <Sec label="Substation">
+            <Row>
+              <FI label="Voltage (kV)"   val={f.voltage_kv}       set={v => set("voltage_kv", v)}       hint="115" />
+              <FI label="Grid Cap (MW)"  val={f.grid_capacity_mw} set={v => set("grid_capacity_mw", v)} hint="120" />
+            </Row>
+            <FI label="Provinces Served (comma)" val={f.provinces_served} set={v => set("provinces_served", v)} hint="Phnom Penh, Kandal, Kampong Speu" />
+          </Sec>
+        )}
+
+        {/* ── INFRASTRUCTURE ── */}
+        {group === "infrastructure" && (
+          <Sec label="Infrastructure">
+            <Row>
+              <FI label="Capacity (annual MT or flights)" val={f.capacity_mw} set={v => set("capacity_mw", v)} hint="1500000" />
+              <FI label="Operator" val={f.operator} set={v => set("operator", v)} />
+            </Row>
+          </Sec>
+        )}
+
+        {/* ── ENVIRONMENT ── */}
+        {group === "environment" && (
+          <Sec label="Environment">
+            <FI label="Capacity / Scale" val={f.capacity_mw} set={v => set("capacity_mw", v)} hint="500 ha or 200 t/day" />
+          </Sec>
+        )}
+
+        {/* ── LABOR ── */}
+        {group === "labor" && (
+          <Sec label="Institution">
+            <FI label="Capacity (students / beds)" val={f.employee_count} set={v => set("employee_count", v)} hint="5000" />
+          </Sec>
+        )}
+
+        {/* ── COMMON LOWER FIELDS ── */}
+        <Sec label="Location & Access">
+          <Row>
+            <FI label="Road / Access" val={f.road}      set={v => set("road", v)} />
+            <FI label="Utilities"     val={f.utilities}  set={v => set("utilities", v)} />
+          </Row>
+        </Sec>
+
+        <Sec label="About / Notes">
+          <TA label="Description" val={f.notes} set={v => set("notes", v)} rows={5} hint="Detailed description…" />
+        </Sec>
+
+        {(group === "investment" || group === "energy-gen") && (
+          <Sec label="Analysis">
+            <Row>
+              <TA label="Strengths (one per line)"   val={f.strengths}   set={v => set("strengths", v)}   rows={4} hint="Direct Sihanoukville port access&#10;…" />
+              <TA label="Constraints (one per line)" val={f.constraints} set={v => set("constraints", v)} rows={4} hint="Flood risk in wet season&#10;…" />
+            </Row>
+            <TA label="Recommendation" val={f.recommendation} set={v => set("recommendation", v)} rows={2} hint="Best suited for…" />
+          </Sec>
+        )}
+
+        {/* EIP read-only */}
+        {(site.eip_management != null || site.score != null) && (
+          <Sec label="EIP Scores (read-only)">
+            <div className="grid grid-cols-4 gap-2">
+              {[["Mgmt", site.eip_management], ["Env", site.eip_environmental], ["Social", site.eip_social], ["Econ", site.eip_economic]]
+                .map(([k, v]) => (
+                  <div key={k} className="bg-white/3 rounded-lg px-3 py-2 text-center">
+                    <p className="font-mono text-[8px] text-white/25 mb-1">{k}</p>
+                    <p className="text-[15px] font-bold text-white/70">{v ?? "—"}<span className="text-[9px] text-white/20">/25</span></p>
+                  </div>
+                ))}
             </div>
-            <Field label="Size" value={fields.size} onChange={(v) => set("size", v)} placeholder="800 ha" />
-            <Field label="Year Est." value={fields.year_commissioned} onChange={(v) => set("year_commissioned", v)} placeholder="2010" />
-          </div>
-        </Section>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              {[["Total", site.score != null ? `${site.score}/100` : "—"], ["Tier", site.eip_tier ?? "—"], ["GPS", site.coordVerified ? "✓ Verified" : "Estimated"]]
+                .map(([k, v]) => (
+                  <div key={k} className="bg-white/3 rounded-lg px-3 py-2">
+                    <p className="font-mono text-[8px] text-white/25 mb-1">{k}</p>
+                    <p className="text-[12px] text-white/60">{v}</p>
+                  </div>
+                ))}
+            </div>
+          </Sec>
+        )}
 
-        {/* Contact */}
-        <Section label="Contact & Web">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Operator" value={fields.operator} onChange={(v) => set("operator", v)} />
-            <Field label="Phone" value={fields.phone} onChange={(v) => set("phone", v)} placeholder="+855 ..." />
-          </div>
-          <Field label="Website" value={fields.website} onChange={(v) => set("website", v)} placeholder="https://..." />
-        </Section>
+        {/* Source */}
+        <Sec label="Data Source">
+          <FI label="Source URL" val={f.data_source_url} set={v => set("data_source_url", v)} hint="https://…" />
+        </Sec>
 
-        {/* Location */}
-        <Section label="Location & Access">
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Road / Access" value={fields.road} onChange={(v) => set("road", v)} />
-            <Field label="Utilities" value={fields.utilities} onChange={(v) => set("utilities", v)} />
-          </div>
-        </Section>
-
-        {/* Intelligence */}
-        <Section label="Intelligence">
-          <Field label="Target Industries (comma-separated)" value={fields.target_industries} onChange={(v) => set("target_industries", v)} placeholder="Manufacturing, Garment, Logistics" />
-          <TextArea label="Notes / About" value={fields.notes} onChange={(v) => set("notes", v)} rows={5} placeholder="Site description..." />
-          <div className="grid grid-cols-2 gap-4">
-            <TextArea label="Strengths (one per line)" value={fields.strengths} onChange={(v) => set("strengths", v)} rows={4} placeholder="Strategic coastal location near port&#10;Strong SEZ incentive package..." />
-            <TextArea label="Constraints (one per line)" value={fields.constraints} onChange={(v) => set("constraints", v)} rows={4} placeholder="Limited skilled workforce&#10;Flood risk in wet season..." />
-          </div>
-        </Section>
-
-        {/* Read-only */}
-        <Section label="EIP Scores (read-only)">
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              ["Management", site.eip_management],
-              ["Environmental", site.eip_environmental],
-              ["Social", site.eip_social],
-              ["Economic", site.eip_economic],
-            ].map(([k, v]) => (
-              <div key={k} className="bg-white/3 rounded-lg px-3 py-2.5">
-                <p className="font-mono text-[8px] uppercase tracking-widest text-white/20 mb-1">{k}</p>
-                <p className="text-[14px] font-bold text-white/70">{v ?? "—"}<span className="text-[10px] text-white/25">/25</span></p>
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-4 gap-3 mt-3">
-            {[
-              ["Total Score", site.score != null ? `${site.score}/100` : "—"],
-              ["Tier", site.eip_tier ?? "—"],
-              ["Port Dist", site.port_distance_km != null ? `${Math.round(site.port_distance_km)} km` : "—"],
-              ["GPS", site.coordVerified ? "✓ Verified" : "Estimated"],
-            ].map(([k, v]) => (
-              <div key={k} className="bg-white/3 rounded-lg px-3 py-2.5">
-                <p className="font-mono text-[8px] uppercase tracking-widest text-white/20 mb-1">{k}</p>
-                <p className="text-[12px] text-white/60">{v}</p>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        {/* Images */}
+        {/* Photos */}
         <ImageManager siteId={site.id} lat={site.lat} lng={site.lng} images={images} onRefetch={refetchImages} />
       </div>
     </div>
   );
 }
 
-/* ── Image browser tab ──────────────────────────────────────────── */
-function ImageBrowserTab({ sites, isLoading }: { sites: MapSite[]; isLoading: boolean }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-
-  const filtered = sites.filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()));
-
-  if (isLoading) return <div className="flex-1 flex items-center justify-center"><p className="font-mono text-[11px] text-white/20">Loading...</p></div>;
-
+function KindBadge({ kind }: { kind: string }) {
+  const colors: Record<string, string> = {
+    sez: "#ff5100", park: "#f97316", factory: "#fb923c", logistics: "#fbbf24",
+    powerplant: "#a855f7", solar: "#c084fc", substation: "#818cf8",
+    port: "#facc15", airport: "#fde68a", rail: "#fef08a",
+    water_plant: "#38bdf8", hospital: "#34d399", university: "#4ade80",
+    tvet: "#86efac", protected: "#22c55e", waste: "#6b7280",
+  };
+  const color = colors[kind] ?? "#94a3b8";
   return (
-    <div className="flex-1 overflow-hidden flex">
-      <aside className="w-[220px] shrink-0 border-r border-white/8 flex flex-col">
+    <span className="font-mono text-[9px] uppercase tracking-wider px-2 py-0.5 rounded"
+      style={{ backgroundColor: `${color}20`, color, border: `1px solid ${color}40` }}>
+      {kind}
+    </span>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   OVERVIEW TAB
+══════════════════════════════════════════════════════════ */
+function OverviewTab({ sites, stats, isLoading }: {
+  sites: MapSite[];
+  stats: { total: number; operational: number; scored: number; avgScore: number };
+  isLoading: boolean;
+}) {
+  const byKind  = sites.reduce<Record<string, number>>((a, s) => { a[s.kind]  = (a[s.kind]  ?? 0) + 1; return a; }, {});
+  const byLayer = sites.reduce<Record<string, number>>((a, s) => { a[s.layer] = (a[s.layer] ?? 0) + 1; return a; }, {});
+  const tiers   = { "EIP+": 0, Advanced: 0, Developing: 0, Basic: 0, "—": 0 };
+  sites.forEach(s => { const t = (s.eip_tier ?? "—") as keyof typeof tiers; tiers[t] = (tiers[t] ?? 0) + 1; });
+  const tierColor: Record<string, string> = { "EIP+": "#34d399", Advanced: "#60a5fa", Developing: "#fbbf24", Basic: "#94a3b8", "—": "#374151" };
+
+  if (isLoading) return <Loader />;
+  return (
+    <div className="overflow-y-auto h-full p-8">
+      <div className="max-w-4xl mx-auto space-y-7">
+        <div>
+          <h2 className="text-xl font-bold text-white">Platform Overview</h2>
+          <p className="font-mono text-[10px] text-white/25 mt-1">Cambodia Industrial Intelligence · {new Date().toLocaleDateString()}</p>
+        </div>
+
+        <div className="grid grid-cols-4 gap-4">
+          <SC label="Total Sites"    val={stats.total}       sub="all layers"                  color="#ff5100" />
+          <SC label="Operational"    val={stats.operational} sub={`${Math.round(stats.operational / stats.total * 100)}% of total`} color="#34d399" />
+          <SC label="EIP Scored"     val={stats.scored}      sub={`avg ${stats.avgScore}/100`}  color="#60a5fa" />
+          <SC label="Unscored"       val={stats.total - stats.scored} sub="need scoring"         color="#94a3b8" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          <ChartBlock title="By Kind" data={byKind} total={stats.total} color="#ff5100" />
+          <ChartBlock title="By Layer" data={byLayer} total={stats.total} color="#60a5fa" />
+        </div>
+
+        <div className="bg-white/[0.03] border border-white/8 rounded-xl p-5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">EIP Tier Distribution</p>
+          <div className="flex items-end gap-5">
+            {Object.entries(tiers).map(([tier, count]) => (
+              <div key={tier} className="flex flex-col items-center gap-2 flex-1">
+                <span className="font-mono text-[11px]" style={{ color: tierColor[tier] }}>{count}</span>
+                <div className="w-full rounded-t" style={{ height: `${Math.max(count / stats.total * 100, 3)}px`, backgroundColor: tierColor[tier], opacity: 0.55 }} />
+                <span className="font-mono text-[9px] text-white/25">{tier}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3 flex-wrap">
+          {[["Map", "/map"], ["Tracker", "/tracker"], ["Dashboard", "/dashboard"]].map(([label, href]) => (
+            <a key={label} href={href} target="_blank" rel="noopener noreferrer"
+              className="px-4 py-2 rounded-lg border border-white/10 text-white/35 hover:text-white/65 hover:border-white/20 transition font-mono text-[10px] uppercase tracking-wider">
+              {label} ↗
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChartBlock({ title, data, total, color }: { title: string; data: Record<string, number>; total: number; color: string }) {
+  return (
+    <div className="bg-white/[0.03] border border-white/8 rounded-xl p-5">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">{title}</p>
+      <div className="space-y-2">
+        {Object.entries(data).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
+          <div key={k} className="flex items-center gap-3">
+            <span className="font-mono text-[9px] text-white/40 w-28 truncate capitalize">{k.replace("_", " ")}</span>
+            <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${v / total * 100}%`, backgroundColor: color, opacity: 0.65 }} />
+            </div>
+            <span className="font-mono text-[9px] text-white/35 w-5 text-right">{v}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SC({ label, val, sub, color }: { label: string; val: number; sub?: string; color: string }) {
+  return (
+    <div className="bg-white/[0.03] border border-white/8 rounded-xl px-5 py-4">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{label}</p>
+      <p className="text-2xl font-bold" style={{ color }}>{val}</p>
+      {sub && <p className="font-mono text-[10px] text-white/20 mt-1">{sub}</p>}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════
+   IMAGES TAB
+══════════════════════════════════════════════════════════ */
+function ImagesTab({ sites, isLoading }: { sites: MapSite[]; isLoading: boolean }) {
+  const [sel, setSel] = useState<MapSite | null>(null);
+  const [q, setQ]     = useState("");
+  const filtered = sites.filter(s => !q || s.name.toLowerCase().includes(q.toLowerCase()) || s.province.toLowerCase().includes(q.toLowerCase()));
+  const { data: images = [], refetch } = useSiteImages(sel?.id ?? null);
+
+  if (isLoading) return <Loader />;
+  return (
+    <div className="flex h-full">
+      <aside className="w-56 shrink-0 border-r border-white/8 flex flex-col">
         <div className="p-3 border-b border-white/8">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white placeholder:text-white/20 focus:outline-none focus:border-white/25"
-          />
+          <input type="text" placeholder="Search…" value={q} onChange={e => setQ(e.target.value)}
+            className="w-full px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white placeholder:text-white/20 focus:outline-none focus:border-white/25" />
         </div>
         <div className="overflow-y-auto flex-1">
-          {filtered.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setSelectedId(s.id)}
+          {filtered.map(s => (
+            <button key={s.id} onClick={() => setSel(s)}
               className="w-full text-left px-3 py-2 border-b border-white/5 transition"
-              style={{ background: selectedId === s.id ? "rgba(255,81,0,0.06)" : undefined }}
-            >
-              <p className="text-[11px] text-white/70 truncate">{s.name}</p>
-              <p className="font-mono text-[9px] text-white/25 mt-0.5">{s.province}</p>
+              style={{ background: sel?.id === s.id ? "rgba(255,81,0,0.07)" : undefined }}>
+              <p className="text-[11px] text-white/65 truncate">{s.name}</p>
+              <p className="font-mono text-[9px] text-white/25 mt-0.5">{s.province} · {s.kind}</p>
             </button>
           ))}
         </div>
       </aside>
-      <main className="flex-1 overflow-y-auto bg-[#0a0a0b]">
-        {selectedId ? (
-          <ImagePanel siteId={selectedId} lat={sites.find((s) => s.id === selectedId)?.lat ?? 0} lng={sites.find((s) => s.id === selectedId)?.lng ?? 0} />
+      <main className="flex-1 overflow-y-auto bg-[#0a0a0b] p-6">
+        {sel ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <KindBadge kind={sel.kind} />
+              <p className="text-[14px] font-semibold text-white">{sel.name}</p>
+              <p className="font-mono text-[10px] text-white/30">{images.length} photos</p>
+            </div>
+            <ImageManager siteId={sel.id} lat={sel.lat} lng={sel.lng} images={images} onRefetch={refetch} />
+          </div>
         ) : (
-          <div className="flex items-center justify-center h-full text-white/15 font-mono text-[11px]">Select a site</div>
+          <div className="h-full flex items-center justify-center text-white/15 font-mono text-[11px]">Select a site</div>
         )}
       </main>
     </div>
   );
 }
 
-function ImagePanel({ siteId, lat, lng }: { siteId: string; lat: number; lng: number }) {
-  const { data: images = [], refetch } = useSiteImages(siteId);
-  return (
-    <div className="p-6">
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">{siteId} · {images.length} photos</p>
-      <ImageManager siteId={siteId} lat={lat} lng={lng} images={images} onRefetch={refetch} />
-    </div>
-  );
-}
-
-/* ── Image manager ──────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   IMAGE MANAGER
+══════════════════════════════════════════════════════════ */
 function ImageManager({ siteId, lat, lng, images, onRefetch }: {
   siteId: string; lat: number; lng: number;
   images: SiteImage[]; onRefetch: () => void;
 }) {
   const [urlInput, setUrlInput] = useState("");
-  const [caption, setCaption] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [fetchingSat, setFetchingSat] = useState(false);
-  const [err, setErr] = useState("");
+  const [caption,  setCaption]  = useState("");
+  const [adding,   setAdding]   = useState(false);
+  const [uploading,setUploading]= useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [err,      setErr]      = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleFetchSatellite() {
+  async function handleSatellite() {
     if (!lat || !lng) return;
-    setFetchingSat(true); setErr("");
+    setFetching(true); setErr("");
     try {
-      const kindZoom: Record<string, number> = { sez: 14, park: 15 };
-      const zoom = kindZoom[siteId.split("-")[0]] ?? 16;
+      const zoomFor: Record<string, number> = { sez: 14, park: 15 };
+      const zoom = zoomFor[siteId.split("-")[0]] ?? 16;
       await fetchAndUploadSatellite(siteId, lat, lng, zoom, "Satellite view", images.length);
       await fetchAndUploadSatellite(siteId, lat, lng, Math.max(zoom - 2, 12), "Area context", images.length + 1);
       onRefetch();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Satellite fetch failed");
-    }
-    setFetchingSat(false);
+    } catch (e) { setErr(e instanceof Error ? e.message : "Satellite failed"); }
+    setFetching(false);
   }
 
   async function handleAddUrl() {
@@ -699,9 +861,7 @@ function ImageManager({ siteId, lat, lng, images, onRefetch }: {
     try {
       await addSiteImage({ site_id: siteId, url: urlInput.trim(), caption: caption.trim() || undefined, source: "manual", sort_order: images.length });
       setUrlInput(""); setCaption(""); onRefetch();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to add image");
-    }
+    } catch (e) { setErr(e instanceof Error ? e.message : "Add failed"); }
     setAdding(false);
   }
 
@@ -710,149 +870,142 @@ function ImageManager({ siteId, lat, lng, images, onRefetch }: {
     if (!file || !supabase) return;
     setUploading(true); setErr("");
     try {
-      const compressed = await compressImage(file, 1920, 0.88);
+      const blob = await compressImage(file, 1920, 0.88);
       const path = `${siteId}/${Date.now()}.jpg`;
-      const { error: upErr } = await supabase.storage.from("site-images").upload(path, compressed, { upsert: false, contentType: "image/jpeg" });
-      if (upErr) throw upErr;
+      const { error } = await supabase.storage.from("site-images").upload(path, blob, { upsert: false, contentType: "image/jpeg" });
+      if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from("site-images").getPublicUrl(path);
       await addSiteImage({ site_id: siteId, url: publicUrl, source: "upload", sort_order: images.length });
       onRefetch();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Upload failed");
-    }
+    } catch (e) { setErr(e instanceof Error ? e.message : "Upload failed"); }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  async function handleDelete(id: string) {
+  async function del(id: string) {
     try { await deleteSiteImage(id); onRefetch(); }
-    catch (e: unknown) { setErr(e instanceof Error ? e.message : "Delete failed"); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Delete failed"); }
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="font-mono text-[9px] uppercase tracking-widest text-white/30">Photos · {images.length}</p>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">Photos · {images.length}</p>
         {lat && lng && (
-          <button
-            onClick={handleFetchSatellite}
-            disabled={fetchingSat}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[9px] uppercase tracking-wider transition border border-blue-500/25 text-blue-400/70 hover:border-blue-400/50 hover:text-blue-300 disabled:opacity-40"
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <button onClick={handleSatellite} disabled={fetching}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded font-mono text-[9px] uppercase tracking-wide border border-blue-500/25 text-blue-400/70 hover:border-blue-400/50 hover:text-blue-300 transition disabled:opacity-35">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 010 20M2 12h20"/>
             </svg>
-            {fetchingSat ? "Fetching..." : "Satellite"}
+            {fetching ? "Fetching…" : "Satellite"}
           </button>
         )}
       </div>
 
-      {/* Image grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1.5">
           {images.map((img, i) => (
             <div key={img.id} className="relative group rounded-lg overflow-hidden aspect-video bg-white/5">
-              <img src={img.url} alt={img.caption ?? `Photo ${i + 1}`}
-                className="w-full h-full object-cover"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0.15"; }} />
-              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1.5 p-2">
-                {img.caption && <p className="text-[9px] text-white/80 text-center line-clamp-2">{img.caption}</p>}
-                <p className="font-mono text-[8px] text-white/35">{img.source}</p>
-                <button onClick={() => handleDelete(img.id)}
-                  className="px-2 py-0.5 text-[9px] font-mono rounded text-red-400 border border-red-400/30 hover:bg-red-400/10 transition">
-                  Remove
-                </button>
+              <img src={img.url} alt={img.caption ?? `${i + 1}`} className="w-full h-full object-cover"
+                onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = "0.1"; }} />
+              <div className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center gap-1 p-1.5">
+                {img.caption && <p className="text-[8px] text-white/75 text-center line-clamp-2">{img.caption}</p>}
+                <p className="font-mono text-[7px] text-white/30">{img.source}</p>
+                <button onClick={() => del(img.id)} className="px-2 py-0.5 text-[8px] font-mono rounded text-red-400 border border-red-400/30 hover:bg-red-400/10 transition">Remove</button>
               </div>
-              <div className="absolute top-1 left-1 font-mono text-[8px] px-1 rounded bg-black/60 text-white/40">{i + 1}</div>
+              <div className="absolute top-1 left-1 font-mono text-[7px] px-1 rounded bg-black/60 text-white/35">{i + 1}</div>
             </div>
           ))}
         </div>
       )}
 
-      {err && <p className="text-[11px] text-red-400 font-mono bg-red-500/10 px-3 py-2 rounded-lg">{err}</p>}
+      {err && <p className="text-[10px] text-red-400 font-mono bg-red-500/8 px-2 py-1.5 rounded">{err}</p>}
 
-      {/* Add controls */}
-      <div className="bg-white/[0.025] border border-white/8 rounded-xl p-4 space-y-3">
-        <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">Add Photo</p>
-        <input
-          type="url" placeholder="https://example.com/photo.jpg"
-          value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
-          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/25"
-          onKeyDown={(e) => { if (e.key === "Enter") handleAddUrl(); }}
-        />
+      <div className="bg-white/[0.025] border border-white/8 rounded-xl p-3 space-y-2.5">
+        <p className="font-mono text-[8px] uppercase tracking-widest text-white/20">Add Photo</p>
         <div className="flex gap-2">
-          <input
-            type="text" placeholder="Caption (optional)"
-            value={caption} onChange={(e) => setCaption(e.target.value)}
-            className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/25"
-          />
+          <input type="url" placeholder="https://…" value={urlInput} onChange={e => setUrlInput(e.target.value)}
+            className="flex-1 px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/22"
+            onKeyDown={e => { if (e.key === "Enter") handleAddUrl(); }} />
           <button onClick={handleAddUrl} disabled={adding || !urlInput.trim()}
-            className="px-4 py-2 font-mono text-[10px] uppercase tracking-wider rounded-lg transition"
+            className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider rounded-lg"
             style={{ backgroundColor: "#ff5100", color: "#fff", opacity: (adding || !urlInput.trim()) ? 0.4 : 1 }}>
-            {adding ? "..." : "Add"}
+            {adding ? "…" : "Add"}
           </button>
         </div>
-        <div className="flex items-center gap-3 pt-1">
+        <input type="text" placeholder="Caption (optional)" value={caption} onChange={e => setCaption(e.target.value)}
+          className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/22" />
+        <div className="flex items-center gap-3">
           <div className="flex-1 h-px bg-white/8" />
-          <span className="font-mono text-[9px] text-white/20">or upload file</span>
+          <span className="font-mono text-[8px] text-white/18">or</span>
           <div className="flex-1 h-px bg-white/8" />
         </div>
-        <div className="flex items-center gap-3">
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" id={`img-upload-${siteId}`} />
-          <label htmlFor={`img-upload-${siteId}`}
-            className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-white/12 rounded-lg font-mono text-[10px] uppercase tracking-wider text-white/40 hover:border-white/25 hover:text-white/70 transition">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <div className="flex items-center gap-2.5">
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" id={`up-${siteId}`} />
+          <label htmlFor={`up-${siteId}`}
+            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 border border-white/12 rounded-lg font-mono text-[9px] uppercase tracking-wider text-white/35 hover:border-white/25 hover:text-white/65 transition">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            {uploading ? "Uploading..." : "Choose image"}
+            {uploading ? "Uploading…" : "Upload"}
           </label>
-          <p className="font-mono text-[9px] text-white/20">Auto-compressed to 1920px JPEG</p>
+          <p className="font-mono text-[8px] text-white/18">Auto-compressed · 1920px JPEG</p>
         </div>
       </div>
     </div>
   );
 }
 
-/* ── Small helpers ──────────────────────────────────────────────── */
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+/* ── Shared UI primitives ─────────────────────────────── */
+function Sec({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-3">
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 pb-2 border-b border-white/6">{label}</p>
+    <div className="space-y-2.5">
+      <p className="font-mono text-[8px] uppercase tracking-widest text-white/22 pb-1.5 border-b border-white/6">{label}</p>
       {children}
     </div>
   );
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+function Row({ children }: { children: React.ReactNode }) {
+  return <div className="flex gap-2.5">{children}</div>;
+}
+
+function FI({ label, val, set, hint }: { label: string; val: string; set: (v: string) => void; hint?: string }) {
   return (
-    <div>
-      <label className="block font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">{label}</label>
-      <input
-        type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/25 transition"
-      />
+    <div className="flex-1 min-w-0">
+      <label className="block font-mono text-[8px] uppercase tracking-widest text-white/28 mb-1">{label}</label>
+      <input type="text" value={val} onChange={e => set(e.target.value)} placeholder={hint}
+        className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white placeholder:text-white/14 focus:outline-none focus:border-white/22 transition" />
     </div>
   );
 }
 
-function TextArea({ label, value, onChange, rows = 4, placeholder }: { label: string; value: string; onChange: (v: string) => void; rows?: number; placeholder?: string }) {
+function TA({ label, val, set, rows = 3, hint }: { label: string; val: string; set: (v: string) => void; rows?: number; hint?: string }) {
   return (
-    <div>
-      <label className="block font-mono text-[9px] uppercase tracking-widest text-white/30 mb-1.5">{label}</label>
-      <textarea
-        value={value} onChange={(e) => onChange(e.target.value)} rows={rows} placeholder={placeholder}
-        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-[12px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/25 resize-y transition"
-      />
+    <div className="flex-1 min-w-0">
+      <label className="block font-mono text-[8px] uppercase tracking-widest text-white/28 mb-1">{label}</label>
+      <textarea value={val} onChange={e => set(e.target.value)} rows={rows} placeholder={hint}
+        className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white placeholder:text-white/14 focus:outline-none focus:border-white/22 resize-y transition" />
     </div>
   );
 }
 
-function StatCard({ label, value, sub, color = "#ff5100" }: { label: string; value: string | number; sub?: string; color?: string }) {
+function Select({ label, val, set, opts }: { label: string; val: string; set: (v: string) => void; opts: string[] }) {
   return (
-    <div className="bg-white/[0.03] border border-white/8 rounded-xl px-5 py-4">
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-2">{label}</p>
-      <p className="text-2xl font-bold" style={{ color }}>{value}</p>
-      {sub && <p className="font-mono text-[10px] text-white/25 mt-1">{sub}</p>}
+    <div className="flex-1 min-w-0">
+      <label className="block font-mono text-[8px] uppercase tracking-widest text-white/28 mb-1">{label}</label>
+      <select value={val} onChange={e => set(e.target.value)}
+        className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white focus:outline-none focus:border-white/22">
+        {opts.map(o => <option key={o} value={o}>{o || "—"}</option>)}
+      </select>
+    </div>
+  );
+}
+
+function Loader() {
+  return (
+    <div className="flex-1 flex items-center justify-center h-full">
+      <p className="font-mono text-[10px] text-white/20">Loading…</p>
     </div>
   );
 }
