@@ -4,7 +4,7 @@
 1st of each month at 08:30 ICT (01:30 UTC) — runs after odc-map-harvester, independent of tracker-updater
 
 ## Purpose
-Harvest structured geospatial data from Open Development Cambodia (ODC) CKAN API. Populate and maintain the Supabase `sites` table with comprehensive Cambodia industrial map data across all 6 layers: investment, infrastructure, utilities, risk, labor, corridors.
+Harvest structured geospatial data from Open Development Cambodia (ODC) CKAN API. Populate and maintain the Supabase `sites` table with comprehensive Cambodia industrial map data across all 7 layers: investment, infrastructure, energy, water, risk, labor, corridors.
 
 ODC is the most authoritative open-data source for Cambodia geospatial data. It holds GeoJSON datasets for universities, schools/TVET, economic zones, electricity coverage, protected areas, roads, water infrastructure, and population. This agent systematically fetches those datasets, maps each feature to the MapSite schema, deduplicates against existing rows, and inserts only new or changed sites.
 
@@ -24,7 +24,7 @@ ODC is the most authoritative open-data source for Cambodia geospatial data. It 
 | `id` | text | ✅ | slug: `odc-{kind}-{province-slug}-{name-slug}` e.g. `odc-university-phnom-penh-itc` |
 | `name` | text | ✅ | Full English name |
 | `kind` | text | ✅ | `sez` `park` `factory` `logistics` `port` `airport` `substation` `university` `tvet` `corridor` |
-| `layer` | text | ✅ | `investment` `infrastructure` `utilities` `risk` `labor` `corridors` |
+| `layer` | text | ✅ | `investment` `infrastructure` `energy` `water` `risk` `labor` `corridors` |
 | `province` | text | ✅ | Cambodia province name |
 | `lat` | numeric | ✅ | Decimal degrees WGS84 |
 | `lng` | numeric | ✅ | Decimal degrees WGS84 |
@@ -87,10 +87,10 @@ These known ODC datasets are the backbone. Process them every run to catch any n
 |----------|--------------------------|-------|------|---------------------|
 | Universities | `public-universities-of-cambodia` | labor | university | `https://data.opendevelopmentcambodia.net/en/dataset/ba29bd88-0bce-442b-89ce-d73c958c02f3/resource/6005d745-d86d-4b43-9a5d-83b81ca8ee79/download/public_universities.geojson` |
 | Schools/TVET | `school-of-cambodia-2012` | labor | tvet | `https://data.opendevelopmentcambodia.net/dataset/be36b82c-b7bd-4a75-a20f-4799b5521b46/resource/b932d537-ea15-4cb1-baab-44c78ea95f56/download/schoolofcambodia.geojson` |
-| Electricity Coverage | `electricity-price-and-coverage-areas-in-cambodia` | utilities | substation | fetch via `package_show?id=electricity-price-and-coverage-areas-in-cambodia` |
+| Electricity Coverage | `electricity-price-and-coverage-areas-in-cambodia` | energy | substation | fetch via `package_show?id=electricity-price-and-coverage-areas-in-cambodia` |
 | Protected Areas | `protected-areas-and-forests-2013` | risk | (polygon) | fetch via `package_show?id=protected-areas-and-forests-2013` |
 | Roads | `road-detections-from-microsoft-maps-aerial-imagery` | infrastructure | corridor | fetch via `package_show?id=road-detections-from-microsoft-maps-aerial-imagery` |
-| Water Plants | `water-treatment-plant-in-phnom-penh` | utilities | substation | fetch via `package_show?id=water-treatment-plant-in-phnom-penh` |
+| Water Plants | `water-treatment-plant-in-phnom-penh` | water | water_plant | fetch via `package_show?id=water-treatment-plant-in-phnom-penh` |
 
 For datasets without known URLs, use `package_show` to get the GeoJSON resource URL, then fetch it.
 
@@ -124,7 +124,7 @@ For each feature in each GeoJSON FeatureCollection, apply the mapping rules belo
 - `id` = `"odc-tvet-{province-slug}-{name-slug}"`
 
 #### C. Electricity Coverage (`electricity_price_coverage_geojson.zip` or GeoJSON)
-- `kind` = `"substation"`, `layer` = `"utilities"`
+- `kind` = `"substation"`, `layer` = `"energy"`
 - One record per electricity license holder / coverage zone
 - `name` = `properties.licensee` or `properties.name` + " Power Coverage"
 - `province` = `properties.province` or derive from coordinates
@@ -157,7 +157,7 @@ For each feature in each GeoJSON FeatureCollection, apply the mapping rules belo
 - **Limit**: Maximum 30 road entries (only named national roads, skip unnamed segments)
 
 #### F. Water Treatment Plants
-- `kind` = `"substation"`, `layer` = `"utilities"` (reuse as closest infrastructure kind)
+- `kind` = `"water_plant"`, `layer` = `"water"`
 - `name` = `properties.name` + " Water Treatment Plant"
 - `province` = `properties.province`
 - `lat/lng` from geometry
@@ -233,7 +233,8 @@ For each result where `metadata_created` is within 30 days:
 - Assign `kind` and `layer` based on the dataset category:
   - SEZ/industrial zone → `layer: "investment"`, `kind: "sez"` or `kind: "park"`
   - Road/transport → `layer: "infrastructure"`, `kind: "corridor"`
-  - Power/electricity → `layer: "utilities"`, `kind: "substation"`
+  - Power/electricity/substation → `layer: "energy"`, `kind: "substation"`
+  - Water treatment → `layer: "water"`, `kind: "water_plant"`
   - University/school → `layer: "labor"`, `kind: "university"` or `kind: "tvet"`
   - Protected area/flood → `layer: "risk"`
 

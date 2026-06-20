@@ -20,7 +20,7 @@ Search for new Cambodian SEZ approvals, industrial park openings, factory constr
 | `id` | text | slug, e.g. `sez-koh-kong-2026` |
 | `name` | text | Full site name |
 | `kind` | text | `sez`, `park`, `factory`, `logistics`, `port`, `airport`, `substation`, `tvet`, `university` |
-| `layer` | text | `investment`, `infrastructure`, `utilities`, `risk`, `labor`, `corridors` |
+| `layer` | text | `investment`, `infrastructure`, `energy`, `water`, `risk`, `labor`, `corridors` |
 | `province` | text | Cambodia province |
 | `lat` | numeric | Approximate latitude |
 | `lng` | numeric | Approximate longitude |
