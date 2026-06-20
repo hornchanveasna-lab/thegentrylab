@@ -89,6 +89,12 @@ export interface MapSite {
   on_site_facilities?: string[];
   airport_distance_km?: number;
   city_distance_km?: number;
+  nearest_port?: string;
+  nearest_airport?: string;
+  rail_distance_km?: number;
+  nearest_rail?: string;
+  border_distance_km?: number;
+  nearest_border?: string;
   zone_types?: string[];
   lease_rate_usd?: string;
   plot_size_min_ha?: number;

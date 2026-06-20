@@ -1467,20 +1467,10 @@ function Inspector({
           </div>
         )}
 
-        {/* Quick stat tiles: port, elevation, area, road */}
-        {(site.port_distance_km != null || site.elevation_m != null || site.size || site.road) && (
+        {/* Quick stat tiles: elevation, area, road */}
+        {(site.elevation_m != null || site.size || site.road) && (
           <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: dividerCol, borderBottom: `1px solid ${dividerCol}` }}>
-            {site.port_distance_km != null && (
-              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 17h18M5 17V7l7-4 7 4v10"/><rect x="9" y="11" width="6" height="6"/>
-                </svg>
-                <div>
-                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Port</p>
-                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
-                </div>
-              </div>
-            )}
+            {false && null /* port tile moved to Connectivity section */}
             {site.elevation_m != null && (
               <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1520,6 +1510,43 @@ function Inspector({
           </div>
         )}
 
+        {/* Logistics connectivity */}
+        {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
+          <div style={{ borderBottom: `1px solid ${dividerCol}`, padding: "12px 16px" }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Connectivity</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              {site.port_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(55,138,221,0.08)" : "rgba(55,138,221,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#378ADD" }}>Port</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_port && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_port}</p>}
+                </div>
+              )}
+              {site.airport_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(29,158,117,0.08)" : "rgba(29,158,117,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#1D9E75" }}>Airport</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.airport_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_airport && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_airport}</p>}
+                </div>
+              )}
+              {site.rail_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(186,117,23,0.08)" : "rgba(186,117,23,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#BA7517" }}>Rail</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.rail_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_rail && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_rail}</p>}
+                </div>
+              )}
+              {site.border_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(216,90,48,0.08)" : "rgba(216,90,48,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#D85A30" }}>Border</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.border_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_border && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_border}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Location row */}
         <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
@@ -1544,7 +1571,7 @@ function Inspector({
         {/* Key info table */}
         {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
           site.tenant_count || site.export_value_usd || site.employee_count || site.zone_types ||
-          site.on_site_facilities || site.airport_distance_km || site.stock_ticker) && (
+          site.on_site_facilities || site.city_distance_km || site.stock_ticker) && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
@@ -1597,14 +1624,10 @@ function Inspector({
                     <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.zone_types.join(" · ")}</td>
                   </tr>
                 )}
-                {(site.airport_distance_km || site.city_distance_km) && (
+                {site.city_distance_km && (
                   <tr>
-                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Distance</td>
-                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>
-                      {site.airport_distance_km ? `Airport ${site.airport_distance_km} km` : ""}
-                      {site.airport_distance_km && site.city_distance_km ? " · " : ""}
-                      {site.city_distance_km ? `City ${site.city_distance_km} km` : ""}
-                    </td>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>City</td>
+                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.city_distance_km} km to city centre</td>
                   </tr>
                 )}
                 {site.utilities && (
