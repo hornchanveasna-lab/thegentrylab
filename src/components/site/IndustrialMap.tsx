@@ -260,22 +260,29 @@ const KIND_SVG: Record<string, string> = {
 };
 
 const KIND_COLOR: Record<string, string> = {
+  // investment layer — orange family
   sez:         "#f97316",
   park:        "#fb923c",
   factory:     "#ef4444",
   logistics:   "#eab308",
-  port:        "#2563eb",
-  airport:     "#0ea5e9",
+  // infrastructure layer — yellow family
+  port:        "#f59e0b",
+  airport:     "#facc15",
+  rail:        "#ca8a04",
+  // energy layer — purple family
   substation:  "#a855f7",
   powerplant:  "#c084fc",
-  solar:       "#fbbf24",
+  solar:       "#d946ef",
+  // water layer — blue family
   water_plant: "#38bdf8",
-  hospital:    "#f472b6",
-  waste:       "#78716c",
-  rail:        "#94a3b8",
+  // environment layer — green family
   protected:   "#22c55e",
-  university:  "#10b981",
-  tvet:        "#14b8a6",
+  waste:       "#4ade80",
+  // labor layer — indigo/violet family
+  university:  "#a78bfa",
+  tvet:        "#818cf8",
+  hospital:    "#c4b5fd",
+  // corridors
   corridor:    "#64748b",
 };
 
