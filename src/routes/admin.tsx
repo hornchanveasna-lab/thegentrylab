@@ -282,6 +282,31 @@ function SiteEditor({ site, onSaved }: { site: MapSite; onSaved: (s: MapSite) =>
   );
 }
 
+/* ── Image compression ──────────────────────────────────── */
+function compressImage(file: File, maxPx: number, quality: number): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxPx || height > maxPx) {
+        if (width >= height) { height = Math.round(height * maxPx / width); width = maxPx; }
+        else                 { width  = Math.round(width  * maxPx / height); height = maxPx; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("Canvas compression failed")),
+        "image/jpeg", quality
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image load failed")); };
+    img.src = url;
+  });
+}
+
 /* ── Image Manager ──────────────────────────────────────── */
 function ImageManager({ siteId, images, onRefetch }: {
   siteId: string;
@@ -319,11 +344,12 @@ function ImageManager({ siteId, images, onRefetch }: {
     if (!file || !supabase) return;
     setUploading(true); setErr("");
     try {
-      const ext = file.name.split(".").pop();
-      const path = `${siteId}/${Date.now()}.${ext}`;
+      // Compress + resize to max 1920px, JPEG 88% — works for any input size/format
+      const compressed = await compressImage(file, 1920, 0.88);
+      const path = `${siteId}/${Date.now()}.jpg`;
       const { error: upErr } = await supabase.storage
         .from("site-images")
-        .upload(path, file, { upsert: false });
+        .upload(path, compressed, { upsert: false, contentType: "image/jpeg" });
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from("site-images").getPublicUrl(path);
       await addSiteImage({
@@ -334,7 +360,7 @@ function ImageManager({ siteId, images, onRefetch }: {
       });
       onRefetch();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Upload failed — ensure 'site-images' Storage bucket exists in Supabase");
+      setErr(e instanceof Error ? e.message : "Upload failed");
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = "";
@@ -439,7 +465,7 @@ function ImageManager({ siteId, images, onRefetch }: {
             </svg>
             {uploading ? "Uploading..." : "Choose image"}
           </label>
-          <p className="font-mono text-[9px] text-white/25">JPG, PNG, WebP · Stored in Supabase</p>
+          <p className="font-mono text-[9px] text-white/25">Any size · auto-compressed to 1920px JPEG</p>
         </div>
       </div>
     </section>
