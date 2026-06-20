@@ -951,10 +951,11 @@ function ImportExportSection({ cfg, onImport }: { cfg: SiteConfig; onImport: (c:
 type Setter = <K extends keyof SiteConfig>(key: K, value: SiteConfig[K]) => void;
 
 /* ═══════════════════════════════════════════
-   MAIN DASHBOARD
+   SHARED BODY — used by Dashboard page AND admin Config tab
 ═══════════════════════════════════════════ */
 
-function Dashboard() {
+/** Pass `embedded` when rendered inside the admin panel (no page title update, adjusted sticky offset). */
+export function DashboardBody({ embedded = false }: { embedded?: boolean }) {
   const [cfg, setCfg] = useState<SiteConfig>(() => loadConfig());
   const [saved, setSaved] = useState(false);
   const [unsaved, setUnsaved] = useState(false);
@@ -982,11 +983,11 @@ function Dashboard() {
     }
   };
 
-  // Auto-save indicator in title
   useEffect(() => {
+    if (embedded) return;
     document.title = unsaved ? "● Management Dashboard — TGL" : "Management Dashboard — TGL";
     return () => { document.title = "The Gentry Lab — Cambodia Industrial Intelligence Platform"; };
-  }, [unsaved]);
+  }, [unsaved, embedded]);
 
   const NAV = [
     { id: "overview",         label: "Overview",        icon: "◈" },
@@ -1005,65 +1006,47 @@ function Dashboard() {
     { id: "import-export",    label: "Import/Export",   icon: "⇅" },
   ];
 
+  const stickyTop  = embedded ? "top-0"                     : "top-[53px]";
+  const sidebarH   = embedded ? "h-full"                    : "h-[calc(100vh-53px)]";
+
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col font-sans">
+    <div className={`flex ${embedded ? "h-full" : "flex-1 max-w-[1400px] mx-auto w-full"}`}>
 
-      {/* ── Top bar ── */}
-      <header className="sticky top-0 z-50 border-b border-white/8 bg-[#0a0a0b]/95 backdrop-blur-md">
-        <div className="flex items-center justify-between px-5 py-3 max-w-[1400px] mx-auto">
-          <div className="flex items-center gap-4">
-            <Link to="/" className="flex items-center gap-1.5 text-white/35 hover:text-white transition-colors">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              <span className="font-mono text-[10px] uppercase tracking-widest">Site</span>
-            </Link>
-            <span className="w-px h-4 bg-white/10" />
-            <div className="flex items-center gap-2">
-              <GentryMark color={cfg.accentColor} size={20} />
-              <span className="font-extrabold text-sm uppercase tracking-tight">Management Dashboard</span>
-              <span className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest border border-white/10 text-white/30">{cfg.platformVersion}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {unsaved && (
-              <span className="hidden md:flex items-center gap-1.5 font-mono text-[10px] text-white/30 uppercase tracking-widest">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                Unsaved changes
-              </span>
-            )}
-            <button onClick={handleReset}
-              className="px-3 py-2 border border-white/10 text-white/35 hover:text-white hover:border-white/25 text-[10px] font-mono uppercase tracking-widest transition-all">
-              Reset
-            </button>
+      {/* ── Sidebar ── */}
+      <aside className={`hidden lg:flex flex-col w-52 shrink-0 border-r border-white/8 py-6 px-3 gap-0.5 sticky ${stickyTop} ${sidebarH} overflow-y-auto`}>
+        {/* Save / Reset inline when embedded */}
+        {embedded && (
+          <div className="flex gap-1.5 mb-4 px-1">
+            {unsaved && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse mt-1 shrink-0" />}
             <button onClick={handleSave}
-              className={`px-5 py-2 text-[10px] font-mono uppercase tracking-widest font-bold transition-all ${
-                saved ? "bg-green-500/20 text-green-400 border border-green-500/30" : "text-black hover:brightness-110"
+              className={`flex-1 px-2 py-1.5 text-[9px] font-mono uppercase tracking-widest font-bold transition-all ${
+                saved ? "bg-green-500/15 text-green-400 border border-green-500/25" : "text-black"
               }`}
               style={{ backgroundColor: saved ? undefined : cfg.accentColor }}>
-              {saved ? "✓ Saved" : "Save changes"}
+              {saved ? "✓ Saved" : "Save"}
+            </button>
+            <button onClick={handleReset}
+              className="px-2 py-1.5 border border-white/10 text-white/30 hover:text-white text-[9px] font-mono uppercase tracking-widest transition-all">
+              Reset
             </button>
           </div>
-        </div>
-      </header>
+        )}
 
-      <div className="flex flex-1 max-w-[1400px] mx-auto w-full">
+        <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/20 px-3 mb-2">Sections</p>
+        {NAV.map((n) => (
+          <a key={n.id} href={`#${n.id}`} onClick={() => setActiveSection(n.id)}
+            className={`flex items-center gap-2.5 px-3 py-2 text-[12px] font-medium transition-all ${
+              activeSection === n.id
+                ? "text-white bg-white/5 border-l-2"
+                : "text-white/38 hover:text-white/75 hover:bg-white/3 border-l-2 border-transparent"
+            }`}
+            style={{ borderLeftColor: activeSection === n.id ? cfg.accentColor : undefined }}>
+            <span className="font-mono text-[11px] w-4 text-center shrink-0" style={{ color: activeSection === n.id ? cfg.accentColor : "rgba(255,255,255,0.2)" }}>{n.icon}</span>
+            <span>{n.label}</span>
+          </a>
+        ))}
 
-        {/* ── Sidebar ── */}
-        <aside className="hidden lg:flex flex-col w-52 shrink-0 border-r border-white/8 py-6 px-3 gap-0.5 sticky top-[53px] h-[calc(100vh-53px)] overflow-y-auto">
-          <p className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/20 px-3 mb-2">Sections</p>
-          {NAV.map((n) => (
-            <a key={n.id} href={`#${n.id}`} onClick={() => setActiveSection(n.id)}
-              className={`flex items-center gap-2.5 px-3 py-2 text-[12px] font-medium transition-all ${
-                activeSection === n.id
-                  ? "text-white bg-white/5 border-l-2"
-                  : "text-white/38 hover:text-white/75 hover:bg-white/3 border-l-2 border-transparent"
-              }`}
-              style={{ borderLeftColor: activeSection === n.id ? cfg.accentColor : undefined }}>
-              <span className="font-mono text-[11px] w-4 text-center shrink-0" style={{ color: activeSection === n.id ? cfg.accentColor : "rgba(255,255,255,0.2)" }}>{n.icon}</span>
-              <span>{n.label}</span>
-            </a>
-          ))}
-
+        {!embedded && (
           <div className="mt-auto pt-4 border-t border-white/8 flex flex-col gap-0.5">
             {[
               { to: "/map", icon: "◎", label: "Open Map" },
@@ -1076,12 +1059,13 @@ function Dashboard() {
               </Link>
             ))}
           </div>
-        </aside>
+        )}
+      </aside>
 
-        {/* ── Main content ── */}
-        <main className="flex-1 px-5 py-6 flex flex-col gap-4 min-w-0">
+      {/* ── Main content ── */}
+      <main className="flex-1 px-5 py-6 flex flex-col gap-4 min-w-0 overflow-y-auto">
 
-          {/* Info banner */}
+        {!embedded && (
           <div className="flex items-start gap-3 px-4 py-3 border border-white/8 bg-[#0d0d0e]">
             <span className="text-white/35 mt-0.5 shrink-0">
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="7" cy="7" r="6"/><line x1="7" y1="5" x2="7" y2="7"/><line x1="7" y1="9" x2="7" y2="9" strokeWidth="2"/></svg>
@@ -1091,28 +1075,25 @@ function Dashboard() {
               Changes are <strong className="text-white/70">browser-local</strong> — they won't affect other visitors.
             </p>
           </div>
+        )}
 
-          {/* Overview */}
-          <div id="overview" className="scroll-mt-16">
-            <OverviewPanel cfg={cfg} />
-          </div>
+        <div id="overview" className="scroll-mt-16"><OverviewPanel cfg={cfg} /></div>
+        <div className="scroll-mt-16"><BrandingSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><NavigationSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><HeroSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><StatsSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><AdvisorySection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><SeoSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><MapSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><RoadmapSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><TickerSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><DataIntelligenceSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><PlatformSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><FooterSection cfg={cfg} set={set} /></div>
+        <div className="scroll-mt-16"><ImportExportSection cfg={cfg} onImport={(c) => { setCfg(c); setUnsaved(true); }} /></div>
 
-          {/* All sections */}
-          <div className="scroll-mt-16"><BrandingSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><NavigationSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><HeroSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><StatsSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><AdvisorySection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><SeoSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><MapSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><RoadmapSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><TickerSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><DataIntelligenceSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><PlatformSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><FooterSection cfg={cfg} set={set} /></div>
-          <div className="scroll-mt-16"><ImportExportSection cfg={cfg} onImport={(c) => { setCfg(c); setUnsaved(true); }} /></div>
-
-          {/* Bottom save bar */}
+        {/* Bottom save bar — standalone mode only */}
+        {!embedded && (
           <div className="flex items-center justify-between px-5 py-4 border border-white/8 bg-[#0d0d0e] mt-2">
             <p className="text-[11px] font-mono" style={{ color: unsaved ? "#fbbf24" : "rgba(255,255,255,0.25)" }}>
               {unsaved ? "● Unsaved changes" : saved ? "✓ All changes saved" : "No unsaved changes"}
@@ -1131,8 +1112,42 @@ function Dashboard() {
               </button>
             </div>
           </div>
-        </main>
-      </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   STANDALONE DASHBOARD PAGE  (/dashboard)
+═══════════════════════════════════════════ */
+
+function Dashboard() {
+  const [cfg] = useState<SiteConfig>(() => loadConfig());
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col font-sans">
+      {/* ── Top bar ── */}
+      <header className="sticky top-0 z-50 border-b border-white/8 bg-[#0a0a0b]/95 backdrop-blur-md">
+        <div className="flex items-center justify-between px-5 py-3 max-w-[1400px] mx-auto">
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-1.5 text-white/35 hover:text-white transition-colors">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span className="font-mono text-[10px] uppercase tracking-widest">Site</span>
+            </Link>
+            <span className="w-px h-4 bg-white/10" />
+            <div className="flex items-center gap-2">
+              <GentryMark color={cfg.accentColor} size={20} />
+              <span className="font-extrabold text-sm uppercase tracking-tight">Management Dashboard</span>
+              <span className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest border border-white/10 text-white/30">{cfg.platformVersion}</span>
+            </div>
+          </div>
+          <a href="/admin" className="flex items-center gap-1.5 px-3 py-2 border border-white/10 text-white/35 hover:text-white hover:border-white/25 font-mono text-[10px] uppercase tracking-widest transition-all">
+            Admin ↗
+          </a>
+        </div>
+      </header>
+      <DashboardBody embedded={false} />
     </div>
   );
 }

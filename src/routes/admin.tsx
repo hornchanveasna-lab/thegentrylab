@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useCallback } from "react";
+import { DashboardBody } from "./dashboard";
 import { useQueryClient } from "@tanstack/react-query";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useAuth } from "@/lib/auth";
@@ -96,7 +97,7 @@ function LoginScreen({ onSignIn, denied }: { onSignIn: () => void; denied: boole
 }
 
 /* ── Admin root ──────────────────────────────────────────── */
-type AdminTab = "overview" | "map" | "images";
+type AdminTab = "overview" | "map" | "images" | "config";
 
 function AdminPage() {
   const { user, signInWithGoogle, signOut } = useAuth();
@@ -157,7 +158,7 @@ function AdminPage() {
 
         {/* Tabs */}
         <div className="flex items-center gap-1 ml-4">
-          {(["overview", "map", "images"] as AdminTab[]).map(t => (
+          {(["overview", "map", "images", "config"] as AdminTab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className="px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-wider transition"
               style={{
@@ -165,7 +166,7 @@ function AdminPage() {
                 color:      tab === t ? "#ff5100" : "rgba(255,255,255,0.28)",
                 border:     tab === t ? "1px solid rgba(255,81,0,0.22)" : "1px solid transparent",
               }}>
-              {t === "map" ? "Map + Edit" : t}
+              {t === "map" ? "Map + Edit" : t === "config" ? "Site Config" : t}
             </button>
           ))}
         </div>
@@ -202,6 +203,7 @@ function AdminPage() {
           />
         )}
         {tab === "images"   && <ImagesTab sites={sites} isLoading={isLoading} />}
+        {tab === "config"   && <DashboardBody embedded />}
       </div>
     </div>
   );
