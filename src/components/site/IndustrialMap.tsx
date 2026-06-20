@@ -1491,23 +1491,57 @@ function Inspector({
           )}
         </div>
 
-        {/* Notes / description */}
-        {site.notes && (
-          <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.notes}</p>
+        {/* Key info table */}
+        {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned) && (
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+              <tbody>
+                {site.operator && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "30%" }}>Operator</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.operator}</td>
+                  </tr>
+                )}
+                {site.year_commissioned && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Est.</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.year_commissioned}</td>
+                  </tr>
+                )}
+                {site.utilities && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Utilities</td>
+                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.utilities}</td>
+                  </tr>
+                )}
+                {site.website && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Website</td>
+                    <td style={{ paddingBottom: "6px", verticalAlign: "top" }}>
+                      <a href={site.website} target="_blank" rel="noopener noreferrer"
+                        style={{ color: accentBlue, textDecoration: "none", fontSize: "12px" }}>
+                        {site.website.replace(/^https?:\/\//, "")}
+                      </a>
+                    </td>
+                  </tr>
+                )}
+                {site.phone && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Phone</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.phone}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         )}
 
-        {/* Utilities */}
-        {site.utilities && (
-          <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-            </svg>
-            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.utilities}</p>
+        {/* Notes / description */}
+        {site.notes && (
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>About</p>
+            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.notes}</p>
           </div>
         )}
 

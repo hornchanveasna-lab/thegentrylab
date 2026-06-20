@@ -76,6 +76,8 @@ export function useMapSites() {
         seasonal_output_pct: r.seasonal_output_pct ?? undefined,
         operator: r.operator ?? undefined,
         year_commissioned: r.year_commissioned ?? undefined,
+        website: r.website ?? undefined,
+        phone: r.phone ?? undefined,
       })) as MapSite[];
     },
     staleTime: STALE_TIME,

@@ -78,6 +78,8 @@ export interface MapSite {
   seasonal_output_pct?: number;
   operator?: string;
   year_commissioned?: number;
+  website?: string;
+  phone?: string;
 }
 
 export interface Corridor {
