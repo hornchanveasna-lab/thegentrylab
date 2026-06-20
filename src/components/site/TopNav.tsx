@@ -70,7 +70,18 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
     return { to: l.to, label: override?.label || l.fallbackLabel };
   });
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
   return (
+    <>
     <nav className="sticky top-0 z-[1000] nav-bar backdrop-blur-md">
       <div className="flex items-center justify-between px-6 md:px-12 py-3.5 max-w-7xl mx-auto">
 
@@ -291,87 +302,89 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
         </div>
       </div>
 
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <div className="md:hidden border-t nav-border nav-surface px-6 py-4 flex flex-col gap-1">
-          {NAV_LINKS.map((l) => (
-            <Link key={l.to} to={l.to} onClick={() => setMobileOpen(false)}
-              activeOptions={{ exact: true }}
-              activeProps={{ className: "text-brand-accent" }}
-              inactiveProps={{ className: "nav-text-muted" }}
-              className="font-mono text-[11px] uppercase tracking-widest py-3 border-b nav-border transition-colors"
-            >
-              {l.label}
-            </Link>
-          ))}
-
-          {/* Tools section */}
-          <div className="pt-3 pb-1">
-            <p className="font-mono text-[8px] uppercase tracking-[0.2em] nav-text-muted mb-2">AI Tools</p>
-            <Link to="/tools/advisor" onClick={() => setMobileOpen(false)}
-              className="flex items-center justify-between py-2.5 px-3 rounded-lg mb-1 transition-colors"
-              style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.18)" }}>
-              <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
-                AI Industrial Advisor
-              </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-            </Link>
-            {[
-              "Site Scoring Engine",
-              "Permit Navigator",
-              "Utility Capacity Map",
-              "Cost Heat Map",
-            ].map((tool) => (
-              <div key={tool} className="flex items-center justify-between py-2 px-3 rounded-lg opacity-40 cursor-not-allowed mb-0.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">{tool}</span>
-                <span className="font-mono text-[8px] uppercase tracking-widest nav-text-muted">Soon</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Credits link for logged-in */}
-          {user && credits !== null && (
-            <Link to="/credits" onClick={() => setMobileOpen(false)}
-              className="flex items-center justify-between py-2.5 px-3 rounded-lg mt-1 border-t nav-border pt-3">
-              <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">Credits</span>
-              <span className="font-mono text-[11px] font-bold" style={{ color: "#ff5100" }}>
-                {formatCredits(credits.balance)} cr
-              </span>
-            </Link>
-          )}
-
-          {/* Mobile auth */}
-          {user ? (
-            <div className="pt-3 border-t nav-border flex items-center justify-between mt-2">
-              <div className="flex items-center gap-2">
-                {user.user_metadata?.avatar_url ? (
-                  <img src={user.user_metadata.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
-                ) : (
-                  <span className="w-7 h-7 rounded-full bg-brand-accent flex items-center justify-center text-[9px] font-bold text-black">
-                    {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
-                  </span>
-                )}
-                <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted truncate max-w-[140px]">
-                  {user.user_metadata?.full_name ?? user.email}
-                </span>
-              </div>
-              <button onClick={() => { signOut(); setMobileOpen(false); }}
-                className="font-mono text-[10px] uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-colors">
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <Link to="/login" onClick={() => setMobileOpen(false)}
-              className="mt-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary transition-colors">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              Sign in
-            </Link>
-          )}
-        </div>
-      )}
     </nav>
+
+    {/* Mobile menu — fixed overlay so it doesn't expand the sticky nav and block page scroll */}
+    {mobileOpen && (
+      <div className="md:hidden fixed inset-x-0 top-[64px] z-[999] nav-surface border-t nav-border overflow-y-auto max-h-[calc(100svh-64px)] flex flex-col gap-1 px-6 py-4">
+        {NAV_LINKS.map((l) => (
+          <Link key={l.to} to={l.to} onClick={() => setMobileOpen(false)}
+            activeOptions={{ exact: true }}
+            activeProps={{ className: "text-brand-accent" }}
+            inactiveProps={{ className: "nav-text-muted" }}
+            className="font-mono text-[11px] uppercase tracking-widest py-3 border-b nav-border transition-colors"
+          >
+            {l.label}
+          </Link>
+        ))}
+
+        {/* Tools section */}
+        <div className="pt-3 pb-1">
+          <p className="font-mono text-[8px] uppercase tracking-[0.2em] nav-text-muted mb-2">AI Tools</p>
+          <Link to="/tools/advisor" onClick={() => setMobileOpen(false)}
+            className="flex items-center justify-between py-2.5 px-3 rounded-lg mb-1 transition-colors"
+            style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.18)" }}>
+            <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
+              AI Industrial Advisor
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+          </Link>
+          {[
+            "Site Scoring Engine",
+            "Permit Navigator",
+            "Utility Capacity Map",
+            "Cost Heat Map",
+          ].map((tool) => (
+            <div key={tool} className="flex items-center justify-between py-2 px-3 rounded-lg opacity-40 cursor-not-allowed mb-0.5">
+              <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">{tool}</span>
+              <span className="font-mono text-[8px] uppercase tracking-widest nav-text-muted">Soon</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Credits link for logged-in */}
+        {user && credits !== null && (
+          <Link to="/credits" onClick={() => setMobileOpen(false)}
+            className="flex items-center justify-between py-2.5 px-3 rounded-lg mt-1 border-t nav-border pt-3">
+            <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted">Credits</span>
+            <span className="font-mono text-[11px] font-bold" style={{ color: "#ff5100" }}>
+              {formatCredits(credits.balance)} cr
+            </span>
+          </Link>
+        )}
+
+        {/* Mobile auth */}
+        {user ? (
+          <div className="pt-3 border-t nav-border flex items-center justify-between mt-2">
+            <div className="flex items-center gap-2">
+              {user.user_metadata?.avatar_url ? (
+                <img src={user.user_metadata.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+              ) : (
+                <span className="w-7 h-7 rounded-full bg-brand-accent flex items-center justify-center text-[9px] font-bold text-black">
+                  {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
+                </span>
+              )}
+              <span className="font-mono text-[10px] uppercase tracking-widest nav-text-muted truncate max-w-[140px]">
+                {user.user_metadata?.full_name ?? user.email}
+              </span>
+            </div>
+            <button onClick={() => { signOut(); setMobileOpen(false); }}
+              className="font-mono text-[10px] uppercase tracking-widest text-red-400/70 hover:text-red-400 transition-colors">
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <Link to="/login" onClick={() => setMobileOpen(false)}
+            className="mt-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest nav-text-muted hover:nav-text-primary transition-colors">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            Sign in
+          </Link>
+        )}
+      </div>
+    )}
+    </>
   );
 }
