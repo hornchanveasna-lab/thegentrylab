@@ -793,6 +793,59 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [pinMarker, setPinMarker] = useState<{ lat: number; lng: number } | null>(null);
   const [locSearching, setLocSearching] = useState(false);
   const [locError, setLocError]         = useState("");
+  const [suggestions, setSuggestions]   = useState<{ placeId: string; main: string; secondary: string }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+
+  /* Fetch Places Autocomplete suggestions */
+  const fetchSuggestions = useCallback(async (input: string) => {
+    if (input.length < 2) { setSuggestions([]); return; }
+    try {
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:kh&language=en&key=${gKey}`
+      );
+      const data = await res.json();
+      setSuggestions(
+        (data.predictions ?? []).slice(0, 5).map((p: { place_id: string; structured_formatting: { main_text: string; secondary_text: string } }) => ({
+          placeId: p.place_id,
+          main:      p.structured_formatting?.main_text ?? p.place_id,
+          secondary: p.structured_formatting?.secondary_text ?? "",
+        }))
+      );
+    } catch { setSuggestions([]); }
+  }, [gKey]);
+
+  /* Pick a suggestion — fetch its coords via Place Details */
+  const pickSuggestion = useCallback(async (s: { placeId: string; main: string; secondary: string }) => {
+    setLocationInput(s.main);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setLocSearching(true);
+    try {
+      const res  = await fetch(
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${s.placeId}&fields=geometry&key=${gKey}`
+      );
+      const data = await res.json();
+      const loc  = data.result?.geometry?.location;
+      if (loc) {
+        setPinMarker({ lat: loc.lat, lng: loc.lng });
+        setPinTarget({ lat: loc.lat, lng: loc.lng, zoom: 14 });
+      }
+    } catch { /* ignore */ }
+    setLocSearching(false);
+  }, [gKey]);
+
+  /* Dismiss suggestions on outside click */
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   /* Location callout (empty-map click, Google Maps style) */
   const [locCallout, setLocCallout] = useState<{
@@ -951,37 +1004,71 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       </div>
 
       {/* ── Search bar (top-center) ────────────────────────── */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[600] w-[min(420px,calc(100vw-340px))]">
+      <div ref={searchWrapRef} className="absolute top-4 left-1/2 -translate-x-1/2 z-[600] w-[min(440px,calc(100vw-340px))]">
         <form
-          onSubmit={(e) => { e.preventDefault(); handleLocationSearch(); }}
-          className="flex items-center bg-black/90 backdrop-blur border border-white/15 overflow-hidden shadow-xl"
+          onSubmit={(e) => { e.preventDefault(); setSuggestions([]); setShowSuggestions(false); handleLocationSearch(); }}
+          className="flex items-center bg-black/95 backdrop-blur border border-white/15 shadow-2xl"
+          style={{ borderRadius: showSuggestions && suggestions.length > 0 ? "4px 4px 0 0" : "4px" }}
         >
-          <svg className="ml-3 shrink-0 text-white/30" width="13" height="13" viewBox="0 0 13 13" fill="none">
-            <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.3"/>
-            <path d="M9 9l2.5 2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-          </svg>
+          {locSearching ? (
+            <div className="ml-3 w-3.5 h-3.5 shrink-0 border-2 border-white/20 border-t-white/70 rounded-full animate-spin" />
+          ) : (
+            <svg className="ml-3 shrink-0 text-white/35" width="14" height="14" viewBox="0 0 13 13" fill="none">
+              <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.4"/>
+              <path d="M9 9l2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+            </svg>
+          )}
           <input
             value={locationInput}
-            onChange={(e) => { setLocationInput(e.target.value); setLocError(""); }}
+            onChange={(e) => {
+              const v = e.target.value;
+              setLocationInput(v);
+              setLocError("");
+              setShowSuggestions(true);
+              if (autocompleteTimer.current) clearTimeout(autocompleteTimer.current);
+              autocompleteTimer.current = setTimeout(() => fetchSuggestions(v), 220);
+            }}
+            onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+            onKeyDown={(e) => { if (e.key === "Escape") { setSuggestions([]); setShowSuggestions(false); } }}
             placeholder={t("map.searchPlaceholder")}
-            className="flex-1 px-3 py-2.5 text-[11px] text-white bg-transparent placeholder:text-white/25 focus:outline-none font-mono"
+            className="flex-1 px-3 py-3 text-[13px] text-white bg-transparent placeholder:text-white/30 focus:outline-none"
           />
           {locationInput && (
-            <button type="button" onClick={() => { setLocationInput(""); setPinMarker(null); setLocError(""); }}
-              className="text-white/30 hover:text-white px-2 text-base leading-none">✕</button>
+            <button type="button"
+              onClick={() => { setLocationInput(""); setPinMarker(null); setLocError(""); setSuggestions([]); setShowSuggestions(false); }}
+              className="text-white/30 hover:text-white/80 px-2.5 text-lg leading-none transition">✕</button>
           )}
-          <button type="submit" disabled={locSearching}
-            className="px-3 py-2.5 text-[10px] font-mono uppercase tracking-widest bg-[#ff5100] text-black hover:brightness-110 transition-all disabled:opacity-50 shrink-0 border-l border-white/10">
-            {locSearching ? "…" : t("map.go")}
-          </button>
         </form>
+
+        {/* Autocomplete dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="border border-t-0 border-white/15 bg-black/95 backdrop-blur shadow-2xl overflow-hidden" style={{ borderRadius: "0 0 4px 4px" }}>
+            {suggestions.map((s, i) => (
+              <button
+                key={s.placeId}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/8 transition text-left"
+                style={{ borderTop: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-white/30">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor"/>
+                  <circle cx="12" cy="9" r="2.5" fill="black" opacity="0.4"/>
+                </svg>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] text-white/90 truncate">{s.main}</p>
+                  {s.secondary && <p className="text-[11px] text-white/40 truncate">{s.secondary}</p>}
+                </div>
+              </button>
+            ))}
+            <div className="px-4 py-1.5 flex justify-end border-t border-white/5">
+              <img src="https://maps.gstatic.com/mapfiles/api-3/images/powered-by-google-on-non-white.png" alt="Powered by Google" className="h-3.5 opacity-40" />
+            </div>
+          </div>
+        )}
+
         {locError && (
           <p className="mt-1 text-[10px] font-mono text-red-400 text-center bg-black/80 px-3 py-1">{locError}</p>
-        )}
-        {pinMarker && (
-          <p className="mt-1 text-[10px] font-mono text-center bg-black/80 px-3 py-1" style={{ color: "#ff5100" }}>
-            ★ {pinMarker.lat.toFixed(5)}, {pinMarker.lng.toFixed(5)}
-          </p>
         )}
       </div>
 
