@@ -44,12 +44,12 @@ export interface MapSite {
   utilities?: string;
   road?: string;
   notes?: string;
-  score?: number; // suitability snapshot 0-100 (sum of 4 EIP pillars)
-  eip_management?: number;    // Pillar 1: Park Management (0–25)
-  eip_environmental?: number; // Pillar 2: Environmental (0–25)
-  eip_social?: number;        // Pillar 3: Social (0–25)
-  eip_economic?: number;      // Pillar 4: Economic (0–25)
-  eip_tier?: "bronze" | "silver" | "gold"; // World Bank/UNIDO EIP Framework tier
+  score?: number;
+  eip_management?: number;
+  eip_environmental?: number;
+  eip_social?: number;
+  eip_economic?: number;
+  eip_tier?: "Bronze" | "Silver" | "Gold";
   strengths?: string[];
   constraints?: string[];
   targetIndustries?: string[];
@@ -57,8 +57,27 @@ export interface MapSite {
   image_url?: string;
   coordVerified?: boolean;
   port_distance_km?: number;
+  port_time_min?: number;
   elevation_m?: number;
   flood_risk?: boolean;
+  // EIP energy — SEZ/park
+  energy_tariff_usd?: number;
+  grid_uptime_pct?: number;
+  backup_power?: boolean;
+  renewable_pct?: number;
+  own_generation_mw?: number;
+  substation_dist_km?: number;
+  grid_capacity_mw?: number;
+  energy_policy?: boolean;
+  tenant_metering?: boolean;
+  // Energy layer — powerplants / substations
+  capacity_mw?: number;
+  energy_type?: string;
+  voltage_kv?: number;
+  provinces_served?: string[];
+  seasonal_output_pct?: number;
+  operator?: string;
+  year_commissioned?: number;
 }
 
 export interface Corridor {
