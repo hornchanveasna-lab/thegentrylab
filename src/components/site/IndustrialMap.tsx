@@ -739,54 +739,6 @@ function CoverageOverlay({ def, opacity }: { def: CoverageDef; opacity: number }
   return null;
 }
 
-/* ── Cell-tower layer (OpenCelliD, refreshable) ──────────── */
-const TOWERS_AVAILABLE = false;   // flip to true once public/geo/towers.json is bundled
-const TOWER_OPS: { op: string; label: string; color: string }[] = [
-  { op: "cellcard", label: "Cellcard", color: "#ffc400" },
-  { op: "metfone",  label: "Metfone",  color: "#ffd400" },
-  { op: "smart",    label: "Smart",    color: "#e0241b" },
-];
-const TOWER_COLOR: Record<string, string> = Object.fromEntries(TOWER_OPS.map((o) => [o.op, o.color]));
-
-function TowerLayer({ activeOps }: { activeOps: Set<string> }) {
-  const map = useMap();
-  const dataRef = useRef<google.maps.Data | null>(null);
-
-  useEffect(() => {
-    if (!map) return;
-    let cancelled = false;
-    const data = new google.maps.Data({ map });
-    dataRef.current = data;
-    fetch("/geo/towers.json")
-      .then((r) => r.json())
-      .then((geo) => { if (!cancelled) data.addGeoJson(geo); })
-      .catch(() => { /* no data file */ });
-    return () => { data.forEach((f) => data.remove(f)); data.setMap(null); dataRef.current = null; cancelled = true; };
-  }, [map]);
-
-  // Style / filter by active operators
-  useEffect(() => {
-    const data = dataRef.current;
-    if (!data) return;
-    data.setStyle((feature) => {
-      const op = feature.getProperty("op") as string;
-      if (!activeOps.has(op)) return { visible: false };
-      return {
-        clickable: false,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 2.4,
-          fillColor: TOWER_COLOR[op] ?? "#888",
-          fillOpacity: 0.85,
-          strokeWeight: 0,
-        },
-      };
-    });
-  }, [activeOps]);
-
-  return null;
-}
-
 /* ── Related research matcher ───────────────────────────── */
 function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchBrief[] {
   const siteLower = site.province.toLowerCase();
@@ -876,7 +828,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   );
   const [covActive, setCovActive] = useState<Set<string>>(new Set());
   const [covOpacity, setCovOpacity] = useState(0.7);
-  const [towerOps, setTowerOps] = useState<Set<string>>(new Set());
   const [hoveredSite, setHoveredSite] = useState<MapSite | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const basemapUserPicked = useRef(false);
@@ -1034,13 +985,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       return next;
     });
 
-  const toggleTower = (op: string) =>
-    setTowerOps((prev) => {
-      const next = new Set(prev);
-      next.has(op) ? next.delete(op) : next.add(op);
-      return next;
-    });
-
   const handleLocationSearch = async () => {
     const raw = locationInput.trim();
     if (!raw) return;
@@ -1140,9 +1084,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               <CoverageOverlay key={c.key} def={c} opacity={covOpacity} />
             ))}
 
-            {/* Cell towers (OpenCelliD) */}
-            {TOWERS_AVAILABLE && towerOps.size > 0 && <TowerLayer activeOps={towerOps} />}
-
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} onSelect={handleSelect} onHover={setHoveredSite} />
             {pinMarker && <PinMarkerLayer position={pinMarker} />}
@@ -1236,7 +1177,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
       {/* ── Layer panel ───────────────────────────────────── */}
       {panelOpen && (
-        <div className="absolute top-14 left-4 z-[500] w-[220px] bg-black/95 backdrop-blur border border-white/12 shadow-2xl overflow-hidden">
+        <div className="absolute top-14 left-4 z-[500] w-[220px] bg-black/95 backdrop-blur border border-white/12 shadow-2xl rounded-sm overflow-y-auto max-h-[calc(100vh-220px)] overscroll-contain">
           <div className="px-3 py-2 border-b border-white/8 flex items-center justify-between">
             <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">Map Layers</span>
             <button onClick={() => setPanelOpen(false)} className="text-white/30 hover:text-white text-xs">✕</button>
@@ -1370,32 +1311,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             )}
           </div>
 
-          {/* Cell towers (OpenCelliD) */}
-          {TOWERS_AVAILABLE && (
-            <div className="border-t border-white/8 p-2">
-              <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Cell Towers · live</p>
-              {TOWER_OPS.map((o) => {
-                const on = towerOps.has(o.op);
-                return (
-                  <button
-                    key={o.op}
-                    onClick={() => toggleTower(o.op)}
-                    className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0 transition-opacity"
-                      style={{ backgroundColor: o.color, opacity: on ? 1 : 0.3 }} />
-                    <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${on ? "text-white/80" : "text-white/25"}`}>
-                      {o.label}
-                    </span>
-                    <span className={`font-mono text-[8px] transition ${on ? "text-white/50" : "text-white/20"}`}>
-                      {on ? "ON" : "OFF"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
           {/* Basemap switcher */}
           <div className="border-t border-white/8 p-2">
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Basemap</p>
@@ -1467,7 +1382,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         floodOn={floodVisible || bm.floodOverlay}
         areaActive={areaActive}
         covActive={covActive}
-        towerOps={towerOps}
       />
     </div>
   );
@@ -1483,25 +1397,22 @@ const FLOOD_LEGEND: { c: string; label: string }[] = [
 ];
 
 function MapLegend({
-  floodOn, areaActive, covActive, towerOps,
+  floodOn, areaActive, covActive,
 }: {
   floodOn: boolean;
   areaActive: Set<AreaKey>;
   covActive: Set<string>;
-  towerOps: Set<string>;
 }) {
   const [open, setOpen] = useState(true);
   const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
   const activeCov = COVERAGE.filter((c) => covActive.has(c.key));
-  const activeTowers = TOWER_OPS.filter((o) => towerOps.has(o.op));
-  const hasContent = floodOn || activeAreas.length > 0 || activeCov.length > 0 || activeTowers.length > 0;
+  const hasContent = floodOn || activeAreas.length > 0 || activeCov.length > 0;
 
   // Build source attribution from what's actually showing (dedup)
   const srcSet = new Set<string>();
   activeAreas.forEach((k) => { if (AREA_LAYERS[k].source) srcSet.add(AREA_LAYERS[k].source!); });
   if (floodOn) srcSet.add("GloFAS / Copernicus EMS");
   if (activeCov.length) srcSet.add("Operator coverage 2023");
-  if (activeTowers.length) srcSet.add("Towers: OpenCelliD");
   const sources = srcSet.size ? [...srcSet] : ["GADM 4.1"];
 
   return (
@@ -1536,21 +1447,8 @@ function MapLegend({
                 </div>
               </div>
             )}
-            {activeTowers.length > 0 && (
-              <div className={activeAreas.length > 0 || activeCov.length > 0 ? "pt-1.5 border-t border-white/8" : ""}>
-                <p className="font-mono text-[8px] uppercase tracking-wider text-white/35 mb-1">Cell Towers</p>
-                <div className="space-y-1">
-                  {activeTowers.map((o) => (
-                    <div key={o.op} className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: o.color }} />
-                      <span className="font-mono text-[9px] text-white/60 leading-tight">{o.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
             {floodOn && (
-              <div className={activeAreas.length > 0 || activeCov.length > 0 || activeTowers.length > 0 ? "pt-1.5 border-t border-white/8" : ""}>
+              <div className={activeAreas.length > 0 || activeCov.length > 0 ? "pt-1.5 border-t border-white/8" : ""}>
                 <p className="font-mono text-[8px] uppercase tracking-wider text-white/35 mb-1">Flood Hazard · 100-yr</p>
                 <div className="space-y-1">
                   {FLOOD_LEGEND.map((f) => (
