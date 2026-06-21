@@ -1275,6 +1275,87 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           onClose={() => setLocCallout(null)}
         />
       )}
+      {/* ── Map legend & sources (bottom-left) ───────────────── */}
+      <MapLegend
+        floodOn={floodVisible || bm.floodOverlay}
+        areaActive={areaActive}
+      />
+    </div>
+  );
+}
+
+/* ── Map legend & source attribution ─────────────────────── */
+const FLOOD_LEGEND: { c: string; label: string }[] = [
+  { c: "#c8e0fc", label: "Shallow (0.09–1 m)" },
+  { c: "#a6d2fb", label: "Moderate (1–3 m)" },
+  { c: "#5c8df6", label: "Deep (3–10 m)" },
+  { c: "#2f4ff6", label: "Very deep (>10 m)" },
+  { c: "#3522f2", label: "Permanent water" },
+];
+
+function MapLegend({
+  floodOn, areaActive,
+}: {
+  floodOn: boolean;
+  areaActive: Set<AreaKey>;
+}) {
+  const [open, setOpen] = useState(true);
+  const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
+  const hasContent = floodOn || activeAreas.length > 0;
+
+  // Build source attribution from what's actually showing
+  const sources: string[] = ["Boundaries: GADM 4.1"];
+  if (floodOn) sources.push("Flood: GloFAS / Copernicus EMS");
+
+  return (
+    <div className="absolute bottom-4 left-4 z-[450] max-w-[210px]">
+      {hasContent && open && (
+        <div className="bg-black/90 backdrop-blur border border-white/12 shadow-2xl mb-1.5">
+          <div className="px-3 py-1.5 border-b border-white/8 flex items-center justify-between">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">Legend</span>
+            <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white text-xs leading-none">✕</button>
+          </div>
+          <div className="p-2.5 space-y-2">
+            {activeAreas.map((k) => {
+              const def = AREA_LAYERS[k];
+              return (
+                <div key={k} className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-sm shrink-0 border"
+                    style={{ backgroundColor: `${def.color}55`, borderColor: def.color }} />
+                  <span className="font-mono text-[9px] text-white/70 leading-tight">{def.label}</span>
+                </div>
+              );
+            })}
+            {floodOn && (
+              <div className={activeAreas.length > 0 ? "pt-1.5 border-t border-white/8" : ""}>
+                <p className="font-mono text-[8px] uppercase tracking-wider text-white/35 mb-1">Flood Hazard · 100-yr</p>
+                <div className="space-y-1">
+                  {FLOOD_LEGEND.map((f) => (
+                    <div key={f.label} className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: f.c }} />
+                      <span className="font-mono text-[9px] text-white/60 leading-tight">{f.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Always-on source attribution strip */}
+      <div className="flex items-center gap-1.5">
+        {hasContent && !open && (
+          <button
+            onClick={() => setOpen(true)}
+            className="bg-black/90 backdrop-blur border border-white/12 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/50 hover:text-white/80 transition"
+          >
+            Legend
+          </button>
+        )}
+        <div className="bg-black/70 backdrop-blur border border-white/8 px-2 py-1">
+          <span className="font-mono text-[8px] text-white/35 leading-tight">{sources.join(" · ")}</span>
+        </div>
+      </div>
     </div>
   );
 }
