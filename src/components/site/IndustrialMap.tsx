@@ -650,8 +650,16 @@ function NightLightsLayer() {
     if (!map) return;
 
     const layer = new google.maps.ImageMapType({
-      getTileUrl: (coord, zoom) =>
-        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2024-01-01/GoogleMapsCompatible/${zoom}/${coord.y}/${coord.x}.jpg`,
+      getTileUrl: (coord, zoom) => {
+        const b    = tileToBounds(coord.x, coord.y, zoom);
+        const bbox = `${b.south},${b.west},${b.north},${b.east}`;
+        return (
+          "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?" +
+          "SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap" +
+          "&LAYERS=VIIRS_Black_Marble&STYLES=&FORMAT=image/jpeg" +
+          `&CRS=EPSG:4326&BBOX=${bbox}&WIDTH=256&HEIGHT=256&TIME=2024-01-01`
+        );
+      },
       tileSize: new google.maps.Size(256, 256),
       opacity:  0.8,
       name:     "VIIRS Night Lights",
