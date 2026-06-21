@@ -127,6 +127,48 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
   ],
 };
 
+/* ── Area layers (boundaries & footprints) ──────────────── */
+type AreaKey = "provinces" | "districts" | "sez_footprints";
+
+interface AreaDef {
+  label: string;
+  color: string;
+  url?: string;            // GeoJSON path (provinces/districts)
+  derived?: "sez";         // built from sites, no URL
+  fillOpacity: number;     // base fill opacity (multiplied by slider)
+  strokeWeight: number;
+  defaultOpacity: number;  // initial slider value 0..1
+  hint: string;            // legend sub-text
+}
+
+const AREA_LAYERS: Record<AreaKey, AreaDef> = {
+  provinces: {
+    label: "Provinces", color: "#8b9cb3", url: "/geo/provinces.json",
+    fillOpacity: 0.05, strokeWeight: 1, defaultOpacity: 0.8,
+    hint: "25 provincial boundaries (GADM)",
+  },
+  districts: {
+    label: "Districts", color: "#6b7a8f", url: "/geo/districts.json",
+    fillOpacity: 0.03, strokeWeight: 0.5, defaultOpacity: 0.6,
+    hint: "202 district boundaries (GADM)",
+  },
+  sez_footprints: {
+    label: "SEZ Footprints", color: "#ff5100", derived: "sez",
+    fillOpacity: 0.16, strokeWeight: 1.4, defaultOpacity: 0.9,
+    hint: "Zone area scaled from hectares",
+  },
+};
+
+const ALL_AREAS = Object.keys(AREA_LAYERS) as AreaKey[];
+
+/** Parse a free-text size like "120 ha" / "1,200 hectares" → hectares number */
+function parseSizeHa(size?: string): number | null {
+  if (!size) return null;
+  const m = size.match(/([\d,]+(?:\.\d+)?)\s*(?:ha|hectare)/i);
+  if (!m) return null;
+  return parseFloat(m[1].replace(/,/g, ""));
+}
+
 /* ── Location parsers ───────────────────────────────────── */
 function parseGoogleMapsUrl(url: string): [number, number] | null {
   let m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
@@ -543,6 +585,103 @@ function FloodLayer() {
   return null;
 }
 
+/* ── Area layers (GADM boundaries + derived footprints) ──── */
+
+/** GeoJSON boundary layer (provinces / districts) via google.maps.Data */
+function AreaGeoJsonLayer({
+  url, color, fillOpacity, strokeWeight, opacity,
+}: {
+  url: string;
+  color: string;
+  fillOpacity: number;
+  strokeWeight: number;
+  opacity: number;
+}) {
+  const map = useMap();
+  const dataRef = useRef<google.maps.Data | null>(null);
+
+  // Mount: create layer + fetch GeoJSON once
+  useEffect(() => {
+    if (!map) return;
+    let cancelled = false;
+    const data = new google.maps.Data({ map });
+    dataRef.current = data;
+
+    fetch(url)
+      .then((r) => r.json())
+      .then((geo) => { if (!cancelled) data.addGeoJson(geo); })
+      .catch(() => { /* network error — layer stays empty */ });
+
+    return () => {
+      data.forEach((f) => data.remove(f));
+      data.setMap(null);
+      dataRef.current = null;
+      cancelled = true;
+    };
+  }, [map, url]);
+
+  // Style: reapply whenever opacity/appearance changes (no re-fetch)
+  useEffect(() => {
+    const data = dataRef.current;
+    if (!data) return;
+    data.setStyle({
+      fillColor:     color,
+      fillOpacity:   fillOpacity * opacity,
+      strokeColor:   color,
+      strokeWeight,
+      strokeOpacity: 0.9 * opacity,
+      clickable:     false,
+      zIndex:        1,
+    });
+  }, [opacity, color, fillOpacity, strokeWeight]);
+
+  return null;
+}
+
+/** SEZ footprint circles — radius derived from each SEZ's size in hectares */
+function SezFootprintLayer({
+  sites, opacity, onSelect,
+}: {
+  sites: MapSite[];
+  opacity: number;
+  onSelect: (s: MapSite) => void;
+}) {
+  const map = useMap();
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  useEffect(() => {
+    if (!map) return;
+    const circles: google.maps.Circle[] = [];
+
+    for (const s of sites) {
+      if (s.kind !== "sez" && s.kind !== "park") continue;
+      const ha = parseSizeHa(s.size);
+      if (!ha || ha <= 0) continue;
+      // area (m²) = ha × 10,000 ; radius = sqrt(area / π)
+      const radius = Math.sqrt((ha * 10_000) / Math.PI);
+      const circle = new google.maps.Circle({
+        map,
+        center:        { lat: s.lat, lng: s.lng },
+        radius,
+        fillColor:     "#ff5100",
+        fillOpacity:   0.16 * opacity,
+        strokeColor:   "#ff5100",
+        strokeOpacity: 0.85 * opacity,
+        strokeWeight:  1.4,
+        clickable:     true,
+        zIndex:        2,
+      });
+      circle.addListener("click", () => onSelectRef.current(s));
+      circles.push(circle);
+    }
+
+    return () => { circles.forEach((c) => c.setMap(null)); };
+  }, [map, sites, opacity]);
+
+  return null;
+}
+
 /* ── Related research matcher ───────────────────────────── */
 function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchBrief[] {
   const siteLower = site.province.toLowerCase();
@@ -626,6 +765,10 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(false);
+  const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
+  const [areaOpacity, setAreaOpacity] = useState<Record<AreaKey, number>>(
+    () => Object.fromEntries(ALL_AREAS.map((k) => [k, AREA_LAYERS[k].defaultOpacity])) as Record<AreaKey, number>
+  );
   const [hoveredSite, setHoveredSite] = useState<MapSite | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const basemapUserPicked = useRef(false);
@@ -766,6 +909,16 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const setSubKind = (layer: LayerGroup, kind: SiteKind | "all") =>
     setSubKinds((prev) => ({ ...prev, [layer]: kind }));
 
+  const toggleArea = (k: AreaKey) =>
+    setAreaActive((prev) => {
+      const next = new Set(prev);
+      next.has(k) ? next.delete(k) : next.add(k);
+      return next;
+    });
+
+  const setOpacity = (k: AreaKey, v: number) =>
+    setAreaOpacity((prev) => ({ ...prev, [k]: v }));
+
   const handleLocationSearch = async () => {
     const raw = locationInput.trim();
     if (!raw) return;
@@ -844,6 +997,29 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             <ZoomClassController wrapperRef={wrapperRef} />
 
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
+
+            {/* Area layers (boundaries underneath, footprints above) */}
+            {areaActive.has("provinces") && (
+              <AreaGeoJsonLayer
+                url={AREA_LAYERS.provinces.url!}
+                color={AREA_LAYERS.provinces.color}
+                fillOpacity={AREA_LAYERS.provinces.fillOpacity}
+                strokeWeight={AREA_LAYERS.provinces.strokeWeight}
+                opacity={areaOpacity.provinces}
+              />
+            )}
+            {areaActive.has("districts") && (
+              <AreaGeoJsonLayer
+                url={AREA_LAYERS.districts.url!}
+                color={AREA_LAYERS.districts.color}
+                fillOpacity={AREA_LAYERS.districts.fillOpacity}
+                strokeWeight={AREA_LAYERS.districts.strokeWeight}
+                opacity={areaOpacity.districts}
+              />
+            )}
+            {areaActive.has("sez_footprints") && (
+              <SezFootprintLayer sites={visible} opacity={areaOpacity.sez_footprints} onSelect={handleSelect} />
+            )}
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} onSelect={handleSelect} onHover={setHoveredSite} />
@@ -984,6 +1160,48 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
                           {sk.label}
                         </button>
                       ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Area layers (boundaries & footprints) */}
+          <div className="border-t border-white/8 p-2">
+            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Area Data</p>
+            {ALL_AREAS.map((k) => {
+              const def = AREA_LAYERS[k];
+              const on  = areaActive.has(k);
+              return (
+                <div key={k}>
+                  <button
+                    onClick={() => toggleArea(k)}
+                    className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-sm shrink-0 transition-opacity border"
+                      style={{ backgroundColor: `${def.color}55`, borderColor: def.color, opacity: on ? 1 : 0.3 }} />
+                    <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${on ? "text-white/80" : "text-white/25"}`}>
+                      {def.label}
+                    </span>
+                    <span className={`font-mono text-[8px] transition ${on ? "text-white/50" : "text-white/20"}`}>
+                      {on ? "ON" : "OFF"}
+                    </span>
+                  </button>
+                  {on && (
+                    <div className="pl-5 pr-2 pb-2">
+                      <p className="font-mono text-[8px] text-white/25 mb-1">{def.hint}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[8px] text-white/30">OPACITY</span>
+                        <input
+                          type="range" min={0.1} max={1} step={0.05}
+                          value={areaOpacity[k]}
+                          onChange={(e) => setOpacity(k, parseFloat(e.target.value))}
+                          className="flex-1 h-1 accent-current cursor-pointer"
+                          style={{ accentColor: def.color }}
+                        />
+                        <span className="font-mono text-[8px] text-white/40 w-7 text-right">{Math.round(areaOpacity[k] * 100)}%</span>
+                      </div>
                     </div>
                   )}
                 </div>
