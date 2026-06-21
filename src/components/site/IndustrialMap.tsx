@@ -1092,7 +1092,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
   /* ── Full map ───────────────────────────────────────────── */
   return (
-    <div className="relative h-[calc(100vh-3.5rem)] w-full bg-black" ref={wrapperRef}
+    <div className="relative h-full min-h-0 w-full bg-black" ref={wrapperRef}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });

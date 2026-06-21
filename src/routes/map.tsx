@@ -8,7 +8,7 @@ export const Route = createFileRoute("/map")({
 
 function MapPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col">
+    <div className="h-screen overflow-hidden bg-[#0a0a0b] text-white flex flex-col">
       <TopNav />
       {/* Header strip */}
       <div className="border-b border-white/8 bg-[#0d0d0e]">
@@ -42,7 +42,7 @@ function MapPage() {
         </div>
       </div>
       {/* Full-height map */}
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         <IndustrialMap />
       </div>
     </div>
