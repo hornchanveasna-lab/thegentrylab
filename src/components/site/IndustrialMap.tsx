@@ -166,7 +166,7 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
   communes: {
     label: "Communes", color: "#4e5e72", url: "/geo/communes.json",
     fillOpacity: 0.02, strokeWeight: 0.3, defaultOpacity: 0.5,
-    hint: "~1,646 commune boundaries (GADM)", source: "GADM 4.1", available: false,
+    hint: "~1,646 commune boundaries (GADM)", source: "GADM 4.1", available: true,
   },
   sez_footprints: {
     label: "SEZ Footprints", color: "#ff5100", derived: "sez",
