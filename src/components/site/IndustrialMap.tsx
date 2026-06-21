@@ -563,7 +563,7 @@ function FloodLayer() {
         return (
           "https://ows.globalfloods.eu/glofas-ows/ows.py?" +
           "SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0" +
-          "&LAYERS=GloFAS_rp100&FORMAT=image/png&TRANSPARENT=true" +
+          "&LAYERS=FloodHazard100y&STYLES=&FORMAT=image/png&TRANSPARENT=true" +
           `&CRS=EPSG:4326&BBOX=${bbox}&WIDTH=256&HEIGHT=256`
         );
       },
