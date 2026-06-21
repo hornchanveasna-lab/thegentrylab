@@ -643,37 +643,6 @@ function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }
   return null;
 }
 
-function NightLightsLayer() {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map) return;
-
-    const layer = new google.maps.ImageMapType({
-      getTileUrl: (coord, zoom) => {
-        const b    = tileToBounds(coord.x, coord.y, zoom);
-        const bbox = `${b.south},${b.west},${b.north},${b.east}`;
-        return (
-          "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?" +
-          "SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap" +
-          "&LAYERS=VIIRS_Black_Marble&STYLES=&FORMAT=image/jpeg" +
-          `&CRS=EPSG:4326&BBOX=${bbox}&WIDTH=256&HEIGHT=256&TIME=2024-01-01`
-        );
-      },
-      tileSize: new google.maps.Size(256, 256),
-      opacity:  0.8,
-      name:     "VIIRS Night Lights",
-    });
-
-    map.overlayMapTypes.push(layer);
-    return () => {
-      const idx = map.overlayMapTypes.getArray().indexOf(layer);
-      if (idx >= 0) map.overlayMapTypes.removeAt(idx);
-    };
-  }, [map]);
-
-  return null;
-}
 
 function FloodLayer() {
   const map = useMap();
@@ -1323,6 +1292,25 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const deckLayers = useMemo((): Layer[] => {
     const layers: Layer[] = [];
 
+    // Night Lights: VIIRS Black Marble via deck.gl BitmapLayer with additive blending
+    // Additive blend (ONE, ONE): black pixels contribute 0, bright lights add to map
+    if (nightLightsVisible) {
+      layers.push(
+        new BitmapLayer({
+          id: "night-lights",
+          image:
+            "https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi?" +
+            "SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap" +
+            "&LAYERS=VIIRS_Black_Marble&STYLES=&FORMAT=image/jpeg" +
+            "&CRS=EPSG:4326&BBOX=10.36,102.29,14.60,107.65" +
+            "&WIDTH=1024&HEIGHT=1024&TIME=2024-01-01",
+          bounds: [102.29, 10.36, 107.65, 14.60],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          parameters: { blend: true, blendFunc: [1, 1] } as any, // ONE + ONE additive
+        }),
+      );
+    }
+
     // GeoJSON boundary layers (provinces, districts, ODC datasets)
     for (const k of ALL_AREAS) {
       const def = AREA_LAYERS[k];
@@ -1362,7 +1350,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     }
 
     return layers;
-  }, [areaActive, areaOpacity, covActive, covOpacity]);
+  }, [nightLightsVisible, areaActive, areaOpacity, covActive, covOpacity]);
 
   const toggle = (g: LayerGroup) =>
     setActive((prev) => {
@@ -1484,7 +1472,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             <ZoomLabelController />
             <ZoomClassController wrapperRef={wrapperRef} />
 
-            {nightLightsVisible && <NightLightsLayer />}
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
             {/* deck.gl overlay — GeoJSON boundaries + coverage rasters (WebGL) */}
