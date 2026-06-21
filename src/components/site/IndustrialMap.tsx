@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { useLang } from "@/lib/i18n";
-import { useMapSites, useResearch, useSiteImages } from "@/lib/data";
+import { useMapSites, useNews, useProjects, useResearch, useSiteImages } from "@/lib/data";
 import {
   CORRIDORS,
   LAYER_META,
+  NEWS,
+  PROJECTS,
   RESEARCH,
   SITES,
   type Corridor,
   type LayerGroup,
   type MapSite,
+  type NewsItem,
   type ResearchBrief,
   type SiteKind,
+  type TrackedProject,
 } from "@/data/platform";
 
 const ALL_LAYERS: LayerGroup[] = [
@@ -800,6 +804,139 @@ function CoverageOverlay({ def, opacity }: { def: CoverageDef; opacity: number }
   return null;
 }
 
+/* ── Province centroids (for news geo-tagging) ───────────── */
+const PROVINCE_CENTROIDS: Record<string, [number, number]> = {
+  "Phnom Penh":         [11.5564, 104.9282],
+  "Kandal":             [11.2833, 104.9500],
+  "Kampong Speu":       [11.4500, 104.5200],
+  "Sihanoukville":      [10.6167, 103.5167],
+  "Preah Sihanouk":     [10.6167, 103.5167],
+  "Svay Rieng":         [11.0833, 105.8000],
+  "Kampong Cham":       [11.9931, 105.4636],
+  "Kampot":             [10.5933, 104.1667],
+  "Siem Reap":          [13.3671, 103.8448],
+  "Battambang":         [13.0957, 103.2022],
+  "Takeo":              [10.9900, 104.7986],
+  "Prey Veng":          [11.4833, 105.3167],
+  "Pursat":             [12.5333, 103.9167],
+  "Kampong Thom":       [12.7111, 104.8889],
+  "Kampong Chhnang":    [12.2500, 104.6667],
+  "Kratie":             [12.4883, 106.0183],
+  "Stung Treng":        [13.5239, 105.9702],
+  "Ratanakiri":         [13.7336, 107.0053],
+  "Mondulkiri":         [12.4535, 107.1878],
+  "Koh Kong":           [11.6153, 102.9836],
+  "Kep":                [10.4833, 104.3167],
+  "Pailin":             [12.8488, 102.6097],
+  "Oddar Meanchey":     [14.1803, 103.5197],
+  "Banteay Meanchey":   [13.7538, 102.9892],
+  "Preah Vihear":       [13.8054, 104.9753],
+  "Nationwide":         [12.5, 104.9],
+};
+
+/* ── News marker layer (province-grouped, amber newspaper pin) ── */
+function NewsMarkerLayer({
+  news, onProvinceClick,
+}: {
+  news: NewsItem[];
+  onProvinceClick: (province: string, items: NewsItem[]) => void;
+}) {
+  const map = useMap();
+  const onClickRef = useRef(onProvinceClick);
+  useEffect(() => { onClickRef.current = onProvinceClick; }, [onProvinceClick]);
+
+  useEffect(() => {
+    if (!map || !news.length) return;
+
+    // Group by province
+    const byProvince = new globalThis.Map<string, NewsItem[]>();
+    for (const item of news) {
+      const prov = item.province ?? "Nationwide";
+      if (!byProvince.has(prov)) byProvince.set(prov, []);
+      byProvince.get(prov)!.push(item);
+    }
+
+    const markers: google.maps.Marker[] = [];
+
+    byProvince.forEach((items, province) => {
+      const coords = PROVINCE_CENTROIDS[province] ?? PROVINCE_CENTROIDS["Nationwide"];
+      const count = items.length;
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r="17" fill="#f59e0b" fill-opacity="0.92" stroke="white" stroke-width="1.5"/>
+        <rect x="10" y="10" width="11" height="14" rx="1" fill="white" fill-opacity="0.9"/>
+        <rect x="10" y="10" width="11" height="3" rx="1" fill="white"/>
+        <line x1="12" y1="16" x2="19" y2="16" stroke="#f59e0b" stroke-width="1.2"/>
+        <line x1="12" y1="18.5" x2="19" y2="18.5" stroke="#f59e0b" stroke-width="1.2"/>
+        <line x1="12" y1="21" x2="17" y2="21" stroke="#f59e0b" stroke-width="1.2"/>
+        ${count > 1 ? `<circle cx="25" cy="11" r="7" fill="#dc2626"/><text x="25" y="15" text-anchor="middle" font-size="8" fill="white" font-family="sans-serif" font-weight="bold">${count}</text>` : ""}
+      </svg>`;
+
+      const marker = new google.maps.Marker({
+        position: { lat: coords[0], lng: coords[1] },
+        map,
+        title: `${province}: ${count} news item${count > 1 ? "s" : ""}`,
+        icon: {
+          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+          anchor: new google.maps.Point(18, 18),
+          scaledSize: new google.maps.Size(36, 36),
+        },
+        zIndex: 300,
+      });
+      marker.addListener("click", () => onClickRef.current(province, items));
+      markers.push(marker);
+    });
+
+    return () => { markers.forEach((m) => m.setMap(null)); };
+  }, [map, news]);
+
+  return null;
+}
+
+/* ── Project marker layer (diamond/flag icon, indigo) ─────── */
+function ProjectMarkerLayer({
+  projects, onSelect,
+}: {
+  projects: TrackedProject[];
+  onSelect: (p: TrackedProject) => void;
+}) {
+  const map = useMap();
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  useEffect(() => {
+    if (!map) return;
+    const markers: google.maps.Marker[] = [];
+
+    for (const p of projects) {
+      if (p.lat == null || p.lng == null) continue;
+      const statusColor = p.status === "Operational" ? "#34d399" : p.status === "Under Construction" ? "#fbbf24" : "#818cf8";
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+        <polygon points="16,3 29,16 16,29 3,16" fill="${statusColor}" fill-opacity="0.9" stroke="white" stroke-width="1.5"/>
+        <text x="16" y="20" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif" font-weight="bold">P</text>
+      </svg>`;
+
+      const marker = new google.maps.Marker({
+        position: { lat: p.lat, lng: p.lng },
+        map,
+        title: p.name,
+        icon: {
+          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+          anchor: new google.maps.Point(16, 16),
+          scaledSize: new google.maps.Size(32, 32),
+        },
+        zIndex: 250,
+      });
+      marker.addListener("click", () => onSelectRef.current(p));
+      markers.push(marker);
+    }
+
+    return () => { markers.forEach((m) => m.setMap(null)); };
+  }, [map, projects]);
+
+  return null;
+}
+
 /* ── Related research matcher ───────────────────────────── */
 function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchBrief[] {
   const siteLower = site.province.toLowerCase();
@@ -876,6 +1013,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const { t }               = useLang();
   const { data: sites = SITES }          = useMapSites();
   const { data: allResearch = RESEARCH } = useResearch();
+  const { data: allNews = NEWS }         = useNews();
+  const { data: allProjects = PROJECTS } = useProjects();
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
   const [selected, setSelected] = useState<MapSite | null>(null);
   const [query, setQuery]   = useState("");
@@ -889,6 +1028,10 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   );
   const [covActive, setCovActive] = useState<Set<string>>(new Set());
   const [covOpacity, setCovOpacity] = useState(0.7);
+  const [newsVisible, setNewsVisible] = useState(false);
+  const [projectsVisible, setProjectsVisible] = useState(false);
+  const [newsPanel, setNewsPanel] = useState<{ province: string; items: NewsItem[] } | null>(null);
+  const [selectedProject, setSelectedProject] = useState<TrackedProject | null>(null);
   const [hoveredSite, setHoveredSite] = useState<MapSite | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const basemapUserPicked = useRef(false);
@@ -1074,6 +1217,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     setSelected(s);
     setLocCallout(null);
     setPanelOpen(false);
+    setNewsPanel(null);
+    setSelectedProject(null);
   }, []);
 
   /* Deep link: /map?site=<id> opens & flies to that location (shared links) */
@@ -1161,6 +1306,28 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
+            {newsVisible && (
+              <NewsMarkerLayer
+                news={allNews}
+                onProvinceClick={(province, items) => {
+                  setNewsPanel({ province, items });
+                  setSelected(null);
+                  setSelectedProject(null);
+                  setLocCallout(null);
+                }}
+              />
+            )}
+            {projectsVisible && (
+              <ProjectMarkerLayer
+                projects={allProjects}
+                onSelect={(p) => {
+                  setSelectedProject(p);
+                  setSelected(null);
+                  setNewsPanel(null);
+                  setLocCallout(null);
+                }}
+              />
+            )}
             {pinMarker && <PinMarkerLayer position={pinMarker} />}
           </Map>
         </APIProvider>
@@ -1386,6 +1553,30 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             )}
           </div>
 
+          {/* News + Projects overlays */}
+          <div className="border-t border-white/8 p-2">
+            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Intelligence</p>
+            {[
+              { key: "news",     label: "News",             color: "#f59e0b", on: newsVisible,     toggle: () => setNewsVisible(v => !v) },
+              { key: "projects", label: "Tracked Projects", color: "#818cf8", on: projectsVisible, toggle: () => setProjectsVisible(v => !v) },
+            ].map((item) => (
+              <button
+                key={item.key}
+                onClick={item.toggle}
+                className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
+              >
+                <span className="w-2.5 h-2.5 rounded-sm shrink-0 transition-opacity"
+                  style={{ backgroundColor: item.color, opacity: item.on ? 1 : 0.3 }} />
+                <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${item.on ? "text-white/80" : "text-white/25"}`}>
+                  {item.label}
+                </span>
+                <span className={`font-mono text-[8px] transition ${item.on ? "text-white/50" : "text-white/20"}`}>
+                  {item.on ? "ON" : "OFF"}
+                </span>
+              </button>
+            ))}
+          </div>
+
           {/* Basemap switcher */}
           <div className="border-t border-white/8 p-2">
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Basemap</p>
@@ -1433,6 +1624,25 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           onClose={() => setSelected(null)}
           t={t}
           isDark={isDark}
+        />
+      )}
+
+      {/* ── News panel ────────────────────────────────────── */}
+      {newsPanel && !selected && (
+        <NewsPanel
+          province={newsPanel.province}
+          items={newsPanel.items}
+          isDark={isDark}
+          onClose={() => setNewsPanel(null)}
+        />
+      )}
+
+      {/* ── Project panel ─────────────────────────────────── */}
+      {selectedProject && !selected && (
+        <ProjectPanel
+          project={selectedProject}
+          isDark={isDark}
+          onClose={() => setSelectedProject(null)}
         />
       )}
       {/* ── Site hover tooltip ───────────────────────────────── */}
@@ -2338,6 +2548,243 @@ function Inspector({
 }
 
 /* ── News Panel ─────────────────────────────────────────── */
+function NewsPanel({
+  province, items, isDark, onClose,
+}: {
+  province: string;
+  items: NewsItem[];
+  isDark: boolean;
+  onClose: () => void;
+}) {
+  const panelBg   = isDark ? "#111113" : "#ffffff";
+  const panelBg2  = isDark ? "#18181b" : "#f8f9fa";
+  const borderCol = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.09)";
+  const textMain  = isDark ? "#f8fafc" : "#0f172a";
+  const textMuted = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)";
+  const textDim   = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.28)";
+  const dividerCol = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+
+  const SECTOR_COLOR: Record<string, string> = {
+    "Infrastructure": "#38bdf8",
+    "Energy":         "#34d399",
+    "Policy":         "#a78bfa",
+    "Garment":        "#f472b6",
+    "Automotive":     "#60a5fa",
+    "Data Center":    "#818cf8",
+    "Electronics":    "#22d3ee",
+    "Warehousing":    "#fb923c",
+    "Food Processing": "#fbbf24",
+  };
+
+  return (
+    <aside
+      className="absolute top-0 right-0 z-[400] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col h-full max-h-full overflow-hidden shadow-2xl"
+      style={{ backgroundColor: panelBg, borderLeft: `1px solid ${borderCol}` }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between px-4 pt-4 pb-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+            <span className="font-mono text-[9px] uppercase tracking-widest text-amber-400">News</span>
+          </div>
+          <h2 className="font-bold text-[17px] leading-tight" style={{ color: textMain }}>{province}</h2>
+          <p className="text-[12px] mt-0.5" style={{ color: textMuted }}>{items.length} recent item{items.length > 1 ? "s" : ""}</p>
+        </div>
+        <button onClick={onClose}
+          className="w-7 h-7 rounded-full flex items-center justify-center mt-0.5"
+          style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)", color: textMuted }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M1 1l8 8M9 1L1 9"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Articles list */}
+      <div className="overflow-y-auto flex-1">
+        {items.map((item, i) => {
+          const scolor = SECTOR_COLOR[item.sector] ?? "#94a3b8";
+          return (
+            <div key={item.id}
+              className="px-4 py-3.5"
+              style={{ borderBottom: i < items.length - 1 ? `1px solid ${dividerCol}` : "none" }}>
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <span className="px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider rounded-full"
+                  style={{ color: scolor, backgroundColor: scolor + "18" }}>
+                  {item.sector}
+                </span>
+                <span className="font-mono text-[9px]" style={{ color: textDim }}>{item.date}</span>
+              </div>
+              <p className="text-[13px] font-semibold leading-snug mb-1.5" style={{ color: textMain }}>
+                {item.headline}
+              </p>
+              <p className="text-[12px] leading-relaxed mb-2" style={{ color: textMuted }}>
+                {item.summary}
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-[10px]" style={{ color: textDim }}>{item.source}</span>
+                {item.url && item.url !== "#" && (
+                  <a href={item.url} target="_blank" rel="noopener noreferrer"
+                    className="font-mono text-[9px] uppercase tracking-wider hover:opacity-70 transition"
+                    style={{ color: "#f59e0b" }}>
+                    Read ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        <div className="px-4 py-3">
+          <p className="font-mono text-[9px]" style={{ color: textDim }}>
+            News items are sourced by automated agents and may not reflect the latest developments.
+          </p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ── Project Panel ───────────────────────────────────────── */
+function ProjectPanel({
+  project, isDark, onClose,
+}: {
+  project: TrackedProject;
+  isDark: boolean;
+  onClose: () => void;
+}) {
+  const panelBg   = isDark ? "#111113" : "#ffffff";
+  const borderCol = isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.09)";
+  const textMain  = isDark ? "#f8fafc" : "#0f172a";
+  const textMuted = isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)";
+  const textDim   = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.28)";
+  const dividerCol = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)";
+  const panelBg2  = isDark ? "#18181b" : "#f8f9fa";
+
+  const statusColor = project.status === "Operational" ? "#34d399"
+    : project.status === "Under Construction" ? "#fbbf24" : "#818cf8";
+
+  const mapsUrl = project.lat
+    ? `https://www.google.com/maps/dir/?api=1&destination=${project.lat},${project.lng}`
+    : undefined;
+
+  const rows: { k: string; v: string }[] = [
+    { k: "Investor",  v: project.investor },
+    { k: "Origin",    v: project.origin },
+    { k: "Province",  v: project.province },
+    { k: "Size",      v: project.size },
+    { k: "Status",    v: project.status },
+    { k: "Updated",   v: project.updated },
+    ...(project.investment_usd   ? [{ k: "Investment",  v: project.investment_usd }]   : []),
+    ...(project.planned_finish   ? [{ k: "Est. Finish", v: project.planned_finish }]   : []),
+    ...(project.cdc_approval_date ? [{ k: "CDC Approval", v: project.cdc_approval_date }] : []),
+  ];
+
+  return (
+    <aside
+      className="absolute top-0 right-0 z-[400] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col h-full max-h-full overflow-hidden shadow-2xl"
+      style={{ backgroundColor: panelBg, borderLeft: `1px solid ${borderCol}` }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between px-4 pt-4 pb-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        <div className="flex-1 min-w-0 pr-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: statusColor }} />
+            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: statusColor }}>
+              Tracked Project · {project.sector}
+            </span>
+          </div>
+          <h2 className="font-bold text-[16px] leading-tight" style={{ color: textMain }}>{project.name}</h2>
+        </div>
+        <button onClick={onClose}
+          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+          style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)", color: textMuted }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M1 1l8 8M9 1L1 9"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Action buttons */}
+      {(mapsUrl || project.source_url) && (
+        <div className="flex items-center gap-3 px-4 py-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          {mapsUrl && (
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
+              className="flex flex-col items-center gap-1.5 group">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center transition group-hover:brightness-90"
+                style={{ backgroundColor: panelBg2, color: isDark ? "#60a5fa" : "#1a73e8" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                </svg>
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: isDark ? "#60a5fa" : "#1a73e8" }}>Directions</span>
+            </a>
+          )}
+          {project.source_url && (
+            <a href={project.source_url} target="_blank" rel="noopener noreferrer"
+              className="flex flex-col items-center gap-1.5 group">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center transition group-hover:brightness-90"
+                style={{ backgroundColor: panelBg2, color: isDark ? "#60a5fa" : "#1a73e8" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                  <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+                </svg>
+              </div>
+              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: isDark ? "#60a5fa" : "#1a73e8" }}>Source</span>
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Scrollable content */}
+      <div className="overflow-y-auto flex-1">
+        {/* Summary */}
+        <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <p className="text-[13px] leading-relaxed" style={{ color: textMuted }}>{project.summary}</p>
+        </div>
+
+        {/* Key facts */}
+        <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>Details</p>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+            {rows.map(({ k, v }) => (
+              <>
+                <dt key={`${k}-k`} className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>{k}</dt>
+                <dd key={`${k}-v`} className="text-[12px]" style={{ color: textMain }}>{v}</dd>
+              </>
+            ))}
+          </dl>
+        </div>
+
+        {/* Latest news */}
+        {project.latest_news_headline && (
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Latest News</p>
+            <p className="text-[12px] font-semibold leading-snug mb-1" style={{ color: textMain }}>
+              {project.latest_news_headline}
+            </p>
+            {project.latest_news_date && (
+              <p className="font-mono text-[10px] mb-1.5" style={{ color: textDim }}>{project.latest_news_date}</p>
+            )}
+            {project.latest_news_url && project.latest_news_url !== "#" && (
+              <a href={project.latest_news_url} target="_blank" rel="noopener noreferrer"
+                className="font-mono text-[9px] uppercase tracking-wider hover:opacity-70 transition"
+                style={{ color: "#818cf8" }}>
+                Read article ↗
+              </a>
+            )}
+          </div>
+        )}
+
+        <div className="px-4 py-3">
+          <p className="font-mono text-[9px]" style={{ color: textDim }}>
+            Project data sourced from CDC approvals, investor announcements and agent enrichment. Verify before use.
+          </p>
+        </div>
+      </div>
+    </aside>
+  );
+}
 
 function Row({ k, v, isDark }: { k: string; v: string; isDark: boolean }) {
   return (
