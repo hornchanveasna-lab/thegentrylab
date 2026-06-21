@@ -517,8 +517,8 @@ function SiteMarkerLayer({
   onHover: (s: MapSite | null) => void;
 }) {
   const map         = useMap();
-  const markersRef  = useRef<Map<string, google.maps.Marker>>(new Map());
-  const siteByIdRef = useRef<Map<string, MapSite>>(new Map());
+  const markersRef  = useRef<Map<string, google.maps.Marker>>(new globalThis.Map());
+  const siteByIdRef = useRef<Map<string, MapSite>>(new globalThis.Map());
   const pulseRef    = useRef<google.maps.Circle | null>(null);
   const animRef     = useRef<number | null>(null);
   const onSelectRef = useRef(onSelect);
@@ -530,8 +530,8 @@ function SiteMarkerLayer({
   useEffect(() => {
     if (!map) return;
     markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = new Map();
-    siteByIdRef.current = new Map();
+    markersRef.current = new globalThis.Map();
+    siteByIdRef.current = new globalThis.Map();
 
     sites.forEach((s) => {
       siteByIdRef.current.set(s.id, s);
@@ -550,7 +550,7 @@ function SiteMarkerLayer({
 
     return () => {
       markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = new Map();
+      markersRef.current = new globalThis.Map();
     };
   }, [map, sites]);
 
