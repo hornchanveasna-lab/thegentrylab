@@ -643,6 +643,30 @@ function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }
   return null;
 }
 
+function NightLightsLayer() {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    const layer = new google.maps.ImageMapType({
+      getTileUrl: (coord, zoom) =>
+        `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2024-01-01/GoogleMapsCompatible/${zoom}/${coord.y}/${coord.x}.jpg`,
+      tileSize: new google.maps.Size(256, 256),
+      opacity:  0.8,
+      name:     "VIIRS Night Lights",
+    });
+
+    map.overlayMapTypes.push(layer);
+    return () => {
+      const idx = map.overlayMapTypes.getArray().indexOf(layer);
+      if (idx >= 0) map.overlayMapTypes.removeAt(idx);
+    };
+  }, [map]);
+
+  return null;
+}
+
 function FloodLayer() {
   const map = useMap();
 
@@ -1147,6 +1171,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(false);
+  const [nightLightsVisible, setNightLightsVisible] = useState(false);
   const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
   const [areaOpacity, setAreaOpacity] = useState<Record<AreaKey, number>>(
     () => Object.fromEntries(ALL_AREAS.map((k) => [k, AREA_LAYERS[k].defaultOpacity])) as Record<AreaKey, number>
@@ -1451,6 +1476,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             <ZoomLabelController />
             <ZoomClassController wrapperRef={wrapperRef} />
 
+            {nightLightsVisible && <NightLightsLayer />}
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
             {/* deck.gl overlay — GeoJSON boundaries + coverage rasters (WebGL) */}
@@ -1754,7 +1780,19 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
                 </button>
               ))}
             </div>
-            <div className="px-2 pt-1">
+            <div className="px-2 pt-1 space-y-1">
+              <button
+                onClick={() => setNightLightsVisible((v) => !v)}
+                className="flex items-center gap-1.5 px-2 py-1 font-mono text-[8px] uppercase tracking-wider border transition w-full"
+                style={{
+                  borderColor: nightLightsVisible ? "#fbbf24" : "rgba(255,255,255,0.1)",
+                  color:       nightLightsVisible ? "#fbbf24" : "rgba(255,255,255,0.35)",
+                  backgroundColor: nightLightsVisible ? "#fbbf2412" : "transparent",
+                }}
+              >
+                <span>Night Lights · VIIRS</span>
+                <span className="ml-auto">{nightLightsVisible ? "ON" : "OFF"}</span>
+              </button>
               <button
                 onClick={() => setFloodVisible((v) => !v)}
                 className="flex items-center gap-1.5 px-2 py-1 font-mono text-[8px] uppercase tracking-wider border transition w-full"
@@ -1821,6 +1859,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       {/* ── Map legend & sources (bottom-left) ───────────────── */}
       <MapLegend
         floodOn={floodVisible || bm.floodOverlay}
+        nightLightsOn={nightLightsVisible}
         areaActive={areaActive}
         covActive={covActive}
       />
@@ -1838,21 +1877,23 @@ const FLOOD_LEGEND: { c: string; label: string }[] = [
 ];
 
 function MapLegend({
-  floodOn, areaActive, covActive,
+  floodOn, nightLightsOn, areaActive, covActive,
 }: {
   floodOn: boolean;
+  nightLightsOn: boolean;
   areaActive: Set<AreaKey>;
   covActive: Set<string>;
 }) {
   const [open, setOpen] = useState(true);
   const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
   const activeCov = COVERAGE.filter((c) => covActive.has(c.key));
-  const hasContent = floodOn || activeAreas.length > 0 || activeCov.length > 0;
+  const hasContent = floodOn || nightLightsOn || activeAreas.length > 0 || activeCov.length > 0;
 
   // Build source attribution from what's actually showing (dedup)
   const srcSet = new Set<string>();
   activeAreas.forEach((k) => { if (AREA_LAYERS[k].source) srcSet.add(AREA_LAYERS[k].source!); });
   if (floodOn) srcSet.add("GloFAS / Copernicus EMS");
+  if (nightLightsOn) srcSet.add("NASA VIIRS Black Marble 2024");
   if (activeCov.length) srcSet.add("Operator coverage 2023");
   const sources = srcSet.size ? [...srcSet] : ["GADM 4.1"];
 
@@ -1888,8 +1929,18 @@ function MapLegend({
                 </div>
               </div>
             )}
-            {floodOn && (
+            {nightLightsOn && (
               <div className={activeAreas.length > 0 || activeCov.length > 0 ? "pt-1.5 border-t border-white/8" : ""}>
+                <p className="font-mono text-[8px] uppercase tracking-wider text-white/35 mb-1">Night Lights · VIIRS 2024</p>
+                <div className="flex items-center gap-2">
+                  <span className="w-16 h-3 rounded-sm shrink-0"
+                    style={{ background: "linear-gradient(to right, #05050f, #1a1a40, #ffee80)" }} />
+                  <span className="font-mono text-[9px] text-white/60 leading-tight">Low → High activity</span>
+                </div>
+              </div>
+            )}
+            {floodOn && (
+              <div className={activeAreas.length > 0 || activeCov.length > 0 || nightLightsOn ? "pt-1.5 border-t border-white/8" : ""}>
                 <p className="font-mono text-[8px] uppercase tracking-wider text-white/35 mb-1">Flood Hazard · 100-yr</p>
                 <div className="space-y-1">
                   {FLOOD_LEGEND.map((f) => (
