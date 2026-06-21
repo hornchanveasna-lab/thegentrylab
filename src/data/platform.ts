@@ -95,6 +95,10 @@ export interface MapSite {
   nearest_rail?: string;
   border_distance_km?: number;
   nearest_border?: string;
+  // Data provenance / trust
+  source_tier?: number;        // 1 official · 2 reputable · 3 derived/estimated
+  confidence?: string;         // high | medium | low
+  field_provenance?: Record<string, { method?: string; source?: string; note?: string; at?: string }>;
   zone_types?: string[];
   lease_rate_usd?: string;
   plot_size_min_ha?: number;

@@ -1933,7 +1933,10 @@ function Inspector({
         {/* Logistics connectivity */}
         {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
           <div style={{ borderBottom: `1px solid ${dividerCol}`, padding: "12px 16px" }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Connectivity</p>
+            <div className="flex items-baseline justify-between mb-2">
+              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Connectivity</p>
+              <span className="font-mono text-[8px] tracking-wide" style={{ color: textDim }}>straight-line est.</span>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
               {site.port_distance_km != null && (
                 <div style={{ background: isDark ? "rgba(55,138,221,0.08)" : "rgba(55,138,221,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
@@ -1987,6 +1990,26 @@ function Inspector({
               style={{ color: "#fbbf24", backgroundColor: "#fbbf2412" }}>est.</span>
           )}
         </div>
+
+        {/* Data provenance strip */}
+        {(site.source_tier || site.confidence) && (
+          <div className="flex items-center gap-2 px-4 py-2 flex-wrap" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: textDim }}>Data</span>
+            {site.source_tier && (() => {
+              const tier = { 1: { l: "Tier 1 · Official",   c: "#34d399" },
+                             2: { l: "Tier 2 · Reputable",  c: "#38bdf8" },
+                             3: { l: "Tier 3 · Estimated",  c: "#fbbf24" } }[site.source_tier]
+                           ?? { l: `Tier ${site.source_tier}`, c: textDim };
+              return <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+                style={{ color: tier.c, backgroundColor: tier.c + "14" }}>{tier.l}</span>;
+            })()}
+            {site.confidence && (() => {
+              const c = site.confidence === "high" ? "#34d399" : site.confidence === "medium" ? "#fbbf24" : "#f87171";
+              return <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+                style={{ color: c, backgroundColor: c + "14" }}>{site.confidence} confidence</span>;
+            })()}
+          </div>
+        )}
 
         {/* Key info table */}
         {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
