@@ -136,7 +136,7 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
 
 /* ── Area layers (boundaries & footprints) ──────────────── */
 type AreaKey =
-  | "provinces" | "districts" | "sez_footprints"
+  | "provinces" | "districts" | "communes" | "sez_footprints"
   | "protected" | "elc" | "powergrid" | "mining";
 
 interface AreaDef {
@@ -162,6 +162,11 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
     label: "Districts", color: "#6b7a8f", url: "/geo/districts.json",
     fillOpacity: 0.03, strokeWeight: 0.5, defaultOpacity: 0.6,
     hint: "202 district boundaries (GADM)", source: "GADM 4.1", available: true,
+  },
+  communes: {
+    label: "Communes", color: "#4e5e72", url: "/geo/communes.json",
+    fillOpacity: 0.02, strokeWeight: 0.3, defaultOpacity: 0.5,
+    hint: "~1,646 commune boundaries (GADM)", source: "GADM 4.1", available: false,
   },
   sez_footprints: {
     label: "SEZ Footprints", color: "#ff5100", derived: "sez",
