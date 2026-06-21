@@ -128,7 +128,9 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
 };
 
 /* ── Area layers (boundaries & footprints) ──────────────── */
-type AreaKey = "provinces" | "districts" | "sez_footprints";
+type AreaKey =
+  | "provinces" | "districts" | "sez_footprints"
+  | "protected" | "elc" | "powergrid" | "mining";
 
 interface AreaDef {
   label: string;
@@ -139,27 +141,50 @@ interface AreaDef {
   strokeWeight: number;
   defaultOpacity: number;  // initial slider value 0..1
   hint: string;            // legend sub-text
+  source?: string;         // attribution line shown in legend
+  available?: boolean;     // false = data file not yet bundled (hidden from panel)
 }
 
 const AREA_LAYERS: Record<AreaKey, AreaDef> = {
   provinces: {
     label: "Provinces", color: "#8b9cb3", url: "/geo/provinces.json",
     fillOpacity: 0.05, strokeWeight: 1, defaultOpacity: 0.8,
-    hint: "25 provincial boundaries (GADM)",
+    hint: "25 provincial boundaries (GADM)", source: "GADM 4.1", available: true,
   },
   districts: {
     label: "Districts", color: "#6b7a8f", url: "/geo/districts.json",
     fillOpacity: 0.03, strokeWeight: 0.5, defaultOpacity: 0.6,
-    hint: "202 district boundaries (GADM)",
+    hint: "202 district boundaries (GADM)", source: "GADM 4.1", available: true,
   },
   sez_footprints: {
     label: "SEZ Footprints", color: "#ff5100", derived: "sez",
     fillOpacity: 0.16, strokeWeight: 1.4, defaultOpacity: 0.9,
-    hint: "Zone area scaled from hectares",
+    hint: "Zone area scaled from hectares", available: true,
+  },
+  // ── ODC datasets — flip `available: true` once the GeoJSON is bundled ──
+  protected: {
+    label: "Protected Areas", color: "#34d399", url: "/geo/protected.json",
+    fillOpacity: 0.18, strokeWeight: 1, defaultOpacity: 0.8,
+    hint: "No-build conservation zones", source: "ODC / WDPA", available: false,
+  },
+  elc: {
+    label: "Land Concessions", color: "#f59e0b", url: "/geo/elc.json",
+    fillOpacity: 0.14, strokeWeight: 1, defaultOpacity: 0.75,
+    hint: "Economic land concessions (ELC)", source: "ODC / LICADHO", available: false,
+  },
+  powergrid: {
+    label: "Power Grid", color: "#eab308", url: "/geo/powergrid.json",
+    fillOpacity: 0, strokeWeight: 1.6, defaultOpacity: 0.9,
+    hint: "Transmission lines", source: "ODC / OSM", available: false,
+  },
+  mining: {
+    label: "Mining Concessions", color: "#a16207", url: "/geo/mining.json",
+    fillOpacity: 0.14, strokeWeight: 1, defaultOpacity: 0.75,
+    hint: "Mining license areas", source: "ODC", available: false,
   },
 };
 
-const ALL_AREAS = Object.keys(AREA_LAYERS) as AreaKey[];
+const ALL_AREAS = (Object.keys(AREA_LAYERS) as AreaKey[]).filter((k) => AREA_LAYERS[k].available);
 
 /** Parse a free-text size like "120 ha" / "1,200 hectares" → hectares number */
 function parseSizeHa(size?: string): number | null {
@@ -998,25 +1023,17 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
-            {/* Area layers (boundaries underneath, footprints above) */}
-            {areaActive.has("provinces") && (
+            {/* Area layers — GeoJSON boundaries underneath, footprints above */}
+            {ALL_AREAS.filter((k) => AREA_LAYERS[k].url && areaActive.has(k)).map((k) => (
               <AreaGeoJsonLayer
-                url={AREA_LAYERS.provinces.url!}
-                color={AREA_LAYERS.provinces.color}
-                fillOpacity={AREA_LAYERS.provinces.fillOpacity}
-                strokeWeight={AREA_LAYERS.provinces.strokeWeight}
-                opacity={areaOpacity.provinces}
+                key={k}
+                url={AREA_LAYERS[k].url!}
+                color={AREA_LAYERS[k].color}
+                fillOpacity={AREA_LAYERS[k].fillOpacity}
+                strokeWeight={AREA_LAYERS[k].strokeWeight}
+                opacity={areaOpacity[k]}
               />
-            )}
-            {areaActive.has("districts") && (
-              <AreaGeoJsonLayer
-                url={AREA_LAYERS.districts.url!}
-                color={AREA_LAYERS.districts.color}
-                fillOpacity={AREA_LAYERS.districts.fillOpacity}
-                strokeWeight={AREA_LAYERS.districts.strokeWeight}
-                opacity={areaOpacity.districts}
-              />
-            )}
+            ))}
             {areaActive.has("sez_footprints") && (
               <SezFootprintLayer sites={visible} opacity={areaOpacity.sez_footprints} onSelect={handleSelect} />
             )}
@@ -1303,9 +1320,11 @@ function MapLegend({
   const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
   const hasContent = floodOn || activeAreas.length > 0;
 
-  // Build source attribution from what's actually showing
-  const sources: string[] = ["Boundaries: GADM 4.1"];
-  if (floodOn) sources.push("Flood: GloFAS / Copernicus EMS");
+  // Build source attribution from what's actually showing (dedup)
+  const srcSet = new Set<string>();
+  activeAreas.forEach((k) => { if (AREA_LAYERS[k].source) srcSet.add(AREA_LAYERS[k].source!); });
+  if (floodOn) srcSet.add("GloFAS / Copernicus EMS");
+  const sources = srcSet.size ? [...srcSet] : ["GADM 4.1"];
 
   return (
     <div className="absolute bottom-4 left-4 z-[450] max-w-[210px]">
