@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
+import { GoogleMapsOverlay } from "@deck.gl/google-maps";
+import { GeoJsonLayer, BitmapLayer } from "@deck.gl/layers";
+import type { Layer } from "@deck.gl/core";
 import { useLang } from "@/lib/i18n";
 import { useMapSites, useNews, useProjects, useResearch, useSiteImages } from "@/lib/data";
 import {
@@ -677,53 +680,33 @@ function FloodLayer() {
 
 /* ── Area layers (GADM boundaries + derived footprints) ──── */
 
-/** GeoJSON boundary layer (provinces / districts) via google.maps.Data */
-function AreaGeoJsonLayer({
-  url, color, fillOpacity, strokeWeight, opacity,
-}: {
-  url: string;
-  color: string;
-  fillOpacity: number;
-  strokeWeight: number;
-  opacity: number;
-}) {
-  const map = useMap();
-  const dataRef = useRef<google.maps.Data | null>(null);
+function hexToRgb(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return [r, g, b];
+}
 
-  // Mount: create layer + fetch GeoJSON once
+/** Single deck.gl overlay — renders all GeoJSON boundary layers + coverage rasters via WebGL */
+function DeckGlMapOverlay({ layers }: { layers: Layer[] }) {
+  const map = useMap();
+  const overlayRef = useRef<GoogleMapsOverlay | null>(null);
+
   useEffect(() => {
     if (!map) return;
-    let cancelled = false;
-    const data = new google.maps.Data({ map });
-    dataRef.current = data;
-
-    fetch(url)
-      .then((r) => r.json())
-      .then((geo) => { if (!cancelled) data.addGeoJson(geo); })
-      .catch(() => { /* network error — layer stays empty */ });
-
+    const overlay = new GoogleMapsOverlay({ interleaved: false });
+    overlay.setMap(map as google.maps.Map);
+    overlayRef.current = overlay;
     return () => {
-      data.forEach((f) => data.remove(f));
-      data.setMap(null);
-      dataRef.current = null;
-      cancelled = true;
+      overlay.setMap(null);
+      overlayRef.current = null;
     };
-  }, [map, url]);
+  }, [map]);
 
-  // Style: reapply whenever opacity/appearance changes (no re-fetch)
   useEffect(() => {
-    const data = dataRef.current;
-    if (!data) return;
-    data.setStyle({
-      fillColor:     color,
-      fillOpacity:   fillOpacity * opacity,
-      strokeColor:   color,
-      strokeWeight,
-      strokeOpacity: 0.9 * opacity,
-      clickable:     false,
-      zIndex:        1,
-    });
-  }, [opacity, color, fillOpacity, strokeWeight]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    overlayRef.current?.setProps({ layers } as any);
+  }, [layers]);
 
   return null;
 }
@@ -787,22 +770,6 @@ const COVERAGE: CoverageDef[] = [
   { key: "cov_smart_4g",    label: "Smart 4G",    color: "#e0241b", url: "/geo/coverage/cov_smart_4g.png",    bounds: { north: 15.19, south: 9.51,  east: 108.45, west: 101.57 } },
 ];
 
-function CoverageOverlay({ def, opacity }: { def: CoverageDef; opacity: number }) {
-  const map = useMap();
-  const ovRef = useRef<google.maps.GroundOverlay | null>(null);
-
-  useEffect(() => {
-    if (!map) return;
-    const ov = new google.maps.GroundOverlay(def.url, def.bounds, { opacity, clickable: false });
-    ov.setMap(map);
-    ovRef.current = ov;
-    return () => { ov.setMap(null); ovRef.current = null; };
-  }, [map, def.url]);
-
-  useEffect(() => { ovRef.current?.setOpacity(opacity); }, [opacity]);
-
-  return null;
-}
 
 /* ── Reference point coords (static — matches DB reference_points.name) ── */
 const REF_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -1320,6 +1287,50 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     [active],
   );
 
+  const deckLayers = useMemo((): Layer[] => {
+    const layers: Layer[] = [];
+
+    // GeoJSON boundary layers (provinces, districts, ODC datasets)
+    for (const k of ALL_AREAS) {
+      const def = AREA_LAYERS[k];
+      if (!def.url || !areaActive.has(k)) continue;
+      const [r, g, b] = hexToRgb(def.color);
+      const op = areaOpacity[k] ?? def.defaultOpacity;
+      layers.push(
+        new GeoJsonLayer({
+          id: `area-${k}`,
+          data: def.url,
+          filled: true,
+          stroked: true,
+          getFillColor: [r, g, b, Math.round(def.fillOpacity * op * 255)],
+          getLineColor: [r, g, b, Math.round(0.9 * op * 255)],
+          getLineWidth: def.strokeWeight,
+          lineWidthMinPixels: 0.5,
+          lineWidthUnits: "pixels" as const,
+          pickable: true,
+          autoHighlight: true,
+          highlightColor: [r, g, b, 45],
+        }),
+      );
+    }
+
+    // Mobile 4G coverage raster overlays
+    for (const c of COVERAGE) {
+      if (!covActive.has(c.key)) continue;
+      layers.push(
+        new BitmapLayer({
+          id: `cov-${c.key}`,
+          image: c.url,
+          bounds: [c.bounds.west, c.bounds.south, c.bounds.east, c.bounds.north],
+          opacity: covOpacity,
+          transparentColor: [0, 0, 0, 0],
+        }),
+      );
+    }
+
+    return layers;
+  }, [areaActive, areaOpacity, covActive, covOpacity]);
+
   const toggle = (g: LayerGroup) =>
     setActive((prev) => {
       const next = new Set(prev);
@@ -1442,25 +1453,11 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
-            {/* Area layers — GeoJSON boundaries underneath, footprints above */}
-            {ALL_AREAS.filter((k) => AREA_LAYERS[k].url && areaActive.has(k)).map((k) => (
-              <AreaGeoJsonLayer
-                key={k}
-                url={AREA_LAYERS[k].url!}
-                color={AREA_LAYERS[k].color}
-                fillOpacity={AREA_LAYERS[k].fillOpacity}
-                strokeWeight={AREA_LAYERS[k].strokeWeight}
-                opacity={areaOpacity[k]}
-              />
-            ))}
+            {/* deck.gl overlay — GeoJSON boundaries + coverage rasters (WebGL) */}
+            <DeckGlMapOverlay layers={deckLayers} />
             {areaActive.has("sez_footprints") && (
               <SezFootprintLayer sites={visible} opacity={areaOpacity.sez_footprints} onSelect={handleSelect} />
             )}
-
-            {/* Mobile 4G coverage raster overlays */}
-            {COVERAGE.filter((c) => covActive.has(c.key)).map((c) => (
-              <CoverageOverlay key={c.key} def={c} opacity={covOpacity} />
-            ))}
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
