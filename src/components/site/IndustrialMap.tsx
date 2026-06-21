@@ -354,10 +354,10 @@ const KIND_COLOR: Record<string, string> = {
 };
 
 /* ── Build pin SVG string ───────────────────────────────── */
-function buildPinSvg(kind: string, color: string, isKey: boolean) {
+function buildPinSvg(kind: string, color: string, isKey: boolean, selected = false) {
   // Extra padding around the pin so the SVG-internal shadow doesn't clip
-  const pad   = 6;
-  const pinW  = isKey ? 36 : 28;
+  const pad   = selected ? 10 : 6;
+  const pinW  = selected ? 42 : isKey ? 36 : 28;
   const r     = (pinW - 6) / 2;
   const cx    = pinW / 2 + pad;
   const cy    = r + 3 + pad;
@@ -380,8 +380,10 @@ function buildPinSvg(kind: string, color: string, isKey: boolean) {
         <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.5)"/>
       </filter>
     </defs>
+    ${selected ? `<circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="none" stroke="white" stroke-width="2.5" opacity="0.95"/>
+    <circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="${color}" opacity="0.18"/>` : ""}
     <path d="${path}" fill="${color}" filter="url(#ps)"/>
-    <circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>
+    <circle cx="${cx}" cy="${cy}" r="${r - 1}" fill="none" stroke="${selected ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)"}" stroke-width="${selected ? 1.6 : 1}"/>
     <g transform="translate(${cx} ${cy}) scale(${scale.toFixed(3)})" fill="white" stroke="none" stroke-linecap="round" stroke-linejoin="round">
       ${icon}
     </g>
@@ -495,52 +497,111 @@ function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
   return null;
 }
 
+function markerIcon(s: MapSite, selected: boolean) {
+  const color = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
+  const isKey = (s.score ?? 0) >= 85;
+  const { svg, cx, pinH, pinW } = buildPinSvg(s.kind, color, isKey, selected);
+  return {
+    url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
+    anchor:     new google.maps.Point(cx, pinH),
+    scaledSize: new google.maps.Size(pinW, pinH),
+  };
+}
+
 function SiteMarkerLayer({
-  sites, onSelect, onHover,
+  sites, selectedId, onSelect, onHover,
 }: {
   sites: MapSite[];
+  selectedId: string | null;
   onSelect: (s: MapSite) => void;
   onHover: (s: MapSite | null) => void;
 }) {
   const map         = useMap();
-  const markersRef  = useRef<google.maps.Marker[]>([]);
+  const markersRef  = useRef<Map<string, google.maps.Marker>>(new Map());
+  const siteByIdRef = useRef<Map<string, MapSite>>(new Map());
+  const pulseRef    = useRef<google.maps.Circle | null>(null);
+  const animRef     = useRef<number | null>(null);
   const onSelectRef = useRef(onSelect);
   const onHoverRef  = useRef(onHover);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
   useEffect(() => { onHoverRef.current  = onHover;  }, [onHover]);
 
+  // Build markers when the site list changes
   useEffect(() => {
     if (!map) return;
-
     markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = [];
+    markersRef.current = new Map();
+    siteByIdRef.current = new Map();
 
-    markersRef.current = sites.map((s) => {
-      const color  = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
-      const isKey  = (s.score ?? 0) >= 85;
-      const { svg, cx, pinH, pinW } = buildPinSvg(s.kind, color, isKey);
+    sites.forEach((s) => {
+      siteByIdRef.current.set(s.id, s);
       const marker = new google.maps.Marker({
         position: { lat: s.lat, lng: s.lng },
         map,
         title:   s.name,
         opacity: s.coordVerified ? 1 : 0.6,
-        icon: {
-          url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-          anchor:     new google.maps.Point(cx, pinH),
-          scaledSize: new google.maps.Size(pinW, pinH),
-        },
+        icon:    markerIcon(s, false),
       });
       marker.addListener("click", () => onSelectRef.current(s));
       marker.addListener("mouseover", () => onHoverRef.current(s));
       marker.addListener("mouseout",  () => onHoverRef.current(null));
-      return marker;
+      markersRef.current.set(s.id, marker);
     });
 
     return () => {
       markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = [];
+      markersRef.current = new Map();
     };
   }, [map, sites]);
+
+  // Highlight + pulse the selected marker
+  useEffect(() => {
+    if (!map) return;
+
+    // Reset all to normal, enlarge the selected one
+    markersRef.current.forEach((m, id) => {
+      const s = siteByIdRef.current.get(id);
+      if (!s) return;
+      const sel = id === selectedId;
+      m.setIcon(markerIcon(s, sel));
+      m.setZIndex(sel ? 999 : undefined);
+      m.setOpacity(sel ? 1 : s.coordVerified ? 1 : 0.6);
+    });
+
+    // Tear down any existing pulse
+    if (animRef.current) { cancelAnimationFrame(animRef.current); animRef.current = null; }
+    pulseRef.current?.setMap(null);
+    pulseRef.current = null;
+
+    const sel = selectedId ? siteByIdRef.current.get(selectedId) : null;
+    if (!sel) return;
+
+    const color = KIND_COLOR[sel.kind] ?? LAYER_META[sel.layer].color;
+    const circle = new google.maps.Circle({
+      map,
+      center: { lat: sel.lat, lng: sel.lng },
+      radius: 0,
+      strokeColor: color, strokeOpacity: 0.6, strokeWeight: 2,
+      fillColor: color, fillOpacity: 0.12, clickable: false, zIndex: 1,
+    });
+    pulseRef.current = circle;
+
+    const MAX = 1200; // metres
+    const start = performance.now();
+    const tick = (t: number) => {
+      const phase = ((t - start) % 1600) / 1600;     // 1.6s loop
+      circle.setRadius(phase * MAX);
+      circle.setOptions({ strokeOpacity: 0.6 * (1 - phase), fillOpacity: 0.12 * (1 - phase) });
+      animRef.current = requestAnimationFrame(tick);
+    };
+    animRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+      pulseRef.current?.setMap(null);
+      pulseRef.current = null;
+    };
+  }, [map, selectedId]);
 
   return null;
 }
@@ -1015,6 +1076,20 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     setPanelOpen(false);
   }, []);
 
+  /* Deep link: /map?site=<id> opens & flies to that location (shared links) */
+  const deepLinkDone = useRef(false);
+  useEffect(() => {
+    if (deepLinkDone.current || !sites.length) return;
+    const id = new URLSearchParams(window.location.search).get("site");
+    if (!id) { deepLinkDone.current = true; return; }
+    const target = sites.find((s) => s.id === id);
+    if (target) {
+      deepLinkDone.current = true;
+      setSelected(target);
+      setPinTarget({ lat: target.lat, lng: target.lng, zoom: 13 });
+    }
+  }, [sites]);
+
   /* layer counts per group */
   const layerCounts = useMemo(() => {
     const counts: Partial<Record<LayerGroup, number>> = {};
@@ -1085,7 +1160,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             ))}
 
             <CorridorLayer corridors={visibleCorridors} />
-            <SiteMarkerLayer sites={visible} onSelect={handleSelect} onHover={setHoveredSite} />
+            <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
             {pinMarker && <PinMarkerLayer position={pinMarker} />}
           </Map>
         </APIProvider>
@@ -1653,7 +1728,6 @@ function Inspector({
   const scoreColor = site.score !== undefined
     ? site.score >= 80 ? "#34d399" : site.score >= 65 ? "#fbbf24" : site.score >= 40 ? "#fb923c" : "#f43f5e"
     : "#94a3b8";
-  const mapsUrl        = `https://www.google.com/maps/search/?api=1&query=${site.lat},${site.lng}`;
   const directionsUrl  = `https://www.google.com/maps/dir/?api=1&destination=${site.lat},${site.lng}`;
   const shareUrl       = `${window.location.origin}/map?site=${site.id}`;
   const kindSvg = KIND_SVG[site.kind] ?? KIND_SVG.factory;
@@ -1849,25 +1923,16 @@ function Inspector({
               </svg>
             ),
           },
-          {
-            label: "Maps",
-            href: mapsUrl,
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#34A853"/>
-                <circle cx="12" cy="9" r="2.5" fill="white"/>
-              </svg>
-            ),
-          },
-          {
-            label: "Coords",
-            onClick: handleCopyCoords,
+          ...(site.website ? [{
+            label: "Website",
+            href: site.website.startsWith("http") ? site.website : `https://${site.website}`,
             icon: (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
               </svg>
             ),
-          },
+          }] : []),
           {
             label: "Share",
             onClick: handleShare,
