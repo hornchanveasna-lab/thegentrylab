@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackerRouteImport } from './routes/tracker'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as NewsRouteImport } from './routes/news'
+import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -37,6 +38,11 @@ const ResearchRoute = ResearchRouteImport.update({
 const NewsRoute = NewsRouteImport.update({
   id: '/news',
   path: '/news',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MethodologyRoute = MethodologyRouteImport.update({
+  id: '/methodology',
+  path: '/methodology',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MapRoute = MapRouteImport.update({
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
@@ -137,6 +145,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
   '/map': typeof MapRoute
+  '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/research': typeof ResearchRoute
   '/tracker': typeof TrackerRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/map'
+    | '/methodology'
     | '/news'
     | '/research'
     | '/tracker'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/map'
+    | '/methodology'
     | '/news'
     | '/research'
     | '/tracker'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/login'
     | '/map'
+    | '/methodology'
     | '/news'
     | '/research'
     | '/tracker'
@@ -204,6 +216,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
   MapRoute: typeof MapRoute
+  MethodologyRoute: typeof MethodologyRoute
   NewsRoute: typeof NewsRoute
   ResearchRoute: typeof ResearchRoute
   TrackerRoute: typeof TrackerRoute
@@ -233,6 +246,13 @@ declare module '@tanstack/react-router' {
       path: '/news'
       fullPath: '/news'
       preLoaderRoute: typeof NewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/methodology': {
+      id: '/methodology'
+      path: '/methodology'
+      fullPath: '/methodology'
+      preLoaderRoute: typeof MethodologyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/map': {
@@ -324,6 +344,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
   MapRoute: MapRoute,
+  MethodologyRoute: MethodologyRoute,
   NewsRoute: NewsRoute,
   ResearchRoute: ResearchRoute,
   TrackerRoute: TrackerRoute,

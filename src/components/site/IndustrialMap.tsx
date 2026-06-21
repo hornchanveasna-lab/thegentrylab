@@ -2008,6 +2008,20 @@ function Inspector({
               return <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded"
                 style={{ color: c, backgroundColor: c + "14" }}>{site.confidence} confidence</span>;
             })()}
+            {(() => {
+              const at = site.data_verified_at ? new Date(site.data_verified_at) : null;
+              const stale = !at || (Date.now() - at.getTime()) > 365 * 24 * 3600 * 1000;
+              return (
+                <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: stale ? "#f87171" : textDim }}>
+                  {at ? `verified ${at.toLocaleDateString(undefined, { month: "short", year: "numeric" })}` : "unverified"}
+                  {stale && " · stale"}
+                </span>
+              );
+            })()}
+            <a href="/methodology" target="_blank" rel="noreferrer"
+              className="font-mono text-[8px] uppercase tracking-wider ml-auto hover:underline" style={{ color: textDim }}>
+              Methodology ↗
+            </a>
           </div>
         )}
 

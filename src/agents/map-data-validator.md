@@ -8,8 +8,24 @@ Run monthly. For every site in Supabase `sites` table:
 4. Calculate ground elevation + flood risk flag (Google Elevation API)
 5. Calculate logistics connectivity matrix — Port, Airport, Rail, Border (Haversine SQL)
 6. Enrich sparse notes/data from web sources
+7. Maintain data provenance (source_tier, confidence, field_provenance, data_verified_at)
 
 All results written to Supabase `sites` table via MCP.
+
+## Data-trust rules (READ FIRST — these are non-negotiable)
+
+1. **Never overwrite higher-tier data with lower-tier.** If a field's
+   `field_provenance` method is `official` or `measured`, do NOT replace it with
+   an `estimated`/`derived` value. Only fill gaps or upgrade.
+2. **Stamp every write.** When you set/update a field, also set its
+   `field_provenance` entry `{method, source, at}` and bump `data_verified_at`.
+   Set `source_tier` (1 official / 2 reputable / 3 derived-estimated) and
+   `confidence` (high/medium/low) for the record.
+3. **Label methods honestly.** Straight-line = `estimated`; routing API =
+   `measured`; dataset/model = `modeled`; from a record = `official`.
+4. **Cross-check before trusting.** If two sources disagree on coordinates by
+   >5 km, flag for manual review — do not auto-pick.
+5. **Reference points come from the `reference_points` table**, never hardcoded.
 
 ## Supabase connection
 - **Project ID:** `mcxfukjopdnouicwacbn`
@@ -21,6 +37,16 @@ All results written to Supabase `sites` table via MCP.
 ---
 
 ## Reference infrastructure points
+
+> **Single source of truth:** these now live in the Supabase `reference_points`
+> table (sourced + dated). Query it instead of hardcoding — this is what
+> prevents the KTI/SAI-type coordinate errors:
+> ```sql
+> SELECT id, name, type, lat, lng, code, source, verified_at FROM reference_points;
+> ```
+> Steps 5a–5c below can be replaced by the generic table-driven recompute
+> (see "Logistics connectivity"). The coordinates listed below are the seed
+> values for reference only — if they ever change, update the TABLE, not docs.
 
 ### Ports (3)
 ```
@@ -401,9 +427,23 @@ GET https://router.project-osrm.org/route/v1/driving/{lng1},{lat1};{lng2},{lat2}
 
 ## Step 10 — Output report
 
+First pull the data-quality snapshot:
+```sql
+SELECT * FROM data_quality_summary;
+```
+Include it at the top of the report and track month-over-month movement
+(coords_verified_pct should trend up; stale_or_unchecked and conf_low should
+trend down). This is the platform's trust scorecard.
+
 Write `src/agents/last-validation-report.md`:
 ```markdown
 # Validation Report — {DATE}
+
+## Data-quality scorecard (from data_quality_summary)
+- Coords verified: {coords_verified_pct}% ({coords_verified}/{total_sites})
+- Source tiers: T1 {tier1_official} · T2 {tier2_reputable} · T3 {tier3_estimated}
+- Confidence: high {conf_high} · medium {conf_medium} · low {conf_low}
+- Stale / unchecked: {stale_or_unchecked}
 
 ## Summary
 - Sites processed: {N}

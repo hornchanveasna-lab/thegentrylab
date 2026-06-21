@@ -205,6 +205,34 @@ export async function updateSiteField(siteId: string, patch: Record<string, unkn
   if (error) throw error;
 }
 
+/* ── Data quality summary (Phase 4 — for methodology page) ── */
+export interface DataQuality {
+  total_sites: number;
+  coords_verified: number;
+  coords_verified_pct: number;
+  tier1_official: number;
+  tier2_reputable: number;
+  tier3_estimated: number;
+  conf_high: number;
+  conf_medium: number;
+  conf_low: number;
+  has_source_url: number;
+  stale_or_unchecked: number;
+}
+
+export function useDataQuality() {
+  return useQuery<DataQuality | null>({
+    queryKey: ["data-quality"],
+    queryFn: async () => {
+      if (!supabase) return null;
+      const { data, error } = await supabase.from("data_quality_summary").select("*").single();
+      if (error) return null;
+      return data as DataQuality;
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 /* ── Connection status (for dashboard) ─────────────────── */
 export function useSupabaseStatus() {
   return useQuery({

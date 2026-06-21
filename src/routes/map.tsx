@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { TopNav } from "@/components/site/TopNav";
 import { IndustrialMap } from "@/components/site/IndustrialMap";
 
@@ -38,6 +38,9 @@ function MapPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-brand-accent pulse-dot" />
               Live
             </span>
+            <Link to="/methodology" className="font-mono text-[10px] uppercase tracking-widest text-white/35 hover:text-white transition-colors">
+              Methodology ↗
+            </Link>
           </div>
         </div>
       </div>
