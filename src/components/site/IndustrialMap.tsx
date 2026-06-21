@@ -1803,6 +1803,40 @@ function Inspector({
         </div>
       </div>
 
+      {/* ── Data provenance strip ── */}
+      {(site.source_tier || site.confidence) && (
+        <div className="flex items-center gap-2 px-4 py-2 flex-wrap shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: textDim }}>Data</span>
+          {site.source_tier && (() => {
+            const tier = { 1: { l: "Tier 1 · Official",   c: "#34d399" },
+                           2: { l: "Tier 2 · Reputable",  c: "#38bdf8" },
+                           3: { l: "Tier 3 · Estimated",  c: "#fbbf24" } }[site.source_tier]
+                         ?? { l: `Tier ${site.source_tier}`, c: textDim };
+            return <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{ color: tier.c, backgroundColor: tier.c + "14" }}>{tier.l}</span>;
+          })()}
+          {site.confidence && (() => {
+            const c = site.confidence === "high" ? "#34d399" : site.confidence === "medium" ? "#fbbf24" : "#f87171";
+            return <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{ color: c, backgroundColor: c + "14" }}>{site.confidence} confidence</span>;
+          })()}
+          {(() => {
+            const at = site.data_verified_at ? new Date(site.data_verified_at) : null;
+            const stale = !at || (Date.now() - at.getTime()) > 365 * 24 * 3600 * 1000;
+            return (
+              <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: stale ? "#f87171" : textDim }}>
+                {at ? `verified ${at.toLocaleDateString(undefined, { month: "short", year: "numeric" })}` : "unverified"}
+                {stale && " · stale"}
+              </span>
+            );
+          })()}
+          <a href="/methodology" target="_blank" rel="noreferrer"
+            className="font-mono text-[8px] uppercase tracking-wider ml-auto hover:underline" style={{ color: textDim }}>
+            Methodology ↗
+          </a>
+        </div>
+      )}
+
       {/* ── Action buttons (Google Maps style) ── */}
       <div className="flex items-center justify-around px-3 py-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
         {[
@@ -1990,40 +2024,6 @@ function Inspector({
               style={{ color: "#fbbf24", backgroundColor: "#fbbf2412" }}>est.</span>
           )}
         </div>
-
-        {/* Data provenance strip */}
-        {(site.source_tier || site.confidence) && (
-          <div className="flex items-center gap-2 px-4 py-2 flex-wrap" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: textDim }}>Data</span>
-            {site.source_tier && (() => {
-              const tier = { 1: { l: "Tier 1 · Official",   c: "#34d399" },
-                             2: { l: "Tier 2 · Reputable",  c: "#38bdf8" },
-                             3: { l: "Tier 3 · Estimated",  c: "#fbbf24" } }[site.source_tier]
-                           ?? { l: `Tier ${site.source_tier}`, c: textDim };
-              return <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded"
-                style={{ color: tier.c, backgroundColor: tier.c + "14" }}>{tier.l}</span>;
-            })()}
-            {site.confidence && (() => {
-              const c = site.confidence === "high" ? "#34d399" : site.confidence === "medium" ? "#fbbf24" : "#f87171";
-              return <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded"
-                style={{ color: c, backgroundColor: c + "14" }}>{site.confidence} confidence</span>;
-            })()}
-            {(() => {
-              const at = site.data_verified_at ? new Date(site.data_verified_at) : null;
-              const stale = !at || (Date.now() - at.getTime()) > 365 * 24 * 3600 * 1000;
-              return (
-                <span className="font-mono text-[8px] uppercase tracking-wider" style={{ color: stale ? "#f87171" : textDim }}>
-                  {at ? `verified ${at.toLocaleDateString(undefined, { month: "short", year: "numeric" })}` : "unverified"}
-                  {stale && " · stale"}
-                </span>
-              );
-            })()}
-            <a href="/methodology" target="_blank" rel="noreferrer"
-              className="font-mono text-[8px] uppercase tracking-wider ml-auto hover:underline" style={{ color: textDim }}>
-              Methodology ↗
-            </a>
-          </div>
-        )}
 
         {/* Key info table */}
         {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
