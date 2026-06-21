@@ -804,6 +804,164 @@ function CoverageOverlay({ def, opacity }: { def: CoverageDef; opacity: number }
   return null;
 }
 
+/* ── Reference point coords (static — matches DB reference_points.name) ── */
+const REF_COORDS: Record<string, { lat: number; lng: number }> = {
+  // Airports
+  "Techo International Airport":    { lat: 11.3589, lng: 104.9335 },
+  "Siem Reap Angkor International": { lat: 13.3762, lng: 104.2201 },
+  "Sihanoukville International":    { lat: 10.5797, lng: 103.6368 },
+  "Battambang Airport":             { lat: 13.0956, lng: 103.2242 },
+  // Ports
+  "Phnom Penh Autonomous Port":     { lat: 11.5625, lng: 104.9311 },
+  "Sihanoukville Autonomous Port":  { lat: 10.6167, lng: 103.5167 },
+  "Koh Kong Port":                  { lat: 11.6236, lng: 102.9837 },
+  // Borders
+  "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1098 },
+  "Poipet / Aranyaprathet":        { lat: 13.6519, lng: 102.5664 },
+  "Cham Yeam / Hat Lek":           { lat: 11.7033, lng: 102.8894 },
+  "Kaam Samnor / Vinh Xuong":      { lat: 11.1619, lng: 105.2153 },
+  "O'Smach / Chong Jom":           { lat: 14.1611, lng: 103.0761 },
+  "O'Yadav / Le Thanh":            { lat: 13.7500, lng: 107.5333 },
+  "Phnom Den / Tinh Bien":         { lat: 10.5083, lng: 104.9472 },
+  "Prek Chak / Xa Xia":            { lat: 10.4614, lng: 104.0217 },
+  "Psar Pruhm / Ban Pakard":       { lat: 12.5497, lng: 102.5572 },
+  "Trapang Phlong / Xa Mat":       { lat: 11.8600, lng: 106.0269 },
+  "Trapang Sre / Loc Ninh":        { lat: 11.8489, lng: 106.5806 },
+  "Veun Kham / Don Kralor":        { lat: 13.9867, lng: 105.8278 },
+};
+
+const CONN_COLORS = {
+  airport: "#1D9E75",
+  port:    "#378ADD",
+  border:  "#D85A30",
+} as const;
+
+/* Fetch road geometry from OSRM (free, no API key). Falls back to straight line. */
+async function fetchRoadPath(
+  from: { lat: number; lng: number },
+  to:   { lat: number; lng: number },
+): Promise<google.maps.LatLngLiteral[]> {
+  try {
+    const url =
+      `https://router.project-osrm.org/route/v1/driving/` +
+      `${from.lng},${from.lat};${to.lng},${to.lat}` +
+      `?overview=full&geometries=geojson`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    const data = await res.json();
+    const coords = data.routes?.[0]?.geometry?.coordinates as [number, number][] | undefined;
+    if (coords?.length) return coords.map(([lng, lat]) => ({ lat, lng }));
+  } catch { /* timeout or error — fall through */ }
+  return [{ lat: from.lat, lng: from.lng }, { lat: to.lat, lng: to.lng }];
+}
+
+/* ── Connectivity route layer — animated dashed lines on site select ─── */
+function ConnectivityRouteLayer({ site }: { site: MapSite }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    const routes: { name: string; type: keyof typeof CONN_COLORS }[] = [
+      { name: site.nearest_airport ?? "", type: "airport" },
+      { name: site.nearest_port    ?? "", type: "port" },
+      { name: site.nearest_border  ?? "", type: "border" },
+    ].filter((r) => r.name && REF_COORDS[r.name]);
+
+    if (!routes.length) return;
+
+    const polys:   google.maps.Polyline[] = [];
+    const labels:  google.maps.Marker[]   = [];
+    const timers:  ReturnType<typeof setInterval>[] = [];
+    let cancelled = false;
+
+    const dashSymbol = (color: string): google.maps.Symbol => ({
+      path: "M 0,-1 0,1",
+      strokeOpacity: 1,
+      strokeColor: color,
+      scale: 3,
+    });
+
+    const addRoute = (
+      path:  google.maps.LatLngLiteral[],
+      color: string,
+      targetName: string,
+      targetCoord: { lat: number; lng: number },
+      type: keyof typeof CONN_COLORS,
+    ) => {
+      if (cancelled) return;
+
+      const poly = new google.maps.Polyline({
+        path,
+        map,
+        strokeOpacity: 0,
+        strokeWeight: 0,
+        zIndex: 50,
+        icons: [{
+          icon: dashSymbol(color),
+          offset: "0",
+          repeat: "16px",
+        }],
+      });
+      polys.push(poly);
+
+      // Animate dash offset
+      let offset = 0;
+      const timer = setInterval(() => {
+        offset = (offset + 1) % 100;
+        const icons = poly.get("icons") as google.maps.IconSequence[];
+        icons[0].offset = offset + "%";
+        poly.set("icons", icons);
+      }, 25);
+      timers.push(timer);
+
+      // Endpoint label marker
+      const typeIcon = type === "airport" ? "✈" : type === "port" ? "⚓" : "🛂";
+      const shortName = targetName.length > 22 ? targetName.slice(0, 21) + "…" : targetName;
+      const labelSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="28">
+        <rect x="0" y="0" width="160" height="28" rx="4" fill="${color}" fill-opacity="0.92"/>
+        <text x="8" y="19" font-size="13" fill="white" font-family="sans-serif" font-weight="600">${typeIcon} ${shortName}</text>
+      </svg>`;
+      const label = new google.maps.Marker({
+        position: targetCoord,
+        map,
+        icon: {
+          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(labelSvg),
+          anchor: new google.maps.Point(0, 14),
+          scaledSize: new google.maps.Size(160, 28),
+        },
+        zIndex: 51,
+        clickable: false,
+      });
+      labels.push(label);
+    };
+
+    // Draw straight lines immediately, replace with road routes async
+    for (const r of routes) {
+      const to = REF_COORDS[r.name];
+      const color = CONN_COLORS[r.type];
+      const from = { lat: site.lat, lng: site.lng };
+      const straight = [from, to];
+
+      addRoute(straight, color, r.name, to, r.type);
+
+      // Fetch road route and replace path
+      const idx = polys.length - 1;
+      fetchRoadPath(from, to).then((roadPath) => {
+        if (!cancelled && polys[idx]) polys[idx].setPath(roadPath);
+      });
+    }
+
+    return () => {
+      cancelled = true;
+      timers.forEach((t) => clearInterval(t));
+      polys.forEach((p)  => p.setMap(null));
+      labels.forEach((l) => l.setMap(null));
+    };
+  }, [map, site.id]);
+
+  return null;
+}
+
 /* ── Province centroids (for news geo-tagging) ───────────── */
 const PROVINCE_CENTROIDS: Record<string, [number, number]> = {
   "Phnom Penh":         [11.5564, 104.9282],
@@ -1306,6 +1464,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
+            {selected && <ConnectivityRouteLayer site={selected} />}
             {newsVisible && (
               <NewsMarkerLayer
                 news={allNews}
