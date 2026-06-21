@@ -707,6 +707,38 @@ function SezFootprintLayer({
   return null;
 }
 
+/* ── Mobile coverage raster overlays (GroundOverlay) ─────── */
+interface CoverageDef {
+  key: string;
+  label: string;
+  color: string;
+  url: string;
+  bounds: { north: number; south: number; east: number; west: number };
+}
+
+const COVERAGE: CoverageDef[] = [
+  { key: "cov_cellcard_4g", label: "Cellcard 4G", color: "#ffc400", url: "/geo/coverage/cov_cellcard_4g.png", bounds: { north: 14.60, south: 10.36, east: 107.65, west: 102.29 } },
+  { key: "cov_metfone_4g",  label: "Metfone 4G",  color: "#ffd400", url: "/geo/coverage/cov_metfone_4g.png",  bounds: { north: 14.59, south: 10.29, east: 107.65, west: 102.32 } },
+  { key: "cov_smart_4g",    label: "Smart 4G",    color: "#e0241b", url: "/geo/coverage/cov_smart_4g.png",    bounds: { north: 15.19, south: 9.51,  east: 108.45, west: 101.57 } },
+];
+
+function CoverageOverlay({ def, opacity }: { def: CoverageDef; opacity: number }) {
+  const map = useMap();
+  const ovRef = useRef<google.maps.GroundOverlay | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const ov = new google.maps.GroundOverlay(def.url, def.bounds, { opacity, clickable: false });
+    ov.setMap(map);
+    ovRef.current = ov;
+    return () => { ov.setMap(null); ovRef.current = null; };
+  }, [map, def.url]);
+
+  useEffect(() => { ovRef.current?.setOpacity(opacity); }, [opacity]);
+
+  return null;
+}
+
 /* ── Related research matcher ───────────────────────────── */
 function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchBrief[] {
   const siteLower = site.province.toLowerCase();
@@ -794,6 +826,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [areaOpacity, setAreaOpacity] = useState<Record<AreaKey, number>>(
     () => Object.fromEntries(ALL_AREAS.map((k) => [k, AREA_LAYERS[k].defaultOpacity])) as Record<AreaKey, number>
   );
+  const [covActive, setCovActive] = useState<Set<string>>(new Set());
+  const [covOpacity, setCovOpacity] = useState(0.7);
   const [hoveredSite, setHoveredSite] = useState<MapSite | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const basemapUserPicked = useRef(false);
@@ -944,6 +978,13 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const setOpacity = (k: AreaKey, v: number) =>
     setAreaOpacity((prev) => ({ ...prev, [k]: v }));
 
+  const toggleCov = (k: string) =>
+    setCovActive((prev) => {
+      const next = new Set(prev);
+      next.has(k) ? next.delete(k) : next.add(k);
+      return next;
+    });
+
   const handleLocationSearch = async () => {
     const raw = locationInput.trim();
     if (!raw) return;
@@ -1037,6 +1078,11 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             {areaActive.has("sez_footprints") && (
               <SezFootprintLayer sites={visible} opacity={areaOpacity.sez_footprints} onSelect={handleSelect} />
             )}
+
+            {/* Mobile 4G coverage raster overlays */}
+            {COVERAGE.filter((c) => covActive.has(c.key)).map((c) => (
+              <CoverageOverlay key={c.key} def={c} opacity={covOpacity} />
+            ))}
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} onSelect={handleSelect} onHover={setHoveredSite} />
@@ -1226,6 +1272,45 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             })}
           </div>
 
+          {/* Mobile 4G coverage */}
+          <div className="border-t border-white/8 p-2">
+            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Mobile 4G Coverage</p>
+            {COVERAGE.map((c) => {
+              const on = covActive.has(c.key);
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => toggleCov(c.key)}
+                  className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
+                >
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0 transition-opacity"
+                    style={{ backgroundColor: c.color, opacity: on ? 1 : 0.3 }} />
+                  <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${on ? "text-white/80" : "text-white/25"}`}>
+                    {c.label}
+                  </span>
+                  <span className={`font-mono text-[8px] transition ${on ? "text-white/50" : "text-white/20"}`}>
+                    {on ? "ON" : "OFF"}
+                  </span>
+                </button>
+              );
+            })}
+            {covActive.size > 0 && (
+              <div className="pl-5 pr-2 pt-1 pb-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-[8px] text-white/30">OPACITY</span>
+                  <input
+                    type="range" min={0.1} max={1} step={0.05}
+                    value={covOpacity}
+                    onChange={(e) => setCovOpacity(parseFloat(e.target.value))}
+                    className="flex-1 h-1 cursor-pointer"
+                    style={{ accentColor: "#38bdf8" }}
+                  />
+                  <span className="font-mono text-[8px] text-white/40 w-7 text-right">{Math.round(covOpacity * 100)}%</span>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Basemap switcher */}
           <div className="border-t border-white/8 p-2">
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Basemap</p>
@@ -1296,6 +1381,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       <MapLegend
         floodOn={floodVisible || bm.floodOverlay}
         areaActive={areaActive}
+        covActive={covActive}
       />
     </div>
   );
@@ -1311,19 +1397,22 @@ const FLOOD_LEGEND: { c: string; label: string }[] = [
 ];
 
 function MapLegend({
-  floodOn, areaActive,
+  floodOn, areaActive, covActive,
 }: {
   floodOn: boolean;
   areaActive: Set<AreaKey>;
+  covActive: Set<string>;
 }) {
   const [open, setOpen] = useState(true);
   const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
-  const hasContent = floodOn || activeAreas.length > 0;
+  const activeCov = COVERAGE.filter((c) => covActive.has(c.key));
+  const hasContent = floodOn || activeAreas.length > 0 || activeCov.length > 0;
 
   // Build source attribution from what's actually showing (dedup)
   const srcSet = new Set<string>();
   activeAreas.forEach((k) => { if (AREA_LAYERS[k].source) srcSet.add(AREA_LAYERS[k].source!); });
   if (floodOn) srcSet.add("GloFAS / Copernicus EMS");
+  if (activeCov.length) srcSet.add("Operator coverage 2023");
   const sources = srcSet.size ? [...srcSet] : ["GADM 4.1"];
 
   return (
@@ -1345,8 +1434,21 @@ function MapLegend({
                 </div>
               );
             })}
-            {floodOn && (
+            {activeCov.length > 0 && (
               <div className={activeAreas.length > 0 ? "pt-1.5 border-t border-white/8" : ""}>
+                <p className="font-mono text-[8px] uppercase tracking-wider text-white/35 mb-1">Mobile 4G Coverage</p>
+                <div className="space-y-1">
+                  {activeCov.map((c) => (
+                    <div key={c.key} className="flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: c.color }} />
+                      <span className="font-mono text-[9px] text-white/60 leading-tight">{c.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {floodOn && (
+              <div className={activeAreas.length > 0 || activeCov.length > 0 ? "pt-1.5 border-t border-white/8" : ""}>
                 <p className="font-mono text-[8px] uppercase tracking-wider text-white/35 mb-1">Flood Hazard · 100-yr</p>
                 <div className="space-y-1">
                   {FLOOD_LEGEND.map((f) => (

@@ -1,0 +1,38 @@
+[
+  {
+    "key": "cov_cellcard_4g",
+    "label": "Cellcard 4G",
+    "color": "#f5a800",
+    "png": "/geo/coverage/cov_cellcard_4g.png",
+    "bounds": {
+      "north": 14.60383,
+      "south": 10.36389,
+      "east": 107.64531,
+      "west": 102.28646
+    }
+  },
+  {
+    "key": "cov_metfone_4g",
+    "label": "Metfone 4G",
+    "color": "#e30613",
+    "png": "/geo/coverage/cov_metfone_4g.png",
+    "bounds": {
+      "north": 14.58813,
+      "south": 10.28691,
+      "east": 107.64568,
+      "west": 102.32047
+    }
+  },
+  {
+    "key": "cov_smart_4g",
+    "label": "Smart 4G",
+    "color": "#3cb44b",
+    "png": "/geo/coverage/cov_smart_4g.png",
+    "bounds": {
+      "north": 15.18532,
+      "south": 9.5062,
+      "east": 108.44533,
+      "west": 101.56999
+    }
+  }
+]
