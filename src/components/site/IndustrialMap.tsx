@@ -1555,7 +1555,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
             onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
             onKeyDown={(e) => { if (e.key === "Escape") { setSuggestions([]); setShowSuggestions(false); } }}
             placeholder={t("map.searchPlaceholder")}
-            className="flex-1 px-3 py-3 text-[13px] text-white bg-transparent placeholder:text-white/30 focus:outline-none"
+            className="flex-1 px-3 py-2 text-[11px] text-white bg-transparent placeholder:text-white/30 focus:outline-none"
           />
           {locationInput && (
             <button type="button"
