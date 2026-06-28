@@ -1926,38 +1926,73 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
       {/* ── Area layer hover tooltip ─────────────────────────── */}
       {areaHover && !hoveredSite && (() => {
         const p = areaHover.props;
-        const title = (p.name || p.from && p.to ? (p.from ? `${p.from} → ${p.to}` : null) : p.fclass || p.label) as string | undefined;
-        const sub   = (p.zone_category || p.npa_type || p.status || p.fclass) as string | undefined;
-        const detail = p.size_ha ? `${p.size_ha} ha` : p.length_km ? String(p.length_km) : undefined;
-        const tw = 220;
-        const ox = 14, oy = 14; // offset from cursor
+        const isProtected = areaHover.layerId === "area-protected";
+        const ox = 14, oy = 14;
+        const tw = isProtected ? 260 : 220;
         const lx = Math.max(8, Math.min(areaHover.x + ox, window.innerWidth - tw - 8));
-        const ly = Math.min(areaHover.y + oy, window.innerHeight - 80);
+        const ly = Math.min(areaHover.y + oy, window.innerHeight - (isProtected ? 200 : 80));
+        const bg  = isDark ? "rgba(10,10,10,0.95)"    : "rgba(255,255,255,0.97)";
+        const bdr = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
+        const txt = isDark ? "#f1f5f9"                : "#1e293b";
+        const dim = isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.50)";
+        const fnt = isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.28)";
+        const div = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
+        const acc = "#34d399";
+
+        if (isProtected) {
+          const zoneCatColors: Record<string, string> = {
+            "Core zone": "#ef4444",
+            "Conservation zone": "#f97316",
+            "Sustainable use zone": "#eab308",
+            "Community zone": "#22c55e",
+          };
+          const zoneColor = zoneCatColors[p.zone_category as string] ?? acc;
+          return (
+            <div style={{ position: "fixed", left: lx, top: ly, width: tw, background: bg, border: `1px solid ${bdr}`, borderRadius: 10, overflow: "hidden", pointerEvents: "none", boxShadow: "0 6px 24px rgba(0,0,0,0.30)", zIndex: 999 }}>
+              {/* Header bar — zone colour */}
+              <div style={{ background: `${zoneColor}22`, borderBottom: `1px solid ${zoneColor}44`, padding: "7px 10px 6px" }}>
+                <div style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: zoneColor, marginBottom: 2 }}>
+                  {p.npa_type as string}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: txt, lineHeight: 1.25 }}>
+                  {p.name as string}
+                </div>
+              </div>
+              {/* Body rows */}
+              <div style={{ padding: "7px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+                {([
+                  ["Zone type", p.zone_category as string, zoneColor],
+                  ["Area",      p.size_ha ? `${p.size_ha} ha` : "—", undefined],
+                  ["Issued",    (p.issued_date as string) ?? "—", undefined],
+                ] as [string, string, string | undefined][]).map(([label, value, color]) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                    <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.10em", color: fnt, whiteSpace: "nowrap" }}>{label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: color ?? txt, textAlign: "right" }}>{value}</span>
+                  </div>
+                ))}
+                {(p.description as string | undefined) && (
+                  <div style={{ marginTop: 2, paddingTop: 5, borderTop: `1px solid ${div}` }}>
+                    <div style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.10em", color: fnt, marginBottom: 2 }}>Location</div>
+                    <div style={{ fontSize: 10.5, color: dim, lineHeight: 1.45 }}>{(p.description as string).trim()}</div>
+                  </div>
+                )}
+                <div style={{ marginTop: 2, paddingTop: 5, borderTop: `1px solid ${div}`, fontSize: 9, color: fnt, fontFamily: "monospace" }}>
+                  {p.reference as string} · ODC 2017
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Generic tooltip for all other area layers
+        const title  = p.from ? `${p.from} → ${p.to}` : (p.name || p.fclass || p.label) as string | undefined;
+        const sub    = (p.zone_category || p.npa_type || p.status || p.fclass) as string | undefined;
+        const detail = p.size_ha ? `${p.size_ha} ha` : p.length_km ? String(p.length_km) : undefined;
         return (
-          <div
-            style={{
-              position: "fixed", left: lx, top: ly, width: tw,
-              background: isDark ? "rgba(10,10,10,0.92)" : "rgba(255,255,255,0.95)",
-              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-              borderRadius: 8, padding: "8px 10px", pointerEvents: "none",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.25)", zIndex: 999,
-            }}
-          >
-            {title && (
-              <div style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#f1f5f9" : "#1e293b", lineHeight: 1.3, marginBottom: sub ? 3 : 0 }}>
-                {title}
-              </div>
-            )}
-            {sub && (
-              <div style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
-                {sub}{detail ? ` · ${detail}` : ""}
-              </div>
-            )}
-            {!title && !sub && (
-              <div style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
-                {areaHover.layerId.replace("area-", "").replace(/_/g, " ")}
-              </div>
-            )}
+          <div style={{ position: "fixed", left: lx, top: ly, width: tw, background: bg, border: `1px solid ${bdr}`, borderRadius: 8, padding: "8px 10px", pointerEvents: "none", boxShadow: "0 4px 16px rgba(0,0,0,0.25)", zIndex: 999 }}>
+            {title && <div style={{ fontSize: 12, fontWeight: 600, color: txt, lineHeight: 1.3, marginBottom: sub ? 3 : 0 }}>{title}</div>}
+            {sub   && <div style={{ fontSize: 11, color: dim }}>{sub}{detail ? ` · ${detail}` : ""}</div>}
+            {!title && !sub && <div style={{ fontSize: 11, color: dim }}>{areaHover.layerId.replace("area-", "").replace(/_/g, " ")}</div>}
           </div>
         );
       })()}
