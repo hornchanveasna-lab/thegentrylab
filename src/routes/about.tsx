@@ -455,10 +455,10 @@ function AboutPage() {
                     {/* Status tag */}
                     <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/6">
                       <span className="w-1.5 h-1.5 rounded-full shrink-0"
-                        style={{ backgroundColor: isPhase2 ? "#fbbf24" : "#94a3b8" }} />
+                        style={{ backgroundColor: isAdvisor ? "#34d399" : isPhase2 ? "#fbbf24" : "#94a3b8" }} />
                       <span className="font-mono text-[9px] uppercase tracking-widest"
-                        style={{ color: isPhase2 ? "#fbbf24" : "#94a3b8" }}>
-                        {isPhase2 ? "In development" : "Planned"}
+                        style={{ color: isAdvisor ? "#34d399" : isPhase2 ? "#fbbf24" : "#94a3b8" }}>
+                        {isAdvisor ? "Beta" : isPhase2 ? "In development" : "Planned"}
                       </span>
                     </div>
                   </div>
