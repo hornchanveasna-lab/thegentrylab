@@ -1421,7 +1421,7 @@ export interface ResearchBrief {
 export const RESEARCH: ResearchBrief[] = [
   { id: "r1", title: "Cambodia SEZ Landscape 2026", category: "Sector", pages: 42, abstract: "Census of 54 active and planned SEZs with tenant mix, utility capacity, and absorption rates." },
   { id: "r2", title: "Power Capacity by Province", category: "Province", pages: 28, abstract: "EDC substation inventory, transformer headroom, and 2027 grid reinforcement schedule." },
-  { id: "r3", title: "Permit Pathway for Foreign Manufacturers", category: "Regulation", pages: 36, abstract: "End-to-end mapping of CDC, MIH, MoE, MLMUPC and municipal approvals with realistic timelines." },
+  { id: "r3", title: "Permit Pathway for Foreign Manufacturers", category: "Regulation", pages: 36, abstract: "End-to-end mapping of CDC, MISTI, MoE, MLMUPC and municipal approvals with realistic timelines." },
   { id: "r4", title: "Construction Cost Benchmark — Industrial Buildings", category: "Cost", pages: 22, abstract: "USD/m² ranges for PEB, RC-frame and hybrid factories across six provinces." },
   { id: "r5", title: "Labor Availability & Wage Curves", category: "Sector", pages: 30, abstract: "Provincial labor pool sizing, TVET output, and 5-year wage projections by skill tier." },
   { id: "r6", title: "Land Due Diligence Playbook", category: "Regulation", pages: 48, abstract: "Title verification, hard/soft title risks, encumbrance and easement red flags." },

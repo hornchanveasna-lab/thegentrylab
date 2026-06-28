@@ -141,7 +141,7 @@ const GIDF_STAGES = [
   {
     n: "05", title: "Permit Navigation",
     stat: "9 separate ministry approvals — order matters, most investors get it wrong",
-    process: "Sequence: MoE ECC → MIH operating licence → CDC QIP → MoLVT labour compliance → fire department → municipal building permit → EDC connection → water authority → customs (SEZ only). Wrong order = restart.",
+    process: "Sequence: MoE ECC → MISTI operating licence → CDC QIP → MoLVT labour compliance → fire department → municipal building permit → EDC connection → water authority → customs (SEZ only). Wrong order = restart.",
     implication: "Done correctly: 8–11 months. Done incorrectly: 18–30 months. Permit sequencing is GentryLab's highest-value advisory service.",
   },
   {

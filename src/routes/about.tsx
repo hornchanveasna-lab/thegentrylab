@@ -45,7 +45,7 @@ const ROADMAP_META: Record<string, {
     ),
     preview: (
       <div className="w-full flex items-center gap-1.5 mb-1">
-        {["MoE","MIH","CDC","EDC","Fire"].map((s,i,a) => (
+        {["MoE","MISTI","CDC","EDC","Fire"].map((s,i,a) => (
           <div key={s} className="flex items-center gap-1.5">
             <div className="px-1.5 py-0.5 border text-[7px] font-mono font-bold" style={{ borderColor: "currentColor", opacity: i < 3 ? 0.8 : 0.3 }}>
               {s}

@@ -105,7 +105,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
   roadmap: [
     { n: "06", title: "AI Industrial Advisor",desc: "LLM-powered site selection & feasibility briefs." },
     { n: "01", title: "Site Score Engine",    desc: "AI-weighted suitability scoring across 14 criteria." },
-    { n: "02", title: "Permit Navigator",     desc: "End-to-end CDC, MIH & MoE approval timeline mapper." },
+    { n: "02", title: "Permit Navigator",     desc: "End-to-end CDC, MISTI & MoE approval timeline mapper." },
     { n: "03", title: "Utility Capacity Map", desc: "EDC substation headroom & water capacity by province." },
     { n: "04", title: "Cost Heat Map",        desc: "USD/m² construction benchmarks across 6 provinces." },
     { n: "05", title: "Land Marketplace",     desc: "Curated industrial land & SEZ plot listings." },

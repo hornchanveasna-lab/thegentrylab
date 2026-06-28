@@ -151,7 +151,7 @@ function TimelineChart({ timeline }: { timeline: SiteSelectionChartData["timelin
   const phases = [
     { label: "Land Due Diligence",   weeks: timeline.due_diligence,  color: "#3b82f6" },
     { label: "Environmental (MoE)",  weeks: timeline.environmental,  color: "#f59e0b" },
-    { label: "MIH Licence",          weeks: timeline.mih_licence,    color: "#8b5cf6" },
+    { label: "MISTI Licence",          weeks: timeline.mih_licence,    color: "#8b5cf6" },
     { label: "CDC QIP",              weeks: timeline.cdc_qip,        color: "#10b981" },
     { label: "Construction",         weeks: timeline.construction,   color: "#ff5100" },
     { label: "Utility Connection",   weeks: timeline.utilities,      color: "#6366f1" },
@@ -1106,7 +1106,7 @@ function PrintFallbackViz({ output, catColor, form, brief }: { output: string; c
 
   // Extract process steps for flow diagram
   const permitSteps = output.match(/(?:step|phase|stage)\s*\d+[:\s–—-]+([^\n.]{8,40})/gi)?.slice(0, 8) ?? [];
-  const defaultSteps = ["Site Due Diligence", "Environmental EIA", "MIH Licence", "CDC / QIP", "Construction", "Utilities", "Operations"];
+  const defaultSteps = ["Site Due Diligence", "Environmental EIA", "MISTI Licence", "CDC / QIP", "Construction", "Utilities", "Operations"];
 
   // Extract labour percentage for people grid
   const labourMatch = output.match(/([0-9]+(?:\.[0-9]+)?)\s*%[^.]*(?:labour|worker|employment|workforce)/i);
@@ -1473,7 +1473,7 @@ function SvgTimeline({ timeline }: { timeline: SiteSelectionChartData["timeline_
   const phases = [
     { label: "Land Due Diligence", weeks: timeline.due_diligence },
     { label: "Environmental (MoE)", weeks: timeline.environmental },
-    { label: "MIH Licence", weeks: timeline.mih_licence },
+    { label: "MISTI Licence", weeks: timeline.mih_licence },
     { label: "CDC QIP", weeks: timeline.cdc_qip },
     { label: "Construction", weeks: timeline.construction },
     { label: "Utility Connection", weeks: timeline.utilities },
@@ -2089,7 +2089,7 @@ function PrintReport({
     { key: "IFC",   val: "International Finance Corporation" },
     { key: "JETRO", val: "Japan External Trade Organization" },
     { key: "LMAP",  val: "Land Management and Administration Project" },
-    { key: "MIH",   val: "Ministry of Industry and Handicraft" },
+    { key: "MISTI",   val: "Ministry of Industry and Handicraft" },
     { key: "MoE",   val: "Ministry of Environment" },
     { key: "MoLVT", val: "Ministry of Labour and Vocational Training" },
     { key: "MOWRAM",val: "Ministry of Water Resources and Meteorology" },
@@ -2105,7 +2105,7 @@ function PrintReport({
   const references = [
     { ref: "1",  src: "Council for the Development of Cambodia (CDC). QIP Investment Registry. Phnom Penh: CDC, 2024.", url: "cdc.gov.kh" },
     { ref: "2",  src: "Special Economic Zone Board (SEZB). Directory of Special Economic Zones. Phnom Penh: SEZB, 2024.", url: "sezb.gov.kh" },
-    { ref: "3",  src: "Ministry of Industry and Handicraft (MIH). Industrial Development Policy 2015–2025. Phnom Penh: MIH.", url: "mih.gov.kh" },
+    { ref: "3",  src: "Ministry of Industry, Science, Technology and Innovation (MISTI). Industrial Development Policy 2015–2025. Phnom Penh: MISTI.", url: "misti.gov.kh" },
     { ref: "4",  src: "Ministry of Environment (MoE). Environmental Compliance Procedures Manual. Phnom Penh: MoE, 2023.", url: "moe.gov.kh" },
     { ref: "5",  src: "Electricité du Cambodge (EDC). Industrial Tariff Schedule and Grid Expansion Plan. Phnom Penh: EDC, 2024.", url: "edc.com.kh" },
     { ref: "6",  src: "Ministry of Labour and Vocational Training (MoLVT). Minimum Wage Prakas No. 429. Phnom Penh: MoLVT, 2024.", url: "molvt.gov.kh" },
@@ -2224,7 +2224,7 @@ function PrintReport({
           This report was produced using the GentryLab AI Industrial Advisor — a proprietary intelligence platform developed by The Gentry Lab to support foreign investors, development finance institutions, and government agencies engaged in industrial development across the Kingdom of Cambodia.
         </p>
         <p className="pr-p">
-          The analysis draws upon data compiled from official Cambodian government sources, multilateral development institution publications, and The Gentry Lab's proprietary site intelligence and EPC benchmarking databases. The Gentry Lab acknowledges the role of Cambodia's Council for the Development of Cambodia (CDC), the Special Economic Zone Board (SEZB), the Ministry of Industry and Handicraft (MIH), and the Ministry of Environment (MoE) in making foundational regulatory and investment data publicly available.
+          The analysis draws upon data compiled from official Cambodian government sources, multilateral development institution publications, and The Gentry Lab's proprietary site intelligence and EPC benchmarking databases. The Gentry Lab acknowledges the role of Cambodia's Council for the Development of Cambodia (CDC), the Special Economic Zone Board (SEZB), the Ministry of Industry, Science, Technology and Innovation (MISTI), and the Ministry of Environment (MoE) in making foundational regulatory and investment data publicly available.
         </p>
         <p className="pr-p">
           We recognise the contributions of the World Bank Group, the Asian Development Bank (ADB), the International Finance Corporation (IFC), and Open Development Cambodia (ODC) whose published research and open data platforms inform the analytical framework applied in this report.
@@ -3216,7 +3216,7 @@ export default function AdvisorPage() {
       const tlRows = [
         ["Land Due Diligence", String(tl.due_diligence)],
         ["Environmental (MoE)", String(tl.environmental)],
-        ["MIH Operating Licence", String(tl.mih_licence)],
+        ["MISTI Operating Licence", String(tl.mih_licence)],
         ["CDC QIP Registration", String(tl.cdc_qip)],
         ["Construction", String(tl.construction)],
         ["Utility Connection", String(tl.utilities)],
