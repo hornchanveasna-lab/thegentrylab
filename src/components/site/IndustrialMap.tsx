@@ -788,19 +788,21 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   "Phnom Penh Autonomous Port":     { lat: 11.5625, lng: 104.9311 },
   "Sihanoukville Autonomous Port":  { lat: 10.6167, lng: 103.5167 },
   "Koh Kong Port":                  { lat: 11.6236, lng: 102.9837 },
-  // Borders
-  "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1098 },
-  "Poipet / Aranyaprathet":        { lat: 13.6519, lng: 102.5664 },
-  "Cham Yeam / Hat Lek":           { lat: 11.7033, lng: 102.8894 },
-  "Kaam Samnor / Vinh Xuong":      { lat: 11.1619, lng: 105.2153 },
-  "O'Smach / Chong Jom":           { lat: 14.1611, lng: 103.0761 },
-  "O'Yadav / Le Thanh":            { lat: 13.7500, lng: 107.5333 },
-  "Phnom Den / Tinh Bien":         { lat: 10.5083, lng: 104.9472 },
-  "Prek Chak / Xa Xia":            { lat: 10.4553, lng: 104.5086 },
-  "Psar Pruhm / Ban Pakard":       { lat: 12.5497, lng: 102.5572 },
-  "Trapang Phlong / Xa Mat":       { lat: 11.8600, lng: 106.0269 },
-  "Trapang Sre / Loc Ninh":        { lat: 11.8489, lng: 106.5806 },
-  "Veun Kham / Don Kralor":        { lat: 13.9867, lng: 105.8278 },
+  // Borders — Cambodia/Vietnam
+  "Prek Chak / Xa Xia":            { lat: 10.4553, lng: 104.5086 }, // Kep–Kien Giang (verified)
+  "Phnom Den / Tinh Bien":         { lat: 10.5308, lng: 104.9519 }, // Takeo–An Giang (adjusted to border line)
+  "Kaam Samnor / Vinh Xuong":      { lat: 11.0994, lng: 105.1422 }, // Kandal–An Giang, Mekong crossing
+  "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1715 }, // Svay Rieng–Tay Ninh (Wikipedia: Moc Bai 106.175°E)
+  "Trapang Phlong / Xa Mat":       { lat: 11.8602, lng: 106.0248 }, // Tbong Khmum–Tay Ninh
+  "Trapang Sre / Loc Ninh":        { lat: 11.8489, lng: 106.5700 }, // Kratie–Binh Phuoc (Loc Ninh ~106.59°E)
+  "O'Yadav / Le Thanh":            { lat: 13.9167, lng: 107.4833 }, // Ratanakiri–Gia Lai (Le Thanh border area)
+  // Cambodia/Thailand
+  "Cham Yeam / Hat Lek":           { lat: 11.7025, lng: 102.8883 }, // Koh Kong–Trat (verified close)
+  "Psar Pruhm / Ban Pakard":       { lat: 12.5497, lng: 102.5563 }, // Pailin–Chanthaburi
+  "Poipet / Aranyaprathet":        { lat: 13.6519, lng: 102.5617 }, // Banteay Meanchey–Sa Kaeo
+  "O'Smach / Chong Jom":           { lat: 14.1611, lng: 103.0742 }, // Oddar Meanchey–Surin
+  // Cambodia/Laos
+  "Veun Kham / Don Kralor":        { lat: 13.9856, lng: 105.8100 }, // Stung Treng–Champasak (Mekong crossing)
 };
 
 const CONN_COLORS = {
