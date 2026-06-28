@@ -169,9 +169,9 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
     hint: "~1,646 commune boundaries (GADM)", source: "GADM 4.1", available: true,
   },
   sez_footprints: {
-    label: "SEZ Footprints", color: "#ff5100", derived: "sez",
-    fillOpacity: 0.16, strokeWeight: 1.4, defaultOpacity: 0.9,
-    hint: "Zone area scaled from hectares", available: true,
+    label: "SEZ Footprints", color: "#ff5100", url: "/data/cambodia_sez_polygons.geojson",
+    fillOpacity: 0.18, strokeWeight: 1.5, defaultOpacity: 0.9,
+    hint: "35 SEZ polygon boundaries (ODC 2020)", source: "Open Development Cambodia", available: true,
   },
   // ── ODC datasets — flip `available: true` once the GeoJSON is bundled ──
   protected: {
@@ -1471,6 +1471,20 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
   const bm = BASEMAPS[basemap];
   const isDark = bm.isDark;
 
+  // Panel palette — adapts to basemap light/dark mode
+  const pc = {
+    bg:        isDark ? "rgba(0,0,0,0.95)"      : "rgba(255,255,255,0.97)",
+    border:    isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)",
+    divider:   isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+    label:     isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.4)",
+    textOn:    isDark ? "rgba(255,255,255,0.85)" : "rgba(0,0,0,0.85)",
+    textOff:   isDark ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.3)",
+    textMid:   isDark ? "rgba(255,255,255,0.5)"  : "rgba(0,0,0,0.5)",
+    inactiveBorder: isDark ? "rgba(255,255,255,0.1)"  : "rgba(0,0,0,0.12)",
+    inactiveText:   isDark ? "rgba(255,255,255,0.3)"  : "rgba(0,0,0,0.35)",
+    hover:     isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)",
+  };
+
   /* ── Full map ───────────────────────────────────────────── */
   return (
     <div className="relative h-full min-h-0 w-full bg-black" ref={wrapperRef}
@@ -1503,9 +1517,6 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
 
             {/* deck.gl overlay — only mount when layers exist to avoid blank WebGL canvas */}
             {deckLayers.length > 0 && <DeckGlMapOverlay layers={deckLayers} />}
-            {areaActive.has("sez_footprints") && (
-              <SezFootprintLayer sites={visible} opacity={areaOpacity.sez_footprints} onSelect={handleSelect} />
-            )}
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
@@ -1623,10 +1634,11 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
 
       {/* ── Layer panel ───────────────────────────────────── */}
       {panelOpen && (
-        <div className="absolute top-14 left-4 z-[500] w-[220px] bg-black/95 backdrop-blur border border-white/12 shadow-2xl rounded-sm overflow-y-auto max-h-[calc(100vh-220px)] overscroll-contain">
-          <div className="px-3 py-2 border-b border-white/8 flex items-center justify-between">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">Map Layers</span>
-            <button onClick={() => setPanelOpen(false)} className="text-white/30 hover:text-white text-xs">✕</button>
+        <div className="absolute top-14 left-4 z-[500] w-[220px] backdrop-blur shadow-2xl rounded-sm overflow-y-auto max-h-[calc(100vh-220px)] overscroll-contain"
+          style={{ backgroundColor: pc.bg, border: `1px solid ${pc.border}` }}>
+          <div className="px-3 py-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${pc.divider}` }}>
+            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: pc.label }}>Map Layers</span>
+            <button onClick={() => setPanelOpen(false)} className="text-xs transition hover:opacity-100" style={{ color: pc.label }}>✕</button>
           </div>
 
           <div className="p-2 space-y-0.5">
@@ -1639,17 +1651,20 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                 <div key={layer}>
                   <button
                     onClick={() => toggle(layer)}
-                    className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
+                    className="w-full flex items-center gap-2.5 px-2 py-1.5 transition rounded-sm text-left"
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = pc.hover)}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     <span className="w-2.5 h-2.5 rounded-full shrink-0 transition-opacity"
                       style={{ backgroundColor: meta.color, opacity: on ? 1 : 0.25 }} />
-                    <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${on ? "text-white/80" : "text-white/25"}`}>
+                    <span className="font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity"
+                      style={{ color: on ? pc.textOn : pc.textOff }}>
                       {meta.label}
                     </span>
                     {cnt > 0 && (
-                      <span className="font-mono text-[9px] text-white/25">{cnt}</span>
+                      <span className="font-mono text-[9px]" style={{ color: pc.textOff }}>{cnt}</span>
                     )}
-                    <span className={`font-mono text-[8px] transition ${on ? "text-white/50" : "text-white/20"}`}>
+                    <span className="font-mono text-[8px] transition" style={{ color: on ? pc.textMid : pc.textOff }}>
                       {on ? "ON" : "OFF"}
                     </span>
                   </button>
@@ -1663,11 +1678,11 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                           style={(() => {
                             const sel = subKinds[layer];
                             const isAll = sk.value === "all";
-                            const active = isAll ? (!sel || sel.size === 0) : (sel?.has(sk.value as SiteKind) ?? false);
+                            const isActive = isAll ? (!sel || sel.size === 0) : (sel?.has(sk.value as SiteKind) ?? false);
                             return {
-                              borderColor: active ? meta.color : "rgba(255,255,255,0.1)",
-                              color: active ? meta.color : "rgba(255,255,255,0.3)",
-                              backgroundColor: active ? `${meta.color}15` : "transparent",
+                              borderColor: isActive ? meta.color : pc.inactiveBorder,
+                              color: isActive ? meta.color : pc.inactiveText,
+                              backgroundColor: isActive ? `${meta.color}15` : "transparent",
                             };
                           })()}
                         >
@@ -1681,9 +1696,9 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
             })}
           </div>
 
-          {/* Area layers (boundaries & footprints) */}
-          <div className="border-t border-white/8 p-2">
-            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Area Data</p>
+          {/* Area layers */}
+          <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
+            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Area Data</p>
             {ALL_AREAS.map((k) => {
               const def = AREA_LAYERS[k];
               const on  = areaActive.has(k);
@@ -1691,30 +1706,29 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                 <div key={k}>
                   <button
                     onClick={() => toggleArea(k)}
-                    className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
+                    className="w-full flex items-center gap-2.5 px-2 py-1.5 transition rounded-sm text-left"
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = pc.hover)}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     <span className="w-2.5 h-2.5 rounded-sm shrink-0 transition-opacity border"
                       style={{ backgroundColor: `${def.color}55`, borderColor: def.color, opacity: on ? 1 : 0.3 }} />
-                    <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${on ? "text-white/80" : "text-white/25"}`}>
-                      {def.label}
-                    </span>
-                    <span className={`font-mono text-[8px] transition ${on ? "text-white/50" : "text-white/20"}`}>
+                    <span className="font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity"
+                      style={{ color: on ? pc.textOn : pc.textOff }}>{def.label}</span>
+                    <span className="font-mono text-[8px] transition" style={{ color: on ? pc.textMid : pc.textOff }}>
                       {on ? "ON" : "OFF"}
                     </span>
                   </button>
                   {on && (
                     <div className="pl-5 pr-2 pb-2">
-                      <p className="font-mono text-[8px] text-white/25 mb-1">{def.hint}</p>
+                      <p className="font-mono text-[8px] mb-1" style={{ color: pc.textOff }}>{def.hint}</p>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[8px] text-white/30">OPACITY</span>
-                        <input
-                          type="range" min={0.1} max={1} step={0.05}
+                        <span className="font-mono text-[8px]" style={{ color: pc.label }}>OPACITY</span>
+                        <input type="range" min={0.1} max={1} step={0.05}
                           value={areaOpacity[k]}
                           onChange={(e) => setOpacity(k, parseFloat(e.target.value))}
                           className="flex-1 h-1 accent-current cursor-pointer"
-                          style={{ accentColor: def.color }}
-                        />
-                        <span className="font-mono text-[8px] text-white/40 w-7 text-right">{Math.round(areaOpacity[k] * 100)}%</span>
+                          style={{ accentColor: def.color }} />
+                        <span className="font-mono text-[8px] w-7 text-right" style={{ color: pc.label }}>{Math.round(areaOpacity[k] * 100)}%</span>
                       </div>
                     </div>
                   )}
@@ -1724,22 +1738,21 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           </div>
 
           {/* Mobile 4G coverage */}
-          <div className="border-t border-white/8 p-2">
-            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Mobile 4G Coverage</p>
+          <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
+            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Mobile 4G Coverage</p>
             {COVERAGE.map((c) => {
               const on = covActive.has(c.key);
               return (
-                <button
-                  key={c.key}
-                  onClick={() => toggleCov(c.key)}
-                  className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
+                <button key={c.key} onClick={() => toggleCov(c.key)}
+                  className="w-full flex items-center gap-2.5 px-2 py-1.5 transition rounded-sm text-left"
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = pc.hover)}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   <span className="w-2.5 h-2.5 rounded-sm shrink-0 transition-opacity"
                     style={{ backgroundColor: c.color, opacity: on ? 1 : 0.3 }} />
-                  <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${on ? "text-white/80" : "text-white/25"}`}>
-                    {c.label}
-                  </span>
-                  <span className={`font-mono text-[8px] transition ${on ? "text-white/50" : "text-white/20"}`}>
+                  <span className="font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity"
+                    style={{ color: on ? pc.textOn : pc.textOff }}>{c.label}</span>
+                  <span className="font-mono text-[8px] transition" style={{ color: on ? pc.textMid : pc.textOff }}>
                     {on ? "ON" : "OFF"}
                   </span>
                 </button>
@@ -1748,38 +1761,33 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
             {covActive.size > 0 && (
               <div className="pl-5 pr-2 pt-1 pb-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[8px] text-white/30">OPACITY</span>
-                  <input
-                    type="range" min={0.1} max={1} step={0.05}
-                    value={covOpacity}
-                    onChange={(e) => setCovOpacity(parseFloat(e.target.value))}
-                    className="flex-1 h-1 cursor-pointer"
-                    style={{ accentColor: "#38bdf8" }}
-                  />
-                  <span className="font-mono text-[8px] text-white/40 w-7 text-right">{Math.round(covOpacity * 100)}%</span>
+                  <span className="font-mono text-[8px]" style={{ color: pc.label }}>OPACITY</span>
+                  <input type="range" min={0.1} max={1} step={0.05}
+                    value={covOpacity} onChange={(e) => setCovOpacity(parseFloat(e.target.value))}
+                    className="flex-1 h-1 cursor-pointer" style={{ accentColor: "#38bdf8" }} />
+                  <span className="font-mono text-[8px] w-7 text-right" style={{ color: pc.label }}>{Math.round(covOpacity * 100)}%</span>
                 </div>
               </div>
             )}
           </div>
 
-          {/* News + Projects overlays */}
-          <div className="border-t border-white/8 p-2">
-            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Intelligence</p>
+          {/* Intelligence */}
+          <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
+            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Intelligence</p>
             {[
               { key: "news",     label: "News",             color: "#f59e0b", on: newsVisible,     toggle: () => setNewsVisible(v => !v) },
               { key: "projects", label: "Tracked Projects", color: "#818cf8", on: projectsVisible, toggle: () => setProjectsVisible(v => !v) },
             ].map((item) => (
-              <button
-                key={item.key}
-                onClick={item.toggle}
-                className="w-full flex items-center gap-2.5 px-2 py-1.5 hover:bg-white/5 transition rounded-sm text-left"
+              <button key={item.key} onClick={item.toggle}
+                className="w-full flex items-center gap-2.5 px-2 py-1.5 transition rounded-sm text-left"
+                onMouseEnter={e => (e.currentTarget.style.backgroundColor = pc.hover)}
+                onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
               >
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0 transition-opacity"
                   style={{ backgroundColor: item.color, opacity: item.on ? 1 : 0.3 }} />
-                <span className={`font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity ${item.on ? "text-white/80" : "text-white/25"}`}>
-                  {item.label}
-                </span>
-                <span className={`font-mono text-[8px] transition ${item.on ? "text-white/50" : "text-white/20"}`}>
+                <span className="font-mono text-[10px] uppercase tracking-wider flex-1 transition-opacity"
+                  style={{ color: item.on ? pc.textOn : pc.textOff }}>{item.label}</span>
+                <span className="font-mono text-[8px] transition" style={{ color: item.on ? pc.textMid : pc.textOff }}>
                   {item.on ? "ON" : "OFF"}
                 </span>
               </button>
@@ -1787,18 +1795,15 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           </div>
 
           {/* Basemap switcher */}
-          <div className="border-t border-white/8 p-2">
-            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/30">Basemap</p>
+          <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
+            <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Basemap</p>
             <div className="flex flex-wrap gap-1.5 px-2 pb-1">
               {(Object.entries(BASEMAPS) as [BasemapKey, BasemapDef][]).map(([key, def]) => (
-                <button
-                  key={key}
-                  onClick={() => pickBasemap(key)}
-                  title={def.label}
+                <button key={key} onClick={() => pickBasemap(key)} title={def.label}
                   className="flex items-center gap-1 px-2 py-1 font-mono text-[8px] uppercase tracking-wider border transition"
                   style={{
-                    borderColor: basemap === key ? "#ff5100" : "rgba(255,255,255,0.1)",
-                    color:       basemap === key ? "#ff5100" : "rgba(255,255,255,0.35)",
+                    borderColor: basemap === key ? "#ff5100" : pc.inactiveBorder,
+                    color:       basemap === key ? "#ff5100" : pc.inactiveText,
                     backgroundColor: basemap === key ? "#ff510015" : "transparent",
                   }}
                 >
@@ -1808,12 +1813,11 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
               ))}
             </div>
             <div className="px-2 pt-1 space-y-1">
-              <button
-                onClick={() => setFloodVisible((v) => !v)}
+              <button onClick={() => setFloodVisible((v) => !v)}
                 className="flex items-center gap-1.5 px-2 py-1 font-mono text-[8px] uppercase tracking-wider border transition w-full"
                 style={{
-                  borderColor: floodVisible ? "#0ea5e9" : "rgba(255,255,255,0.1)",
-                  color:       floodVisible ? "#0ea5e9" : "rgba(255,255,255,0.35)",
+                  borderColor: floodVisible ? "#0ea5e9" : pc.inactiveBorder,
+                  color:       floodVisible ? "#0ea5e9" : pc.inactiveText,
                   backgroundColor: floodVisible ? "#0ea5e915" : "transparent",
                 }}
               >

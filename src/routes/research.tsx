@@ -212,11 +212,8 @@ function ResearchCard({
           </div>
         )}
 
-        {/* Abstract — faded/blurred teaser */}
-        <div className="relative flex-1 overflow-hidden" style={{ maxHeight: featured ? 72 : 52 }}>
-          <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.45)" }}>{brief.abstract}</p>
-          <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none" style={{ background: `linear-gradient(to bottom, transparent, ${cardBg})` }} />
-        </div>
+        {/* Abstract — truncated teaser */}
+        <p className={`text-[11px] leading-relaxed ${featured ? "line-clamp-4" : "line-clamp-3"}`} style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.45)" }}>{brief.abstract}</p>
 
         {/* CTA */}
         <div className="mt-4 pt-4 flex items-center justify-between gap-3" style={{ borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.07)" }}>
