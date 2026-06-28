@@ -2121,7 +2121,8 @@ function Inspector({
     : (site.photos && site.photos.length > 0)
       ? site.photos
       : site.image_url ? [site.image_url] : [];
-  const [imgIdx, setImgIdx] = useState(0);
+  const [imgIdx,    setImgIdx]    = useState(0);
+  const [expanded,  setExpanded]  = useState(false);
   useEffect(() => { setImgIdx(0); }, [site.id]);
   // Auto-scroll every 4s when multiple images
   useEffect(() => {
@@ -2179,11 +2180,16 @@ function Inspector({
 
   return (
     <aside
-      className="absolute top-0 right-0 z-[400] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col h-full max-h-full overflow-hidden shadow-2xl"
-      style={{ backgroundColor: panelBg, borderLeft: `1px solid ${borderCol}` }}
+      className="absolute top-0 right-0 z-[400] flex flex-col h-full max-h-full overflow-hidden shadow-2xl transition-[width] duration-300"
+      style={{
+        width: expanded ? "min(700px, 92vw)" : "360px",
+        maxWidth: "calc(100vw - 2rem)",
+        backgroundColor: panelBg,
+        borderLeft: `1px solid ${borderCol}`,
+      }}
     >
       {/* ── Hero image carousel ── */}
-      <div className="relative shrink-0 h-[180px] overflow-hidden bg-black">
+      <div className="relative shrink-0 overflow-hidden bg-black" style={{ height: expanded ? "240px" : "180px" }}>
         {images.length > 0 ? (
           <>
             <img
@@ -2239,6 +2245,23 @@ function Inspector({
             }} />
           </div>
         )}
+        {/* Expand / collapse button */}
+        <button onClick={() => setExpanded(e => !e)}
+          className="absolute top-3 right-12 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition"
+          style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}
+          title={expanded ? "Collapse" : "Expand"}>
+          {expanded ? (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+          ) : (
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+              <line x1="3" y1="21" x2="10" y2="14"/><line x1="21" y1="3" x2="14" y2="10"/>
+            </svg>
+          )}
+        </button>
         {/* Close button */}
         <button onClick={onClose}
           className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition"
@@ -2374,6 +2397,12 @@ function Inspector({
 
       {/* ── Scrollable content ── */}
       <div className="overflow-y-auto flex-1">
+      {expanded ? (
+        <>
+        {/* ── Wide 2-column layout ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
+          {/* Left column */}
+          <div style={{ borderRight: `1px solid ${dividerCol}` }}>
 
         {/* Feature chips row */}
         {featureChips.length > 0 && (
@@ -2434,6 +2463,10 @@ function Inspector({
             )}
           </div>
         )}
+
+          </div>{/* end left col */}
+          {/* Right column */}
+          <div>
 
         {/* Logistics connectivity */}
         {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
@@ -2734,10 +2767,247 @@ function Inspector({
           </div>
         )}
 
+          </div>{/* end right col */}
+        </div>{/* end 2-col grid */}
+        {/* Disclaimer footer (expanded) */}
+        <div className="px-4 py-3">
+          <p className="font-mono text-[9px]" style={{ color: textDim }}>{t("map.disclaimer")}</p>
+        </div>
+        </>
+      ) : (
+        /* ── Compact single-column layout ── */
+        <>
+
+        {/* Feature chips row */}
+        {featureChips.length > 0 && (
+          <div className="px-4 py-3 flex flex-wrap gap-1.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            {featureChips.map((chip) => (
+              <span key={chip}
+                className="text-[11px] px-2.5 py-1 rounded-full border"
+                style={{
+                  borderColor: chip.includes("⚠") ? "#f43f5e55" : chip === "Low Flood Risk" ? "#34d39955" : borderCol,
+                  color: chip.includes("⚠") ? "#f43f5e" : chip === "Low Flood Risk" ? "#34d399" : textMuted,
+                  backgroundColor: chip.includes("⚠") ? "#f43f5e0a" : chip === "Low Flood Risk" ? "#34d3990a" : "transparent",
+                }}>
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Quick stat tiles */}
+        {(site.elevation_m != null || site.size || site.road) && (
+          <div className="grid grid-cols-2 gap-px" style={{ backgroundColor: dividerCol, borderBottom: `1px solid ${dividerCol}` }}>
+            {site.elevation_m != null && (
+              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 20 22 20"/></svg>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Elevation</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: site.elevation_m >= 5 ? "#34d399" : site.elevation_m >= 2 ? "#fbbf24" : "#f43f5e" }}>
+                    {Math.round(site.elevation_m)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>m</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            {site.size && (
+              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Area</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{site.size}</p>
+                </div>
+              </div>
+            )}
+            {site.road && (
+              <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: panelBg }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={textDim} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 20V4M21 20V4M8 20V4M16 20V4"/></svg>
+                <div>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-0.5" style={{ color: textDim }}>Road</p>
+                  <p className="font-semibold text-[11px] leading-snug truncate max-w-[100px]" style={{ color: textMain }}>{site.road}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Logistics connectivity */}
+        {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
+          <div style={{ borderBottom: `1px solid ${dividerCol}`, padding: "12px 16px" }}>
+            <div className="flex items-baseline justify-between mb-2">
+              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Connectivity</p>
+              <span className="font-mono text-[8px] tracking-wide" style={{ color: textDim }}>straight-line est.</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              {site.port_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(55,138,221,0.08)" : "rgba(55,138,221,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#378ADD" }}>Port</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_port && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_port}</p>}
+                </div>
+              )}
+              {site.airport_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(29,158,117,0.08)" : "rgba(29,158,117,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#1D9E75" }}>Airport</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.airport_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_airport && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_airport}</p>}
+                </div>
+              )}
+              {site.rail_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(186,117,23,0.08)" : "rgba(186,117,23,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#BA7517" }}>Rail</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.rail_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_rail && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_rail}</p>}
+                </div>
+              )}
+              {site.border_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(216,90,48,0.08)" : "rgba(216,90,48,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#D85A30" }}>Border</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.border_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_border && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_border}</p>}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Location row */}
+        <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill={layerColor + "bb"}/>
+            <circle cx="12" cy="9" r="2.5" fill="white"/>
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-[12px]" style={{ color: textMain }}>{site.province}, Cambodia</p>
+            <button onClick={handleCopyCoords} className="font-mono text-[10px] mt-0.5 hover:underline text-left" style={{ color: textDim }}>
+              {site.lat.toFixed(5)}, {site.lng.toFixed(5)}
+            </button>
+          </div>
+          {site.coordVerified ? (
+            <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5" style={{ color: "#34d399", backgroundColor: "#34d39912" }}>✓ GPS</span>
+          ) : (
+            <span className="font-mono text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5" style={{ color: "#fbbf24", backgroundColor: "#fbbf2412" }}>est.</span>
+          )}
+        </div>
+
+        {/* Key info table */}
+        {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
+          site.tenant_count || site.export_value_usd || site.employee_count || site.zone_types ||
+          site.on_site_facilities || site.city_distance_km || site.stock_ticker) && (
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+              <tbody>
+                {site.operator && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "32%" }}>Operator</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.operator}</td></tr>)}
+                {site.year_commissioned && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Est.</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.year_commissioned}</td></tr>)}
+                {site.stock_ticker && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Listed</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top", fontFamily: "var(--font-mono)" }}>{site.stock_ticker}</td></tr>)}
+                {site.tenant_count && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Tenants</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.tenant_count} companies{site.country_count ? ` · ${site.country_count} countries` : ""}</td></tr>)}
+                {site.employee_count && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Workers</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>~{site.employee_count.toLocaleString()}</td></tr>)}
+                {site.export_value_usd && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Exports</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>USD {site.export_value_usd >= 1_000_000_000 ? `${(site.export_value_usd / 1_000_000_000).toFixed(2)}B` : `${(site.export_value_usd / 1_000_000).toFixed(0)}M`} / yr</td></tr>)}
+                {site.zone_types && site.zone_types.length > 0 && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Zones</td><td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.zone_types.join(" · ")}</td></tr>)}
+                {site.city_distance_km && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>City</td><td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.city_distance_km} km to city centre</td></tr>)}
+                {site.utilities && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Utilities</td><td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.utilities}</td></tr>)}
+                {site.on_site_facilities && site.on_site_facilities.length > 0 && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Facilities</td><td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top", lineHeight: "1.6" }}>{site.on_site_facilities.join(" · ")}</td></tr>)}
+                {site.website && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Website</td><td style={{ paddingBottom: "6px", verticalAlign: "top" }}><a href={site.website} target="_blank" rel="noopener noreferrer" style={{ color: accentBlue, textDecoration: "none", fontSize: "12px" }}>{site.website.replace(/^https?:\/\//, "")}</a></td></tr>)}
+                {site.phone && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Phone</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.phone}</td></tr>)}
+                {site.data_verified_at && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Verified</td><td style={{ color: textDim, paddingBottom: "6px", verticalAlign: "top", fontFamily: "var(--font-mono)", fontSize: "10px" }}>{new Date(site.data_verified_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}{site.data_source_url && (<a href={site.data_source_url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: "8px", color: accentBlue, textDecoration: "none" }}>source ↗</a>)}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Notes */}
+        {site.notes && (
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>About</p>
+            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.notes}</p>
+          </div>
+        )}
+
+        {/* EIP score */}
+        {(site.score !== undefined || hasEip) && (
+          <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>EIP Suitability Score</p>
+              <div className="flex items-baseline gap-1">
+                {site.eip_tier && (<span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded mr-1" style={{ color: site.eip_tier === "gold" ? "#fbbf24" : site.eip_tier === "silver" ? "#94a3b8" : "#f97316", backgroundColor: site.eip_tier === "gold" ? "#fbbf2415" : site.eip_tier === "silver" ? "#94a3b815" : "#f9731615" }}>{site.eip_tier}</span>)}
+                <span className="text-[22px] font-extrabold leading-none" style={{ color: scoreColor }}>{site.score ?? "—"}</span>
+                <span className="font-mono text-[9px]" style={{ color: textDim }}>/100</span>
+              </div>
+            </div>
+            <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }}>
+              <div className="h-full rounded-full" style={{ width: `${site.score ?? 0}%`, backgroundColor: scoreColor }} />
+            </div>
+            {hasEip && (
+              <div className="space-y-2">
+                {eipPillars.map((p) => p.value != null ? (
+                  <div key={p.label} className="flex items-center gap-2">
+                    <span className="font-mono text-[8px] w-[76px] shrink-0" style={{ color: textDim }}>{p.label}</span>
+                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)" }}>
+                      <div className="h-full rounded-full" style={{ width: `${(p.value / 25) * 100}%`, backgroundColor: p.color }} />
+                    </div>
+                    <span className="font-mono text-[9px] w-5 text-right shrink-0" style={{ color: p.color }}>{p.value}</span>
+                  </div>
+                ) : null)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Target industries */}
+        {!!site.targetIndustries?.length && (
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>Target Industries</p>
+            <div className="flex flex-wrap gap-1.5">
+              {site.targetIndustries.map((ind) => (
+                <span key={ind} className="px-2.5 py-1 text-[11px] rounded-full border" style={{ backgroundColor: `${layerColor}10`, borderColor: `${layerColor}40`, color: layerColor }}>{ind}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Strengths + Constraints */}
+        {(!!site.strengths?.length || !!site.constraints?.length) && (
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            {!!site.strengths?.length && (<><p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Strengths</p><ul className="space-y-2 mb-3">{site.strengths.map((s) => (<li key={s} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}><span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] mt-0.5" style={{ backgroundColor: "#34d39918", color: "#34d399" }}>✓</span>{s}</li>))}</ul></>)}
+            {!!site.constraints?.length && (<><p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Constraints</p><ul className="space-y-2">{site.constraints.map((c) => (<li key={c} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}><span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] mt-0.5" style={{ backgroundColor: "#f43f5e18", color: "#f43f5e" }}>!</span>{c}</li>))}</ul></>)}
+          </div>
+        )}
+
+        {/* GentryLab Advisory */}
+        {site.recommendation && (
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[11px]" style={{ color: "#ff5100" }}>◈</span>
+              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
+            </div>
+            <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.recommendation}</p>
+          </div>
+        )}
+
+        {/* Related research */}
+        {relatedResearch.length > 0 && (
+          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>Related Research</p>
+            <div className="space-y-2">
+              {relatedResearch.map((r) => (
+                <div key={r.id} className="flex gap-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <span className="inline-block px-2 py-0.5 font-mono text-[8px] uppercase tracking-wider mb-1 rounded-full" style={{ backgroundColor: "#818cf818", color: "#818cf8" }}>{r.category}</span>
+                    <p className="text-[12px] leading-snug" style={{ color: textMain }}>{r.title}</p>
+                    <p className="font-mono text-[10px] mt-1" style={{ color: textDim }}>{r.pages} pages</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Disclaimer footer */}
         <div className="px-4 py-3">
           <p className="font-mono text-[9px]" style={{ color: textDim }}>{t("map.disclaimer")}</p>
         </div>
+      </>
+      )}
       </div>
     </aside>
   );
