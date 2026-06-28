@@ -403,11 +403,9 @@ function AboutPage() {
               const meta = ROADMAP_META[r.n] ?? ROADMAP_META["01"];
               const phase = parseInt(r.n) <= 3 ? "02" : "03";
               const isPhase2 = phase === "02";
-              return (
-                <div
-                  key={r.n}
-                  className={`group relative overflow-hidden border border-white/8 hover:border-white/20 transition-all cursor-default flex flex-col reveal reveal-delay-${Math.min(i + 1, 6)} bg-[#0a0a0b]`}
-                >
+              const isAdvisor = r.n === "06";
+              const cardClass = `group relative overflow-hidden border transition-all flex flex-col reveal reveal-delay-${Math.min(i + 1, 6)} bg-[#0a0a0b] ${isAdvisor ? "border-[#ff5100]/40 hover:border-[#ff5100] cursor-pointer" : "border-white/8 hover:border-white/20 cursor-default"}`;
+              const inner = (<>
                   {/* Top accent bar */}
                   <div className="h-px w-full" style={{ background: `linear-gradient(90deg, ${accent}60 0%, transparent 100%)` }} />
 
@@ -464,8 +462,10 @@ function AboutPage() {
                       </span>
                     </div>
                   </div>
-                </div>
-              );
+                </>);
+              return isAdvisor
+                ? <Link key={r.n} to="/tools/advisor" className={cardClass}>{inner}</Link>
+                : <div  key={r.n} className={cardClass}>{inner}</div>;
             })}
           </div>
         </div>
