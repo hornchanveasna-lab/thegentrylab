@@ -823,20 +823,21 @@ function ImageManager({ siteId, siteName, website, images, onRefetch }: {
   siteId: string; siteName: string; website?: string;
   images: SiteImage[]; onRefetch: () => void;
 }) {
-  const [urlInput,   setUrlInput]   = useState("");
-  const [caption,    setCaption]    = useState("");
-  const [adding,     setAdding]     = useState(false);
-  const [uploading,  setUploading]  = useState(false);
-  const [searching,  setSearching]  = useState(false);
-  const [importing,  setImporting]  = useState<string | null>(null);
-  const [candidates, setCandidates] = useState<string[]>([]);
-  const [err,        setErr]        = useState("");
+  const [urlInput,    setUrlInput]    = useState("");
+  const [caption,     setCaption]     = useState("");
+  const [adding,      setAdding]      = useState(false);
+  const [searching,   setSearching]   = useState(false);
+  const [importing,   setImporting]   = useState<string | null>(null);
+  const [importingAll,setImportingAll]= useState(false);
+  const [candidates,  setCandidates]  = useState<string[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<{ name: string; done: boolean; err?: string }[]>([]);
+  const [dragging,    setDragging]    = useState(false);
+  const [err,         setErr]         = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleFetchWeb() {
     setSearching(true); setErr(""); setCandidates([]);
     try {
-      // Prefer official website; fall back to name search
       const imgs = website
         ? await fetchWebImages(website, true)
         : await fetchWebImages(`${siteName} Cambodia industrial`, false);
@@ -856,6 +857,18 @@ function ImageManager({ siteId, siteName, website, images, onRefetch }: {
     setImporting(null);
   }
 
+  async function handleImportAll() {
+    setImportingAll(true); setErr("");
+    for (const url of [...candidates]) {
+      try {
+        await importWebImage(siteId, url, "Official photo", images.length);
+        setCandidates(c => c.filter(u => u !== url));
+        onRefetch();
+      } catch { /* skip failed */ }
+    }
+    setImportingAll(false);
+  }
+
   async function handleAddUrl() {
     if (!urlInput.trim()) return;
     setAdding(true); setErr("");
@@ -866,27 +879,46 @@ function ImageManager({ siteId, siteName, website, images, onRefetch }: {
     setAdding(false);
   }
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !supabase) return;
-    setUploading(true); setErr("");
-    try {
-      const blob = await compressImage(file, 1920, 0.88);
-      const path = `${siteId}/${Date.now()}.jpg`;
-      const { error } = await supabase.storage.from("site-images").upload(path, blob, { upsert: false, contentType: "image/jpeg" });
-      if (error) throw error;
-      const { data: { publicUrl } } = supabase.storage.from("site-images").getPublicUrl(path);
-      await addSiteImage({ site_id: siteId, url: publicUrl, source: "upload", sort_order: images.length });
-      onRefetch();
-    } catch (e) { setErr(e instanceof Error ? e.message : "Upload failed"); }
-    setUploading(false);
+  async function uploadFiles(files: FileList | File[]) {
+    if (!supabase) return;
+    const list = Array.from(files);
+    setUploadQueue(list.map(f => ({ name: f.name, done: false })));
+    setErr("");
+    let order = images.length;
+    for (let i = 0; i < list.length; i++) {
+      const file = list[i];
+      try {
+        const blob = await compressImage(file, 1920, 0.88);
+        const path = `${siteId}/${Date.now()}-${i}.jpg`;
+        const { error } = await supabase.storage.from("site-images").upload(path, blob, { upsert: false, contentType: "image/jpeg" });
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from("site-images").getPublicUrl(path);
+        await addSiteImage({ site_id: siteId, url: publicUrl, source: "upload", sort_order: order++ });
+        setUploadQueue(q => q.map((item, idx) => idx === i ? { ...item, done: true } : item));
+      } catch (e) {
+        setUploadQueue(q => q.map((item, idx) => idx === i ? { ...item, done: true, err: "failed" } : item));
+      }
+    }
+    onRefetch();
+    setTimeout(() => setUploadQueue([]), 2000);
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.files?.length) uploadFiles(e.target.files);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragging(false);
+    if (e.dataTransfer.files?.length) uploadFiles(e.dataTransfer.files);
   }
 
   async function del(id: string) {
     try { await deleteSiteImage(id); onRefetch(); }
     catch (e) { setErr(e instanceof Error ? e.message : "Delete failed"); }
   }
+
+  const isUploading = uploadQueue.some(q => !q.done);
 
   return (
     <div className="space-y-3">
@@ -902,31 +934,70 @@ function ImageManager({ siteId, siteName, website, images, onRefetch }: {
         </button>
       </div>
 
-      {/* Candidate images to pick from */}
+      {/* Drag & drop upload zone */}
+      <div
+        onDragOver={e => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => fileRef.current?.click()}
+        className="relative cursor-pointer rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center gap-2 py-7"
+        style={{ borderColor: dragging ? "#ff5100" : "rgba(255,255,255,0.1)", background: dragging ? "rgba(255,81,0,0.04)" : "rgba(255,255,255,0.015)" }}>
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFileChange} className="hidden" id={`up-${siteId}`} />
+        {isUploading ? (
+          <div className="space-y-1 w-48">
+            {uploadQueue.map((q, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: q.done ? "100%" : "60%", background: q.err ? "#ef4444" : "#ff5100" }} />
+                </div>
+                <span className="font-mono text-[8px] text-white/30 truncate w-24">{q.err ? "✗" : q.done ? "✓" : "…"} {q.name}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/20">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <p className="font-mono text-[10px] text-white/35">Drop photos here or <span className="text-orange-400/70">click to browse</span></p>
+            <p className="font-mono text-[8px] text-white/18">Multiple files supported · Auto-compressed to 1920px JPEG</p>
+          </>
+        )}
+      </div>
+
+      {/* Candidate images from web fetch */}
       {candidates.length > 0 && (
         <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-3 space-y-2">
-          <p className="font-mono text-[8px] uppercase tracking-widest text-orange-400/70">
-            {candidates.length} photos found — click to import
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-[8px] uppercase tracking-widest text-orange-400/70">
+              {candidates.length} photos found
+            </p>
+            <div className="flex gap-2">
+              <button onClick={handleImportAll} disabled={importingAll}
+                className="px-2.5 py-1 font-mono text-[8px] uppercase tracking-wide rounded border border-orange-400/40 text-orange-400 hover:bg-orange-400/10 transition disabled:opacity-40">
+                {importingAll ? "Importing…" : "Import all"}
+              </button>
+              <button onClick={() => setCandidates([])} className="font-mono text-[8px] text-white/25 hover:text-white/50 transition">Dismiss</button>
+            </div>
+          </div>
           <div className="grid grid-cols-4 gap-1.5">
             {candidates.map(url => (
-              <button key={url} onClick={() => handleImportCandidate(url)} disabled={importing === url}
+              <button key={url} onClick={() => handleImportCandidate(url)} disabled={importing === url || importingAll}
                 className="relative group aspect-video rounded overflow-hidden bg-white/5 border border-white/10 hover:border-orange-400/50 transition disabled:opacity-50">
                 <img src={url} alt="" className="w-full h-full object-cover"
                   onError={e => { (e.currentTarget as HTMLImageElement).parentElement!.style.display = "none"; }} />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                   <span className="font-mono text-[8px] text-white uppercase tracking-wide">
-                    {importing === url ? "Importing…" : "+ Import"}
+                    {importing === url ? "…" : "+ Import"}
                   </span>
                 </div>
               </button>
             ))}
           </div>
-          <button onClick={() => setCandidates([])} className="font-mono text-[8px] text-white/25 hover:text-white/50 transition">Dismiss</button>
         </div>
       )}
 
-      {/* Current photos */}
+      {/* Current photos grid */}
       {images.length > 0 && (
         <div className="grid grid-cols-3 gap-1.5">
           {images.map((img, i) => (
@@ -946,8 +1017,8 @@ function ImageManager({ siteId, siteName, website, images, onRefetch }: {
 
       {err && <p className="text-[10px] text-red-400 font-mono bg-red-500/8 px-2 py-1.5 rounded">{err}</p>}
 
-      {/* Add controls */}
-      <div className="bg-white/[0.025] border border-white/8 rounded-xl p-3 space-y-2.5">
+      {/* Add by URL */}
+      <div className="bg-white/[0.025] border border-white/8 rounded-xl p-3 space-y-2">
         <p className="font-mono text-[8px] uppercase tracking-widest text-white/20">Add by URL</p>
         <div className="flex gap-2">
           <input type="url" placeholder="https://…" value={urlInput} onChange={e => setUrlInput(e.target.value)}
@@ -961,22 +1032,6 @@ function ImageManager({ siteId, siteName, website, images, onRefetch }: {
         </div>
         <input type="text" placeholder="Caption (optional)" value={caption} onChange={e => setCaption(e.target.value)}
           className="w-full px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-[11px] text-white placeholder:text-white/15 focus:outline-none focus:border-white/22" />
-        <div className="flex items-center gap-3">
-          <div className="flex-1 h-px bg-white/8" />
-          <span className="font-mono text-[8px] text-white/18">or upload file</span>
-          <div className="flex-1 h-px bg-white/8" />
-        </div>
-        <div className="flex items-center gap-2.5">
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" id={`up-${siteId}`} />
-          <label htmlFor={`up-${siteId}`}
-            className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 border border-white/12 rounded-lg font-mono text-[9px] uppercase tracking-wider text-white/35 hover:border-white/25 hover:text-white/65 transition">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            {uploading ? "Uploading…" : "Upload"}
-          </label>
-          <p className="font-mono text-[8px] text-white/18">Auto-compressed · 1920px JPEG</p>
-        </div>
       </div>
     </div>
   );
