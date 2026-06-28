@@ -797,9 +797,9 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   "Trapang Sre / Loc Ninh":        { lat: 11.8489, lng: 106.5700 }, // Kratie–Binh Phuoc (Loc Ninh ~106.59°E)
   "O'Yadav / Le Thanh":            { lat: 13.9167, lng: 107.4833 }, // Ratanakiri–Gia Lai (Le Thanh border area)
   // Cambodia/Thailand
-  "Cham Yeam / Hat Lek":           { lat: 11.7025, lng: 102.8883 }, // Koh Kong–Trat (verified close)
-  "Psar Pruhm / Ban Pakard":       { lat: 12.5497, lng: 102.5563 }, // Pailin–Chanthaburi
-  "Poipet / Aranyaprathet":        { lat: 13.6519, lng: 102.5617 }, // Banteay Meanchey–Sa Kaeo
+  "Cham Yeam / Hat Lek":           { lat: 11.6514, lng: 102.9093 }, // OSM node: "Immigration Hat Lek"
+  "Psar Pruhm / Ban Pakard":       { lat: 12.5497, lng: 102.5563 }, // Pailin–Chanthaburi (unverified — needs Google Maps pin)
+  "Poipet / Aranyaprathet":        { lat: 13.6614, lng: 102.5498 }, // OSM node: "Poipet" border control
   "O'Smach / Chong Jom":           { lat: 14.1611, lng: 103.0742 }, // Oddar Meanchey–Surin
   // Cambodia/Laos
   "Veun Kham / Don Kralor":        { lat: 13.9856, lng: 105.8100 }, // Stung Treng–Champasak (Mekong crossing)
