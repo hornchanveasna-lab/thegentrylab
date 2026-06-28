@@ -197,13 +197,13 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
     hint: "Mining license areas", source: "ODC", available: false,
   },
   road_corridors: {
-    label: "Road Corridors", color: "#94a3b8", url: "/data/cambodia_road_corridors.geojson",
-    fillOpacity: 0, strokeWeight: 2.5, defaultOpacity: 0.9,
+    label: "Road Corridors", color: "#e2e8f0", url: "/data/cambodia_road_corridors.geojson",
+    fillOpacity: 0, strokeWeight: 3, defaultOpacity: 0.9,
     hint: "46 national road & railway routes — existing + proposed (ODC)", source: "Open Development Cambodia", available: true,
   },
   main_roads: {
-    label: "Main Roads", color: "#cbd5e1", url: "/data/cambodia_main_roads.geojson",
-    fillOpacity: 0, strokeWeight: 1.5, defaultOpacity: 0.7,
+    label: "Main Roads", color: "#94a3b8", url: "/data/cambodia_main_roads.geojson",
+    fillOpacity: 0, strokeWeight: 2, defaultOpacity: 0.75,
     hint: "Trunk & primary roads — 3,642 segments (OSM 2022)", source: "OpenStreetMap 2022", available: true,
   },
   ip_land: {
@@ -1380,7 +1380,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           getFillColor: [r, g, b, Math.round(def.fillOpacity * op * 255)],
           getLineColor: [r, g, b, Math.round(0.9 * op * 255)],
           getLineWidth: def.strokeWeight,
-          lineWidthMinPixels: 0.5,
+          lineWidthMinPixels: def.strokeWeight,
           lineWidthUnits: "pixels" as const,
           ...(def.pointRadius != null && {
             getPointRadius: def.pointRadius,

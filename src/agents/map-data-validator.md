@@ -146,7 +146,8 @@ GET https://maps.googleapis.com/maps/api/geocode/json
 
 ## Step 3 — Distance Matrix (Google) — port road distance + travel time
 
-Run for EVERY site where `port_distance_km IS NULL`.
+Run ONLY for **investment layer** sites (`layer = 'investment'`) where `port_distance_km IS NULL`.
+Energy, logistics, and other layer sites do not need port/border proximity — skip them.
 
 ### Determine nearest port (road distance via Distance Matrix)
 Calculate to all 3 ports, pick shortest road distance:
@@ -218,9 +219,9 @@ WHERE id = '{site.id}';
 
 ## Step 5 — Logistics connectivity matrix (Haversine SQL)
 
-Run ONE batch SQL for ALL sites simultaneously using the `haversine_km` PostgreSQL function
-(already installed in the DB). This recalculates airport, rail, and border distances for every site
-with new or corrected coordinates.
+Run ONE batch SQL for **investment layer sites only** using the `haversine_km` PostgreSQL function
+(already installed in the DB). This recalculates airport, rail, and border distances.
+Add `WHERE s.layer = 'investment'` to every query below — energy/logistics sites do not need these.
 
 ### 5a — Airport distances
 ```sql
@@ -235,6 +236,7 @@ WITH airport_dists AS (
       haversine_km(s.lat, s.lng, 13.0956, 103.2242)   -- BBM (Battambang)
     ]) AS dist
   FROM sites s
+  WHERE s.layer = 'investment'
 ),
 nearest AS (
   SELECT DISTINCT ON (id) id, acode, dist
@@ -266,6 +268,7 @@ WITH rail_dists AS (
       haversine_km(s.lat, s.lng, 13.0989, 103.1989)   -- Battambang
     ]) AS dist
   FROM sites s
+  WHERE s.layer = 'investment'
 ),
 nearest AS (
   SELECT DISTINCT ON (id) id, rname, dist
@@ -306,6 +309,7 @@ WITH border_dists AS (
       haversine_km(s.lat, s.lng, 13.7500, 107.5333)   -- O'Yadav/VN
     ]) AS dist
   FROM sites s
+  WHERE s.layer = 'investment'
 ),
 nearest AS (
   SELECT DISTINCT ON (id) id, bname, dist
