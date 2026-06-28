@@ -501,7 +501,7 @@ function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
     );
 
     const animate = () => {
-      offsetRef.current = (offsetRef.current + 0.4) % 26;
+      offsetRef.current = (offsetRef.current + 0.15) % 26;
       polysRef.current.forEach((p, i) => {
         const icons = p.get("icons") as google.maps.IconSequence[];
         if (icons?.[0]) {
