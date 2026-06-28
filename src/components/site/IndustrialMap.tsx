@@ -137,7 +137,8 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
 /* ── Area layers (boundaries & footprints) ──────────────── */
 type AreaKey =
   | "provinces" | "districts" | "communes" | "sez_footprints"
-  | "protected" | "elc" | "powergrid" | "mining";
+  | "protected" | "elc" | "powergrid" | "mining"
+  | "road_corridors" | "main_roads";
 
 interface AreaDef {
   label: string;
@@ -193,6 +194,16 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
     label: "Mining Concessions", color: "#a16207", url: "/geo/mining.json",
     fillOpacity: 0.14, strokeWeight: 1, defaultOpacity: 0.75,
     hint: "Mining license areas", source: "ODC", available: false,
+  },
+  road_corridors: {
+    label: "Road Corridors", color: "#94a3b8", url: "/data/cambodia_road_corridors.geojson",
+    fillOpacity: 0, strokeWeight: 2.5, defaultOpacity: 0.9,
+    hint: "46 national road & railway routes — existing + proposed (ODC)", source: "Open Development Cambodia", available: true,
+  },
+  main_roads: {
+    label: "Main Roads", color: "#cbd5e1", url: "/data/cambodia_main_roads.geojson",
+    fillOpacity: 0, strokeWeight: 1.5, defaultOpacity: 0.7,
+    hint: "Trunk & primary roads — 3,642 segments (OSM 2022)", source: "OpenStreetMap 2022", available: true,
   },
 };
 
