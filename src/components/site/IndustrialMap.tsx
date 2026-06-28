@@ -175,9 +175,9 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
   },
   // ── ODC datasets — flip `available: true` once the GeoJSON is bundled ──
   protected: {
-    label: "Protected Areas", color: "#34d399", url: "/geo/protected.json",
-    fillOpacity: 0.18, strokeWeight: 1, defaultOpacity: 0.8,
-    hint: "No-build conservation zones", source: "ODC / WDPA", available: false,
+    label: "Protected Areas", color: "#34d399", url: "/data/cambodia_protected_areas.geojson",
+    fillOpacity: 0.2, strokeWeight: 1.2, defaultOpacity: 0.85,
+    hint: "62 NPA zones — wildlife sanctuaries, national parks, protected landscapes (ODC 2017)", source: "Open Development Cambodia", available: true,
   },
   elc: {
     label: "Land Concessions", color: "#f59e0b", url: "/geo/elc.json",
