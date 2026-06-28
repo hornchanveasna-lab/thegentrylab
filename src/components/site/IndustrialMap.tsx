@@ -1146,7 +1146,7 @@ function PreviewMapInner() {
 
 function PreviewMapView() {
   return (
-    <APIProvider apiKey={gKey ?? ""}>
+    <APIProvider apiKey={gKey ?? ""} libraries={["places"]}>
       <Map
         style={{ height: "100%", width: "100%" }}
         defaultCenter={{ lat: 12.5, lng: 104.9 }}
@@ -1471,7 +1471,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     >
       {/* Map canvas */}
       <div className="absolute inset-0">
-        <APIProvider apiKey={gKey ?? ""}>
+        <APIProvider apiKey={gKey ?? ""} libraries={["places"]}>
           <Map
             style={{ height: "100%", width: "100%" }}
             defaultCenter={{ lat: 12.2, lng: 104.9 }}
