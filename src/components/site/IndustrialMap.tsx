@@ -1896,12 +1896,13 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
         const sub   = (p.zone_category || p.npa_type || p.status || p.fclass) as string | undefined;
         const detail = p.size_ha ? `${p.size_ha} ha` : p.length_km ? String(p.length_km) : undefined;
         const tw = 220;
-        const lx = Math.max(8, Math.min(areaHover.x - tw / 2, window.innerWidth - tw - 8));
+        const ox = 14, oy = 14; // offset from cursor
+        const lx = Math.max(8, Math.min(areaHover.x + ox, window.innerWidth - tw - 8));
+        const ly = Math.min(areaHover.y + oy, window.innerHeight - 80);
         return (
           <div
             style={{
-              position: "fixed", left: lx, top: areaHover.y - 8, width: tw,
-              transform: "translateY(calc(-100% - 10px))",
+              position: "fixed", left: lx, top: ly, width: tw,
               background: isDark ? "rgba(10,10,10,0.92)" : "rgba(255,255,255,0.95)",
               border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
               borderRadius: 8, padding: "8px 10px", pointerEvents: "none",
