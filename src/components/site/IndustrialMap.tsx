@@ -470,9 +470,10 @@ function ZoomClassController({ wrapperRef }: { wrapperRef: React.RefObject<HTMLD
 
 function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
   const map = useMap();
-  const polysRef = useRef<google.maps.Polyline[]>([]);
-  const animRef  = useRef<number | null>(null);
-  const offsetRef = useRef(0);
+  const polysRef   = useRef<google.maps.Polyline[]>([]);
+  const animRef    = useRef<number | null>(null);
+  const offsetRef  = useRef(0);
+  const lastTsRef  = useRef<number | null>(null);
 
   useEffect(() => {
     if (!map) return;
@@ -500,8 +501,11 @@ function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
       })
     );
 
-    const animate = () => {
-      offsetRef.current = (offsetRef.current + 0.05) % 26;
+    const animate = (ts: number) => {
+      const elapsed = lastTsRef.current !== null ? ts - lastTsRef.current : 0;
+      lastTsRef.current = ts;
+      // 2 px/second — independent of screen refresh rate
+      offsetRef.current = (offsetRef.current + elapsed * 0.002) % 26;
       polysRef.current.forEach((p, i) => {
         const icons = p.get("icons") as google.maps.IconSequence[];
         if (icons?.[0]) {
