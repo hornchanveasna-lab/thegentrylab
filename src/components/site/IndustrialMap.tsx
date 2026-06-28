@@ -138,7 +138,7 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
 type AreaKey =
   | "provinces" | "districts" | "communes" | "sez_footprints"
   | "protected" | "elc" | "powergrid" | "mining"
-  | "road_corridors" | "main_roads";
+  | "road_corridors" | "main_roads" | "ip_land";
 
 interface AreaDef {
   label: string;
@@ -151,6 +151,7 @@ interface AreaDef {
   hint: string;            // legend sub-text
   source?: string;         // attribution line shown in legend
   available?: boolean;     // false = data file not yet bundled (hidden from panel)
+  pointRadius?: number;    // px radius for Point geometry layers
 }
 
 const AREA_LAYERS: Record<AreaKey, AreaDef> = {
@@ -204,6 +205,12 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
     label: "Main Roads", color: "#cbd5e1", url: "/data/cambodia_main_roads.geojson",
     fillOpacity: 0, strokeWeight: 1.5, defaultOpacity: 0.7,
     hint: "Trunk & primary roads — 3,642 segments (OSM 2022)", source: "OpenStreetMap 2022", available: true,
+  },
+  ip_land: {
+    label: "Indigenous Communal Land", color: "#f97316", url: "/data/cambodia_ip_land.geojson",
+    fillOpacity: 0.85, strokeWeight: 1.5, defaultOpacity: 0.9, pointRadius: 6,
+    hint: "44 registered IP communal land titles — Mondulkiri, Ratanakiri, Kratie, Stung Treng (ODC 2019–2026)",
+    source: "Open Development Cambodia", available: true,
   },
 };
 
@@ -1375,6 +1382,11 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           getLineWidth: def.strokeWeight,
           lineWidthMinPixels: 0.5,
           lineWidthUnits: "pixels" as const,
+          ...(def.pointRadius != null && {
+            getPointRadius: def.pointRadius,
+            pointRadiusUnits: "pixels" as const,
+            pointRadiusMinPixels: 3,
+          }),
           pickable: true,
           autoHighlight: true,
           highlightColor: [r, g, b, 45],
@@ -1717,6 +1729,40 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                       ))}
                     </div>
                   )}
+                  {/* Indigenous Communal Land — nested under Risk Zones */}
+                  {layer === "risk" && (() => {
+                    const def = AREA_LAYERS["ip_land"];
+                    const aon = areaActive.has("ip_land");
+                    return (
+                      <div className="pl-5">
+                        <button
+                          onClick={() => toggleArea("ip_land")}
+                          className="w-full flex items-center gap-2 px-2 py-1 transition rounded-sm text-left"
+                          onMouseEnter={e => (e.currentTarget.style.backgroundColor = pc.hover)}
+                          onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
+                        >
+                          <span className="w-2 h-2 rounded-full shrink-0 border transition-opacity"
+                            style={{ backgroundColor: `${def.color}55`, borderColor: def.color, opacity: aon ? 1 : 0.3 }} />
+                          <span className="font-mono text-[9px] uppercase tracking-wider flex-1 transition-opacity"
+                            style={{ color: aon ? def.color : pc.textOff }}>IP Communal Land</span>
+                          <span className="font-mono text-[8px]" style={{ color: aon ? pc.textMid : pc.textOff }}>{aon ? "ON" : "OFF"}</span>
+                        </button>
+                        {aon && (
+                          <div className="pl-4 pr-2 pb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[8px]" style={{ color: pc.label }}>OPACITY</span>
+                              <input type="range" min={0.1} max={1} step={0.05}
+                                value={areaOpacity["ip_land"]}
+                                onChange={(e) => setOpacity("ip_land", parseFloat(e.target.value))}
+                                className="flex-1 h-1 cursor-pointer"
+                                style={{ accentColor: def.color }} />
+                              <span className="font-mono text-[8px] w-7 text-right" style={{ color: pc.label }}>{Math.round(areaOpacity["ip_land"] * 100)}%</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {/* Protected Areas area layer — nested under Environment */}
                   {layer === "environment" && (() => {
                     const def = AREA_LAYERS["protected"];
@@ -1759,7 +1805,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           {/* Area layers */}
           <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Area Data</p>
-            {ALL_AREAS.filter((k) => k !== "protected").map((k) => {
+            {ALL_AREAS.filter((k) => k !== "protected" && k !== "ip_land").map((k) => {
               const def = AREA_LAYERS[k];
               const on  = areaActive.has(k);
               return (
@@ -1927,10 +1973,11 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
       {areaHover && !hoveredSite && (() => {
         const p = areaHover.props;
         const isProtected = areaHover.layerId === "area-protected";
+        const isIpLand    = areaHover.layerId === "area-ip_land";
         const ox = 14, oy = 14;
-        const tw = isProtected ? 260 : 220;
+        const tw = (isProtected || isIpLand) ? 260 : 220;
         const lx = Math.max(8, Math.min(areaHover.x + ox, window.innerWidth - tw - 8));
-        const ly = Math.min(areaHover.y + oy, window.innerHeight - (isProtected ? 200 : 80));
+        const ly = Math.min(areaHover.y + oy, window.innerHeight - ((isProtected || isIpLand) ? 240 : 80));
         const bg  = isDark ? "rgba(10,10,10,0.95)"    : "rgba(255,255,255,0.97)";
         const bdr = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
         const txt = isDark ? "#f1f5f9"                : "#1e293b";
@@ -1978,6 +2025,46 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                 )}
                 <div style={{ marginTop: 2, paddingTop: 5, borderTop: `1px solid ${div}`, fontSize: 9, color: fnt, fontFamily: "monospace" }}>
                   {p.reference as string} · ODC 2017
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (isIpLand) {
+          const ipColor = "#f97316";
+          return (
+            <div style={{ position: "fixed", left: lx, top: ly, width: tw, background: bg, border: `1px solid ${bdr}`, borderRadius: 10, overflow: "hidden", pointerEvents: "none", boxShadow: "0 6px 24px rgba(0,0,0,0.30)", zIndex: 999 }}>
+              <div style={{ background: `${ipColor}22`, borderBottom: `1px solid ${ipColor}44`, padding: "7px 10px 6px" }}>
+                <div style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: ipColor, marginBottom: 2 }}>
+                  Indigenous Communal Land · {p.ethnic_group as string}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: txt, lineHeight: 1.25 }}>
+                  {[p.village, p.commune, p.district].filter(Boolean).join(", ")}
+                </div>
+                <div style={{ fontSize: 10.5, color: dim }}>{p.province as string}</div>
+              </div>
+              <div style={{ padding: "7px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+                {([
+                  ["Families",     p.num_families ? `${String(p.num_families)} families` : "—", undefined],
+                  ["Total area",   p.land_size_ha  ? `${String(p.land_size_ha)} ha`       : "—", undefined],
+                  ["Titled",       (p.date_titled as string) ?? "—",               undefined],
+                ] as [string, string, string | undefined][]).map(([label, value, color]) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                    <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.10em", color: fnt, whiteSpace: "nowrap" }}>{label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: color ?? txt, textAlign: "right" }}>{value}</span>
+                  </div>
+                ))}
+                {!!(p.traditional_agri_ha || p.swidden_farming_ha || p.forest_land_ha) && (
+                  <div style={{ marginTop: 2, paddingTop: 5, borderTop: `1px solid ${div}`, display: "flex", flexDirection: "column", gap: 2 }}>
+                    <div style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.10em", color: fnt, marginBottom: 1 }}>Land use breakdown</div>
+                    {!!p.traditional_agri_ha && <div style={{ fontSize: 10, color: dim }}>Traditional agri: {String(p.traditional_agri_ha)} ha</div>}
+                    {!!p.swidden_farming_ha  && <div style={{ fontSize: 10, color: dim }}>Swidden farming: {String(p.swidden_farming_ha)} ha</div>}
+                    {!!p.forest_land_ha      && <div style={{ fontSize: 10, color: dim }}>Forest land: {String(p.forest_land_ha)} ha</div>}
+                  </div>
+                )}
+                <div style={{ marginTop: 2, paddingTop: 5, borderTop: `1px solid ${div}`, fontSize: 9, color: fnt, fontFamily: "monospace" }}>
+                  {p.reference as string ?? ""} · ODC
                 </div>
               </div>
             </div>
