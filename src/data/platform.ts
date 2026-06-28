@@ -100,6 +100,7 @@ export interface MapSite {
   source_tier?: number;        // 1 official · 2 reputable · 3 derived/estimated
   confidence?: string;         // high | medium | low
   field_provenance?: Record<string, { method?: string; source?: string; note?: string; at?: string }>;
+  boundary?: object | null;     // GeoJSON Polygon geometry saved in admin
   zone_types?: string[];
   lease_rate_usd?: string;
   plot_size_min_ha?: number;

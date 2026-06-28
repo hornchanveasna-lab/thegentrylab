@@ -217,22 +217,87 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
   onSelect: (s: MapSite) => void;
   onSaved: (s: MapSite) => void;
 }) {
+  const [drawMode,       setDrawMode]       = useState(false);
+  const [polygonDrawn,   setPolygonDrawn]   = useState(false);
+  const [savingBoundary, setSavingBoundary] = useState(false);
+  // ref that BoundaryLayer populates so we can extract GeoJSON on save
+  const drawnPolygonRef = useRef<google.maps.Polygon | null>(null);
+
+  // Reset draw state when site changes
+  useEffect(() => {
+    setDrawMode(false);
+    setPolygonDrawn(false);
+    drawnPolygonRef.current = null;
+  }, [selected?.id]);
+
+  async function handleSaveBoundary() {
+    const poly = drawnPolygonRef.current;
+    if (!poly || !selected) return;
+    const path = poly.getPath().getArray().map((pt) => [pt.lng(), pt.lat()]);
+    if (path.length < 3) return;
+    path.push(path[0]); // close ring
+    const geojson = { type: "Polygon", coordinates: [path] };
+    setSavingBoundary(true);
+    await updateSiteField(selected.id, { boundary: geojson, updated_at: new Date().toISOString() });
+    setSavingBoundary(false);
+    setDrawMode(false);
+    setPolygonDrawn(false);
+    drawnPolygonRef.current = null;
+    onSaved({ ...selected, boundary: geojson } as MapSite);
+  }
+
+  async function handleClearBoundary() {
+    if (!selected) return;
+    await updateSiteField(selected.id, { boundary: null, updated_at: new Date().toISOString() });
+    onSaved({ ...selected, boundary: null } as MapSite);
+  }
+
   return (
     <div className="flex h-full">
       {/* Map pane */}
       <div className="flex-1 relative">
-        <APIProvider apiKey={GMAPS_KEY} libraries={["places"]}>
+        <APIProvider apiKey={GMAPS_KEY} libraries={["places", "drawing"]}>
           <Map
             defaultCenter={{ lat: 12.5657, lng: 104.991 }}
             defaultZoom={7}
-            mapTypeId="roadmap"
-            styles={DARK_MAP_STYLES}
+            mapTypeId="satellite"
             disableDefaultUI
             className="w-full h-full"
           >
             <AdminPins sites={sites} selected={selected} onSelect={onSelect} />
+            {selected && (
+              <BoundaryLayer
+                site={selected}
+                drawMode={drawMode}
+                onPolygonReady={(poly) => { drawnPolygonRef.current = poly; setPolygonDrawn(true); }}
+                onCancel={() => { setDrawMode(false); setPolygonDrawn(false); }}
+              />
+            )}
           </Map>
         </APIProvider>
+
+        {/* Draw mode instructions */}
+        {drawMode && !polygonDrawn && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/90 border border-[#ff5100]/50 text-white px-4 py-2 rounded-lg font-mono text-[10px] text-center whitespace-nowrap">
+            Click to place points · Double-click to finish · <span className="text-white/40">Esc to cancel</span>
+          </div>
+        )}
+        {drawMode && polygonDrawn && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <div className="bg-black/90 border border-white/15 text-white/60 px-3 py-1.5 rounded-lg font-mono text-[10px]">
+              Drag handles to adjust · then
+            </div>
+            <button onClick={handleSaveBoundary} disabled={savingBoundary}
+              className="px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider rounded-lg font-bold"
+              style={{ backgroundColor: "#ff5100", color: "#fff", opacity: savingBoundary ? 0.6 : 1 }}>
+              {savingBoundary ? "Saving…" : "Save Boundary"}
+            </button>
+            <button onClick={() => { setPolygonDrawn(false); drawnPolygonRef.current?.setMap(null); drawnPolygonRef.current = null; setDrawMode(true); }}
+              className="px-3 py-1.5 font-mono text-[10px] text-white/40 hover:text-white/70 bg-black/70 border border-white/10 rounded-lg">
+              Redraw
+            </button>
+          </div>
+        )}
 
         {/* Legend */}
         <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur border border-white/10 rounded-xl px-4 py-3 flex flex-col gap-1.5">
@@ -258,11 +323,83 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
         style={{ width: selected ? "420px" : "0px", minWidth: selected ? "420px" : "0px" }}
       >
         {selected && (
-          <SiteEditor key={selected.id} site={selected} onSaved={onSaved} onClose={() => onSelect(null as unknown as MapSite)} />
+          <SiteEditor
+            key={selected.id}
+            site={selected}
+            onSaved={onSaved}
+            onClose={() => onSelect(null as unknown as MapSite)}
+            onStartDraw={() => { setDrawMode(true); setPolygonDrawn(false); }}
+            onClearBoundary={handleClearBoundary}
+            isDrawing={drawMode}
+          />
         )}
       </div>
     </div>
   );
+}
+
+/* ── Boundary draw + display layer (inside Map context) ── */
+function BoundaryLayer({ site, drawMode, onPolygonReady, onCancel }: {
+  site: MapSite;
+  drawMode: boolean;
+  onPolygonReady: (poly: google.maps.Polygon) => void;
+  onCancel: () => void;
+}) {
+  const map = useMap();
+
+  // Show existing saved boundary
+  useEffect(() => {
+    if (!map || !site.boundary || drawMode) return;
+    const geo = site.boundary as { type: string; coordinates: number[][][] };
+    if (!geo?.coordinates?.[0]) return;
+    const ring = geo.type === "MultiPolygon"
+      ? geo.coordinates[0][0]
+      : geo.coordinates[0];
+    const paths = ring.map(([lng, lat]) => ({ lat, lng }));
+    const poly = new google.maps.Polygon({
+      map: map as google.maps.Map,
+      paths,
+      fillColor: "#ff5100", fillOpacity: 0.15,
+      strokeColor: "#ff5100", strokeOpacity: 0.9, strokeWeight: 2,
+      clickable: false, zIndex: 1,
+    });
+    return () => poly.setMap(null);
+  }, [map, site.id, site.boundary, drawMode]);
+
+  // Drawing manager
+  useEffect(() => {
+    if (!map || !drawMode) return;
+    // Pan & zoom to site
+    map.panTo({ lat: site.lat, lng: site.lng });
+    map.setZoom(16);
+
+    const dm = new google.maps.drawing.DrawingManager({
+      drawingMode: google.maps.drawing.OverlayType.POLYGON,
+      drawingControl: false,
+      polygonOptions: {
+        fillColor: "#ff5100", fillOpacity: 0.2,
+        strokeColor: "#ff5100", strokeWeight: 2.5,
+        editable: true, draggable: false, zIndex: 10,
+      },
+    });
+    dm.setMap(map as google.maps.Map);
+
+    const listener = dm.addListener("polygoncomplete", (poly: google.maps.Polygon) => {
+      dm.setDrawingMode(null);
+      onPolygonReady(poly);
+    });
+
+    const keyHandler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", keyHandler);
+
+    return () => {
+      google.maps.event.removeListener(listener);
+      dm.setMap(null);
+      window.removeEventListener("keydown", keyHandler);
+    };
+  }, [map, drawMode, site.lat, site.lng, onPolygonReady, onCancel]);
+
+  return null;
 }
 
 /* ── Map pins rendered inside the Map context ──────────── */
@@ -313,10 +450,13 @@ function AdminPins({ sites, selected, onSelect }: {
 /* ══════════════════════════════════════════════════════════
    SITE EDITOR — category-aware
 ══════════════════════════════════════════════════════════ */
-function SiteEditor({ site, onSaved, onClose }: {
+function SiteEditor({ site, onSaved, onClose, onStartDraw, onClearBoundary, isDrawing }: {
   site: MapSite;
   onSaved: (s: MapSite) => void;
   onClose: () => void;
+  onStartDraw?: () => void;
+  onClearBoundary?: () => void;
+  isDrawing?: boolean;
 }) {
   const { data: images = [], refetch: refetchImages } = useSiteImages(site.id);
   const group = KIND_GROUP(site.kind);
@@ -369,6 +509,12 @@ function SiteEditor({ site, onSaved, onClose }: {
     tenant_metering:   site.tenant_metering != null ? (site.tenant_metering ? "Yes" : "No") : "",
     // Source
     data_source_url:   site.data_source_url ?? "",
+    // Connectivity
+    port_distance_km:  site.port_distance_km?.toString() ?? "",
+    nearest_port:      site.nearest_port ?? "",
+    nearest_airport:   site.nearest_airport ?? "",
+    border_distance_km: site.border_distance_km?.toString() ?? "",
+    nearest_border:    site.nearest_border ?? "",
   });
 
   const set = (k: string, v: string) => setF(prev => ({ ...prev, [k]: v }));
@@ -425,6 +571,11 @@ function SiteEditor({ site, onSaved, onClose }: {
       energy_policy:     parseBool(f.energy_policy),
       tenant_metering:   parseBool(f.tenant_metering),
       data_source_url:   f.data_source_url || null,
+      port_distance_km:  f.port_distance_km  ? +f.port_distance_km  : null,
+      nearest_port:      f.nearest_port      || null,
+      nearest_airport:   f.nearest_airport   || null,
+      border_distance_km: f.border_distance_km ? +f.border_distance_km : null,
+      nearest_border:    f.nearest_border    || null,
       updated_at:        new Date().toISOString(),
     };
 
@@ -611,6 +762,18 @@ function SiteEditor({ site, onSaved, onClose }: {
             <FI label="Road / Access" val={f.road}      set={v => set("road", v)} />
             <FI label="Utilities"     val={f.utilities}  set={v => set("utilities", v)} />
           </Row>
+          <Row>
+            <FI label="Port (km)"     val={f.port_distance_km}     set={v => set("port_distance_km", v)}     hint="35" />
+            <FI label="Nearest Port"  val={f.nearest_port}         set={v => set("nearest_port", v)}         hint="Sihanoukville Port" />
+          </Row>
+          <Row>
+            <FI label="Airport (km)"  val={f.airport_distance_km}  set={v => set("airport_distance_km", v)}  hint="25" />
+            <FI label="Nearest Airport" val={f.nearest_airport}    set={v => set("nearest_airport", v)}      hint="Techo International" />
+          </Row>
+          <Row>
+            <FI label="Border (km)"   val={f.border_distance_km}   set={v => set("border_distance_km", v)}   hint="12" />
+            <FI label="Nearest Border" val={f.nearest_border}      set={v => set("nearest_border", v)}       hint="Bavet/Vietnam" />
+          </Row>
         </Sec>
 
         <Sec label="About / Notes">
@@ -650,6 +813,44 @@ function SiteEditor({ site, onSaved, onClose }: {
             </div>
           </Sec>
         )}
+
+        {/* Boundary */}
+        <Sec label="Boundary">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              {site.boundary
+                ? <p className="font-mono text-[10px] text-green-400">✓ Boundary set</p>
+                : <p className="font-mono text-[10px] text-white/25">No boundary drawn yet</p>
+              }
+            </div>
+            {onStartDraw && (
+              <button onClick={onStartDraw} disabled={isDrawing}
+                className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider border transition rounded"
+                style={{
+                  borderColor: isDrawing ? "rgba(255,81,0,0.4)" : "#ff5100",
+                  color: isDrawing ? "rgba(255,81,0,0.5)" : "#ff5100",
+                  backgroundColor: isDrawing ? "rgba(255,81,0,0.05)" : "transparent",
+                }}>
+                {isDrawing ? "Drawing…" : site.boundary ? "Redraw" : "Draw on map ↗"}
+              </button>
+            )}
+            {site.boundary && onClearBoundary && (
+              <button onClick={onClearBoundary}
+                className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider border border-white/10 text-white/30 hover:text-red-400 hover:border-red-400/30 transition rounded">
+                Clear
+              </button>
+            )}
+          </div>
+          {site.boundary && (
+            <p className="font-mono text-[9px] text-white/20 mt-1">
+              {(() => {
+                const geo = site.boundary as { type: string; coordinates: number[][][] };
+                const ring = geo.type === "MultiPolygon" ? geo.coordinates[0][0] : geo.coordinates[0];
+                return `${ring.length - 1} vertices`;
+              })()}
+            </p>
+          )}
+        </Sec>
 
         {/* Source */}
         <Sec label="Data Source">

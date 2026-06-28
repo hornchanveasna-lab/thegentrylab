@@ -101,6 +101,7 @@ export function useMapSites() {
         plot_size_min_ha: r.plot_size_min_ha ?? undefined,
         data_source_url: r.data_source_url ?? undefined,
         data_verified_at: r.data_verified_at ?? undefined,
+        boundary: r.boundary ?? null,
       })) as MapSite[];
     },
     staleTime: STALE_TIME,
