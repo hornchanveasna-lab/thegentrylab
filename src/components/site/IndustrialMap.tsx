@@ -1491,8 +1491,8 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
 
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
-            {/* deck.gl overlay — GeoJSON boundaries + coverage rasters (WebGL) */}
-            <DeckGlMapOverlay layers={deckLayers} />
+            {/* deck.gl overlay — only mount when layers exist to avoid blank WebGL canvas */}
+            {deckLayers.length > 0 && <DeckGlMapOverlay layers={deckLayers} />}
             {areaActive.has("sez_footprints") && (
               <SezFootprintLayer sites={visible} opacity={areaOpacity.sez_footprints} onSelect={handleSelect} />
             )}
