@@ -224,6 +224,21 @@ function parseCoords(text: string): [number, number] | null {
 }
 
 async function geocodePlace(query: string): Promise<[number, number] | null> {
+  // Use Maps JS SDK Geocoder (avoids CORS issues with REST endpoint)
+  if (window.google?.maps) {
+    return new Promise((resolve) => {
+      new google.maps.Geocoder().geocode(
+        { address: query + " Cambodia", region: "kh" },
+        (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results?.[0]?.geometry?.location) {
+            const loc = results[0].geometry.location;
+            resolve([loc.lat(), loc.lng()]);
+          } else resolve(null);
+        }
+      );
+    });
+  }
+  // Nominatim fallback (no API key environment)
   try {
     const key = import.meta.env.VITE_GOOGLE_MAPS_KEY;
     const url = key
@@ -1214,43 +1229,43 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
-  /* Fetch Places Autocomplete suggestions */
-  const fetchSuggestions = useCallback(async (input: string) => {
+  /* Fetch Places Autocomplete suggestions via Maps JS SDK (no CORS issue) */
+  const fetchSuggestions = useCallback((input: string) => {
     if (input.length < 2) { setSuggestions([]); return; }
-    try {
-      const res = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(input)}&components=country:kh&language=en&key=${gKey}`
-      );
-      const data = await res.json();
-      setSuggestions(
-        (data.predictions ?? []).slice(0, 5).map((p: { place_id: string; structured_formatting: { main_text: string; secondary_text: string } }) => ({
-          placeId: p.place_id,
-          main:      p.structured_formatting?.main_text ?? p.place_id,
+    if (!window.google?.maps?.places) { setSuggestions([]); return; }
+    const svc = new google.maps.places.AutocompleteService();
+    svc.getPlacePredictions(
+      { input, componentRestrictions: { country: "kh" } },
+      (predictions, status) => {
+        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
+          setSuggestions([]); return;
+        }
+        setSuggestions(predictions.slice(0, 5).map((p) => ({
+          placeId:   p.place_id,
+          main:      p.structured_formatting?.main_text ?? p.description,
           secondary: p.structured_formatting?.secondary_text ?? "",
-        }))
-      );
-    } catch { setSuggestions([]); }
-  }, [gKey]);
+        })));
+      }
+    );
+  }, []);
 
-  /* Pick a suggestion — fetch its coords via Place Details */
-  const pickSuggestion = useCallback(async (s: { placeId: string; main: string; secondary: string }) => {
+  /* Pick a suggestion — resolve coords via Geocoder (no CORS, no fake div) */
+  const pickSuggestion = useCallback((s: { placeId: string; main: string; secondary: string }) => {
     setLocationInput(s.main);
     setSuggestions([]);
     setShowSuggestions(false);
     setLocSearching(true);
-    try {
-      const res  = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${s.placeId}&fields=geometry&key=${gKey}`
-      );
-      const data = await res.json();
-      const loc  = data.result?.geometry?.location;
-      if (loc) {
-        setPinMarker({ lat: loc.lat, lng: loc.lng });
-        setPinTarget({ lat: loc.lat, lng: loc.lng, zoom: 14 });
+    if (!window.google?.maps) { setLocSearching(false); return; }
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ placeId: s.placeId }, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results?.[0]?.geometry?.location) {
+        const loc = results[0].geometry.location;
+        setPinMarker({ lat: loc.lat(), lng: loc.lng() });
+        setPinTarget({ lat: loc.lat(), lng: loc.lng(), zoom: 15 });
       }
-    } catch { /* ignore */ }
-    setLocSearching(false);
-  }, [gKey]);
+      setLocSearching(false);
+    });
+  }, []);
 
   /* Dismiss suggestions on outside click */
   useEffect(() => {
