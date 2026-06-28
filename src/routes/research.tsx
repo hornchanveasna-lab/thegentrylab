@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { RESEARCH } from "@/data/platform";
@@ -139,16 +139,20 @@ function getCategoryStyle(category: string) {
 function ResearchCard({
   brief,
   featured = false,
+  isDark = true,
 }: {
   brief: typeof RESEARCH[0];
   featured?: boolean;
+  isDark?: boolean;
 }) {
   const style = getCategoryStyle(brief.category);
   const stats = BRIEF_STATS[brief.id] ?? [];
   const photo = BRIEF_PHOTOS[brief.id];
 
+  const cardBg = isDark ? "#0d0d0e" : "#f8f7f5";
+
   return (
-    <article className="group relative overflow-hidden border border-white/10 hover:border-white/20 transition-all duration-300 flex flex-col bg-[#0d0d0e]">
+    <article className="group relative overflow-hidden transition-all duration-300 flex flex-col" style={{ backgroundColor: cardBg, border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.08)" }}>
 
       {/* ── Cover image ── */}
       <div className="relative overflow-hidden flex-shrink-0" style={{ height: featured ? 280 : 200 }}>
@@ -167,7 +171,7 @@ function ResearchCard({
           backgroundSize: "32px 32px",
         }} />
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 60% 60% at 80% 20%,${style.accent}20 0%,transparent 70%)` }} />
-        <div className="absolute bottom-0 left-0 right-0 h-2/3 bg-gradient-to-t from-[#0d0d0e] to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-2/3" style={{ background: `linear-gradient(to top, ${cardBg}, transparent)` }} />
 
         <div className="absolute top-4 left-4 text-white" style={{ color: style.accent }}>{style.icon}</div>
 
@@ -193,7 +197,7 @@ function ResearchCard({
       {/* ── Body ── */}
       <div className="p-5 flex flex-col flex-1">
 
-        <h3 className={`font-extrabold uppercase tracking-tight leading-tight mb-4 ${featured ? "text-lg" : "text-sm"}`}>
+        <h3 className={`font-extrabold uppercase tracking-tight leading-tight mb-4 ${featured ? "text-lg" : "text-sm"}`} style={{ color: isDark ? "#fff" : "#111" }}>
           {brief.title}
         </h3>
 
@@ -201,7 +205,7 @@ function ResearchCard({
         {stats.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-4">
             {stats.map((s) => (
-              <span key={s} className="px-2 py-0.5 font-mono text-[9px] tracking-wide border border-white/10 text-white/60 bg-white/[0.03]">
+              <span key={s} className="px-2 py-0.5 font-mono text-[9px] tracking-wide" style={{ border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)", color: isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)", backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)" }}>
                 {s}
               </span>
             ))}
@@ -210,13 +214,13 @@ function ResearchCard({
 
         {/* Abstract — faded/blurred teaser */}
         <div className="relative flex-1 overflow-hidden" style={{ maxHeight: featured ? 72 : 52 }}>
-          <p className="text-[11px] text-white/40 leading-relaxed">{brief.abstract}</p>
-          <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none" style={{ background: "linear-gradient(to bottom, transparent, #0d0d0e)" }} />
+          <p className="text-[11px] leading-relaxed" style={{ color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.45)" }}>{brief.abstract}</p>
+          <div className="absolute bottom-0 left-0 right-0 h-10 pointer-events-none" style={{ background: `linear-gradient(to bottom, transparent, ${cardBg})` }} />
         </div>
 
         {/* CTA */}
-        <div className="mt-4 pt-4 border-t border-white/6 flex items-center justify-between gap-3">
-          <p className="text-[10px] text-white/20 font-mono leading-snug">
+        <div className="mt-4 pt-4 flex items-center justify-between gap-3" style={{ borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.07)" }}>
+          <p className="text-[10px] font-mono leading-snug" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.35)" }}>
             Full analysis available<br/>to advisory clients
           </p>
           <a
@@ -239,13 +243,26 @@ function ResearchCard({
 function ResearchPage() {
   const { data: briefs = RESEARCH } = useResearch();
   const [activeCategory, setActiveCategory] = useState("All");
+  const [isDark, setIsDark] = useState(() => {
+    try { return localStorage.getItem("tgl_theme") !== "light"; } catch { return true; }
+  });
+
+  useEffect(() => {
+    const onStorage = () => {
+      try { setIsDark(localStorage.getItem("tgl_theme") !== "light"); } catch { /* */ }
+    };
+    window.addEventListener("storage", onStorage);
+    // Poll for same-tab changes (theme toggle doesn't fire storage event in same tab)
+    const id = setInterval(onStorage, 300);
+    return () => { window.removeEventListener("storage", onStorage); clearInterval(id); };
+  }, []);
   const categories = ["All", ...Array.from(new Set(briefs.map((r) => r.category)))];
 
   const filtered = briefs.filter((r) => activeCategory === "All" || r.category === activeCategory);
   const [featured, ...rest] = filtered;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans flex flex-col">
+    <div className="min-h-screen font-sans flex flex-col" style={{ backgroundColor: isDark ? "#0a0a0b" : "#f0ede8", color: isDark ? "#fff" : "#111" }}>
       <TopNav />
 
       {/* ── Hero strip ── */}
@@ -308,13 +325,13 @@ function ResearchPage() {
       <main className="flex-1 max-w-7xl mx-auto px-6 md:px-12 py-10 w-full">
         {featured && (
           <div className="mb-5">
-            <ResearchCard brief={featured} featured />
+            <ResearchCard brief={featured} featured isDark={isDark} />
           </div>
         )}
 
         {rest.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {rest.map((r) => <ResearchCard key={r.id} brief={r} />)}
+            {rest.map((r) => <ResearchCard key={r.id} brief={r} isDark={isDark} />)}
           </div>
         )}
 
