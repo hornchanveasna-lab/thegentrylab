@@ -723,14 +723,28 @@ function hexToRgb(hex: string): [number, number, number] {
   return [r, g, b];
 }
 
+type AreaHoverInfo = { props: Record<string, unknown>; layerId: string; x: number; y: number } | null;
+
 /** Single deck.gl overlay — renders all GeoJSON boundary layers + coverage rasters via WebGL */
-function DeckGlMapOverlay({ layers }: { layers: Layer[] }) {
+function DeckGlMapOverlay({ layers, onHover }: { layers: Layer[]; onHover?: (info: AreaHoverInfo) => void }) {
   const map = useMap();
   const overlayRef = useRef<GoogleMapsOverlay | null>(null);
+  const onHoverRef = useRef(onHover);
+  useEffect(() => { onHoverRef.current = onHover; }, [onHover]);
 
   useEffect(() => {
     if (!map) return;
-    const overlay = new GoogleMapsOverlay({ interleaved: false });
+    const overlay = new GoogleMapsOverlay({
+      interleaved: false,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      onHover: (info: any) => {
+        if (info.object && info.layer?.id?.startsWith("area-")) {
+          onHoverRef.current?.({ props: info.object.properties ?? {}, layerId: info.layer.id, x: info.x, y: info.y });
+        } else {
+          onHoverRef.current?.(null);
+        }
+      },
+    });
     overlay.setMap(map as google.maps.Map);
     overlayRef.current = overlay;
     return () => {
@@ -1212,6 +1226,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
   const [selectedProject, setSelectedProject] = useState<TrackedProject | null>(null);
   const [hoveredSite, setHoveredSite] = useState<MapSite | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+  const [areaHover, setAreaHover] = useState<AreaHoverInfo>(null);
   const basemapUserPicked = useRef(false);
   const wrapperRef = useRef<HTMLDivElement>(null!);
 
@@ -1527,7 +1542,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
             {/* deck.gl overlay — only mount when layers exist to avoid blank WebGL canvas */}
-            {deckLayers.length > 0 && <DeckGlMapOverlay layers={deckLayers} />}
+            {deckLayers.length > 0 && <DeckGlMapOverlay layers={deckLayers} onHover={setAreaHover} />}
 
             <CorridorLayer corridors={visibleCorridors} />
             <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
@@ -1873,6 +1888,44 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
       {hoveredSite && !selected && mousePos && (
         <SiteHoverTooltip site={hoveredSite} isDark={isDark} x={mousePos.x} y={mousePos.y} />
       )}
+
+      {/* ── Area layer hover tooltip ─────────────────────────── */}
+      {areaHover && !hoveredSite && (() => {
+        const p = areaHover.props;
+        const title = (p.name || p.from && p.to ? (p.from ? `${p.from} → ${p.to}` : null) : p.fclass || p.label) as string | undefined;
+        const sub   = (p.zone_category || p.npa_type || p.status || p.fclass) as string | undefined;
+        const detail = p.size_ha ? `${p.size_ha} ha` : p.length_km ? String(p.length_km) : undefined;
+        const tw = 220;
+        const lx = Math.max(8, Math.min(areaHover.x - tw / 2, window.innerWidth - tw - 8));
+        return (
+          <div
+            style={{
+              position: "fixed", left: lx, top: areaHover.y - 8, width: tw,
+              transform: "translateY(calc(-100% - 10px))",
+              background: isDark ? "rgba(10,10,10,0.92)" : "rgba(255,255,255,0.95)",
+              border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+              borderRadius: 8, padding: "8px 10px", pointerEvents: "none",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.25)", zIndex: 999,
+            }}
+          >
+            {title && (
+              <div style={{ fontSize: 12, fontWeight: 600, color: isDark ? "#f1f5f9" : "#1e293b", lineHeight: 1.3, marginBottom: sub ? 3 : 0 }}>
+                {title}
+              </div>
+            )}
+            {sub && (
+              <div style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
+                {sub}{detail ? ` · ${detail}` : ""}
+              </div>
+            )}
+            {!title && !sub && (
+              <div style={{ fontSize: 11, color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
+                {areaHover.layerId.replace("area-", "").replace(/_/g, " ")}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Location callout (empty-map click) ───────────────── */}
       {locCallout && !selected && (
