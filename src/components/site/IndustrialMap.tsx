@@ -805,6 +805,20 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   "Veun Kham / Don Kralor":        { lat: 13.9856, lng: 105.8100 }, // Stung Treng–Champasak (Mekong crossing)
 };
 
+// Translates DB shorthand values to REF_COORDS keys
+const CONN_ALIAS: Record<string, string> = {
+  "KTI": "Techo International Airport",
+  "PNH": "Techo International Airport",
+  "KOS": "Sihanoukville International",
+  "SAI": "Siem Reap Angkor International",
+  "REP": "Siem Reap Angkor International",
+  "BBM": "Battambang Airport",
+  "Phnom Penh Port":           "Phnom Penh Autonomous Port",
+  "Sihanoukville Port (APSEZ)":"Sihanoukville Autonomous Port",
+  "Sihanoukville Port":        "Sihanoukville Autonomous Port",
+};
+function resolveRef(name: string): string { return CONN_ALIAS[name] ?? name; }
+
 const CONN_COLORS = {
   airport: "#1D9E75",
   port:    "#378ADD",
@@ -840,7 +854,7 @@ function ConnectivityRouteLayer({ site }: { site: MapSite }) {
       { name: site.nearest_airport ?? "", type: "airport" },
       { name: site.nearest_port    ?? "", type: "port" },
       { name: site.nearest_border  ?? "", type: "border" },
-    ].filter((r) => r.name && REF_COORDS[r.name]);
+    ].filter((r) => r.name && REF_COORDS[resolveRef(r.name)]);
 
     if (!routes.length) return;
 
@@ -912,12 +926,13 @@ function ConnectivityRouteLayer({ site }: { site: MapSite }) {
 
     // Draw straight lines immediately, replace with road routes async
     for (const r of routes) {
-      const to = REF_COORDS[r.name];
+      const resolvedName = resolveRef(r.name);
+      const to = REF_COORDS[resolvedName];
       const color = CONN_COLORS[r.type];
       const from = { lat: site.lat, lng: site.lng };
       const straight = [from, to];
 
-      addRoute(straight, color, r.name, to, r.type);
+      addRoute(straight, color, resolvedName, to, r.type);
 
       // Fetch road route and replace path
       const idx = polys.length - 1;
