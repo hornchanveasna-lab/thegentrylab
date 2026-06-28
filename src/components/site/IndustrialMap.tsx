@@ -1717,6 +1717,40 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                       ))}
                     </div>
                   )}
+                  {/* Protected Areas area layer — nested under Environment */}
+                  {layer === "environment" && (() => {
+                    const def = AREA_LAYERS["protected"];
+                    const aon = areaActive.has("protected");
+                    return (
+                      <div className="pl-5">
+                        <button
+                          onClick={() => toggleArea("protected")}
+                          className="w-full flex items-center gap-2 px-2 py-1 transition rounded-sm text-left"
+                          onMouseEnter={e => (e.currentTarget.style.backgroundColor = pc.hover)}
+                          onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
+                        >
+                          <span className="w-2 h-2 rounded-sm shrink-0 border transition-opacity"
+                            style={{ backgroundColor: `${def.color}55`, borderColor: def.color, opacity: aon ? 1 : 0.3 }} />
+                          <span className="font-mono text-[9px] uppercase tracking-wider flex-1 transition-opacity"
+                            style={{ color: aon ? def.color : pc.textOff }}>Protected Areas</span>
+                          <span className="font-mono text-[8px]" style={{ color: aon ? pc.textMid : pc.textOff }}>{aon ? "ON" : "OFF"}</span>
+                        </button>
+                        {aon && (
+                          <div className="pl-4 pr-2 pb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[8px]" style={{ color: pc.label }}>OPACITY</span>
+                              <input type="range" min={0.1} max={1} step={0.05}
+                                value={areaOpacity["protected"]}
+                                onChange={(e) => setOpacity("protected", parseFloat(e.target.value))}
+                                className="flex-1 h-1 cursor-pointer"
+                                style={{ accentColor: def.color }} />
+                              <span className="font-mono text-[8px] w-7 text-right" style={{ color: pc.label }}>{Math.round(areaOpacity["protected"] * 100)}%</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -1725,7 +1759,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           {/* Area layers */}
           <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Area Data</p>
-            {ALL_AREAS.map((k) => {
+            {ALL_AREAS.filter((k) => k !== "protected").map((k) => {
               const def = AREA_LAYERS[k];
               const on  = areaActive.has(k);
               return (
