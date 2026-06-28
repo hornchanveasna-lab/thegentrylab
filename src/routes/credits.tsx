@@ -17,6 +17,41 @@ export default function CreditsPage() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [khqrBuying] = useState<string | null>(null);
 
+  const [isDark, setIsDark] = useState(() => {
+    try { return localStorage.getItem("tgl_theme") !== "light"; } catch { return true; }
+  });
+  useEffect(() => {
+    const sync = () => { try { setIsDark(localStorage.getItem("tgl_theme") !== "light"); } catch { /**/ } };
+    window.addEventListener("storage", sync);
+    const id = setInterval(sync, 300);
+    return () => { window.removeEventListener("storage", sync); clearInterval(id); };
+  }, []);
+
+  // Theme-aware palette
+  const c = {
+    pageBg:      isDark ? "#0a0a0b"                    : "#f0f0ee",
+    heroBg:      isDark ? "#0d0d0e"                    : "#e8e8e5",
+    heroBorder:  isDark ? "rgba(255,255,255,0.06)"     : "rgba(0,0,0,0.08)",
+    cardBg:      isDark ? "rgba(255,255,255,0.03)"     : "rgba(0,0,0,0.04)",
+    cardBorder:  isDark ? "rgba(255,255,255,0.07)"     : "rgba(0,0,0,0.09)",
+    bestBg:      isDark ? "rgba(255,81,0,0.08)"        : "rgba(255,81,0,0.06)",
+    bestBorder:  isDark ? "rgba(255,81,0,0.35)"        : "rgba(255,81,0,0.40)",
+    divider:     isDark ? "rgba(255,255,255,0.08)"     : "rgba(0,0,0,0.09)",
+    text:        isDark ? "#ffffff"                    : "#111111",
+    textMid:     isDark ? "rgba(255,255,255,0.55)"     : "rgba(0,0,0,0.60)",
+    textFaint:   isDark ? "rgba(255,255,255,0.35)"     : "rgba(0,0,0,0.40)",
+    textGhost:   isDark ? "rgba(255,255,255,0.22)"     : "rgba(0,0,0,0.28)",
+    balanceBg:   isDark ? "rgba(255,255,255,0.05)"     : "rgba(0,0,0,0.05)",
+    balanceBdr:  isDark ? "rgba(255,255,255,0.10)"     : "rgba(0,0,0,0.10)",
+    btnSecBg:    isDark ? "rgba(255,255,255,0.08)"     : "rgba(0,0,0,0.07)",
+    btnSecBdr:   isDark ? "rgba(255,255,255,0.12)"     : "rgba(0,0,0,0.12)",
+    btnSecText:  isDark ? "rgba(255,255,255,0.80)"     : "rgba(0,0,0,0.75)",
+    khqrBg:      isDark ? "rgba(255,81,0,0.04)"        : "rgba(255,81,0,0.04)",
+    khqrBdr:     isDark ? "rgba(255,81,0,0.25)"        : "rgba(255,81,0,0.30)",
+    khqrHdr:     isDark ? "rgba(255,81,0,0.15)"        : "rgba(255,81,0,0.12)",
+    skeletonBg:  isDark ? "rgba(255,255,255,0.08)"     : "rgba(0,0,0,0.08)",
+  };
+
   // Handle Stripe return
   const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const successCr = search.get("cr");
@@ -65,13 +100,13 @@ export default function CreditsPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#0a0a0b", color: "#ffffff" }}>
+    <div className="min-h-screen" style={{ backgroundColor: c.pageBg, color: c.text }}>
       <TopNav />
 
       {/* Toast */}
       {toastMsg && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-[13px] font-medium shadow-2xl flex items-center gap-3"
-          style={{ backgroundColor: successCr ? "#10b981" : "#333", color: "#fff" }}>
+          style={{ backgroundColor: successCr ? "#10b981" : isDark ? "#333" : "#222", color: "#fff" }}>
           {successCr ? (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           ) : (
@@ -83,38 +118,41 @@ export default function CreditsPage() {
       )}
 
       {/* Hero */}
-      <div className="border-b" style={{ borderColor: "rgba(255,255,255,0.06)", backgroundColor: "#0d0d0e" }}>
+      <div className="border-b" style={{ borderColor: c.heroBorder, backgroundColor: c.heroBg }}>
         <div className="max-w-4xl mx-auto px-6 md:px-12 py-12">
           <div className="flex items-center gap-3 mb-4">
-            <span className="font-mono text-[9px] uppercase tracking-[0.25em] px-2.5 py-1 rounded" style={{ color: "#ff5100", backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
+            <span className="font-mono text-[9px] uppercase tracking-[0.25em] px-2.5 py-1 rounded"
+              style={{ color: "#ff5100", backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
               GentryLab Credits
             </span>
           </div>
-          <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight" style={{ color: "#ffffff" }}>Buy AI Credits</h1>
-          <p className="mt-2 text-[13px] max-w-lg" style={{ color: "rgba(255,255,255,0.40)" }}>
+          <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight" style={{ color: c.text }}>Buy AI Credits</h1>
+          <p className="mt-2 text-[13px] max-w-lg" style={{ color: c.textFaint }}>
             Power your industrial intelligence. Credits are used for AI chat messages and generating investment briefs.
           </p>
 
           {/* Current balance */}
           {user && (
-            <div className="mt-6 inline-flex items-center gap-4 px-5 py-3 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" }}>
+            <div className="mt-6 inline-flex items-center gap-4 px-5 py-3 rounded-xl"
+              style={{ backgroundColor: c.balanceBg, border: `1px solid ${c.balanceBdr}` }}>
               <div>
-                <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: "rgba(255,255,255,0.35)" }}>Your Balance</p>
+                <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: c.textFaint }}>Your Balance</p>
                 {loading ? (
-                  <div className="h-7 w-20 rounded animate-pulse" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
+                  <div className="h-7 w-20 rounded animate-pulse" style={{ backgroundColor: c.skeletonBg }} />
                 ) : (
                   <p className="text-[24px] font-extrabold" style={{ color: "#ff5100" }}>
-                    {credits ? formatCredits(credits.balance) : "0"} <span className="text-[14px] font-normal" style={{ color: "rgba(255,255,255,0.40)" }}>credits</span>
+                    {credits ? formatCredits(credits.balance) : "0"}{" "}
+                    <span className="text-[14px] font-normal" style={{ color: c.textFaint }}>credits</span>
                   </p>
                 )}
               </div>
-              <div style={{ borderLeft: "1px solid rgba(255,255,255,0.08)" }} className="pl-4">
-                <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>All time earned</p>
-                <p className="text-[13px] font-bold" style={{ color: "rgba(255,255,255,0.60)" }}>{credits ? formatCredits(credits.lifetime_earned) : "0"}</p>
+              <div style={{ borderLeft: `1px solid ${c.divider}` }} className="pl-4">
+                <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: c.textGhost }}>All time earned</p>
+                <p className="text-[13px] font-bold" style={{ color: c.textMid }}>{credits ? formatCredits(credits.lifetime_earned) : "0"}</p>
               </div>
-              <div style={{ borderLeft: "1px solid rgba(255,255,255,0.08)" }} className="pl-4">
-                <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.25)" }}>All time spent</p>
-                <p className="text-[13px] font-bold" style={{ color: "rgba(255,255,255,0.60)" }}>{credits ? formatCredits(credits.lifetime_spent) : "0"}</p>
+              <div style={{ borderLeft: `1px solid ${c.divider}` }} className="pl-4">
+                <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: c.textGhost }}>All time spent</p>
+                <p className="text-[13px] font-bold" style={{ color: c.textMid }}>{credits ? formatCredits(credits.lifetime_spent) : "0"}</p>
               </div>
             </div>
           )}
@@ -126,7 +164,7 @@ export default function CreditsPage() {
         {/* Not logged in */}
         {!user && (
           <div className="text-center py-12">
-            <p className="text-[13px] mb-4" style={{ color: "rgba(255,255,255,0.45)" }}>Sign in to purchase and manage credits.</p>
+            <p className="text-[13px] mb-4" style={{ color: c.textFaint }}>Sign in to purchase and manage credits.</p>
             <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px]"
               style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>Sign in →</Link>
           </div>
@@ -139,10 +177,12 @@ export default function CreditsPage() {
             { label: "Standard Brief", cost: CREDIT_COSTS.brief_standard, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
             { label: "Comprehensive Brief", cost: CREDIT_COSTS.brief_comprehensive, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
           ].map(item => (
-            <div key={item.label} className="flex items-center gap-3 p-4 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.10)", color: "#ff5100" }}>{item.icon}</div>
+            <div key={item.label} className="flex items-center gap-3 p-4 rounded-xl"
+              style={{ backgroundColor: c.cardBg, border: `1px solid ${c.cardBorder}` }}>
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: "rgba(255,81,0,0.10)", color: "#ff5100" }}>{item.icon}</div>
               <div>
-                <p className="text-[12px] font-semibold" style={{ color: "#ffffff" }}>{item.label}</p>
+                <p className="text-[12px] font-semibold" style={{ color: c.text }}>{item.label}</p>
                 <p className="font-mono text-[11px] font-bold" style={{ color: "#ff5100" }}>{item.cost} credits</p>
               </div>
             </div>
@@ -152,54 +192,53 @@ export default function CreditsPage() {
         {/* Pricing packages */}
         {user && (
           <>
-            <h2 className="text-[18px] font-bold mb-2" style={{ color: "#ffffff" }}>Credit Packages</h2>
-            <p className="text-[12px] mb-6" style={{ color: "rgba(255,255,255,0.35)" }}>Credits never expire. Priced on actual compute cost per request. Secure payment via Visa / Mastercard.</p>
+            <h2 className="text-[18px] font-bold mb-2" style={{ color: c.text }}>Credit Packages</h2>
+            <p className="text-[12px] mb-6" style={{ color: c.textFaint }}>
+              Credits never expire. Priced on actual compute cost per request. Secure payment via Visa / Mastercard.
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
               {CREDIT_PACKAGES.map(pkg => (
                 <div key={pkg.id} className="relative rounded-2xl p-6 flex flex-col gap-4"
                   style={{
-                    backgroundColor: pkg.best ? "rgba(255,81,0,0.08)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${pkg.best ? "rgba(255,81,0,0.35)" : "rgba(255,255,255,0.08)"}`,
+                    backgroundColor: pkg.best ? c.bestBg : c.cardBg,
+                    border: `1px solid ${pkg.best ? c.bestBorder : c.cardBorder}`,
                   }}>
                   {pkg.best && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full font-mono text-[9px] uppercase tracking-widest"
-                      style={{ backgroundColor: "#ff5100", color: "#000" }}>Most Popular</div>
+                      style={{ backgroundColor: "#ff5100", color: "#fff" }}>Most Popular</div>
                   )}
                   <div>
-                    <p className="font-mono text-[10px] uppercase tracking-widest mb-2" style={{ color: pkg.best ? "#ff5100" : "rgba(255,255,255,0.40)" }}>{pkg.label}</p>
-                    <p className="text-[28px] font-extrabold leading-none" style={{ color: "#ffffff" }}>${pkg.price_usd}</p>
-                    <p className="text-[12px] mt-1" style={{ color: "rgba(255,255,255,0.40)" }}>USD · one-time</p>
+                    <p className="font-mono text-[10px] uppercase tracking-widest mb-2"
+                      style={{ color: pkg.best ? "#ff5100" : c.textFaint }}>{pkg.label}</p>
+                    <p className="text-[28px] font-extrabold leading-none" style={{ color: c.text }}>${pkg.price_usd}</p>
+                    <p className="text-[12px] mt-1" style={{ color: c.textFaint }}>USD · one-time</p>
                   </div>
-                  <div className="py-3" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  <div className="py-3" style={{ borderTop: `1px solid ${c.divider}`, borderBottom: `1px solid ${c.divider}` }}>
                     <p className="text-[22px] font-extrabold" style={{ color: "#ff5100" }}>{pkg.credits.toLocaleString()}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.40)" }}>Credits</p>
-                    <p className="font-mono text-[9px] mt-1" style={{ color: "rgba(255,255,255,0.22)" }}>${(pkg.price_usd / pkg.credits * 1000).toFixed(2)} per 1,000 cr</p>
+                    <p className="font-mono text-[10px] uppercase tracking-widest" style={{ color: c.textFaint }}>Credits</p>
+                    <p className="font-mono text-[9px] mt-1" style={{ color: c.textGhost }}>
+                      ${(pkg.price_usd / pkg.credits * 1000).toFixed(2)} per 1,000 cr
+                    </p>
                   </div>
-                  <div className="space-y-1.5 text-[11.5px]" style={{ color: "rgba(255,255,255,0.55)" }}>
-                    <div className="flex items-center gap-2">
-                      <span style={{ color: "#10b981" }}>✓</span>
-                      {Math.floor(pkg.credits / CREDIT_COSTS.brief_standard)} standard briefs
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span style={{ color: "#10b981" }}>✓</span>
-                      {Math.floor(pkg.credits / CREDIT_COSTS.brief_comprehensive)} comprehensive briefs
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span style={{ color: "#10b981" }}>✓</span>
-                      {Math.floor(pkg.credits / CREDIT_COSTS.chat)} chat messages
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span style={{ color: "#10b981" }}>✓</span>
-                      Never expires
-                    </div>
+                  <div className="space-y-1.5 text-[11.5px]" style={{ color: c.textMid }}>
+                    <div className="flex items-center gap-2"><span style={{ color: "#10b981" }}>✓</span>{Math.floor(pkg.credits / CREDIT_COSTS.brief_standard)} standard briefs</div>
+                    <div className="flex items-center gap-2"><span style={{ color: "#10b981" }}>✓</span>{Math.floor(pkg.credits / CREDIT_COSTS.brief_comprehensive)} comprehensive briefs</div>
+                    <div className="flex items-center gap-2"><span style={{ color: "#10b981" }}>✓</span>{Math.floor(pkg.credits / CREDIT_COSTS.chat)} chat messages</div>
+                    <div className="flex items-center gap-2"><span style={{ color: "#10b981" }}>✓</span>Never expires</div>
                   </div>
                   <button onClick={() => buyCredits(pkg.id)} disabled={buying === pkg.id}
                     className="mt-auto w-full py-3 rounded-xl font-bold text-[13px] transition disabled:opacity-50"
-                    style={{ backgroundColor: pkg.best ? "#ff5100" : "rgba(255,255,255,0.08)", color: pkg.best ? "#ffffff" : "rgba(255,255,255,0.80)", border: pkg.best ? "none" : "1px solid rgba(255,255,255,0.12)" }}>
+                    style={{
+                      backgroundColor: pkg.best ? "#ff5100" : c.btnSecBg,
+                      color: pkg.best ? "#ffffff" : c.btnSecText,
+                      border: pkg.best ? "none" : `1px solid ${c.btnSecBdr}`,
+                    }}>
                     {buying === pkg.id ? (
                       <span className="flex items-center justify-center gap-2">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                        </svg>
                         Redirecting…
                       </span>
                     ) : `Buy ${pkg.label} →`}
@@ -209,10 +248,11 @@ export default function CreditsPage() {
             </div>
 
             {/* Bakong / KHQR section */}
-            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,81,0,0.25)", backgroundColor: "rgba(255,81,0,0.04)" }}>
-              <div className="px-6 py-5 border-b" style={{ borderColor: "rgba(255,81,0,0.15)" }}>
+            <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${c.khqrBdr}`, backgroundColor: c.khqrBg }}>
+              <div className="px-6 py-5 border-b" style={{ borderColor: c.khqrHdr }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.15)" }}>
+                  <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: "rgba(255,81,0,0.15)" }}>
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.6" strokeLinecap="round">
                       <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
                       <rect x="3" y="14" width="7" height="7" rx="1"/>
@@ -220,32 +260,38 @@ export default function CreditsPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-[14px] font-bold" style={{ color: "#ffffff" }}>Pay with Bakong / KHQR</p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.35)" }}>ABA · Wing · ACLEDA · Chip Mong · Any KHQR bank</p>
+                    <p className="text-[14px] font-bold" style={{ color: c.text }}>Pay with Bakong / KHQR</p>
+                    <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: c.textFaint }}>
+                      ABA · Wing · ACLEDA · Chip Mong · Any KHQR bank
+                    </p>
                   </div>
                   <span className="ml-auto font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shrink-0"
                     style={{ backgroundColor: "rgba(16,185,129,0.12)", color: "#10b981", border: "1px solid rgba(16,185,129,0.25)" }}>Live</span>
                 </div>
-                <p className="mt-3 text-[12px]" style={{ color: "rgba(255,255,255,0.45)" }}>
+                <p className="mt-3 text-[12px]" style={{ color: c.textFaint }}>
                   Scan the QR code with any Cambodian banking app that supports KHQR. Credits are added instantly after payment confirmation.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-0 divide-y md:divide-y-0 md:divide-x" style={{ "--tw-divide-opacity": 1, borderColor: "rgba(255,255,255,0.07)" } as React.CSSProperties}>
-                {CREDIT_PACKAGES.map(pkg => (
-                  <div key={pkg.id} className="px-5 py-4 flex items-center justify-between gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3"
+                style={{ borderTop: `1px solid ${c.divider}` }}>
+                {CREDIT_PACKAGES.map((pkg, i) => (
+                  <div key={pkg.id} className="px-5 py-4 flex items-center justify-between gap-4"
+                    style={{ borderLeft: i > 0 ? `1px solid ${c.divider}` : undefined }}>
                     <div>
-                      <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>{pkg.label}</p>
-                      <p className="text-[18px] font-extrabold leading-none" style={{ color: "#ffffff" }}>${pkg.price_usd}</p>
+                      <p className="font-mono text-[9px] uppercase tracking-widest mb-0.5" style={{ color: c.textFaint }}>{pkg.label}</p>
+                      <p className="text-[18px] font-extrabold leading-none" style={{ color: c.text }}>${pkg.price_usd}</p>
                       <p className="font-mono text-[10px] mt-0.5" style={{ color: "#ff5100" }}>{pkg.credits.toLocaleString()} cr</p>
                     </div>
                     <button
                       onClick={() => buyWithKhqr(pkg.id)}
                       disabled={khqrBuying === pkg.id}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-mono text-[10px] uppercase tracking-widest transition disabled:opacity-50 shrink-0"
-                      style={{ backgroundColor: "#ff5100", color: "#000", fontWeight: 700 }}>
+                      style={{ backgroundColor: "#ff5100", color: "#fff", fontWeight: 700 }}>
                       {khqrBuying === pkg.id ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                        </svg>
                       ) : (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
@@ -263,7 +309,7 @@ export default function CreditsPage() {
 
         {/* FAQ */}
         <div className="mt-10">
-          <h3 className="text-[15px] font-bold mb-4" style={{ color: "#ffffff" }}>Credits FAQ</h3>
+          <h3 className="text-[15px] font-bold mb-4" style={{ color: c.text }}>Credits FAQ</h3>
           <div className="space-y-4">
             {[
               { q: "Do credits expire?", a: "No. Purchased credits never expire. New user welcome credits (500 free) also carry over indefinitely." },
@@ -271,9 +317,10 @@ export default function CreditsPage() {
               { q: "How is the price calculated?", a: "Credit prices are based on actual compute costs per request — longer, more complex briefs consume more compute and cost more credits. Prices are set to cover infrastructure and ongoing research into Cambodia's industrial data." },
               { q: "Can I get a refund?", a: "Unused credits can be refunded within 30 days of purchase. Contact advisory@thegentrylab.io." },
             ].map((item, i) => (
-              <div key={i} className="p-4 rounded-xl" style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-                <p className="text-[13px] font-semibold mb-1" style={{ color: "#ffffff" }}>{item.q}</p>
-                <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.45)" }}>{item.a}</p>
+              <div key={i} className="p-4 rounded-xl"
+                style={{ backgroundColor: c.cardBg, border: `1px solid ${c.cardBorder}` }}>
+                <p className="text-[13px] font-semibold mb-1" style={{ color: c.text }}>{item.q}</p>
+                <p className="text-[12px]" style={{ color: c.textMid }}>{item.a}</p>
               </div>
             ))}
           </div>
