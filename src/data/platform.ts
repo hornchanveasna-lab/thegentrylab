@@ -79,6 +79,13 @@ export interface MapSite {
   seasonal_output_pct?: number;
   operator?: string;
   year_commissioned?: number;
+  developer?: string;
+  financier?: string;
+  tributary?: string;
+  avg_annual_mwh?: number;
+  eia_registered?: boolean;
+  eia_type?: string;
+  eia_company?: string;
   website?: string;
   phone?: string;
   // Richer site detail fields

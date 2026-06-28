@@ -2772,7 +2772,8 @@ function Inspector({
         {/* Key info table */}
         {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
           site.tenant_count || site.export_value_usd || site.employee_count || site.zone_types ||
-          site.on_site_facilities || site.city_distance_km || site.stock_ticker) && (
+          site.on_site_facilities || site.city_distance_km || site.stock_ticker ||
+          site.developer || site.financier || site.capacity_mw || site.eia_registered) && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
@@ -2783,10 +2784,46 @@ function Inspector({
                     <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.operator}</td>
                   </tr>
                 )}
+                {site.developer && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "32%" }}>Developer</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.developer}</td>
+                  </tr>
+                )}
+                {site.financier && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Financier</td>
+                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.financier}</td>
+                  </tr>
+                )}
+                {site.capacity_mw && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Capacity</td>
+                    <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>
+                      {site.capacity_mw} MW{site.avg_annual_mwh ? ` · ${(site.avg_annual_mwh / 1000).toFixed(0)} GWh/yr` : ""}
+                    </td>
+                  </tr>
+                )}
                 {site.year_commissioned && (
                   <tr>
                     <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Est.</td>
                     <td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.year_commissioned}</td>
+                  </tr>
+                )}
+                {site.tributary && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Watershed</td>
+                    <td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.tributary}</td>
+                  </tr>
+                )}
+                {site.eia_registered && (
+                  <tr>
+                    <td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>EIA</td>
+                    <td style={{ paddingBottom: "6px", verticalAlign: "top" }}>
+                      <span style={{ display: "inline-block", background: "#16a34a22", color: "#16a34a", border: "1px solid #16a34a55", borderRadius: "4px", padding: "1px 6px", fontSize: "10px", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}>
+                        {site.eia_type === "Completed Environmental Impact Assessment" ? "Full EIA" : "Initial EIA"}
+                      </span>
+                    </td>
                   </tr>
                 )}
                 {site.stock_ticker && (
@@ -3132,13 +3169,19 @@ function Inspector({
         {/* Key info table */}
         {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
           site.tenant_count || site.export_value_usd || site.employee_count || site.zone_types ||
-          site.on_site_facilities || site.city_distance_km || site.stock_ticker) && (
+          site.on_site_facilities || site.city_distance_km || site.stock_ticker ||
+          site.developer || site.financier || site.capacity_mw || site.eia_registered) && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
               <tbody>
                 {site.operator && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "32%" }}>Operator</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.operator}</td></tr>)}
+                {site.developer && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "32%" }}>Developer</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.developer}</td></tr>)}
+                {site.financier && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Financier</td><td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.financier}</td></tr>)}
+                {site.capacity_mw && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Capacity</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.capacity_mw} MW{site.avg_annual_mwh ? ` · ${(site.avg_annual_mwh / 1000).toFixed(0)} GWh/yr` : ""}</td></tr>)}
                 {site.year_commissioned && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Est.</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.year_commissioned}</td></tr>)}
+                {site.tributary && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Watershed</td><td style={{ color: textMuted, paddingBottom: "6px", verticalAlign: "top" }}>{site.tributary}</td></tr>)}
+                {site.eia_registered && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>EIA</td><td style={{ paddingBottom: "6px", verticalAlign: "top" }}><span style={{ display: "inline-block", background: "#16a34a22", color: "#16a34a", border: "1px solid #16a34a55", borderRadius: "4px", padding: "1px 6px", fontSize: "10px", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}>{site.eia_type === "Completed Environmental Impact Assessment" ? "Full EIA" : "Initial EIA"}</span></td></tr>)}
                 {site.stock_ticker && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Listed</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top", fontFamily: "var(--font-mono)" }}>{site.stock_ticker}</td></tr>)}
                 {site.tenant_count && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Tenants</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.tenant_count} companies{site.country_count ? ` · ${site.country_count} countries` : ""}</td></tr>)}
                 {site.employee_count && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top" }}>Workers</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>~{site.employee_count.toLocaleString()}</td></tr>)}
