@@ -49,6 +49,7 @@ export function useMapSites() {
         targetIndustries: r.target_industries ?? undefined,
         recommendation: r.recommendation ?? undefined,
         image_url: r.image_url ?? undefined,
+        photos: r.photos ?? undefined,
         coordVerified: r.coord_verified ?? undefined,
         eip_management: r.eip_management ?? undefined,
         eip_environmental: r.eip_environmental ?? undefined,

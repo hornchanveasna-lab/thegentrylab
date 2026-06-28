@@ -55,6 +55,7 @@ export interface MapSite {
   targetIndustries?: string[];
   recommendation?: string;
   image_url?: string;
+  photos?: string[];
   coordVerified?: boolean;
   port_distance_km?: number;
   port_time_min?: number;

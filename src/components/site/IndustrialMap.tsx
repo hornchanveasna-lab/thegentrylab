@@ -2118,7 +2118,9 @@ function Inspector({
   const { data: siteImages = [] } = useSiteImages(site.id);
   const images = siteImages.length > 0
     ? siteImages.map((i) => i.url)
-    : site.image_url ? [site.image_url] : [];
+    : (site.photos && site.photos.length > 0)
+      ? site.photos
+      : site.image_url ? [site.image_url] : [];
   const [imgIdx, setImgIdx] = useState(0);
   useEffect(() => { setImgIdx(0); }, [site.id]);
   // Auto-scroll every 4s when multiple images
