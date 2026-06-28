@@ -790,19 +790,19 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   "Koh Kong Port":                  { lat: 11.6236, lng: 102.9837 },
   // Borders — Cambodia/Vietnam
   "Prek Chak / Xa Xia":            { lat: 10.4280, lng: 104.4526 }, // Google Maps: Prek Chak International Border Check Point
-  "Phnom Den / Tinh Bien":         { lat: 10.5308, lng: 104.9519 }, // Takeo–An Giang (adjusted to border line)
-  "Kaam Samnor / Vinh Xuong":      { lat: 10.9117, lng: 105.1912 }, // Kandal–An Giang, Mekong crossing (OSM barrier nodes)
-  "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1715 }, // Svay Rieng–Tay Ninh (Wikipedia: Moc Bai 106.175°E)
-  "Trapang Phlong / Xa Mat":       { lat: 11.8602, lng: 106.0248 }, // Tbong Khmum–Tay Ninh
-  "Trapang Sre / Loc Ninh":        { lat: 11.8489, lng: 106.5700 }, // Kratie–Binh Phuoc (Loc Ninh ~106.59°E)
-  "O'Yadav / Le Thanh":            { lat: 13.9167, lng: 107.4833 }, // Ratanakiri–Gia Lai (Le Thanh border area)
+  "Phnom Den / Tinh Bien":         { lat: 10.6027, lng: 104.9290 }, // Google Maps: Phnom Den Border Gate
+  "Kaam Samnor / Vinh Xuong":      { lat: 10.9117, lng: 105.1912 }, // OSM barrier nodes
+  "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1715 }, // OSM nodes confirmed
+  "Trapang Phlong / Xa Mat":       { lat: 11.6677, lng: 105.9813 }, // Google Maps: Trapang Phlong Border Check Point
+  "Trapang Sre / Loc Ninh":        { lat: 11.9699, lng: 106.5415 }, // Google Maps: Trapaing Sre International Check Point
+  "O'Yadav / Le Thanh":            { lat: 13.7682, lng: 107.4960 }, // Google Maps: Oyadav Customs and Excise Office
   // Cambodia/Thailand
-  "Cham Yeam / Hat Lek":           { lat: 11.6514, lng: 102.9093 }, // OSM node: "Immigration Hat Lek"
-  "Psar Pruhm / Ban Pakard":       { lat: 12.5497, lng: 102.5563 }, // Pailin–Chanthaburi (unverified — needs Google Maps pin)
-  "Poipet / Aranyaprathet":        { lat: 13.6614, lng: 102.5498 }, // OSM node: "Poipet" border control
-  "O'Smach / Chong Jom":           { lat: 14.1611, lng: 103.0742 }, // Oddar Meanchey–Surin
+  "Cham Yeam / Hat Lek":           { lat: 11.6514, lng: 102.9093 }, // OSM: "Immigration Hat Lek"
+  "Psar Pruhm / Ban Pakard":       { lat: 12.9277, lng: 102.4954 }, // Google Maps: Psar Pruhm border checkpoint
+  "Poipet / Aranyaprathet":        { lat: 13.6614, lng: 102.5498 }, // OSM: "Poipet" border control node
+  "O'Smach / Chong Jom":           { lat: 14.4341, lng: 103.6996 }, // Google Maps: Osmach Customs Check Point
   // Cambodia/Laos
-  "Veun Kham / Don Kralor":        { lat: 13.9856, lng: 105.8100 }, // Stung Treng–Champasak (Mekong crossing)
+  "Veun Kham / Don Kralor":        { lat: 13.9217, lng: 106.0305 }, // Google Maps: Trapang Kreal Border Check Point
 };
 
 // Translates DB shorthand values to REF_COORDS keys
