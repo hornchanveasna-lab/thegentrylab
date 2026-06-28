@@ -1527,8 +1527,8 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
         </APIProvider>
       </div>
 
-      {/* ── Search bar (top-center) ────────────────────────── */}
-      <div ref={searchWrapRef} className="absolute top-4 left-1/2 -translate-x-1/2 z-[600] w-[min(440px,calc(100vw-340px))]">
+      {/* ── Search bar (beside LAYERS button, top-left) ───── */}
+      <div ref={searchWrapRef} className="absolute top-4 z-[600] w-[min(320px,calc(100vw-220px))]" style={{ left: "168px" }}>
         <form
           onSubmit={(e) => { e.preventDefault(); setSuggestions([]); setShowSuggestions(false); handleLocationSearch(); }}
           className="flex items-center bg-black/95 backdrop-blur border border-white/15 shadow-2xl"
