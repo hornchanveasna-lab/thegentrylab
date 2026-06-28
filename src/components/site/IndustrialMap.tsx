@@ -1178,13 +1178,13 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const { data: allResearch = RESEARCH } = useResearch();
   const { data: allNews = NEWS }         = useNews();
   const { data: allProjects = PROJECTS } = useProjects();
-  const [active, setActive] = useState<Set<LayerGroup>>(new Set(ALL_LAYERS));
+  const [active, setActive] = useState<Set<LayerGroup>>(new Set(["investment"] as LayerGroup[]));
   const [selected, setSelected] = useState<MapSite | null>(null);
   const [query, setQuery]   = useState("");
-  const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({});
+  const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({ investment: "sez" });
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
-  const [floodVisible, setFloodVisible] = useState(false);
+  const [floodVisible, setFloodVisible] = useState(true);
 const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
   const [areaOpacity, setAreaOpacity] = useState<Record<AreaKey, number>>(
     () => Object.fromEntries(ALL_AREAS.map((k) => [k, AREA_LAYERS[k].defaultOpacity])) as Record<AreaKey, number>
