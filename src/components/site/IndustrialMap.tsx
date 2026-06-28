@@ -789,7 +789,7 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   "Sihanoukville Autonomous Port":  { lat: 10.6167, lng: 103.5167 },
   "Koh Kong Port":                  { lat: 11.6236, lng: 102.9837 },
   // Borders — Cambodia/Vietnam
-  "Prek Chak / Xa Xia":            { lat: 10.4469, lng: 104.5282 }, // Kep–Kien Giang, OSM border segment junction node
+  "Prek Chak / Xa Xia":            { lat: 10.4280, lng: 104.4526 }, // Google Maps: Prek Chak International Border Check Point
   "Phnom Den / Tinh Bien":         { lat: 10.5308, lng: 104.9519 }, // Takeo–An Giang (adjusted to border line)
   "Kaam Samnor / Vinh Xuong":      { lat: 10.9117, lng: 105.1912 }, // Kandal–An Giang, Mekong crossing (OSM barrier nodes)
   "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1715 }, // Svay Rieng–Tay Ninh (Wikipedia: Moc Bai 106.175°E)
