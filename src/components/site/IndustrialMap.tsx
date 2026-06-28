@@ -1181,7 +1181,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [active, setActive] = useState<Set<LayerGroup>>(new Set(["investment"] as LayerGroup[]));
   const [selected, setSelected] = useState<MapSite | null>(null);
   const [query, setQuery]   = useState("");
-  const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, SiteKind | "all">>>({ investment: "sez" });
+  const [subKinds, setSubKinds] = useState<Partial<Record<LayerGroup, Set<SiteKind>>>>({ investment: new Set(["sez"] as SiteKind[]) });
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(true);
@@ -1314,7 +1314,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     return sites.filter((s) => {
       if (!active.has(s.layer)) return false;
       const subKind = subKinds[s.layer];
-      if (subKind && subKind !== "all" && s.kind !== subKind) return false;
+      if (subKind && subKind.size > 0 && !subKind.has(s.kind as SiteKind)) return false;
       if (q && !s.name.toLowerCase().includes(q) && !s.province.toLowerCase().includes(q)) return false;
       return true;
     });
@@ -1376,8 +1376,14 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
       return next;
     });
 
-  const setSubKind = (layer: LayerGroup, kind: SiteKind | "all") =>
-    setSubKinds((prev) => ({ ...prev, [layer]: kind }));
+  const toggleSubKind = (layer: LayerGroup, kind: SiteKind | "all") =>
+    setSubKinds((prev) => {
+      const cur = new Set(prev[layer] ?? []);
+      if (kind === "all") return { ...prev, [layer]: new Set<SiteKind>() };
+      if (cur.has(kind as SiteKind)) { cur.delete(kind as SiteKind); }
+      else { cur.add(kind as SiteKind); }
+      return { ...prev, [layer]: cur };
+    });
 
   const toggleArea = (k: AreaKey) =>
     setAreaActive((prev) => {
@@ -1648,13 +1654,18 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                       {subkinds.map((sk) => (
                         <button
                           key={sk.value}
-                          onClick={() => setSubKind(layer, sk.value)}
+                          onClick={() => toggleSubKind(layer, sk.value)}
                           className="px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider border transition"
-                          style={{
-                            borderColor: (subKinds[layer] ?? "all") === sk.value ? meta.color : "rgba(255,255,255,0.1)",
-                            color: (subKinds[layer] ?? "all") === sk.value ? meta.color : "rgba(255,255,255,0.3)",
-                            backgroundColor: (subKinds[layer] ?? "all") === sk.value ? `${meta.color}15` : "transparent",
-                          }}
+                          style={(() => {
+                            const sel = subKinds[layer];
+                            const isAll = sk.value === "all";
+                            const active = isAll ? (!sel || sel.size === 0) : (sel?.has(sk.value as SiteKind) ?? false);
+                            return {
+                              borderColor: active ? meta.color : "rgba(255,255,255,0.1)",
+                              color: active ? meta.color : "rgba(255,255,255,0.3)",
+                              backgroundColor: active ? `${meta.color}15` : "transparent",
+                            };
+                          })()}
                         >
                           {sk.label}
                         </button>
