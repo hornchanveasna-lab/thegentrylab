@@ -796,7 +796,7 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   "O'Smach / Chong Jom":           { lat: 14.1611, lng: 103.0761 },
   "O'Yadav / Le Thanh":            { lat: 13.7500, lng: 107.5333 },
   "Phnom Den / Tinh Bien":         { lat: 10.5083, lng: 104.9472 },
-  "Prek Chak / Xa Xia":            { lat: 10.4614, lng: 104.0217 },
+  "Prek Chak / Xa Xia":            { lat: 10.4553, lng: 104.5086 },
   "Psar Pruhm / Ban Pakard":       { lat: 12.5497, lng: 102.5572 },
   "Trapang Phlong / Xa Mat":       { lat: 11.8600, lng: 106.0269 },
   "Trapang Sre / Loc Ninh":        { lat: 11.8489, lng: 106.5806 },

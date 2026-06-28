@@ -190,7 +190,7 @@ export const CORRIDORS: Corridor[] = [
   },
   {
     id: "nr2",
-    name: "National Road 2 — Phnom Penh to Kep",
+    name: "National Road 2 — Phnom Penh to Prek Chak Border",
     shortName: "NR2",
     color: "#60a5fa",
     waypoints: [
@@ -210,8 +210,13 @@ export const CORRIDORS: Corridor[] = [
       [10.6012, 104.1811],[10.6017, 104.1862],[10.6069, 104.1885],[10.6118, 104.2145],
       [10.6106, 104.2270],[10.5907, 104.2505],[10.5670, 104.2699],[10.5535, 104.2886],
       [10.5131, 104.2919],[10.5002, 104.2888],[10.4835, 104.2936],[10.4846, 104.2959],
+      // Road 33 east through Kep to Vietnam border
+      [10.4836, 104.3078],[10.4820, 104.3180],[10.4790, 104.3320],[10.4759, 104.3490],
+      [10.4730, 104.3680],[10.4710, 104.3870],[10.4695, 104.4070],[10.4685, 104.4270],
+      [10.4660, 104.4480],[10.4630, 104.4680],[10.4600, 104.4870],[10.4575, 104.5020],
+      [10.4553, 104.5086],
     ],
-    description: "Southern corridor through Takeo, linking PP to Kampot and Kep.",
+    description: "Southern corridor through Takeo and Kep; terminates at Prek Chak / Xa Xia border with Vietnam.",
   },
   {
     id: "nr3",
