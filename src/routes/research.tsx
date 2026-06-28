@@ -149,7 +149,7 @@ function ResearchCard({
   const stats = BRIEF_STATS[brief.id] ?? [];
   const photo = BRIEF_PHOTOS[brief.id];
 
-  const cardBg = isDark ? "#0d0d0e" : "#f8f7f5";
+  const cardBg = isDark ? "#0d0d0e" : "#e8e8e8";
 
   return (
     <article className="group relative overflow-hidden transition-all duration-300 flex flex-col" style={{ backgroundColor: cardBg, border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.08)" }}>
@@ -262,7 +262,7 @@ function ResearchPage() {
   const [featured, ...rest] = filtered;
 
   return (
-    <div className="min-h-screen font-sans flex flex-col" style={{ backgroundColor: isDark ? "#0a0a0b" : "#f0ede8", color: isDark ? "#fff" : "#111" }}>
+    <div className="min-h-screen font-sans flex flex-col" style={{ backgroundColor: isDark ? "#0a0a0b" : "#e2e2e2", color: isDark ? "#fff" : "#111" }}>
       <TopNav />
 
       {/* ── Hero strip ── */}
