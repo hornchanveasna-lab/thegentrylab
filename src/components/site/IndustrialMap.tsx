@@ -791,7 +791,7 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   // Borders — Cambodia/Vietnam
   "Prek Chak / Xa Xia":            { lat: 10.4553, lng: 104.5086 }, // Kep–Kien Giang (verified)
   "Phnom Den / Tinh Bien":         { lat: 10.5308, lng: 104.9519 }, // Takeo–An Giang (adjusted to border line)
-  "Kaam Samnor / Vinh Xuong":      { lat: 11.0994, lng: 105.1422 }, // Kandal–An Giang, Mekong crossing
+  "Kaam Samnor / Vinh Xuong":      { lat: 10.9117, lng: 105.1912 }, // Kandal–An Giang, Mekong crossing (OSM barrier nodes)
   "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1715 }, // Svay Rieng–Tay Ninh (Wikipedia: Moc Bai 106.175°E)
   "Trapang Phlong / Xa Mat":       { lat: 11.8602, lng: 106.0248 }, // Tbong Khmum–Tay Ninh
   "Trapang Sre / Loc Ninh":        { lat: 11.8489, lng: 106.5700 }, // Kratie–Binh Phuoc (Loc Ninh ~106.59°E)
