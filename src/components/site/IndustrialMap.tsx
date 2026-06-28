@@ -791,15 +791,15 @@ const REF_COORDS: Record<string, { lat: number; lng: number }> = {
   // Borders — Cambodia/Vietnam
   "Prek Chak / Xa Xia":            { lat: 10.4280, lng: 104.4526 }, // Google Maps: Prek Chak International Border Check Point
   "Phnom Den / Tinh Bien":         { lat: 10.6027, lng: 104.9290 }, // Google Maps: Phnom Den Border Gate
-  "Kaam Samnor / Vinh Xuong":      { lat: 10.9117, lng: 105.1912 }, // OSM barrier nodes
-  "Bavet / Moc Bai":               { lat: 11.0768, lng: 106.1715 }, // OSM nodes confirmed
+  "Kaam Samnor / Vinh Xuong":      { lat: 10.9128, lng: 105.1787 }, // Google Maps: Cambodian checkpoint
+  "Bavet / Moc Bai":               { lat: 11.0755, lng: 106.1715 }, // Google Maps: Bavet Border Check Point
   "Trapang Phlong / Xa Mat":       { lat: 11.6677, lng: 105.9813 }, // Google Maps: Trapang Phlong Border Check Point
   "Trapang Sre / Loc Ninh":        { lat: 11.9699, lng: 106.5415 }, // Google Maps: Trapaing Sre International Check Point
   "O'Yadav / Le Thanh":            { lat: 13.7682, lng: 107.4960 }, // Google Maps: Oyadav Customs and Excise Office
   // Cambodia/Thailand
-  "Cham Yeam / Hat Lek":           { lat: 11.6514, lng: 102.9093 }, // OSM: "Immigration Hat Lek"
+  "Cham Yeam / Hat Lek":           { lat: 11.6506, lng: 102.9102 }, // Google Maps: Cham Yeam Border Check Point
   "Psar Pruhm / Ban Pakard":       { lat: 12.9277, lng: 102.4954 }, // Google Maps: Psar Pruhm border checkpoint
-  "Poipet / Aranyaprathet":        { lat: 13.6614, lng: 102.5498 }, // OSM: "Poipet" border control node
+  "Poipet / Aranyaprathet":        { lat: 13.6612, lng: 102.5507 }, // Google Maps: Poipet Border Gate Police
   "O'Smach / Chong Jom":           { lat: 14.4341, lng: 103.6996 }, // Google Maps: Osmach Customs Check Point
   // Cambodia/Laos
   "Veun Kham / Don Kralor":        { lat: 13.9217, lng: 106.0305 }, // Google Maps: Trapang Kreal Border Check Point
