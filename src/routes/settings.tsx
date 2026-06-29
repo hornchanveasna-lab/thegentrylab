@@ -15,10 +15,6 @@ const BASEMAPS = [
   { id: "terrain",    label: "Terrain"    },
 ];
 
-const LANGUAGES = [
-  { id: "en", label: "English" },
-  { id: "km", label: "ភាសាខ្មែរ" },
-];
 
 function Toggle({ on, onChange, label, sub }: { on: boolean; onChange: (v: boolean) => void; label: string; sub?: string }) {
   return (
@@ -71,10 +67,7 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     try { return (localStorage.getItem("tgl_theme") as "dark" | "light") || "dark"; } catch { return "dark"; }
   });
-  const [lang, setLang] = useState<"en" | "km">(() => {
-    try { return (localStorage.getItem("tgl_lang") as "en" | "km") || "en"; } catch { return "en"; }
-  });
-  const [defaultBasemap, setDefaultBasemap] = useState(() => {
+const [defaultBasemap, setDefaultBasemap] = useState(() => {
     try { return localStorage.getItem("tgl_default_basemap") || "dark"; } catch { return "dark"; }
   });
   const [clusterSites, setClusterSites] = useState(() => {
@@ -89,7 +82,6 @@ export default function SettingsPage() {
   const [digestLoaded, setDigestLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate({ to: "/login" }); return; }
@@ -107,13 +99,7 @@ export default function SettingsPage() {
     try { localStorage.setItem("tgl_theme", t); } catch { /* */ }
   };
 
-  const applyLang = (l: "en" | "km") => {
-    setLang(l);
-    try { localStorage.setItem("tgl_lang", l); } catch { /* */ }
-    window.dispatchEvent(new Event("tgl-lang-change"));
-  };
-
-  const save = async () => {
+const save = async () => {
     // Persist all localStorage settings
     try {
       localStorage.setItem("tgl_default_basemap", defaultBasemap);
@@ -157,7 +143,6 @@ export default function SettingsPage() {
           <section className="bg-white/[0.025] border border-white/8 rounded-xl p-5 space-y-5">
             <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">Appearance</h2>
             <RadioGroup label="Theme" options={[{ id: "dark", label: "Dark" }, { id: "light", label: "Light" }]} value={theme} onChange={applyTheme} />
-            <RadioGroup label="Language" options={LANGUAGES} value={lang} onChange={applyLang} />
           </section>
 
           {/* Map defaults */}
@@ -229,35 +214,6 @@ export default function SettingsPage() {
                 className="px-4 py-2 rounded-lg border border-white/10 font-mono text-[10px] uppercase tracking-widest text-white/50 hover:border-white/25 hover:text-white/70 transition-all">
                 Sign Out
               </button>
-            </div>
-            <div className="flex items-center justify-between gap-4 pt-1 border-t border-red-900/20">
-              <div>
-                <p className="text-[13px] text-white/70">Delete account</p>
-                <p className="text-[11px] text-white/30 mt-0.5">Permanently remove your data and access</p>
-              </div>
-              {!deleteConfirm ? (
-                <button onClick={() => setDeleteConfirm(true)}
-                  className="px-4 py-2 rounded-lg border border-red-900/30 font-mono text-[10px] uppercase tracking-widest text-red-400/50 hover:border-red-400/40 hover:text-red-400 transition-all">
-                  Delete
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button onClick={() => setDeleteConfirm(false)}
-                    className="px-3 py-1.5 rounded-lg border border-white/10 font-mono text-[9px] uppercase tracking-widest text-white/40 hover:text-white/60 transition-all">
-                    Cancel
-                  </button>
-                  <button onClick={async () => {
-                    if (!user || !supabase) return;
-                    // Request deletion — sign out and note the request
-                    await supabase.from("profiles").upsert({ user_id: user.id, bio: "[DELETION REQUESTED]", updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-                    await signOut();
-                    navigate({ to: "/" });
-                  }}
-                    className="px-3 py-1.5 rounded-lg bg-red-900/30 border border-red-700/40 font-mono text-[9px] uppercase tracking-widest text-red-400 hover:bg-red-900/50 transition-all">
-                    Confirm Delete
-                  </button>
-                </div>
-              )}
             </div>
           </section>
 
