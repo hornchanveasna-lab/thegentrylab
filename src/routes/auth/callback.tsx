@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -7,20 +7,18 @@ export const Route = createFileRoute("/auth/callback")({
 });
 
 function AuthCallback() {
-  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
-      navigate({ to: "/" });
+      window.location.href = "/";
       return;
     }
 
     const code = new URLSearchParams(window.location.search).get("code");
 
     if (!code) {
-      // No code — maybe user cancelled or already logged in
-      navigate({ to: "/" });
+      window.location.href = "/";
       return;
     }
 
@@ -28,10 +26,14 @@ function AuthCallback() {
       if (error) {
         setError(error.message);
       } else {
-        navigate({ to: "/" });
+        // Full reload so AuthProvider re-mounts and reads the persisted
+        // session from localStorage via getSession() — avoids onAuthStateChange timing issues.
+        window.location.href = "/";
       }
+    }).catch((err) => {
+      setError(err?.message ?? "Unexpected error");
     });
-  }, [navigate]);
+  }, []);
 
   if (error) {
     return (
