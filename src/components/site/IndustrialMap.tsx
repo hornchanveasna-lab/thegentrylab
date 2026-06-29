@@ -2022,10 +2022,10 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
 
         if (isProtected) {
           const zoneCatColors: Record<string, string> = {
-            "Core zone": "#ef4444",
-            "Conservation zone": "#f97316",
-            "Sustainable use zone": "#eab308",
-            "Community zone": "#22c55e",
+            "Core zone":           "#375623",
+            "Conservation zone":   "#a9d18e",
+            "Sustainable use zone":"#d6e87a",
+            "Community zone":      "#f4b981",
           };
           const zoneColor = zoneCatColors[p.zone_category as string] ?? acc;
           return (
