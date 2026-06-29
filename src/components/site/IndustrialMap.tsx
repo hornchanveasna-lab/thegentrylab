@@ -138,7 +138,7 @@ const LAYER_SUBKINDS: Partial<Record<LayerGroup, { label: string; value: SiteKin
 type AreaKey =
   | "provinces" | "districts" | "communes" | "sez_footprints"
   | "protected" | "elc" | "powergrid" | "mining"
-  | "road_corridors" | "main_roads" | "ip_land";
+  | "railway" | "road_network" | "main_road" | "other_road" | "ip_land";
 
 interface AreaDef {
   label: string;
@@ -196,15 +196,25 @@ const AREA_LAYERS: Record<AreaKey, AreaDef> = {
     fillOpacity: 0.14, strokeWeight: 1, defaultOpacity: 0.75,
     hint: "Mining license areas", source: "ODC", available: false,
   },
-  road_corridors: {
-    label: "Road Corridors", color: "#e2e8f0", url: "/data/cambodia_road_corridors.geojson",
+  railway: {
+    label: "Railway", color: "#fbbf24", url: "/data/cambodia_railway.geojson",
     fillOpacity: 0, strokeWeight: 3, defaultOpacity: 0.9,
-    hint: "46 national road & railway routes — existing + proposed (ODC)", source: "Open Development Cambodia", available: true,
+    hint: "46 national rail routes — 41 existing + 5 proposed (ODC)", source: "Open Development Cambodia", available: true,
   },
-  main_roads: {
-    label: "Main Roads", color: "#94a3b8", url: "/data/cambodia_main_roads.geojson",
-    fillOpacity: 0, strokeWeight: 2, defaultOpacity: 0.75,
-    hint: "Trunk & primary roads — 3,642 segments (OSM 2022)", source: "OpenStreetMap 2022", available: true,
+  road_network: {
+    label: "Road Network", color: "#e2e8f0", url: "/data/cambodia_road_network.geojson",
+    fillOpacity: 0, strokeWeight: 2.5, defaultOpacity: 0.85,
+    hint: "Trunk & motorway arteries — 2,526 segments (OSM 2022)", source: "OpenStreetMap 2022", available: true,
+  },
+  main_road: {
+    label: "Main Road", color: "#94a3b8", url: "/data/cambodia_main_road.geojson",
+    fillOpacity: 0, strokeWeight: 1.5, defaultOpacity: 0.75,
+    hint: "Primary & secondary roads — 3,477 segments (OSM 2022)", source: "OpenStreetMap 2022", available: true,
+  },
+  other_road: {
+    label: "Other Road", color: "#475569", url: "/data/cambodia_other_road.geojson",
+    fillOpacity: 0, strokeWeight: 1, defaultOpacity: 0.6,
+    hint: "Tertiary roads — 3,515 segments (OSM 2022)", source: "OpenStreetMap 2022", available: true,
   },
   ip_land: {
     label: "Indigenous Communal Land", color: "#f97316", url: "/data/cambodia_ip_land.geojson",
@@ -1742,8 +1752,8 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                       </div>
                     );
                   })()}
-                  {/* Road Corridors + Main Roads — nested under Corridors */}
-                  {layer === "corridors" && (["road_corridors", "main_roads"] as AreaKey[]).map((akey) => {
+                  {/* Railway + Road layers — nested under Corridors */}
+                  {layer === "corridors" && (["railway", "road_network", "main_road", "other_road"] as AreaKey[]).map((akey) => {
                     const def = AREA_LAYERS[akey];
                     const aon = areaActive.has(akey);
                     return (
@@ -1818,7 +1828,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           {/* Area layers */}
           <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Area Data</p>
-            {ALL_AREAS.filter((k) => k !== "protected" && k !== "ip_land" && k !== "road_corridors" && k !== "main_roads").map((k) => {
+            {ALL_AREAS.filter((k) => k !== "protected" && k !== "ip_land" && k !== "railway" && k !== "road_network" && k !== "main_road" && k !== "other_road").map((k) => {
               const def = AREA_LAYERS[k];
               const on  = areaActive.has(k);
               return (
