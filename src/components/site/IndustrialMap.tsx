@@ -1346,10 +1346,8 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     });
   }, [active, query, subKinds, previewMode, sites]);
 
-  const visibleCorridors = useMemo(
-    () => (active.has("corridors") ? CORRIDORS : []),
-    [active],
-  );
+  // Corridors layer is now a folder — no standalone corridor lines
+  const visibleCorridors: typeof CORRIDORS = [];
 
   // Road layers use light colors on dark basemap; flip to dark on light basemap
   const ROAD_LIGHT_MODE_COLORS: Partial<Record<AreaKey, string>> = {
@@ -1365,6 +1363,9 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     for (const k of ALL_AREAS) {
       const def = AREA_LAYERS[k];
       if (!def.url || !areaActive.has(k)) continue;
+      // Road-type layers are children of the Corridors folder — hide when Corridors is OFF
+      const ROAD_KEYS: AreaKey[] = ["railway", "road_network", "main_road", "other_road"];
+      if (ROAD_KEYS.includes(k) && !active.has("corridors")) continue;
       const effectiveColor = (!isDark && ROAD_LIGHT_MODE_COLORS[k]) ? ROAD_LIGHT_MODE_COLORS[k]! : def.color;
       const [r, g, b] = hexToRgb(effectiveColor);
       const op = areaOpacity[k] ?? def.defaultOpacity;
@@ -1406,7 +1407,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     }
 
     return layers;
-  }, [areaActive, areaOpacity, covActive, covOpacity, isDark]);
+  }, [areaActive, areaOpacity, covActive, covOpacity, isDark, active]);
 
   const toggle = (g: LayerGroup) =>
     setActive((prev) => {
