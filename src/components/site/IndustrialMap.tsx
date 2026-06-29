@@ -1351,6 +1351,13 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     [active],
   );
 
+  // Road layers use light colors on dark basemap; flip to dark on light basemap
+  const ROAD_LIGHT_MODE_COLORS: Partial<Record<AreaKey, string>> = {
+    road_network: "#1e293b",
+    main_road:    "#475569",
+    other_road:   "#64748b",
+  };
+
   const deckLayers = useMemo((): Layer[] => {
     const layers: Layer[] = [];
 
@@ -1358,7 +1365,8 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     for (const k of ALL_AREAS) {
       const def = AREA_LAYERS[k];
       if (!def.url || !areaActive.has(k)) continue;
-      const [r, g, b] = hexToRgb(def.color);
+      const effectiveColor = (!isDark && ROAD_LIGHT_MODE_COLORS[k]) ? ROAD_LIGHT_MODE_COLORS[k]! : def.color;
+      const [r, g, b] = hexToRgb(effectiveColor);
       const op = areaOpacity[k] ?? def.defaultOpacity;
       layers.push(
         new GeoJsonLayer({
@@ -1398,7 +1406,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     }
 
     return layers;
-  }, [areaActive, areaOpacity, covActive, covOpacity]);
+  }, [areaActive, areaOpacity, covActive, covOpacity, isDark]);
 
   const toggle = (g: LayerGroup) =>
     setActive((prev) => {
@@ -1997,10 +2005,11 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
         const p = areaHover.props;
         const isProtected = areaHover.layerId === "area-protected";
         const isIpLand    = areaHover.layerId === "area-ip_land";
-        const ox = 14, oy = 14;
-        const tw = (isProtected || isIpLand) ? 260 : 220;
+        const ox = 8, oy = 8;
+        const isRoad = ["area-railway","area-road_network","area-main_road","area-other_road"].includes(areaHover.layerId);
+        const tw = (isProtected || isIpLand) ? 260 : isRoad ? 240 : 220;
         const lx = Math.max(8, Math.min(areaHover.x + ox, window.innerWidth - tw - 8));
-        const ly = Math.min(areaHover.y + oy, window.innerHeight - ((isProtected || isIpLand) ? 240 : 80));
+        const ly = Math.min(areaHover.y + oy, window.innerHeight - ((isProtected || isIpLand) ? 240 : isRoad ? 160 : 80));
         const bg  = isDark ? "rgba(10,10,10,0.95)"    : "rgba(255,255,255,0.97)";
         const bdr = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)";
         const txt = isDark ? "#f1f5f9"                : "#1e293b";
@@ -2089,6 +2098,70 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                 <div style={{ marginTop: 2, paddingTop: 5, borderTop: `1px solid ${div}`, fontSize: 9, color: fnt, fontFamily: "monospace" }}>
                   {p.reference as string ?? ""} · ODC
                 </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Road / Railway rich tooltip
+        if (isRoad) {
+          const layerKey = areaHover.layerId.replace("area-", "") as AreaKey;
+          const layerDef = AREA_LAYERS[layerKey];
+          const layerColor = (!isDark && ROAD_LIGHT_MODE_COLORS[layerKey]) ? ROAD_LIGHT_MODE_COLORS[layerKey]! : layerDef?.color ?? acc;
+          const isRailway = layerKey === "railway";
+
+          const roadClassLabels: Record<string, string> = {
+            trunk: "Trunk Road", trunk_link: "Trunk Link", motorway: "Expressway", motorway_link: "Expressway Link",
+            primary: "Primary Road", primary_link: "Primary Link", secondary: "Secondary Road", secondary_link: "Secondary Link",
+            tertiary: "Tertiary Road", tertiary_link: "Tertiary Link",
+          };
+          const fclassStr = p.fclass as string | undefined;
+          const roadLabel = fclassStr ? (roadClassLabels[fclassStr] ?? fclassStr) : undefined;
+          const nameStr   = p.name as string | undefined;
+          const refStr    = p.ref as string | undefined;
+          const fromStr   = p.from as string | undefined;
+          const toStr     = p.to as string | undefined;
+          const lengthStr = p.length_km as string | undefined;
+          const statusStr = p.status as string | undefined;
+          const sourceStr = p.source as string | undefined;
+
+          const statusColor = statusStr === "Existing" ? "#34d399" : "#fbbf24";
+
+          return (
+            <div style={{ position: "fixed", left: lx, top: ly, width: tw, background: bg, border: `1px solid ${bdr}`, borderRadius: 10, overflow: "hidden", pointerEvents: "none", boxShadow: "0 6px 24px rgba(0,0,0,0.28)", zIndex: 999 }}>
+              {/* Header */}
+              <div style={{ background: `${layerColor}18`, borderBottom: `1px solid ${layerColor}40`, padding: "7px 10px 6px" }}>
+                <div style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.12em", color: layerColor, marginBottom: 2 }}>
+                  {layerDef?.label ?? layerKey}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: txt, lineHeight: 1.25 }}>
+                  {isRailway ? (fromStr && toStr ? `${fromStr} → ${toStr}` : fromStr ?? "Railway Segment") : (nameStr || roadLabel || "Road Segment")}
+                </div>
+                {!isRailway && nameStr && roadLabel && (
+                  <div style={{ fontSize: 10, color: dim, marginTop: 1 }}>{roadLabel}</div>
+                )}
+              </div>
+              {/* Body */}
+              <div style={{ padding: "7px 10px", display: "flex", flexDirection: "column", gap: 4 }}>
+                {isRailway ? ([
+                  statusStr ? ["Status",  statusStr,  statusColor] : null,
+                  lengthStr ? ["Length",  lengthStr,  undefined]   : null,
+                  sourceStr ? ["Source",  sourceStr,  undefined]   : null,
+                ] as ([string,string,string|undefined] | null)[]).filter(Boolean).map(([label, value, color]) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                    <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.10em", color: fnt, whiteSpace: "nowrap" }}>{label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: color ?? txt, textAlign: "right" }}>{value}</span>
+                  </div>
+                )) : ([
+                  !nameStr && roadLabel ? ["Class",  roadLabel, undefined] : null,
+                  refStr               ? ["Ref",    refStr,    undefined]  : null,
+                  sourceStr            ? ["Source", sourceStr, undefined]  : null,
+                ] as ([string,string,string|undefined] | null)[]).filter(Boolean).map(([label, value, color]) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                    <span style={{ fontSize: 9, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.10em", color: fnt, whiteSpace: "nowrap" }}>{label}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: color ?? txt, textAlign: "right" }}>{value}</span>
+                  </div>
+                ))}
               </div>
             </div>
           );
