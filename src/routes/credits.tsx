@@ -60,10 +60,11 @@ export default function CreditsPage() {
     skeletonBg:  isDark ? "rgba(255,255,255,0.08)"     : "rgba(0,0,0,0.08)",
   };
 
-  // Handle Stripe return
+  // Handle Stripe / PayWay return
   const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const successCr = search.get("cr");
   const cancelled = search.get("cancelled");
+  const paywayReturn = search.get("pw");
 
   useEffect(() => {
     if (successCr) {
@@ -75,15 +76,92 @@ export default function CreditsPage() {
       setToastMsg("Payment cancelled — no charge made.");
       window.history.replaceState({}, "", "/credits");
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (paywayReturn && user && supabase) {
+      window.history.replaceState({}, "", "/credits");
+      // Find the most recent pending transaction for this user and poll it
+      supabase
+        .from("payway_transactions")
+        .select("id, package_id")
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data: tx }) => {
+          if (tx) {
+            const link = PAYWAY_LINKS[tx.package_id] ?? "";
+            setKhqrStatus("waiting");
+            setKhqrModal({ pkgId: tx.package_id, txId: tx.id, link });
+            startPolling(tx.id);
+          } else {
+            // Webhook may have already confirmed before we checked
+            refresh();
+            setToastMsg("Payment received! Checking your balance…");
+          }
+        });
+    }
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function buyWithKhqr(pkgId: string) {
-    if (!user) { navigate({ to: "/login" }); return; }
+  async function buyWithKhqr(pkgId: string) {
+    if (!user || !supabase) { navigate({ to: "/login" }); return; }
+    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId);
+    if (!pkg) return;
     const link = PAYWAY_LINKS[pkgId];
     if (!link) return;
+
+    const { data: tx, error } = await supabase
+      .from("payway_transactions")
+      .insert({
+        user_id: user.id,
+        package_id: pkgId,
+        credits: pkg.credits,
+        amount: pkg.price_usd,
+        currency: "USD",
+        status: "pending",
+      })
+      .select("id")
+      .single();
+
+    if (error || !tx) {
+      // Fallback: just open the link, admin can credit manually
+      window.open(link, "_blank");
+      setToastMsg("Payment opened. Credits will be added after manual confirmation.");
+      return;
+    }
+
     setKhqrStatus("waiting");
-    setKhqrModal({ pkgId, txId: "", link });
+    setKhqrModal({ pkgId, txId: tx.id, link });
+
+    // Open PayWay in new tab
     window.open(link, "_blank");
+
+    // Poll every 4s for up to 12 minutes for webhook to confirm
+    startPolling(tx.id);
+  }
+
+  function startPolling(txId: string) {
+    if (pollRef.current) clearInterval(pollRef.current);
+    let elapsed = 0;
+    pollRef.current = setInterval(async () => {
+      elapsed += 4;
+      if (!supabase) return;
+      const { data } = await supabase
+        .from("payway_transactions")
+        .select("status")
+        .eq("id", txId)
+        .single();
+
+      if (data?.status === "confirmed") {
+        clearInterval(pollRef.current!);
+        setKhqrStatus("confirmed");
+        refresh();
+        setTimeout(() => setKhqrModal(null), 4000);
+      } else if (elapsed >= 720) {
+        clearInterval(pollRef.current!);
+        setKhqrStatus("timeout");
+      }
+    }, 4000);
   }
 
   function closeKhqrModal() {
