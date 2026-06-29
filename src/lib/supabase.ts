@@ -7,7 +7,9 @@ export const supabase = url && key
   ? createClient(url, key, {
       auth: {
         flowType: "pkce",
-        detectSessionInUrl: true,
+        // Disabled so the callback page can do the exchange manually without conflict.
+        // Supabase v2.107+ auto-exchanges when true, causing a double-call race condition.
+        detectSessionInUrl: false,
         persistSession: true,
         storage: window.localStorage,
       },
