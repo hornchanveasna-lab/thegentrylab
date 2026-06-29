@@ -38,15 +38,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signInWithGoogle() {
     if (!supabase) return;
-    // Full-page redirect — works in all browsers including Safari and mobile.
-    // Popup flow was blocked by browsers causing silent login failure.
-    await supabase.auth.signInWithOAuth({
+    // signInWithOAuth returns a URL — must redirect manually; it does not auto-navigate.
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: { prompt: "select_account" },
       },
     });
+    if (error || !data?.url) return;
+    window.location.href = data.url;
   }
 
   async function signOut() {
