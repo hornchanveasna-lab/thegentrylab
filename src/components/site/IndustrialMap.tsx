@@ -1363,6 +1363,15 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
   const deckLayers = useMemo((): Layer[] => {
     const layers: Layer[] = [];
 
+    // Zone-category fill colours for Protected Areas (matches ODC legend)
+    const ZONE_COLORS: Record<string, [number, number, number]> = {
+      "Core zone":           [55,  86,  35],
+      "Conservation zone":   [169, 209, 142],
+      "Sustainable use zone":[214, 232, 122],
+      "Community zone":      [244, 185, 129],
+    };
+    const PROTECTED_STROKE: [number, number, number] = [52, 211, 153]; // #34d399
+
     // GeoJSON boundary layers (provinces, districts, ODC datasets)
     for (const k of ALL_AREAS) {
       const def = AREA_LAYERS[k];
@@ -1373,6 +1382,34 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
       const effectiveColor = (!isDark && ROAD_LIGHT_MODE_COLORS[k]) ? ROAD_LIGHT_MODE_COLORS[k]! : def.color;
       const [r, g, b] = hexToRgb(effectiveColor);
       const op = areaOpacity[k] ?? def.defaultOpacity;
+
+      if (k === "protected") {
+        // Per-feature fill colour based on zone_category
+        layers.push(
+          new GeoJsonLayer({
+            id: `area-${k}`,
+            data: def.url,
+            filled: true,
+            stroked: true,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            getFillColor: (f: any) => {
+              const zc = f?.properties?.zone_category as string | undefined;
+              const [zr, zg, zb] = ZONE_COLORS[zc ?? ""] ?? [52, 211, 153];
+              return [zr, zg, zb, Math.round(0.55 * op * 255)];
+            },
+            getLineColor: PROTECTED_STROKE.concat([Math.round(0.85 * op * 255)]) as [number,number,number,number],
+            getLineWidth: def.strokeWeight,
+            lineWidthMinPixels: def.strokeWeight,
+            lineWidthUnits: "pixels" as const,
+            pickable: true,
+            autoHighlight: true,
+            highlightColor: [52, 211, 153, 45],
+            updateTriggers: { getFillColor: [op] },
+          }),
+        );
+        continue;
+      }
+
       layers.push(
         new GeoJsonLayer({
           id: `area-${k}`,
