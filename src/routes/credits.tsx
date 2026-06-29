@@ -1,9 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { useAuth } from "@/lib/auth";
 import { useCredits, CREDIT_PACKAGES, CREDIT_COSTS, formatCredits } from "@/lib/credits";
 import { supabase } from "@/lib/supabase";
+
+const PAYWAY_LINKS: Record<string, string> = {
+  starter:  "https://link.payway.com.kh/ABAPAYaN463948Z",
+  pro:      "https://link.payway.com.kh/ABAPAYUb469458T",
+  business: "https://link.payway.com.kh/ABAPAY0i469463b",
+};
 
 export const Route = createFileRoute("/credits")({
   component: CreditsPage,
@@ -15,7 +21,9 @@ export default function CreditsPage() {
   const navigate = useNavigate();
   const [buying, setBuying] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [khqrBuying] = useState<string | null>(null);
+  const [khqrModal, setKhqrModal] = useState<{ pkgId: string; txId: string; link: string } | null>(null);
+  const [khqrStatus, setKhqrStatus] = useState<"waiting" | "confirmed" | "timeout">("waiting");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [isDark, setIsDark] = useState(() => {
     try { return localStorage.getItem("tgl_theme") !== "light"; } catch { return true; }
@@ -69,11 +77,60 @@ export default function CreditsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function buyWithKhqr(pkgId: string) {
-    if (!user) { navigate({ to: "/login" }); return; }
+  async function buyWithKhqr(pkgId: string) {
+    if (!user || !supabase) { navigate({ to: "/login" }); return; }
     const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId);
-    window.open("https://link.payway.com.kh/ABAPAYaN463948Z", "_blank");
-    setToastMsg(`Opening PayWay checkout for ${pkg?.label ?? pkgId}. Credits will be added after payment confirmation.`);
+    if (!pkg) return;
+    const link = PAYWAY_LINKS[pkgId];
+    if (!link) return;
+
+    // Create pending transaction so webhook can match it to this user
+    const { data: tx, error } = await supabase.from("payway_transactions").insert({
+      user_id: user.id,
+      package_id: pkgId,
+      credits: pkg.credits,
+      amount: pkg.price_usd,
+      currency: "USD",
+      status: "pending",
+    }).select("id").single();
+
+    if (error || !tx) {
+      setToastMsg("Could not initiate payment. Please try again.");
+      return;
+    }
+
+    setKhqrStatus("waiting");
+    setKhqrModal({ pkgId, txId: tx.id, link });
+
+    // Open PayWay in new tab
+    window.open(link, "_blank");
+
+    // Poll every 4s for up to 12 minutes
+    let elapsed = 0;
+    pollRef.current = setInterval(async () => {
+      elapsed += 4;
+      const { data } = await supabase
+        .from("payway_transactions")
+        .select("status")
+        .eq("id", tx.id)
+        .single();
+
+      if (data?.status === "confirmed") {
+        clearInterval(pollRef.current!);
+        setKhqrStatus("confirmed");
+        refresh();
+        setTimeout(() => setKhqrModal(null), 3000);
+      } else if (elapsed >= 720) {
+        clearInterval(pollRef.current!);
+        setKhqrStatus("timeout");
+      }
+    }, 4000);
+  }
+
+  function closeKhqrModal() {
+    if (pollRef.current) clearInterval(pollRef.current);
+    setKhqrModal(null);
+    setKhqrStatus("waiting");
   }
 
   async function buyCredits(pkgId: string) {
@@ -99,8 +156,82 @@ export default function CreditsPage() {
     setBuying(null);
   }
 
+  const khqrPkg = khqrModal ? CREDIT_PACKAGES.find(p => p.id === khqrModal.pkgId) : null;
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: c.pageBg, color: c.text }}>
+
+    {/* KHQR Payment Modal */}
+    {khqrModal && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+          style={{ backgroundColor: isDark ? "#111" : "#fff", border: "1px solid rgba(255,81,0,0.25)" }}>
+
+          {/* Header */}
+          <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: "rgba(255,81,0,0.15)" }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "#ff5100" }}>ABA KHQR · PayWay</p>
+                <p className="text-[16px] font-bold mt-0.5" style={{ color: isDark ? "#fff" : "#111" }}>
+                  {khqrPkg?.label} — ${khqrPkg?.price_usd} USD
+                </p>
+              </div>
+              <button onClick={closeKhqrModal} className="w-7 h-7 flex items-center justify-center rounded-full opacity-40 hover:opacity-70 transition"
+                style={{ color: isDark ? "#fff" : "#111" }}>✕</button>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-6 py-6 text-center space-y-4">
+            {khqrStatus === "waiting" && (
+              <>
+                <div className="w-10 h-10 mx-auto border-2 border-[#ff5100] border-t-transparent rounded-full animate-spin" />
+                <p className="text-[13px]" style={{ color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.65)" }}>
+                  Waiting for payment confirmation…
+                </p>
+                <p className="text-[11px]" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.4)" }}>
+                  Complete the payment in the tab that just opened.<br/>Credits are added automatically once confirmed.
+                </p>
+                <button onClick={() => window.open(khqrModal.link, "_blank")}
+                  className="w-full py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-widest transition"
+                  style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.3)" }}>
+                  Re-open PayWay →
+                </button>
+              </>
+            )}
+
+            {khqrStatus === "confirmed" && (
+              <>
+                <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(34,197,94,0.15)" }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <p className="text-[15px] font-bold" style={{ color: isDark ? "#fff" : "#111" }}>Payment confirmed!</p>
+                <p className="text-[12px]" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
+                  {khqrPkg?.credits.toLocaleString()} credits added to your account.
+                </p>
+              </>
+            )}
+
+            {khqrStatus === "timeout" && (
+              <>
+                <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.12)" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <p className="text-[14px] font-semibold" style={{ color: isDark ? "#fff" : "#111" }}>Timed out</p>
+                <p className="text-[12px]" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
+                  No payment detected. If you paid, your credits will appear within a few minutes once PayWay confirms.
+                </p>
+                <button onClick={closeKhqrModal}
+                  className="w-full py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-widest"
+                  style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.3)" }}>
+                  Close
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
       <TopNav />
 
       {/* Toast */}
@@ -285,20 +416,14 @@ export default function CreditsPage() {
                     </div>
                     <button
                       onClick={() => buyWithKhqr(pkg.id)}
-                      disabled={khqrBuying === pkg.id}
+                      disabled={!!khqrModal}
                       className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-mono text-[10px] uppercase tracking-widest transition disabled:opacity-50 shrink-0"
                       style={{ backgroundColor: "#ff5100", color: "#fff", fontWeight: 700 }}>
-                      {khqrBuying === pkg.id ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
-                          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
-                        </svg>
-                      ) : (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                          <rect x="3" y="14" width="7" height="7" rx="1"/>
-                        </svg>
-                      )}
-                      {khqrBuying === pkg.id ? "Loading…" : "Pay"}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1"/>
+                      </svg>
+                      Pay
                     </button>
                   </div>
                 ))}
