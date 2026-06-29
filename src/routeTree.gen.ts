@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackerRouteImport } from './routes/tracker'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResearchRouteImport } from './routes/research'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as MethodologyRouteImport } from './routes/methodology'
 import { Route as MapRouteImport } from './routes/map'
@@ -30,9 +32,19 @@ const TrackerRoute = TrackerRouteImport.update({
   path: '/tracker',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResearchRoute = ResearchRouteImport.update({
   id: '/research',
   path: '/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewsRoute = NewsRouteImport.update({
@@ -112,7 +124,9 @@ export interface FileRoutesByFullPath {
   '/map': typeof MapRoute
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
+  '/profile': typeof ProfileRoute
   '/research': typeof ResearchRoute
+  '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
@@ -129,7 +143,9 @@ export interface FileRoutesByTo {
   '/map': typeof MapRoute
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
+  '/profile': typeof ProfileRoute
   '/research': typeof ResearchRoute
+  '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
@@ -147,7 +163,9 @@ export interface FileRoutesById {
   '/map': typeof MapRoute
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
+  '/profile': typeof ProfileRoute
   '/research': typeof ResearchRoute
+  '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
@@ -166,7 +184,9 @@ export interface FileRouteTypes {
     | '/map'
     | '/methodology'
     | '/news'
+    | '/profile'
     | '/research'
+    | '/settings'
     | '/tracker'
     | '/auth/callback'
     | '/auth/start'
@@ -183,7 +203,9 @@ export interface FileRouteTypes {
     | '/map'
     | '/methodology'
     | '/news'
+    | '/profile'
     | '/research'
+    | '/settings'
     | '/tracker'
     | '/auth/callback'
     | '/auth/start'
@@ -200,7 +222,9 @@ export interface FileRouteTypes {
     | '/map'
     | '/methodology'
     | '/news'
+    | '/profile'
     | '/research'
+    | '/settings'
     | '/tracker'
     | '/auth/callback'
     | '/auth/start'
@@ -218,7 +242,9 @@ export interface RootRouteChildren {
   MapRoute: typeof MapRoute
   MethodologyRoute: typeof MethodologyRoute
   NewsRoute: typeof NewsRoute
+  ProfileRoute: typeof ProfileRoute
   ResearchRoute: typeof ResearchRoute
+  SettingsRoute: typeof SettingsRoute
   TrackerRoute: typeof TrackerRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthStartRoute: typeof AuthStartRoute
@@ -234,11 +260,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TrackerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/research': {
       id: '/research'
       path: '/research'
       fullPath: '/research'
       preLoaderRoute: typeof ResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/news': {
@@ -346,7 +386,9 @@ const rootRouteChildren: RootRouteChildren = {
   MapRoute: MapRoute,
   MethodologyRoute: MethodologyRoute,
   NewsRoute: NewsRoute,
+  ProfileRoute: ProfileRoute,
   ResearchRoute: ResearchRoute,
+  SettingsRoute: SettingsRoute,
   TrackerRoute: TrackerRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthStartRoute: AuthStartRoute,
