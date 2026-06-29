@@ -488,10 +488,7 @@ function ZoomClassController({ wrapperRef }: { wrapperRef: React.RefObject<HTMLD
 
 function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
   const map = useMap();
-  const polysRef   = useRef<google.maps.Polyline[]>([]);
-  const animRef    = useRef<number | null>(null);
-  const offsetRef  = useRef(0);
-  const lastTsRef  = useRef<number | null>(null);
+  const polysRef = useRef<google.maps.Polyline[]>([]);
 
   useEffect(() => {
     if (!map) return;
@@ -519,25 +516,7 @@ function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
       })
     );
 
-    const animate = (ts: number) => {
-      const elapsed = lastTsRef.current !== null ? ts - lastTsRef.current : 0;
-      lastTsRef.current = ts;
-      // 2 px/second — independent of screen refresh rate
-      offsetRef.current = (offsetRef.current + elapsed * 0.002) % 26;
-      polysRef.current.forEach((p, i) => {
-        const icons = p.get("icons") as google.maps.IconSequence[];
-        if (icons?.[0]) {
-          icons[0].offset = `${offsetRef.current}px`;
-          p.set("icons", icons);
-        }
-        void i;
-      });
-      animRef.current = requestAnimationFrame(animate);
-    };
-    animRef.current = requestAnimationFrame(animate);
-
     return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
       polysRef.current.forEach((p) => p.setMap(null));
       polysRef.current = [];
     };
@@ -1763,6 +1742,40 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
                       </div>
                     );
                   })()}
+                  {/* Road Corridors + Main Roads — nested under Corridors */}
+                  {layer === "corridors" && (["road_corridors", "main_roads"] as AreaKey[]).map((akey) => {
+                    const def = AREA_LAYERS[akey];
+                    const aon = areaActive.has(akey);
+                    return (
+                      <div key={akey} className="pl-5">
+                        <button
+                          onClick={() => toggleArea(akey)}
+                          className="w-full flex items-center gap-2 px-2 py-1 transition rounded-sm text-left"
+                          onMouseEnter={e => (e.currentTarget.style.backgroundColor = pc.hover)}
+                          onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
+                        >
+                          <span className="w-2 h-0.5 shrink-0 transition-opacity"
+                            style={{ backgroundColor: def.color, opacity: aon ? 1 : 0.3 }} />
+                          <span className="font-mono text-[9px] uppercase tracking-wider flex-1 transition-opacity"
+                            style={{ color: aon ? def.color : pc.textOff }}>{def.label}</span>
+                          <span className="font-mono text-[8px]" style={{ color: aon ? pc.textMid : pc.textOff }}>{aon ? "ON" : "OFF"}</span>
+                        </button>
+                        {aon && (
+                          <div className="pl-4 pr-2 pb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-[8px]" style={{ color: pc.label }}>OPACITY</span>
+                              <input type="range" min={0.1} max={1} step={0.05}
+                                value={areaOpacity[akey]}
+                                onChange={(e) => setOpacity(akey, parseFloat(e.target.value))}
+                                className="flex-1 h-1 cursor-pointer"
+                                style={{ accentColor: def.color }} />
+                              <span className="font-mono text-[8px] w-7 text-right" style={{ color: pc.label }}>{Math.round(areaOpacity[akey] * 100)}%</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   {/* Protected Areas area layer — nested under Environment */}
                   {layer === "environment" && (() => {
                     const def = AREA_LAYERS["protected"];
@@ -1805,7 +1818,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           {/* Area layers */}
           <div className="p-2" style={{ borderTop: `1px solid ${pc.divider}` }}>
             <p className="px-2 py-1 font-mono text-[8px] uppercase tracking-widest" style={{ color: pc.label }}>Area Data</p>
-            {ALL_AREAS.filter((k) => k !== "protected" && k !== "ip_land").map((k) => {
+            {ALL_AREAS.filter((k) => k !== "protected" && k !== "ip_land" && k !== "road_corridors" && k !== "main_roads").map((k) => {
               const def = AREA_LAYERS[k];
               const on  = areaActive.has(k);
               return (
