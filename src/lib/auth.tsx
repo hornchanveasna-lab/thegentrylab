@@ -36,29 +36,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  function signInWithGoogle() {
+  async function signInWithGoogle() {
     if (!supabase) return;
-
-    const left = Math.round(window.screenX + (window.outerWidth - 500) / 2);
-    const top  = Math.round(window.screenY + (window.outerHeight - 600) / 2);
-
-    // Open /auth/start synchronously — no async before window.open so popup blocker won't fire
-    const popup = window.open(
-      "/auth/start",
-      "google-signin",
-      `width=500,height=600,left=${left},top=${top}`
-    );
-
-    // Poll until popup closes, then refresh session
-    const timer = setInterval(() => {
-      if (!popup || popup.closed) {
-        clearInterval(timer);
-        supabase!.auth.getSession().then(({ data }) => {
-          setSession(data.session);
-          setUser(data.session?.user ?? null);
-        });
-      }
-    }, 500);
+    // Full-page redirect — works in all browsers including Safari and mobile.
+    // Popup flow was blocked by browsers causing silent login failure.
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: { prompt: "select_account" },
+      },
+    });
   }
 
   async function signOut() {
