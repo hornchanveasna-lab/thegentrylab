@@ -1346,6 +1346,10 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
     });
   }, [active, query, subKinds, previewMode, sites]);
 
+  // isDark must be declared BEFORE the deckLayers useMemo (it's in the dep array + callback)
+  const bm = BASEMAPS[basemap];
+  const isDark = bm.isDark;
+
   // Corridors layer is now a folder — no standalone corridor lines
   const visibleCorridors: typeof CORRIDORS = [];
 
@@ -1503,9 +1507,6 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
       </div>
     );
   }
-
-  const bm = BASEMAPS[basemap];
-  const isDark = bm.isDark;
 
   // Panel palette — adapts to basemap light/dark mode
   const pc = {
