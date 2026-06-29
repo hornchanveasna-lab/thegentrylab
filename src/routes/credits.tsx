@@ -77,54 +77,13 @@ export default function CreditsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function buyWithKhqr(pkgId: string) {
-    if (!user || !supabase) { navigate({ to: "/login" }); return; }
-    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId);
-    if (!pkg) return;
+  function buyWithKhqr(pkgId: string) {
+    if (!user) { navigate({ to: "/login" }); return; }
     const link = PAYWAY_LINKS[pkgId];
     if (!link) return;
-
-    // Create pending transaction so webhook can match it to this user
-    const { data: tx, error } = await supabase.from("payway_transactions").insert({
-      user_id: user.id,
-      package_id: pkgId,
-      credits: pkg.credits,
-      amount: pkg.price_usd,
-      currency: "USD",
-      status: "pending",
-    }).select("id").single();
-
-    if (error || !tx) {
-      setToastMsg("Could not initiate payment. Please try again.");
-      return;
-    }
-
     setKhqrStatus("waiting");
-    setKhqrModal({ pkgId, txId: tx.id, link });
-
-    // Open PayWay in new tab
+    setKhqrModal({ pkgId, txId: "", link });
     window.open(link, "_blank");
-
-    // Poll every 4s for up to 12 minutes
-    let elapsed = 0;
-    pollRef.current = setInterval(async () => {
-      elapsed += 4;
-      const { data } = await supabase
-        .from("payway_transactions")
-        .select("status")
-        .eq("id", tx.id)
-        .single();
-
-      if (data?.status === "confirmed") {
-        clearInterval(pollRef.current!);
-        setKhqrStatus("confirmed");
-        refresh();
-        setTimeout(() => setKhqrModal(null), 3000);
-      } else if (elapsed >= 720) {
-        clearInterval(pollRef.current!);
-        setKhqrStatus("timeout");
-      }
-    }, 4000);
   }
 
   function closeKhqrModal() {
