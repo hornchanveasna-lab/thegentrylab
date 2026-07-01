@@ -51,7 +51,10 @@ export interface StageContent {
   processSteps: ProcessStep[];
   keyStats: KeyStat[];
   permits: PermitRow[];
-  timelineChart: { name: string; estimated: number; actual: number }[];
+  /* Gantt-style timeline: estStart/actStart are week offsets (from stage
+     kickoff) reflecting real dependencies — tasks with the same start can
+     run in parallel, later starts mean they wait on an upstream task. */
+  timelineChart: { name: string; estimated: number; actual: number; estStart: number; actStart: number }[];
   costBreakdown: { name: string; value: number; color: string }[];
   fieldNotes: FieldNote[];
   officialSources: OfficialSource[];
@@ -117,11 +120,11 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "Industrial Zone Pre-Clearance Check", authority: "MLMUPC / Provincial Land Dept.", costMin: 200, costMax: 1000, weeksMin: 1, weeksMax: 2, notes: "Confirms whether the specific parcel sits within an approved industrial or commercial zone in the provincial spatial plan." },
     ],
     timelineChart: [
-      { name: "Province Scoring", estimated: 2, actual: 2 },
-      { name: "Corridor Analysis", estimated: 2, actual: 3 },
-      { name: "Site Shortlist", estimated: 2, actual: 2 },
-      { name: "Field Visits", estimated: 2, actual: 3 },
-      { name: "Final Decision", estimated: 1, actual: 1 },
+      { name: "Province Scoring", estimated: 2, actual: 2, estStart: 0, actStart: 0 },
+      { name: "Corridor Analysis", estimated: 2, actual: 3, estStart: 2, actStart: 2 },
+      { name: "Site Shortlist", estimated: 2, actual: 2, estStart: 4, actStart: 5 },
+      { name: "Field Visits", estimated: 2, actual: 3, estStart: 6, actStart: 7 },
+      { name: "Final Decision", estimated: 1, actual: 1, estStart: 8, actStart: 10 },
     ],
     costBreakdown: [
       { name: "Advisory fees", value: 58, color: ORANGE[0] },
@@ -227,12 +230,12 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "Flood Risk Assessment", authority: "ODC / MOWRAM", costMin: 500, costMax: 1500, weeksMin: 1, weeksMax: 2, notes: "GIS overlay of parcel against 1-in-25 and 1-in-100 year flood lines. Essential before EIA application." },
     ],
     timelineChart: [
-      { name: "Title Type Check", estimated: 1, actual: 1 },
-      { name: "MLMUPC Search", estimated: 3, actual: 4 },
-      { name: "Encumbrance Check", estimated: 1, actual: 2 },
-      { name: "Chain of Title", estimated: 2, actual: 3 },
-      { name: "Flood/Env Overlay", estimated: 1, actual: 1 },
-      { name: "Valuation & SPA", estimated: 2, actual: 3 },
+      { name: "Title Type Check", estimated: 1, actual: 1, estStart: 0, actStart: 0 },
+      { name: "MLMUPC Search", estimated: 3, actual: 4, estStart: 1, actStart: 1 },
+      { name: "Encumbrance Check", estimated: 1, actual: 2, estStart: 1, actStart: 1 },
+      { name: "Chain of Title", estimated: 2, actual: 3, estStart: 4, actStart: 5 },
+      { name: "Flood/Env Overlay", estimated: 1, actual: 1, estStart: 0, actStart: 0 },
+      { name: "Valuation & SPA", estimated: 2, actual: 3, estStart: 6, actStart: 8 },
     ],
     costBreakdown: [
       { name: "Legal due diligence", value: 52, color: ORANGE[0] },
@@ -333,12 +336,12 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "Masterplan Architectural Drawings", authority: "Licensed Architect / BAC", costMin: 5000, costMax: 20000, weeksMin: 3, weeksMax: 6, notes: "Must be signed and sealed by a BAC-registered architect (Board of Architect Cambodia). CDC will not accept unsigned or unsealed drawings." },
     ],
     timelineChart: [
-      { name: "Site Survey", estimated: 2, actual: 2 },
-      { name: "Program Brief", estimated: 1, actual: 1 },
-      { name: "Concept Layout", estimated: 3, actual: 4 },
-      { name: "MoE Pre-Sub", estimated: 4, actual: 6 },
-      { name: "CDC Submission", estimated: 6, actual: 8 },
-      { name: "QIP Certificate", estimated: 2, actual: 2 },
+      { name: "Site Survey", estimated: 2, actual: 2, estStart: 0, actStart: 0 },
+      { name: "Program Brief", estimated: 1, actual: 1, estStart: 0, actStart: 0 },
+      { name: "Concept Layout", estimated: 3, actual: 4, estStart: 2, actStart: 2 },
+      { name: "MoE Pre-Sub", estimated: 4, actual: 6, estStart: 5, actStart: 6 },
+      { name: "CDC Submission", estimated: 6, actual: 8, estStart: 5, actStart: 6 },
+      { name: "QIP Certificate", estimated: 2, actual: 2, estStart: 11, actStart: 14 },
     ],
     costBreakdown: [
       { name: "EIA preparation", value: 45, color: ORANGE[0] },
@@ -438,12 +441,12 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "Telecom Infrastructure Agreement", authority: "ISP / Ministry of Post & Telecoms", costMin: 500, costMax: 5000, weeksMin: 2, weeksMax: 8, notes: "Negotiate fibre connection with ISP (Metfone, Cellcard, Smart). Some provinces require MPTC coordination for leased line routing." },
     ],
     timelineChart: [
-      { name: "Load Calculation", estimated: 2, actual: 2 },
-      { name: "EDC Feasibility", estimated: 6, actual: 8 },
-      { name: "Substation Agreement", estimated: 4, actual: 5 },
-      { name: "Water Permit", estimated: 5, actual: 6 },
-      { name: "WWTP Design", estimated: 4, actual: 5 },
-      { name: "MIME Discharge Permit", estimated: 8, actual: 10 },
+      { name: "Load Calculation", estimated: 2, actual: 2, estStart: 0, actStart: 0 },
+      { name: "EDC Feasibility", estimated: 6, actual: 8, estStart: 2, actStart: 2 },
+      { name: "Substation Agreement", estimated: 4, actual: 5, estStart: 8, actStart: 10 },
+      { name: "Water Permit", estimated: 5, actual: 6, estStart: 0, actStart: 0 },
+      { name: "WWTP Design", estimated: 4, actual: 5, estStart: 5, actStart: 6 },
+      { name: "MIME Discharge Permit", estimated: 8, actual: 10, estStart: 9, actStart: 11 },
     ],
     costBreakdown: [
       { name: "Power connection fee", value: 48, color: ORANGE[0] },
@@ -567,14 +570,14 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "SEZ Customs Branch Registration", authority: "General Dept. of Customs (GDCE)", costMin: 500, costMax: 2000, weeksMin: 2, weeksMax: 4, notes: "SEZ projects only. Enables same-day in-zone customs clearance vs 3–5 days via national Phnom Penh customs." },
     ],
     timelineChart: [
-      { name: "MoE ECC", estimated: 12, actual: 16 },
-      { name: "CDC QIP", estimated: 6, actual: 7 },
-      { name: "MISTI Licence", estimated: 5, actual: 6 },
-      { name: "MoLVT Labour", estimated: 3, actual: 3 },
-      { name: "Building Permit", estimated: 8, actual: 12 },
-      { name: "Fire Dept", estimated: 3, actual: 3 },
-      { name: "EDC Connection", estimated: 12, actual: 18 },
-      { name: "MIME Discharge", estimated: 6, actual: 7 },
+      { name: "MoE ECC", estimated: 12, actual: 16, estStart: 0, actStart: 0 },
+      { name: "CDC QIP", estimated: 6, actual: 7, estStart: 12, actStart: 16 },
+      { name: "MISTI Licence", estimated: 5, actual: 6, estStart: 18, actStart: 23 },
+      { name: "MoLVT Labour", estimated: 3, actual: 3, estStart: 0, actStart: 0 },
+      { name: "Building Permit", estimated: 8, actual: 12, estStart: 23, actStart: 29 },
+      { name: "Fire Dept", estimated: 3, actual: 3, estStart: 23, actStart: 29 },
+      { name: "EDC Connection", estimated: 12, actual: 18, estStart: 0, actStart: 0 },
+      { name: "MIME Discharge", estimated: 6, actual: 7, estStart: 31, actStart: 41 },
     ],
     costBreakdown: [
       { name: "EDC connection fee", value: 55, color: ORANGE[0] },
@@ -654,11 +657,11 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "Fire Safety System Design Approval", authority: "National Police Fire Department", costMin: 500, costMax: 2000, weeksMin: 2, weeksMax: 4, notes: "Fire protection design (sprinkler, alarm, escape routes) reviewed by Fire Department before building permit submission." },
     ],
     timelineChart: [
-      { name: "Production Brief", estimated: 2, actual: 2 },
-      { name: "Structural System", estimated: 1, actual: 2 },
-      { name: "Concept Design", estimated: 3, actual: 4 },
-      { name: "Design Development", estimated: 5, actual: 7 },
-      { name: "Tender Package", estimated: 3, actual: 4 },
+      { name: "Production Brief", estimated: 2, actual: 2, estStart: 0, actStart: 0 },
+      { name: "Structural System", estimated: 1, actual: 2, estStart: 0, actStart: 0 },
+      { name: "Concept Design", estimated: 3, actual: 4, estStart: 2, actStart: 2 },
+      { name: "Design Development", estimated: 5, actual: 7, estStart: 5, actStart: 6 },
+      { name: "Tender Package", estimated: 3, actual: 4, estStart: 10, actStart: 13 },
     ],
     costBreakdown: [
       { name: "Civil / Structural", value: 38, color: ORANGE[0] },
@@ -732,11 +735,11 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "Stamp Duty on Land Transfer", authority: "General Department of Taxation (GDT)", costMin: 0, costMax: 0, weeksMin: 1, weeksMax: 4, notes: "4% of official declared land value. Under-declaration is common but creates ongoing legal risk on resale and refinancing. Budget 4% of real purchase price." },
     ],
     timelineChart: [
-      { name: "BOQ Preparation", estimated: 3, actual: 3 },
-      { name: "Contractor Tendering", estimated: 4, actual: 5 },
-      { name: "Utility Costing", estimated: 3, actual: 4 },
-      { name: "Contingency Planning", estimated: 1, actual: 1 },
-      { name: "Final Budget Sign-off", estimated: 1, actual: 2 },
+      { name: "BOQ Preparation", estimated: 3, actual: 3, estStart: 0, actStart: 0 },
+      { name: "Contractor Tendering", estimated: 4, actual: 5, estStart: 3, actStart: 3 },
+      { name: "Utility Costing", estimated: 3, actual: 4, estStart: 0, actStart: 0 },
+      { name: "Contingency Planning", estimated: 1, actual: 1, estStart: 7, actStart: 8 },
+      { name: "Final Budget Sign-off", estimated: 1, actual: 2, estStart: 8, actStart: 9 },
     ],
     costBreakdown: [
       { name: "Main EPC contract", value: 72, color: ORANGE[0] },
@@ -809,13 +812,13 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "MIME WWTP Commissioning Inspection", authority: "Ministry of Industry (MIME)", costMin: 500, costMax: 2000, weeksMin: 2, weeksMax: 6, notes: "MIME inspector verifies the WWTP is operational and discharging at Class B standard. Schedule 4 weeks before planned production start.", critical: true },
     ],
     timelineChart: [
-      { name: "Mobilisation", estimated: 3, actual: 3 },
-      { name: "Earthworks & Foundation", estimated: 8, actual: 11 },
-      { name: "Structural Frame", estimated: 8, actual: 10 },
-      { name: "Roof & Cladding", estimated: 5, actual: 6 },
-      { name: "MEP & Fit-Out", estimated: 8, actual: 9 },
-      { name: "Utilities & Testing", estimated: 5, actual: 7 },
-      { name: "Commissioning", estimated: 3, actual: 4 },
+      { name: "Mobilisation", estimated: 3, actual: 3, estStart: 0, actStart: 0 },
+      { name: "Earthworks & Foundation", estimated: 8, actual: 11, estStart: 3, actStart: 3 },
+      { name: "Structural Frame", estimated: 8, actual: 10, estStart: 11, actStart: 14 },
+      { name: "Roof & Cladding", estimated: 5, actual: 6, estStart: 16, actStart: 20 },
+      { name: "MEP & Fit-Out", estimated: 8, actual: 9, estStart: 19, actStart: 24 },
+      { name: "Utilities & Testing", estimated: 5, actual: 7, estStart: 27, actStart: 33 },
+      { name: "Commissioning", estimated: 3, actual: 4, estStart: 32, actStart: 40 },
     ],
     costBreakdown: [
       { name: "Structural & civil", value: 42, color: ORANGE[0] },
@@ -898,11 +901,11 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "CDC Investment Activity Report", authority: "Council for Development of Cambodia", costMin: 0, costMax: 0, weeksMin: 1, weeksMax: 1, notes: "Annual statutory report to CDC on production output, employment, investment progress. Required to maintain QIP tax exemption status." },
     ],
     timelineChart: [
-      { name: "MEP Maintenance Setup", estimated: 2, actual: 3 },
-      { name: "MIME Audit Readiness", estimated: 4, actual: 6 },
-      { name: "MoLVT HR Setup", estimated: 3, actual: 4 },
-      { name: "First MIME Audit", estimated: 12, actual: 12 },
-      { name: "Licence Renewal Cycle", estimated: 4, actual: 5 },
+      { name: "MEP Maintenance Setup", estimated: 2, actual: 3, estStart: 0, actStart: 0 },
+      { name: "MIME Audit Readiness", estimated: 4, actual: 6, estStart: 0, actStart: 0 },
+      { name: "MoLVT HR Setup", estimated: 3, actual: 4, estStart: 0, actStart: 0 },
+      { name: "First MIME Audit", estimated: 12, actual: 12, estStart: 4, actStart: 6 },
+      { name: "Licence Renewal Cycle", estimated: 4, actual: 5, estStart: 16, actStart: 18 },
     ],
     costBreakdown: [
       { name: "Facility management", value: 38, color: ORANGE[0] },

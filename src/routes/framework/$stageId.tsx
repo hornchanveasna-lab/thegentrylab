@@ -70,6 +70,25 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+/* Gantt tooltip — shows start→end week range per bar instead of the raw
+   stacked segment values (which would otherwise show the invisible offset). */
+const GanttTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  if (!row) return null;
+  return (
+    <div className="rounded px-3 py-2 text-xs" style={{ background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
+      <p className="font-bold mb-1" style={{ color: "var(--text-primary)" }}>{label}</p>
+      <p style={{ color: "rgba(255,81,0,0.7)" }}>
+        Estimated: wk {row.estStart}–{row.estStart + row.estimated} ({row.estimated} wk)
+      </p>
+      <p style={{ color: ACCENT }}>
+        Actual: wk {row.actStart}–{row.actStart + row.actual} ({row.actual} wk)
+      </p>
+    </div>
+  );
+};
+
 /* ─── Document row from Supabase ───────────────────────────── */
 type Doc = { id: string; title: string; description: string | null; file_name: string; category: string; created_at: string; file_path: string };
 
@@ -221,15 +240,18 @@ function StagePage() {
         <section className="grid lg:grid-cols-2 gap-6">
           <div className="p-6 rounded fw-chart" style={{ background: "var(--surface-1)", border: "1px solid var(--border)" }}>
             <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: ACCENT }}>Timeline Analysis</p>
-            <h3 className="font-bold text-white text-sm mb-5">Estimated vs Actual (weeks)</h3>
-            <ResponsiveContainer width="100%" height={220}>
+            <h3 className="font-bold text-white text-sm mb-1">Estimated vs Actual (Gantt, weeks)</h3>
+            <p className="text-[10px] text-white/35 mb-4">Bars starting at the same week run in parallel; later starts wait on an upstream task.</p>
+            <ResponsiveContainer width="100%" height={Math.max(220, stage.timelineChart.length * 38)}>
               <BarChart data={stage.timelineChart} layout="vertical" barCategoryGap="30%">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.15)" horizontal={false} />
-                <XAxis type="number" tick={{ fill: "var(--text-subtle)" as any, fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "var(--text-muted)" as any, fontSize: 10 }} axisLine={false} tickLine={false} width={90} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(128,128,128,0.06)" }} />
-                <Bar dataKey="estimated" fill="rgba(255,81,0,0.4)" name="Estimated" radius={[0, 2, 2, 0]} />
-                <Bar dataKey="actual"    fill={ACCENT}              name="Actual"    radius={[0, 2, 2, 0]} />
+                <XAxis type="number" unit=" wk" tick={{ fill: "var(--text-subtle)" as any, fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" tick={{ fill: "var(--text-muted)" as any, fontSize: 10 }} axisLine={false} tickLine={false} width={110} />
+                <Tooltip content={<GanttTooltip />} cursor={{ fill: "rgba(128,128,128,0.06)" }} />
+                <Bar dataKey="estStart" stackId="est" fill="transparent" />
+                <Bar dataKey="estimated" stackId="est" fill="rgba(255,81,0,0.4)" name="Estimated" radius={[0, 2, 2, 0]} />
+                <Bar dataKey="actStart" stackId="act" fill="transparent" />
+                <Bar dataKey="actual"    stackId="act" fill={ACCENT}              name="Actual"    radius={[0, 2, 2, 0]} />
               </BarChart>
             </ResponsiveContainer>
             <div className="flex items-center gap-4 mt-2">
