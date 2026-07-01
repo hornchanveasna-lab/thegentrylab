@@ -356,7 +356,7 @@ function NewsPage() {
   const [sector, setSector]     = useState("All");
   const [province, setProvince] = useState("All");
   const [view, setView]         = useState<"grid" | "list">("grid");
-  const PAGE_SIZE = 10;
+  const PAGE_SIZE = 12;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const sorted  = [...newsItems].sort((a, b) => b.date.localeCompare(a.date));
