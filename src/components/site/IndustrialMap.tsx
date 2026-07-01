@@ -4,6 +4,7 @@ import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import { GeoJsonLayer, BitmapLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import { useLang } from "@/lib/i18n";
+import { resolveAdminUnits } from "@/lib/geoLookup";
 import { useMapSites, useNews, useProjects, useResearch, useSiteImages } from "@/lib/data";
 import {
   CORRIDORS,
@@ -1260,27 +1261,33 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     lat: number; lng: number;
     address: string | null;
     plusCode: string | null;
+    province?: string;
+    district?: string;
+    commune?: string;
     loading: boolean;
   } | null>(null);
 
   /* Shared reverse-geocode → populates the location callout for any
      pinned point (map click, search result, or autocomplete pick) so
-     "Use this location" works the same way from all three entry points. */
+     "Use this location" works the same way from all three entry points.
+     Also resolves Province/District/Commune via the GADM boundary files
+     (same "Area Data" layers) so reports can carry the exact admin unit,
+     not just a fuzzy Google address. */
   const showCalloutAt = useCallback(async (lat: number, lng: number) => {
     setSelected(null);
     setLocCallout({ lat, lng, address: null, plusCode: null, loading: true });
     try {
-      const r = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${gKey}`
-      );
-      const j = await r.json();
+      const [geoRes, admin] = await Promise.all([
+        fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${gKey}`).then((r) => r.json()),
+        resolveAdminUnits(lat, lng),
+      ]);
       /* Prefer a named locality over Plus Code */
-      const named = j.results?.find((x: { types: string[] }) =>
+      const named = geoRes.results?.find((x: { types: string[] }) =>
         x.types?.some((t: string) => ["locality","sublocality","neighborhood","natural_feature","establishment","point_of_interest"].includes(t))
       );
-      const plusCode = j.plus_code?.global_code ?? null;
-      const address = named?.address_components?.[0]?.long_name ?? j.results?.[0]?.formatted_address?.split(",")[0] ?? null;
-      setLocCallout({ lat, lng, address, plusCode, loading: false });
+      const plusCode = geoRes.plus_code?.global_code ?? null;
+      const address = named?.address_components?.[0]?.long_name ?? geoRes.results?.[0]?.formatted_address?.split(",")[0] ?? null;
+      setLocCallout({ lat, lng, address, plusCode, province: admin.province, district: admin.district, commune: admin.commune, loading: false });
     } catch {
       setLocCallout((c) => c ? { ...c, loading: false } : null);
     }
@@ -1550,6 +1557,9 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       lat: String(locCallout.lat),
       lng: String(locCallout.lng),
       address: locCallout.address ?? "",
+      ...(locCallout.province ? { province: locCallout.province } : {}),
+      ...(locCallout.district ? { district: locCallout.district } : {}),
+      ...(locCallout.commune  ? { commune:  locCallout.commune  } : {}),
       ...(pinMode ? { resume: "1" } : {}),
     });
     window.location.href = `/tools/advisor?${params.toString()}`;
@@ -2264,6 +2274,9 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           lng={locCallout.lng}
           address={locCallout.address}
           plusCode={locCallout.plusCode}
+          province={locCallout.province}
+          district={locCallout.district}
+          commune={locCallout.commune}
           loading={locCallout.loading}
           isDark={isDark}
           onClose={() => setLocCallout(null)}
@@ -2435,11 +2448,14 @@ function SiteHoverTooltip({ site, isDark, x, y }: { site: MapSite; isDark: boole
 
 /* ── Location Callout (empty-map click) ─────────────────── */
 function LocationCallout({
-  lat, lng, address, plusCode, loading, isDark, onClose, onUse,
+  lat, lng, address, plusCode, province, district, commune, loading, isDark, onClose, onUse,
 }: {
   lat: number; lng: number;
   address: string | null;
   plusCode: string | null;
+  province?: string;
+  district?: string;
+  commune?: string;
   loading: boolean;
   isDark: boolean;
   onClose: () => void;
@@ -2489,7 +2505,13 @@ function LocationCallout({
                 {shortAddress && plusCode && (
                   <p className="font-mono text-[10px] mt-0.5" style={{ color: textMuted }}>{plusCode}</p>
                 )}
-                <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>Cambodia</p>
+                {(commune || district || province) ? (
+                  <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>
+                    {[commune, district, province].filter(Boolean).join(", ")}
+                  </p>
+                ) : (
+                  <p className="text-[11px] mt-0.5" style={{ color: textMuted }}>Cambodia</p>
+                )}
               </>
             )}
           </div>

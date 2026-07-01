@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { TopNav } from "@/components/site/TopNav";
 import { useSmoothScroll } from "@/components/site/Counter";
 import { useCredits, CREDIT_COSTS } from "@/lib/credits";
+import { toDropdownProvince } from "@/lib/geoLookup";
 import PptxGenJS from "pptxgenjs";
 import heroBlueprintImg from "@/assets/hero-blueprint.jpg";
 import principalPortraitImg from "@/assets/principal-portrait.jpg";
@@ -3034,7 +3035,10 @@ export default function AdvisorPage() {
   const [refining, setRefining] = useState(false);
   const [actualCost, setActualCost] = useState<number | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
-  const [pickedLocation, setPickedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
+  const [pickedLocation, setPickedLocation] = useState<{
+    lat: number; lng: number; address: string;
+    province?: string; district?: string; commune?: string;
+  } | null>(null);
   const { credits, refresh: refreshCredits } = useCredits();
   const outputRef = useRef<HTMLDivElement>(null);
 
@@ -3049,8 +3053,11 @@ export default function AdvisorPage() {
     const p = new URLSearchParams(window.location.search);
     const lat = p.get("lat"), lng = p.get("lng");
     if (!lat || !lng) return;
-    const address = p.get("address") || "";
-    setPickedLocation({ lat: parseFloat(lat), lng: parseFloat(lng), address });
+    const address  = p.get("address") || "";
+    const province = p.get("province") || undefined;
+    const district = p.get("district") || undefined;
+    const commune  = p.get("commune") || undefined;
+    setPickedLocation({ lat: parseFloat(lat), lng: parseFloat(lng), address, province, district, commune });
 
     if (p.get("resume") === "1") {
       try {
@@ -3063,7 +3070,11 @@ export default function AdvisorPage() {
             selectBrief(brief);
             const field = brief.fields.find(f => f.id === handoff.fieldId) ?? brief.fields.find(f => LOCATION_FIELD_IDS.has(f.id));
             if (field) {
-              const matched = field.options ? matchProvince(address, field.options) : address;
+              // Exact GADM province match beats fuzzy address matching when available
+              const exact = province ? toDropdownProvince(province) : null;
+              const matched = exact && field.options?.includes(exact)
+                ? exact
+                : field.options ? matchProvince(address, field.options) : address;
               setForm(prev => ({ ...prev, [field.id]: matched || address }));
             }
           }
@@ -3147,15 +3158,31 @@ export default function AdvisorPage() {
     setStep("form");
 
     // If a location was already pinned from the map before a brief was
-    // chosen, auto-fill it into this brief's location field.
+    // chosen, auto-fill it into this brief's location field. Prefer the
+    // exact GADM province (from the pinned point's Area Data lookup) over
+    // fuzzy-matching the Google address text.
     if (pickedLocation) {
       const field = b.fields.find(f => LOCATION_FIELD_IDS.has(f.id));
-      const matched = field?.options ? matchProvince(pickedLocation.address, field.options) : pickedLocation.address;
+      const exact = pickedLocation.province ? toDropdownProvince(pickedLocation.province) : null;
+      const matched = exact && field?.options?.includes(exact)
+        ? exact
+        : field?.options ? matchProvince(pickedLocation.address, field.options) : pickedLocation.address;
       setForm(field ? { [field.id]: matched || pickedLocation.address } : {});
     } else {
       setForm({});
     }
     setOutput("");
+  }
+
+  // Merge in the precise Commune/District resolved from a map pin (via the
+  // GADM Area Data boundaries) so generated reports are geographically
+  // exact, not just "Province" level.
+  function withPinnedLocation(baseFields: Record<string, string>): Record<string, string> {
+    if (!pickedLocation) return baseFields;
+    const extra: Record<string, string> = {};
+    if (pickedLocation.commune) extra["Specific Commune (pinned on map)"] = pickedLocation.commune;
+    if (pickedLocation.district) extra["Specific District (pinned on map)"] = pickedLocation.district;
+    return { ...baseFields, ...extra };
   }
 
   function pinFromMap(fieldId: string) {
@@ -3399,7 +3426,7 @@ export default function AdvisorPage() {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ briefType: selectedBrief.id, briefTitle: selectedBrief.title, fields: form, reportType, userNotes: userNotes.trim() }),
+        body: JSON.stringify({ briefType: selectedBrief.id, briefTitle: selectedBrief.title, fields: withPinnedLocation(form), reportType, userNotes: userNotes.trim() }),
       });
 
       if (res.status === 402) {
@@ -3447,7 +3474,7 @@ export default function AdvisorPage() {
           brief_type: selectedBrief.id,
           brief_title: selectedBrief.title,
           category: selectedBrief.category,
-          fields: form,
+          fields: withPinnedLocation(form),
           output: accumulated,
         }).select("id").single();
         if (inserted?.id) setSavedBriefId(inserted.id);
@@ -3484,7 +3511,7 @@ export default function AdvisorPage() {
         body: JSON.stringify({
           briefType: selectedBrief.id,
           briefTitle: selectedBrief.title,
-          fields: form,
+          fields: withPinnedLocation(form),
           reportType,
           refinePrompt: refinePrompt.trim(),
         }),
@@ -3524,7 +3551,7 @@ export default function AdvisorPage() {
       if (user && supabase) {
         const { data: inserted } = await supabase.from("advisor_briefs").insert({
           user_id: user.id, brief_type: selectedBrief.id, brief_title: selectedBrief.title,
-          category: selectedBrief.category, fields: form, output: accumulated,
+          category: selectedBrief.category, fields: withPinnedLocation(form), output: accumulated,
         }).select("id").single();
         if (inserted?.id) setSavedBriefId(inserted.id);
         setSaved(true);
@@ -3736,6 +3763,11 @@ export default function AdvisorPage() {
                   </svg>
                   <span className="text-[11.5px]" style={{ color: "var(--adv-text-hi)" }}>
                     Pinned from map: <strong>{pickedLocation.address || `${pickedLocation.lat.toFixed(4)}, ${pickedLocation.lng.toFixed(4)}`}</strong>
+                    {(pickedLocation.commune || pickedLocation.district || pickedLocation.province) && (
+                      <span style={{ color: "var(--adv-text-sub)" }}>
+                        {" · "}{[pickedLocation.commune, pickedLocation.district, pickedLocation.province].filter(Boolean).join(", ")}
+                      </span>
+                    )}
                   </span>
                   <button onClick={() => setPickedLocation(null)} className="ml-auto shrink-0 font-mono text-[9px] uppercase tracking-widest hover:opacity-70 transition" style={{ color: "var(--adv-text-faint)" }}>
                     Clear
