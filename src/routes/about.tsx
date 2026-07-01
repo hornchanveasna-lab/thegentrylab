@@ -103,7 +103,8 @@ const ROADMAP_META: Record<string, {
               "--col-op": op,
               backgroundColor: "currentColor",
               animation: `col-rise 0.9s cubic-bezier(0.4,0,0.2,1) ${i * 0.1}s both, bar-pulse ${2.5 + i * 0.2}s ease-in-out ${0.9 + i * 0.1}s infinite`,
-            } as React.CSSProperties} />;
+            } as React.CSSProperties} />
+          );
         })}
       </div>
     ),
