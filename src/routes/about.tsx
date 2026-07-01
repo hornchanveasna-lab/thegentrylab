@@ -203,7 +203,7 @@ const CASE_STUDIES = [
     scope: "Permit navigation, utility strategy, and factory design for GMP-grade pharmaceutical warehouse + logistics hub",
     outcome: "MoH GMP certified · Phnom Penh Special Economic Zone · Operational",
     color: "#34d399",
-    photo: "https://images.unsplash.com/photo-1583912267382-49a82f938b2a?w=900&q=80&fit=crop",
+    photo: "https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=900&q=80&fit=crop",
     stat1: { n: "GMP",    label: "MoH certified" },
     stat2: { n: "PPSEZ",  label: "Location" },
     gradient: "linear-gradient(135deg,#012117 0%,#064e3b 100%)",

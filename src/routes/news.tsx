@@ -29,7 +29,7 @@ const SECTOR_META: Record<string, { accent: string; gradient: string; photo: str
   Energy: {
     accent:   "#fbbf24",
     gradient: "linear-gradient(135deg,#0f0a00 0%,#7c4800 60%,#a85e00 100%)",
-    photo:    "https://images.unsplash.com/photo-1466611653911-0265b219a3df?w=1200&q=80&fit=crop",
+    photo:    "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=1200&q=80&fit=crop",
   },
   Automotive: {
     accent:   "#f43f5e",
@@ -71,7 +71,7 @@ const SECTOR_META: Record<string, { accent: string; gradient: string; photo: str
 const DEFAULT_META = {
   accent:   "#ff5100",
   gradient: "linear-gradient(135deg,#0a0a0b 0%,#5c1e00 100%)",
-  photo:    "https://images.unsplash.com/photo-1581922815928-45c4b2e35e34?w=1200&q=80&fit=crop",
+  photo:    "https://images.unsplash.com/photo-1565793298595-6a879b1d9492?w=1200&q=80&fit=crop",
 };
 
 const getSectorMeta  = (sector: string) => SECTOR_META[sector] ?? DEFAULT_META;
@@ -80,6 +80,17 @@ const getGradient    = (sector: string) => getSectorMeta(sector).gradient;
 const getAccent      = (sector: string) => getSectorMeta(sector).accent;
 const getItemPhoto   = (item: NewsItem) => item.image_url || getPhoto(item.sector);
 const isRealUrl      = (url: string) => url && url !== "#";
+
+/* Stock photo URLs can rot (Unsplash removes/renames photos over time).
+   Advance one step at a time: item's own photo → sector fallback →
+   generic default → give up (the sector colour wash still renders, so
+   the card never goes fully blank even if every photo 404s). */
+function nextPhotoFallback(currentSrc: string, sector: string): string | null {
+  const sectorPhoto = getPhoto(sector);
+  if (currentSrc !== sectorPhoto) return sectorPhoto;
+  if (currentSrc !== DEFAULT_META.photo) return DEFAULT_META.photo;
+  return null;
+}
 
 function fmtDate(iso: string) {
   try {
@@ -114,7 +125,7 @@ function NewsThumb({ item }: { item: NewsItem }) {
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
         style={{ opacity: loaded ? 0.75 : 0 }}
         onLoad={() => setLoaded(true)}
-        onError={() => { setCurrentSrc(getPhoto(item.sector)); }}
+        onError={() => { const next = nextPhotoFallback(currentSrc, item.sector); if (next) setCurrentSrc(next); }}
       />
       <div className="absolute inset-0" style={{ backgroundColor: getAccent(item.sector), opacity: 0.25 }} />
     </div>
@@ -146,7 +157,7 @@ function SliderSlide({ item: n, active }: { item: NewsItem; active: boolean }) {
         className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
         style={{ opacity: loaded ? 0.65 : 0 }}
         onLoad={() => setLoaded(true)}
-        onError={() => { setCurrentSrc(getPhoto(n.sector)); }}
+        onError={() => { const next = nextPhotoFallback(currentSrc, n.sector); if (next) setCurrentSrc(next); }}
       />
       {/* Sector colour wash */}
       <div className="absolute inset-0" style={{ backgroundColor: getAccent(n.sector), opacity: 0.28 }} />
@@ -292,7 +303,7 @@ function NewsCard({ item }: { item: NewsItem }) {
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
           style={{ opacity: imgLoaded ? 0.7 : 0, transition: "opacity 0.5s, transform 0.7s" }}
           onLoad={() => setImgLoaded(true)}
-          onError={() => { setImgSrc(getPhoto(item.sector)); }}
+          onError={() => { const next = nextPhotoFallback(imgSrc, item.sector); if (next) setImgSrc(next); }}
         />
         {/* Sector colour wash — plain overlay, no blend mode */}
         <div className="absolute inset-0" style={{ backgroundColor: getAccent(item.sector), opacity: 0.28 }} />
