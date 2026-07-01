@@ -15,7 +15,7 @@ function MapPage() {
         <div className="max-w-7xl mx-auto px-6 md:px-12 py-4 flex items-center justify-between">
           <div>
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-0.5">
-              Interactive Intelligence Map
+              SeerMap · Interactive Intelligence
             </p>
             <h1 className="font-extrabold text-lg uppercase tracking-tight text-white leading-none">
               Cambodia Industrial Landscape

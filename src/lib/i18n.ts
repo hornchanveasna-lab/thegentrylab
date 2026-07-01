@@ -4,7 +4,7 @@
 
 const EN = {
   nav: {
-    home: "Home", map: "Map", tracker: "Tracker", news: "News",
+    home: "Home", map: "SeerMap", tracker: "Tracker", news: "News",
     research: "Research", about: "About", contact: "Contact",
     getAdvisory: "Get advisory",
   },

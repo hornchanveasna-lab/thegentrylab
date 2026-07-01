@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Counter, useReveal, useSnapScroll } from "@/components/site/Counter";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
+import { useMapSites, useProjects } from "@/lib/data";
 
 export const Route = createFileRoute("/about")({
   component: AboutPage,
@@ -230,6 +231,18 @@ function AboutPage() {
   const accent = cfg.accentColor;
   const ticker = cfg.ticker?.length ? cfg.ticker : DEFAULT_TICKER;
 
+  // Live platform stats — computed from Supabase (sites/projects), not a
+  // manually-edited number that can drift out of date.
+  const { data: sites = [] }    = useMapSites();
+  const { data: projects = [] } = useProjects();
+  const sezParkCount = sites.filter(s => s.layer === "investment" && (s.kind === "sez" || s.kind === "park")).length;
+  const liveStats = [
+    { value: String(sezParkCount), suffix: "",  label: "SEZs & industrial parks" },
+    { value: "9",                  suffix: "",  label: "Industrial corridors" },
+    { value: String(sites.length), suffix: "+", label: "Sites on intelligence map" },
+    { value: String(projects.length), suffix: "", label: "Investment projects tracked" },
+  ];
+
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans overflow-x-hidden">
       <TopNav cfg={cfg} />
@@ -263,7 +276,7 @@ function AboutPage() {
       ═══════════════════════════════════════════════════ */}
       <section className="snap-section border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-white/8">
-          {cfg.stats.map((s, i) => (
+          {liveStats.map((s, i) => (
             <div key={s.label} className={`px-8 py-9 reveal reveal-delay-${i + 1}`}>
               <p className="text-4xl font-extrabold tracking-tighter tabular-nums" style={{ color: accent }}>
                 <Counter value={s.value} />{s.suffix}
@@ -531,7 +544,7 @@ function AboutPage() {
               className="inline-flex items-center gap-2 px-10 py-4 rounded-full font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
               style={{ backgroundColor: accent, color: "#000", boxShadow: `0 0 32px ${accent}55` }}
             >
-              Explore the intelligence map
+              Explore SeerMap
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

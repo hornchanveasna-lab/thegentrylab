@@ -10,7 +10,6 @@ import {
   exportConfig,
   importConfig,
   type SiteConfig,
-  type StatItem,
   type RoadmapItem,
   type NavLinkItem,
 } from "@/lib/siteConfig";
@@ -151,7 +150,6 @@ function OverviewPanel({ cfg }: { cfg: SiteConfig }) {
   const accent = cfg.accentColor;
   const stats = [
     { label: "Nav links",       value: cfg.navLinks.filter(n => n.visible).length + "/" + cfg.navLinks.length, color: accent },
-    { label: "Hero stats",      value: cfg.stats.length,     color: accent },
     { label: "Roadmap cards",   value: cfg.roadmap.length,   color: accent },
     { label: "Ticker items",    value: cfg.ticker.length,    color: accent },
     { label: "Advisory email",  value: cfg.advisoryEmail ? "Set" : "Not set", color: cfg.advisoryEmail ? "#34d399" : "#f43f5e" },
@@ -362,50 +360,6 @@ function HeroSection({ cfg, set }: { cfg: SiteConfig; set: Setter }) {
           hint='Links to /map' />
         <Field label="Secondary CTA (outline button)" value={cfg.heroCta2} onChange={(v) => set("heroCta2", v)}
           hint='Links to /about' />
-      </div>
-    </SectionCard>
-  );
-}
-
-/* ═══════════════════════════════════════════
-   STATS BAR
-═══════════════════════════════════════════ */
-
-function StatsSection({ cfg, set }: { cfg: SiteConfig; set: Setter }) {
-  const setStat = (i: number, f: keyof StatItem, v: string) =>
-    set("stats", cfg.stats.map((s, idx) => idx === i ? { ...s, [f]: v } : s));
-  const addStat = () => set("stats", [...cfg.stats, { value: "0", suffix: "", label: "New stat" }]);
-  const removeStat = (i: number) => set("stats", cfg.stats.filter((_, idx) => idx !== i));
-
-  return (
-    <SectionCard id="stats" title="Stats Bar" icon={
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"><rect x="2" y="10" width="3" height="4"/><rect x="6.5" y="7" width="3" height="7"/><rect x="11" y="3" width="3" height="11"/></svg>
-    }>
-      <p className="text-[12px] text-white/40 -mt-1">Animated number counters shown below the hero section.</p>
-      <div className="flex flex-col gap-2">
-        {cfg.stats.map((s, i) => (
-          <div key={i} className="flex items-end gap-2 p-3 bg-[#0a0a0b] border border-white/6">
-            <div className="flex items-center justify-center w-6 h-6 shrink-0 mb-[9px]">
-              <span className="font-mono text-[10px] text-white/20">{i + 1}</span>
-            </div>
-            <div className="w-28"><Field label="Value" value={s.value} onChange={(v) => setStat(i, "value", v)} mono /></div>
-            <div className="w-20"><Field label="Suffix" value={s.suffix} onChange={(v) => setStat(i, "suffix", v)} mono placeholder="+" /></div>
-            <div className="flex-1"><Field label="Label" value={s.label} onChange={(v) => setStat(i, "label", v)} /></div>
-            <RemoveButton onClick={() => removeStat(i)} />
-          </div>
-        ))}
-      </div>
-      <AddButton label="Add stat" onClick={addStat} />
-
-      {/* Preview */}
-      <Divider label="Preview" />
-      <div className="flex flex-wrap gap-6 px-4 py-4 bg-[#0a0a0b] border border-white/6">
-        {cfg.stats.map((s, i) => (
-          <div key={i} className="flex flex-col">
-            <span className="text-2xl font-extrabold" style={{ color: cfg.accentColor }}>{s.value}{s.suffix}</span>
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/35 mt-0.5">{s.label}</span>
-          </div>
-        ))}
       </div>
     </SectionCard>
   );
@@ -994,7 +948,6 @@ export function DashboardBody({ embedded = false }: { embedded?: boolean }) {
     { id: "branding",         label: "Branding",        icon: "◉" },
     { id: "navigation",       label: "Navigation",      icon: "≡" },
     { id: "hero",             label: "Hero",            icon: "▲" },
-    { id: "stats",            label: "Stats Bar",       icon: "▦" },
     { id: "advisory",         label: "Advisory",        icon: "✉" },
     { id: "seo",              label: "SEO & Meta",      icon: "⊙" },
     { id: "map",              label: "Map",             icon: "◎" },
@@ -1081,7 +1034,6 @@ export function DashboardBody({ embedded = false }: { embedded?: boolean }) {
         <div className="scroll-mt-16"><BrandingSection cfg={cfg} set={set} /></div>
         <div className="scroll-mt-16"><NavigationSection cfg={cfg} set={set} /></div>
         <div className="scroll-mt-16"><HeroSection cfg={cfg} set={set} /></div>
-        <div className="scroll-mt-16"><StatsSection cfg={cfg} set={set} /></div>
         <div className="scroll-mt-16"><AdvisorySection cfg={cfg} set={set} /></div>
         <div className="scroll-mt-16"><SeoSection cfg={cfg} set={set} /></div>
         <div className="scroll-mt-16"><MapSection cfg={cfg} set={set} /></div>
