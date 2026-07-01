@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
+import { useSmoothScroll } from "@/components/site/Counter";
 import { useAuth } from "@/lib/auth";
 import { useCredits, CREDIT_PACKAGES, CREDIT_COSTS, formatCredits } from "@/lib/credits";
 import { supabase } from "@/lib/supabase";
@@ -18,6 +19,7 @@ export const Route = createFileRoute("/credits")({
 });
 
 export default function CreditsPage() {
+  useSmoothScroll();
   const { user } = useAuth();
   const { credits, loading, refresh } = useCredits();
   const navigate = useNavigate();

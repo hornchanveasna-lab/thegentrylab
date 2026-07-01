@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
+import { useSmoothScroll } from "@/components/site/Counter";
 import { useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/contact")({
@@ -22,6 +23,7 @@ export const Route = createFileRoute("/contact")({
 const EMAIL = "advisory@thegentrylab.io";
 
 function ContactPage() {
+  useSmoothScroll();
   const { t } = useLang();
 
   return (

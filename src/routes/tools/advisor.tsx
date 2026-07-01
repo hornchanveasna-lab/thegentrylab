@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { TopNav } from "@/components/site/TopNav";
+import { useSmoothScroll } from "@/components/site/Counter";
 import { useCredits, CREDIT_COSTS } from "@/lib/credits";
 import PptxGenJS from "pptxgenjs";
 import heroBlueprintImg from "@/assets/hero-blueprint.jpg";
@@ -3011,6 +3012,7 @@ function HistoryView({
 
 /* ── Main page ──────────────────────────────────────────── */
 export default function AdvisorPage() {
+  useSmoothScroll();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>("select");
   const [category, setCategory] = useState<Category>("INVEST");

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
+import { useSmoothScroll } from "@/components/site/Counter";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 
@@ -53,6 +54,7 @@ function Field({
 }
 
 export default function ProfilePage() {
+  useSmoothScroll();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile>(EMPTY);
