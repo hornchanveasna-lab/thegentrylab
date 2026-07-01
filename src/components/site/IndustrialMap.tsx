@@ -1623,7 +1623,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
       </div>
 
       {/* ── Search bar (beside LAYERS button, top-left) ───── */}
-      <div ref={searchWrapRef} className="absolute top-4 z-[600] w-[min(320px,calc(100vw-220px))]" style={{ left: "168px" }}>
+      <div ref={searchWrapRef} className="absolute top-4 z-[600]" style={{ left: "168px", right: "16px", maxWidth: "320px" }}>
         <form
           onSubmit={(e) => { e.preventDefault(); setSuggestions([]); setShowSuggestions(false); handleLocationSearch(); }}
           className="flex items-center bg-black/95 backdrop-blur border border-white/15 shadow-2xl"
@@ -1655,7 +1655,7 @@ const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set());
           {locationInput && (
             <button type="button"
               onClick={() => { setLocationInput(""); setPinMarker(null); setLocError(""); setSuggestions([]); setShowSuggestions(false); }}
-              className="text-white/30 hover:text-white/80 px-2.5 text-lg leading-none transition">✕</button>
+              className="text-white/30 hover:text-white/80 flex items-center justify-center w-11 h-11 shrink-0 text-base transition">✕</button>
           )}
         </form>
 
