@@ -11,6 +11,8 @@ const PAYWAY_LINKS: Record<string, string> = {
   business: "https://link.payway.com.kh/ABAPAY0i469463b",
 };
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
 export const Route = createFileRoute("/credits")({
   component: CreditsPage,
 });
@@ -21,8 +23,11 @@ export default function CreditsPage() {
   const navigate = useNavigate();
   const [buying, setBuying] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [khqrModal, setKhqrModal] = useState<{ pkgId: string; txId: string; link: string } | null>(null);
-  const [khqrStatus, setKhqrStatus] = useState<"waiting" | "confirmed" | "timeout">("waiting");
+  const [khqrModal, setKhqrModal] = useState<{ pkgId: string; link: string } | null>(null);
+  const [verifyState, setVerifyState] = useState<"idle" | "verifying" | "success" | "error">("idle");
+  const [verifyMsg, setVerifyMsg] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [isDark, setIsDark] = useState(() => {
@@ -60,11 +65,10 @@ export default function CreditsPage() {
     skeletonBg:  isDark ? "rgba(255,255,255,0.08)"     : "rgba(0,0,0,0.08)",
   };
 
-  // Handle Stripe / PayWay return
+  // Handle Stripe return
   const search = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const successCr = search.get("cr");
   const cancelled = search.get("cancelled");
-  const paywayReturn = search.get("pw");
 
   useEffect(() => {
     if (successCr) {
@@ -76,98 +80,58 @@ export default function CreditsPage() {
       setToastMsg("Payment cancelled — no charge made.");
       window.history.replaceState({}, "", "/credits");
     }
-    if (paywayReturn && user && supabase) {
-      window.history.replaceState({}, "", "/credits");
-      // Find the most recent pending transaction for this user and poll it
-      supabase
-        .from("payway_transactions")
-        .select("id, package_id")
-        .eq("user_id", user.id)
-        .eq("status", "pending")
-        .gte("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .then(({ data: tx }) => {
-          if (tx) {
-            const link = PAYWAY_LINKS[tx.package_id] ?? "";
-            setKhqrStatus("waiting");
-            setKhqrModal({ pkgId: tx.package_id, txId: tx.id, link });
-            startPolling(tx.id);
-          } else {
-            // Webhook may have already confirmed before we checked
-            refresh();
-            setToastMsg("Payment received! Checking your balance…");
-          }
-        });
-    }
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function buyWithKhqr(pkgId: string) {
-    if (!user || !supabase) { navigate({ to: "/login" }); return; }
-    const pkg = CREDIT_PACKAGES.find(p => p.id === pkgId);
-    if (!pkg) return;
+  function buyWithKhqr(pkgId: string) {
+    if (!user) { navigate({ to: "/login" }); return; }
     const link = PAYWAY_LINKS[pkgId];
     if (!link) return;
-
-    const { data: tx, error } = await supabase
-      .from("payway_transactions")
-      .insert({
-        user_id: user.id,
-        package_id: pkgId,
-        credits: pkg.credits,
-        amount: pkg.price_usd,
-        currency: "USD",
-        status: "pending",
-      })
-      .select("id")
-      .single();
-
-    if (error || !tx) {
-      // Fallback: just open the link, admin can credit manually
-      window.open(link, "_blank");
-      setToastMsg("Payment opened. Credits will be added after manual confirmation.");
-      return;
-    }
-
-    setKhqrStatus("waiting");
-    setKhqrModal({ pkgId, txId: tx.id, link });
-
-    // Open PayWay in new tab
-    window.open(link, "_blank");
-
-    // Poll every 4s for up to 12 minutes for webhook to confirm
-    startPolling(tx.id);
-  }
-
-  function startPolling(txId: string) {
-    if (pollRef.current) clearInterval(pollRef.current);
-    let elapsed = 0;
-    pollRef.current = setInterval(async () => {
-      elapsed += 4;
-      if (!supabase) return;
-      const { data } = await supabase
-        .from("payway_transactions")
-        .select("status")
-        .eq("id", txId)
-        .single();
-
-      if (data?.status === "confirmed") {
-        clearInterval(pollRef.current!);
-        setKhqrStatus("confirmed");
-        refresh();
-        setTimeout(() => setKhqrModal(null), 4000);
-      } else if (elapsed >= 720) {
-        clearInterval(pollRef.current!);
-        setKhqrStatus("timeout");
-      }
-    }, 4000);
+    setVerifyState("idle");
+    setVerifyMsg("");
+    setKhqrModal({ pkgId, link });
   }
 
   function closeKhqrModal() {
     if (pollRef.current) clearInterval(pollRef.current);
     setKhqrModal(null);
-    setKhqrStatus("waiting");
+    setVerifyState("idle");
+    setVerifyMsg("");
+  }
+
+  async function submitReceipt(file: File) {
+    if (!user || !supabase) return;
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    if (!token) return;
+
+    setVerifyState("verifying");
+    setVerifyMsg("");
+
+    const form = new FormData();
+    form.append("receipt", file);
+    form.append("package_id", khqrModal!.pkgId);
+
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/verify-payway-receipt`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setVerifyState("success");
+        setVerifyMsg(`${data.credits.toLocaleString()} credits added to your account!`);
+        refresh();
+        setTimeout(() => closeKhqrModal(), 4000);
+      } else {
+        setVerifyState("error");
+        setVerifyMsg(data.reason ?? data.error ?? "Verification failed. Please try again.");
+      }
+    } catch {
+      setVerifyState("error");
+      setVerifyMsg("Network error. Please try again.");
+    }
   }
 
   async function buyCredits(pkgId: string) {
@@ -198,73 +162,118 @@ export default function CreditsPage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: c.pageBg, color: c.text }}>
 
-    {/* KHQR Payment Modal */}
+    {/* KHQR Receipt Upload Modal */}
     {khqrModal && (
       <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
-        <div className="relative w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl"
+        <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl"
           style={{ backgroundColor: isDark ? "#111" : "#fff", border: "1px solid rgba(255,81,0,0.25)" }}>
 
           {/* Header */}
-          <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: "rgba(255,81,0,0.15)" }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "#ff5100" }}>ABA KHQR · PayWay</p>
-                <p className="text-[16px] font-bold mt-0.5" style={{ color: isDark ? "#fff" : "#111" }}>
-                  {khqrPkg?.label} — ${khqrPkg?.price_usd} USD
-                </p>
-              </div>
-              <button onClick={closeKhqrModal} className="w-7 h-7 flex items-center justify-center rounded-full opacity-40 hover:opacity-70 transition"
-                style={{ color: isDark ? "#fff" : "#111" }}>✕</button>
+          <div className="px-6 pt-5 pb-4 border-b flex items-center justify-between"
+            style={{ borderColor: "rgba(255,81,0,0.12)" }}>
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "#ff5100" }}>ABA PayWay · KHQR</p>
+              <p className="text-[15px] font-bold mt-0.5" style={{ color: isDark ? "#fff" : "#111" }}>
+                {khqrPkg?.label} — ${khqrPkg?.price_usd} USD
+              </p>
             </div>
+            <button onClick={closeKhqrModal} className="opacity-30 hover:opacity-60 transition text-lg leading-none"
+              style={{ color: isDark ? "#fff" : "#111" }}>✕</button>
           </div>
 
-          {/* Body */}
-          <div className="px-6 py-6 text-center space-y-4">
-            {khqrStatus === "waiting" && (
+          <div className="px-6 py-5 space-y-5">
+
+            {verifyState === "idle" && (
               <>
-                <div className="w-10 h-10 mx-auto border-2 border-[#ff5100] border-t-transparent rounded-full animate-spin" />
-                <p className="text-[13px]" style={{ color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.65)" }}>
-                  Waiting for payment confirmation…
-                </p>
-                <p className="text-[11px]" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.4)" }}>
-                  Complete the payment in the tab that just opened.<br/>Credits are added automatically once confirmed.
-                </p>
+                {/* Steps */}
+                <div className="space-y-2.5">
+                  {[
+                    { n: "1", text: "Open PayWay and complete your payment" },
+                    { n: "2", text: "Download the PDF receipt from PayWay" },
+                    { n: "3", text: "Upload it below — AI verifies and adds credits instantly" },
+                  ].map(s => (
+                    <div key={s.n} className="flex items-start gap-3">
+                      <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-mono text-[10px] font-bold mt-0.5"
+                        style={{ backgroundColor: "rgba(255,81,0,0.15)", color: "#ff5100" }}>{s.n}</span>
+                      <p className="text-[12px]" style={{ color: isDark ? "rgba(255,255,255,0.65)" : "rgba(0,0,0,0.65)" }}>{s.text}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Open PayWay button */}
                 <button onClick={() => window.open(khqrModal.link, "_blank")}
-                  className="w-full py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-widest transition"
-                  style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.3)" }}>
-                  Re-open PayWay →
+                  className="w-full py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-widest font-bold transition"
+                  style={{ backgroundColor: "#ff5100", color: "#fff" }}>
+                  Open PayWay →
                 </button>
+
+                {/* Upload zone */}
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) submitReceipt(f); }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-xl border-2 border-dashed py-7 flex flex-col items-center gap-2 cursor-pointer transition-colors"
+                  style={{ borderColor: dragOver ? "#ff5100" : "rgba(255,81,0,0.25)", backgroundColor: dragOver ? "rgba(255,81,0,0.05)" : "transparent" }}
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <p className="text-[12px] font-semibold" style={{ color: isDark ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.65)" }}>
+                    Upload PayWay receipt
+                  </p>
+                  <p className="text-[10px] font-mono" style={{ color: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.35)" }}>
+                    PDF or screenshot · drag & drop or click
+                  </p>
+                  <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) submitReceipt(f); }} />
+                </div>
               </>
             )}
 
-            {khqrStatus === "confirmed" && (
-              <>
-                <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(34,197,94,0.15)" }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <p className="text-[15px] font-bold" style={{ color: isDark ? "#fff" : "#111" }}>Payment confirmed!</p>
-                <p className="text-[12px]" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
-                  {khqrPkg?.credits.toLocaleString()} credits added to your account.
+            {verifyState === "verifying" && (
+              <div className="py-8 flex flex-col items-center gap-4">
+                <div className="w-10 h-10 border-2 border-[#ff5100] border-t-transparent rounded-full animate-spin" />
+                <p className="text-[13px] font-semibold" style={{ color: isDark ? "#fff" : "#111" }}>
+                  AI verifying receipt…
                 </p>
-              </>
+                <p className="text-[11px] text-center" style={{ color: isDark ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.4)" }}>
+                  Checking merchant, amount, and date
+                </p>
+              </div>
             )}
 
-            {khqrStatus === "timeout" && (
-              <>
-                <div className="w-12 h-12 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(255,81,0,0.12)" }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {verifyState === "success" && (
+              <div className="py-8 flex flex-col items-center gap-3">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(34,197,94,0.15)" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <p className="text-[14px] font-semibold" style={{ color: isDark ? "#fff" : "#111" }}>Timed out</p>
-                <p className="text-[12px]" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
-                  No payment detected. If you paid, your credits will appear within a few minutes once PayWay confirms.
+                <p className="text-[16px] font-bold" style={{ color: isDark ? "#fff" : "#111" }}>Credits added!</p>
+                <p className="text-[12px] text-center" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
+                  {verifyMsg}
                 </p>
-                <button onClick={closeKhqrModal}
-                  className="w-full py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-widest"
-                  style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.3)" }}>
-                  Close
-                </button>
-              </>
+              </div>
             )}
+
+            {verifyState === "error" && (
+              <div className="py-6 flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(239,68,68,0.12)" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                </div>
+                <p className="text-[13px] font-semibold" style={{ color: isDark ? "#fff" : "#111" }}>Verification failed</p>
+                <p className="text-[11px] text-center px-2" style={{ color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)" }}>
+                  {verifyMsg}
+                </p>
+                <button onClick={() => { setVerifyState("idle"); setVerifyMsg(""); }}
+                  className="mt-1 px-5 py-2 rounded-xl font-mono text-[10px] uppercase tracking-widest transition"
+                  style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100", border: "1px solid rgba(255,81,0,0.3)" }}>
+                  Try again
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       </div>

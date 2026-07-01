@@ -2,7 +2,28 @@
   "permissions": {
     "allow": [
       "Bash(npx create-next-app@latest hello-world --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
-      "Bash(Test-Path \"D:\\\\Claude Ai\\\\TheGentryLab\\\\hello-world\\\\package.json\")"
+      "Bash(Test-Path \"D:\\\\Claude Ai\\\\TheGentryLab\\\\hello-world\\\\package.json\")",
+      "mcp__2d9cdc4d-820f-40d1-b353-d5b5fe2deb29__execute_sql",
+      "mcp__1e5b43cc-2ed7-4f7c-b894-5eadbf552663__create_draft",
+      "WebSearch",
+      "WebFetch(domain:thebettercambodia.com)",
+      "WebFetch(domain:cambodiainvestmentreview.com)",
+      "WebFetch(domain:nominatim.openstreetmap.org)",
+      "WebFetch(domain:www.phnompenhpost.com)",
+      "WebFetch(domain:www.edc.com.kh)",
+      "WebFetch(domain:www.manhattansez.com)",
+      "WebFetch(domain:ppsez.com)",
+      "WebFetch(domain:rgppsez.com.kh)",
+      "WebFetch(domain:www.royalgroup.com.kh)",
+      "WebFetch(domain:www.power-technology.com)",
+      "WebFetch(domain:construction-property.com)",
+      "WebFetch(domain:english.news.cn)",
+      "WebFetch(domain:www.knightfrank.com.kh)",
+      "WebFetch(domain:www.aseanbriefing.com)",
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ]
   }
 }
