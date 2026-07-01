@@ -1,5 +1,6 @@
 import {
-  extractKeywords, fetchRagContext, formatRagContext, logReport,
+  extractKeywords, fetchRagContext, formatRagContext,
+  fetchZoneDirectory, formatZoneDirectory, logReport,
 } from "./lib/rag.js";
 
 const SYSTEM_PROMPT = `You are the GentryLab AI Industrial Advisor — Cambodia's most advanced industrial intelligence engine. You generate structured, decision-ready investment briefs for manufacturers, investors, developers, banks, and consultants.
@@ -7,7 +8,7 @@ const SYSTEM_PROMPT = `You are the GentryLab AI Industrial Advisor — Cambodia'
 ## Your knowledge base
 
 **Zones & Locations**
-- Special Economic Zones: Phnom Penh SEZ, Sihanoukville SEZ, Kampot SEZ, Svay Rieng (Manhattan SEZ), Kampong Speu, Bavet SEZ
+- Do NOT rely on a fixed memorized list of SEZs — a live "ZONE DIRECTORY" section is appended below with the full, current set of zones from the platform's database. Always use that list, not your training data, to name and score specific zones.
 - Key industrial provinces: Phnom Penh, Kandal, Kampong Speu, Sihanoukville, Svay Rieng, Kampong Cham, Kampot
 - SEZ advantages: in-zone customs clearance same day vs 3–5 days outside; dedicated utilities; simplified permits
 
@@ -386,11 +387,15 @@ export default async function handler(req: Request): Promise<Response> {
   const keywords = extractKeywords(`${briefTitle} ${Object.values(fields).join(" ")}`);
 
   let ragCtx = { news: [], projects: [], sites: [] } as Awaited<ReturnType<typeof fetchRagContext>>;
+  let zones: Awaited<ReturnType<typeof fetchZoneDirectory>> = [];
   if (supabaseUrl && serviceKey) {
-    ragCtx = await fetchRagContext(supabaseUrl, serviceKey, { keywords, province, sector });
+    [ragCtx, zones] = await Promise.all([
+      fetchRagContext(supabaseUrl, serviceKey, { keywords, province, sector }),
+      fetchZoneDirectory(supabaseUrl, serviceKey),
+    ]);
   }
 
-  const dynamicContext = formatRagContext(ragCtx);
+  const dynamicContext = formatZoneDirectory(zones) + formatRagContext(ragCtx);
   const systemPrompt   = SYSTEM_PROMPT + dynamicContext;
 
   // Fire-and-forget log

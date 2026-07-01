@@ -42,6 +42,11 @@ export interface RagResult {
   projects: RagProject[];
   sites:    RagSite[];
 }
+export interface ZoneEntry {
+  name: string; kind: string; province: string;
+  status?: string; size?: string; utilities?: string; road?: string;
+  notes?: string; targetIndustries?: string[]; eip_tier?: string;
+}
 
 // ── Extract meaningful keywords from user message ────────────────────────────
 export function extractKeywords(text: string): string[] {
@@ -165,6 +170,64 @@ export async function fetchRagContext(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ── Zone directory: the FULL current SEZ/industrial-park list, always
+//    injected (not keyword-filtered) so the model reasons over every zone
+//    that exists right now — including ones added after this code was
+//    written — instead of a hardcoded name list baked into the prompt. ──
+export async function fetchZoneDirectory(
+  supabaseUrl: string, serviceKey: string,
+): Promise<ZoneEntry[]> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 3000);
+  try {
+    const rows = await sbGet<Record<string, unknown>>(
+      `${supabaseUrl}/rest/v1/sites?layer=eq.investment&kind=in.(sez,park)` +
+      `&select=name,kind,province,status,size,utilities,road,notes,target_industries,eip_tier&order=name`,
+      serviceKey, ac.signal,
+    );
+    return rows.map((r) => ({
+      name:             r.name as string,
+      kind:             r.kind as string,
+      province:         r.province as string,
+      status:           r.status as string | undefined,
+      size:             r.size as string | undefined,
+      utilities:        r.utilities as string | undefined,
+      road:             r.road as string | undefined,
+      notes:            r.notes as string | undefined,
+      targetIndustries: r.target_industries as string[] | undefined,
+      eip_tier:         r.eip_tier as string | undefined,
+    }));
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function formatZoneDirectory(zones: ZoneEntry[]): string {
+  if (!zones.length) return "";
+  const lines: string[] = [
+    "",
+    "## 🏭 ZONE DIRECTORY — live, from the platform database (authoritative — supersedes any zone list you were trained on)",
+    "",
+    "This is the FULL current list of Special Economic Zones and industrial parks in Cambodia. Only recommend zones from this list. New zones are added here as they come online — do not assume this list is fixed.",
+    "",
+  ];
+  for (const z of zones) {
+    const bits = [
+      z.status,
+      z.size ? `${z.size}` : null,
+      z.utilities,
+      z.road,
+    ].filter(Boolean).join(" · ");
+    const industries = z.targetIndustries?.length ? ` Targets: ${z.targetIndustries.join(", ")}.` : "";
+    const tier = z.eip_tier ? ` [EIP Tier: ${z.eip_tier}]` : "";
+    lines.push(`- **${z.name}** (${z.kind === "sez" ? "SEZ" : "Industrial Park"}, ${z.province}${bits ? ` · ${bits}` : ""})${tier}: ${z.notes ?? "No notes on file."}${industries}`);
+  }
+  lines.push("");
+  return lines.join("\n");
 }
 
 // ── Format context block for injection into system prompt ────────────────────

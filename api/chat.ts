@@ -1,6 +1,6 @@
 import {
   extractKeywords, extractProvince, fetchRagContext, formatRagContext,
-  logChat,
+  fetchZoneDirectory, formatZoneDirectory, logChat,
 } from "./lib/rag.js";
 
 const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — Cambodia's industrial intelligence platform. You help foreign manufacturers, investors, and developers make informed decisions about industrial development in Cambodia.
@@ -8,7 +8,7 @@ const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — 
 ## Your expertise:
 
 **Zones & Locations**
-- Special Economic Zones: Phnom Penh SEZ, Sihanoukville SEZ, Kampot SEZ, Svay Rieng (Manhattan SEZ), Kampong Speu
+- Do NOT rely on a fixed memorized list of SEZs — a live "ZONE DIRECTORY" section is appended below with the full, current set of zones from the platform's database. Always use that list, not your training data, to name specific zones.
 - Key industrial provinces: Phnom Penh, Kandal, Kampong Speu, Sihanoukville, Svay Rieng, Kampong Cham
 - SEZ advantages: in-zone customs clearance (same day vs 3–5 days outside), dedicated utilities, simplified permits
 
@@ -138,11 +138,15 @@ export default async function handler(req: Request): Promise<Response> {
   const province    = extractProvince(lastUserMsg) ?? undefined;
 
   let ragCtx = { news: [], projects: [], sites: [] } as Awaited<ReturnType<typeof fetchRagContext>>;
-  if (supabaseUrl && serviceKey && (keywords.length || province)) {
-    ragCtx = await fetchRagContext(supabaseUrl, serviceKey, { keywords, province });
+  let zones: Awaited<ReturnType<typeof fetchZoneDirectory>> = [];
+  if (supabaseUrl && serviceKey) {
+    const ragPromise = (keywords.length || province)
+      ? fetchRagContext(supabaseUrl, serviceKey, { keywords, province })
+      : Promise.resolve(ragCtx);
+    [ragCtx, zones] = await Promise.all([ragPromise, fetchZoneDirectory(supabaseUrl, serviceKey)]);
   }
 
-  const dynamicContext = formatRagContext(ragCtx);
+  const dynamicContext = formatZoneDirectory(zones) + formatRagContext(ragCtx);
   const systemPrompt   = SYSTEM_PROMPT + dynamicContext;
 
   // Fire-and-forget log (never awaited, never blocks)
