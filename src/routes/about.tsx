@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
-import { Counter, useReveal } from "@/components/site/Counter";
+import { Counter, useReveal, useSnapScroll } from "@/components/site/Counter";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
 
 export const Route = createFileRoute("/about")({
@@ -218,6 +218,7 @@ const DEFAULT_TICKER = [
 
 function AboutPage() {
   useReveal();
+  useSnapScroll();
   const [cfg, setCfg] = useState<SiteConfig>(() => loadConfig());
 
   useEffect(() => {
@@ -236,7 +237,7 @@ function AboutPage() {
       {/* ═══════════════════════════════════════════════════
           PAGE HERO
       ═══════════════════════════════════════════════════ */}
-      <section className="relative py-24 md:py-32 border-b border-white/8 overflow-hidden">
+      <section className="snap-section relative py-24 md:py-32 border-b border-white/8 overflow-hidden">
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 70% 60% at 30% 100%, ${accent}20 0%, transparent 70%)` }} />
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12">
           <div className="flex items-center gap-3 mb-6 reveal">
@@ -260,7 +261,7 @@ function AboutPage() {
       {/* ═══════════════════════════════════════════════════
           STATS BAR
       ═══════════════════════════════════════════════════ */}
-      <section className="border-b border-white/8 bg-[#0d0d0e]">
+      <section className="snap-section border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 divide-x divide-white/8">
           {cfg.stats.map((s, i) => (
             <div key={s.label} className={`px-8 py-9 reveal reveal-delay-${i + 1}`}>
@@ -276,7 +277,7 @@ function AboutPage() {
       {/* ═══════════════════════════════════════════════════
           PROBLEM → SOLUTION
       ═══════════════════════════════════════════════════ */}
-      <section className="px-6 md:px-12 py-24 border-b border-white/8 max-w-7xl mx-auto">
+      <section className="snap-section px-6 md:px-12 py-24 border-b border-white/8 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           {/* Problem side */}
           <div className="reveal">
@@ -336,7 +337,7 @@ function AboutPage() {
       {/* ═══════════════════════════════════════════════════
           CASE STUDIES
       ═══════════════════════════════════════════════════ */}
-      <section className="py-24 border-b border-white/8 px-6 md:px-12 bg-[#0d0d0e]">
+      <section className="snap-section py-24 border-b border-white/8 px-6 md:px-12 bg-[#0d0d0e]">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
             <div className="reveal">
@@ -416,7 +417,7 @@ function AboutPage() {
       {/* ═══════════════════════════════════════════════════
           ROADMAP
       ═══════════════════════════════════════════════════ */}
-      <section className="py-24 border-b border-white/8 px-6 md:px-12 bg-[#0d0d0e] overflow-hidden">
+      <section className="snap-section py-24 border-b border-white/8 px-6 md:px-12 bg-[#0d0d0e] overflow-hidden">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
             <div className="reveal">
@@ -511,7 +512,7 @@ function AboutPage() {
       {/* ═══════════════════════════════════════════════════
           FINAL CTA BANNER
       ═══════════════════════════════════════════════════ */}
-      <section className="py-28 px-6 md:px-12 border-b border-white/8 relative overflow-hidden">
+      <section className="snap-section py-28 px-6 md:px-12 border-b border-white/8 relative overflow-hidden">
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 70% 80% at 50% 50%, ${accent}14 0%, transparent 70%)` }} />
         <div className="max-w-4xl mx-auto text-center relative z-10 reveal">
           <p className="font-mono text-[11px] uppercase tracking-[0.22em] mb-6" style={{ color: accent }}>

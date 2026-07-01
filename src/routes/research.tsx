@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
+import { useSnapScroll } from "@/components/site/Counter";
 import { RESEARCH } from "@/data/platform";
 import { useResearch } from "@/lib/data";
 
@@ -238,6 +239,7 @@ function ResearchCard({
 
 /* ── Page ─────────────────────────────────────────────────── */
 function ResearchPage() {
+  useSnapScroll();
   const { data: briefs = RESEARCH } = useResearch();
   const [activeCategory, setActiveCategory] = useState("All");
   const [isDark, setIsDark] = useState(() => {
@@ -263,7 +265,7 @@ function ResearchPage() {
       <TopNav />
 
       {/* ── Hero strip ── */}
-      <section className="relative border-b border-white/8 overflow-hidden" style={{ background: "var(--research-hero-bg)" }}>
+      <section className="snap-section relative border-b border-white/8 overflow-hidden" style={{ background: "var(--research-hero-bg)" }}>
         {/* Background decorative */}
         <div className="absolute inset-0 pointer-events-none" style={{
           backgroundImage: "linear-gradient(rgba(255,81,0,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,81,0,0.04) 1px,transparent 1px)",

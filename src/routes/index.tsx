@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
-import { useReveal } from "@/components/site/Counter";
+import { useReveal, useSnapScroll } from "@/components/site/Counter";
 import { useConfig } from "@/lib/siteConfig";
 import { useLang } from "@/lib/i18n";
 
@@ -178,6 +178,7 @@ const DEFAULT_TICKER = [
 
 function Index() {
   useReveal();
+  useSnapScroll();
   const cfg = useConfig();
   const [openStage, setOpenStage] = useState<string | null>(null);
   const { t, ta, to } = useLang();
@@ -196,7 +197,7 @@ function Index() {
       {/* ═══════════════════════════════════════════════════
           HERO
       ═══════════════════════════════════════════════════ */}
-      <section className="relative min-h-[95vh] flex flex-col justify-end overflow-hidden scanlines">
+      <section className="snap-section relative min-h-[95vh] flex flex-col justify-end overflow-hidden scanlines">
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 90% 55% at 40% 100%, ${accent}28 0%, transparent 70%)` }} />
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 50% 40% at 20% 85%, ${accent}18 0%, transparent 65%)` }} />
 
@@ -261,7 +262,7 @@ function Index() {
       {/* ═══════════════════════════════════════════════════
           GIDF 9-STAGE METHODOLOGY — with intelligence tooltips
       ═══════════════════════════════════════════════════ */}
-      <section className="py-24 border-b border-white/8 bg-[#0d0d0e] overflow-hidden">
+      <section className="snap-section py-24 border-b border-white/8 bg-[#0d0d0e] overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
             <div className="reveal">
@@ -371,7 +372,7 @@ function Index() {
       {/* ═══════════════════════════════════════════════════
           MAP PLATFORM PREVIEW — animated overlay + dim real map
       ═══════════════════════════════════════════════════ */}
-      <section className="py-24 border-b border-white/8 bg-[#0d0d0e]">
+      <section className="snap-section py-24 border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="reveal">

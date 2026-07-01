@@ -47,3 +47,12 @@ export function useReveal() {
     return () => io.disconnect();
   }, []);
 }
+
+/* ── Section scroll-snap: settles the page on a section instead
+   of stopping mid-way through it, so long pages read cleanly ── */
+export function useSnapScroll() {
+  useEffect(() => {
+    document.documentElement.classList.add("snap-scroll");
+    return () => document.documentElement.classList.remove("snap-scroll");
+  }, []);
+}

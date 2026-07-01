@@ -798,3 +798,16 @@
   0%   { transform: translateX(-120%); }
   100% { transform: translateX(220%); }
 }
+
+/* ── Section scroll-snap: lets a section settle into full view
+   instead of stopping mid-way, without trapping fast scrolls ── */
+html.snap-scroll {
+  scroll-snap-type: y proximity;
+}
+.snap-section {
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+}
+@media (max-width: 767px) {
+  html.snap-scroll { scroll-snap-type: none; }
+}

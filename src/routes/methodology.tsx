@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { TopNav } from "@/components/site/TopNav";
+import { useSnapScroll } from "@/components/site/Counter";
 import { useDataQuality } from "@/lib/data";
 
 export const Route = createFileRoute("/methodology")({
@@ -42,6 +43,7 @@ function Stat({ value, label, sub, color }: { value: string | number; label: str
 }
 
 function MethodologyPage() {
+  useSnapScroll();
   const { data: dq } = useDataQuality();
 
   return (
@@ -49,7 +51,7 @@ function MethodologyPage() {
       <TopNav />
 
       {/* Hero */}
-      <section className="relative py-20 md:py-28 border-b border-white/8 overflow-hidden">
+      <section className="snap-section relative py-20 md:py-28 border-b border-white/8 overflow-hidden">
         <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse 70% 60% at 30% 100%, ${ACCENT}20 0%, transparent 70%)` }} />
         <div className="relative z-10 max-w-5xl mx-auto px-6 md:px-12">
           <div className="flex items-center gap-3 mb-6">
@@ -66,7 +68,7 @@ function MethodologyPage() {
       </section>
 
       {/* Live data quality */}
-      <section className="border-b border-white/8 bg-[#0d0d0e]">
+      <section className="snap-section border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-5xl mx-auto px-6 md:px-12 py-5">
           <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-1">Live data-quality snapshot</p>
         </div>
@@ -84,7 +86,7 @@ function MethodologyPage() {
       </section>
 
       {/* Source tiers */}
-      <section className="px-6 md:px-12 py-16 border-b border-white/8 max-w-5xl mx-auto">
+      <section className="snap-section px-6 md:px-12 py-16 border-b border-white/8 max-w-5xl mx-auto">
         <h2 className="text-3xl font-extrabold uppercase tracking-tighter mb-3">Source tiers</h2>
         <p className="text-white/45 mb-8 max-w-2xl">Every site is graded by how authoritative its source is. We don't hide tier-3 data — we mark it so you know what still needs corroboration.</p>
         <div className="grid md:grid-cols-3 gap-4">
@@ -102,7 +104,7 @@ function MethodologyPage() {
       </section>
 
       {/* Method labels */}
-      <section className="px-6 md:px-12 py-16 border-b border-white/8 bg-[#0d0d0e]">
+      <section className="snap-section px-6 md:px-12 py-16 border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-extrabold uppercase tracking-tighter mb-3">How values are derived</h2>
           <p className="text-white/45 mb-8 max-w-2xl">Each field is labeled by method. The distinction that matters most: <span className="text-white/70">estimated</span> (straight-line) is not the same as <span className="text-white/70">measured</span> (road distance).</p>
@@ -121,7 +123,7 @@ function MethodologyPage() {
       </section>
 
       {/* EIP scoring */}
-      <section className="px-6 md:px-12 py-16 border-b border-white/8 max-w-5xl mx-auto">
+      <section className="snap-section px-6 md:px-12 py-16 border-b border-white/8 max-w-5xl mx-auto">
         <h2 className="text-3xl font-extrabold uppercase tracking-tighter mb-3">The EIP suitability score</h2>
         <p className="text-white/45 mb-8 max-w-2xl">Site scores (0–100) follow the UNIDO / World Bank / GIZ International Framework for Eco-Industrial Parks (v2.0, 2021), adapted for Cambodia. Four equally-weighted pillars:</p>
         <div className="grid md:grid-cols-4 gap-4">
@@ -142,7 +144,7 @@ function MethodologyPage() {
       </section>
 
       {/* Sources */}
-      <section className="px-6 md:px-12 py-16 border-b border-white/8 bg-[#0d0d0e]">
+      <section className="snap-section px-6 md:px-12 py-16 border-b border-white/8 bg-[#0d0d0e]">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-extrabold uppercase tracking-tighter mb-8">Primary data sources</h2>
           <div className="divide-y divide-white/8 border border-white/10">
@@ -157,7 +159,7 @@ function MethodologyPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-6 md:px-12 text-center">
+      <section className="snap-section py-20 px-6 md:px-12 text-center">
         <h2 className="text-3xl md:text-4xl font-extrabold uppercase tracking-tighter mb-6">See it on the map</h2>
         <Link to="/map" className="inline-flex items-center gap-2 px-9 py-4 rounded-full font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all"
           style={{ backgroundColor: ACCENT, color: "#000", boxShadow: `0 0 32px ${ACCENT}55` }}>
