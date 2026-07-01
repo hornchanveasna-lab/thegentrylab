@@ -49,17 +49,18 @@ export function useReveal() {
   }, []);
 }
 
-/* ── Buttery smooth scroll + section snap. Lenis smooths the
-   wheel/touch momentum; native scroll-snap still settles each
-   section into view since Lenis just eases the native scrollTop. */
-export function useSnapScroll() {
+/* ── Buttery smooth scroll (Lenis). Wheel/touch momentum is eased
+   instead of the browser's stock jump-scroll. Elements carrying
+   data-lenis-prevent (independently-scrolling panels/lists) are
+   left alone so nested scroll areas still work natively. ── */
+function useLenis(snap: boolean) {
   useEffect(() => {
-    document.documentElement.classList.add("snap-scroll");
+    if (snap) document.documentElement.classList.add("snap-scroll");
 
     const isMobile = window.matchMedia("(max-width: 767px)").matches;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (isMobile || prefersReducedMotion) {
-      return () => document.documentElement.classList.remove("snap-scroll");
+      return () => { if (snap) document.documentElement.classList.remove("snap-scroll"); };
     }
 
     const lenis = new Lenis({
@@ -67,6 +68,7 @@ export function useSnapScroll() {
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
       smoothWheel: true,
       touchMultiplier: 1.2,
+      allowNestedScroll: true,
     });
 
     let rafId: number;
@@ -79,7 +81,17 @@ export function useSnapScroll() {
     return () => {
       cancelAnimationFrame(rafId);
       lenis.destroy();
-      document.documentElement.classList.remove("snap-scroll");
+      if (snap) document.documentElement.classList.remove("snap-scroll");
     };
-  }, []);
+  }, [snap]);
+}
+
+/* ── Smooth scroll + section snap (long narrative pages) ── */
+export function useSnapScroll() {
+  useLenis(true);
+}
+
+/* ── Smooth scroll only, no snap (data/browsing pages) ── */
+export function useSmoothScroll() {
+  useLenis(false);
 }

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
+import { useSmoothScroll } from "@/components/site/Counter";
 import { NEWS, type NewsItem } from "@/data/platform";
 import { useNews } from "@/lib/data";
 
@@ -308,6 +309,7 @@ function NewsCard({ item }: { item: NewsItem }) {
 
 /* ── Page ─────────────────────────────────────────────────── */
 function NewsPage() {
+  useSmoothScroll();
   const { data: newsItems = NEWS } = useNews();
   const sectors = useMemo(() => Array.from(new Set(newsItems.map((n) => n.sector))).sort(), [newsItems]);
   const provinces = useMemo(() => Array.from(new Set(newsItems.map((n) => n.province))).sort(), [newsItems]);

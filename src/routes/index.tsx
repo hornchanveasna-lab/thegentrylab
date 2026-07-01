@@ -319,8 +319,15 @@ function Index() {
                       <span className="font-mono text-[10px] uppercase tracking-widest mb-2 block" style={{ color: accent }}>
                         Stage {stage.n}
                       </span>
-                      <h3 className="font-extrabold uppercase text-sm tracking-tight mb-1 gidf-title group-hover:text-white transition-colors">
-                        {title}
+                      <h3 className="mb-1">
+                        <Link
+                          to="/framework/$stageId"
+                          params={{ stageId: stage.n }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-extrabold uppercase text-sm tracking-tight gidf-title group-hover:text-white hover:underline transition-colors block"
+                        >
+                          {title}
+                        </Link>
                       </h3>
                       <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest mt-2 gidf-hint">
                         {isOpen ? "CAMBODIA INTEL ▲" : "CAMBODIA INTEL ▼"}

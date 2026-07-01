@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
+import { useSmoothScroll } from "@/components/site/Counter";
 import { PROJECTS, SECTORS, type Sector, type TrackedProject } from "@/data/platform";
 import { useProjects } from "@/lib/data";
 
@@ -405,6 +406,7 @@ function MobileBottomSheet({ project, onClose }: { project: TrackedProject | nul
 
 /* ── Page ─────────────────────────────────────────────────── */
 function TrackerPage() {
+  useSmoothScroll();
   const { data: projects = PROJECTS } = useProjects();
   const provinces = useMemo(() => Array.from(new Set(projects.map((p) => p.province))).sort(), [projects]);
   const [sector,   setSector]   = useState<Sector | "All">("All");
@@ -497,7 +499,7 @@ function TrackerPage() {
               Desktop: constrained height + independent scroll so both columns
               are visible simultaneously without scrolling the page.
               Mobile: unconstrained — page scrolls naturally, sheet handles detail. */}
-          <div className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e] lg:max-h-[calc(100vh-13rem)] lg:overflow-y-auto">
+          <div data-lenis-prevent className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e] lg:max-h-[calc(100vh-13rem)] lg:overflow-y-auto">
             {filtered.map((p) => {
               const vis = SECTOR_VISUAL[p.sector] ?? DEFAULT_VISUAL;
               const sc  = STATUS_COLOR[p.status] ?? "#94a3b8";
@@ -644,6 +646,7 @@ function TrackerPage() {
 
           {/* Detail panel — desktop only (lg+) */}
           <div
+            data-lenis-prevent
             className="hidden lg:block sticky top-[4.5rem] overflow-y-auto"
             style={{ maxHeight: "calc(100vh - 5rem)" }}
           >

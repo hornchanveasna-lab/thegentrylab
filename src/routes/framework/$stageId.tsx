@@ -6,6 +6,7 @@ import {
   AreaChart, Area,
 } from "recharts";
 import { TopNav } from "@/components/site/TopNav";
+import { useSmoothScroll } from "@/components/site/Counter";
 import { supabase } from "@/lib/supabase";
 import { getStage, getPrev, getNext } from "@/lib/stageContent";
 import type { StageContent } from "@/lib/stageContent";
@@ -102,6 +103,7 @@ function DocumentCard({ doc }: { doc: Doc }) {
 
 /* ─── Main page component ─────────────────────────────────── */
 function StagePage() {
+  useSmoothScroll();
   const stage = Route.useLoaderData() as StageContent;
   const prev  = getPrev(stage.id);
   const next  = getNext(stage.id);
