@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Lenis from "lenis";
 
 /* ── Animated counter (counts up on scroll into view) ───── */
 export function Counter({ value }: { value: string }) {
@@ -48,11 +49,37 @@ export function useReveal() {
   }, []);
 }
 
-/* ── Section scroll-snap: settles the page on a section instead
-   of stopping mid-way through it, so long pages read cleanly ── */
+/* ── Buttery smooth scroll + section snap. Lenis smooths the
+   wheel/touch momentum; native scroll-snap still settles each
+   section into view since Lenis just eases the native scrollTop. */
 export function useSnapScroll() {
   useEffect(() => {
     document.documentElement.classList.add("snap-scroll");
-    return () => document.documentElement.classList.remove("snap-scroll");
+
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (isMobile || prefersReducedMotion) {
+      return () => document.documentElement.classList.remove("snap-scroll");
+    }
+
+    const lenis = new Lenis({
+      duration: 1.1,
+      easing: (t: number) => 1 - Math.pow(1 - t, 3),
+      smoothWheel: true,
+      touchMultiplier: 1.2,
+    });
+
+    let rafId: number;
+    const raf = (time: number) => {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    };
+    rafId = requestAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+      document.documentElement.classList.remove("snap-scroll");
+    };
   }, []);
 }
