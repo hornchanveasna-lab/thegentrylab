@@ -328,7 +328,7 @@ export const STAGE_CONTENT: StageContent[] = [
       { name: "MoE Initial EIA (IEIA)", authority: "Ministry of Environment", costMin: 2000, costMax: 8000, weeksMin: 8, weeksMax: 16, notes: "Required for most projects >2,000 m² built area. Parallel-path with CDC QIP — submit simultaneously to save 2–3 months.", critical: true },
       { name: "MoE Full EIA", authority: "Ministry of Environment", costMin: 10000, costMax: 50000, weeksMin: 24, weeksMax: 52, notes: "Required for high-risk categories (chemicals, heavy industry, large-scale food processing). Budget 6–12 months for full EIA cycle." },
       { name: "Topographic Survey", authority: "Licensed Survey Firm", costMin: 1500, costMax: 5000, weeksMin: 1, weeksMax: 2, notes: "Licensed surveyor required. Output: boundary confirmation + existing structure as-built drawings + ground level contours." },
-      { name: "Masterplan Architectural Drawings", authority: "Licensed Architect / CAMUP", costMin: 5000, costMax: 20000, weeksMin: 3, weeksMax: 6, notes: "Must be signed and sealed by a CAMUP-registered architect. CDC will not accept unsigned or unsealed drawings." },
+      { name: "Masterplan Architectural Drawings", authority: "Licensed Architect / BAC", costMin: 5000, costMax: 20000, weeksMin: 3, weeksMax: 6, notes: "Must be signed and sealed by a BAC-registered architect (Board of Architect Cambodia). CDC will not accept unsigned or unsealed drawings." },
     ],
     timelineChart: [
       { name: "Site Survey", estimated: 2, actual: 2 },
@@ -354,7 +354,7 @@ export const STAGE_CONTENT: StageContent[] = [
       { title: "CDC QIP Application Guide", org: "Council for Development of Cambodia", url: "https://cdc.gov.kh/incentives-and-schemes/", type: "gov" },
       { title: "MoE EIA Guidelines & Sub-Decree 72", org: "Ministry of Environment", url: "https://www.moe.gov.kh", type: "gov" },
       { title: "Cambodia National Building Code", org: "Ministry of Public Works", url: "https://mpwt.gov.kh", type: "gov" },
-      { title: "Cambodia Architecture & Urban Planning Org.", org: "CAMUP", url: "https://camup.gov.kh", type: "gov" },
+      { title: "Board of Architect Cambodia (BAC)", org: "Board of Architect Cambodia", url: "https://bac.gov.kh", type: "gov" },
     ],
     checklist: [
       { item: "Commission licensed topographic survey before any design work", critical: true },
@@ -363,7 +363,7 @@ export const STAGE_CONTENT: StageContent[] = [
       { item: "Confirm minimum 2 vehicle access gates in layout", critical: true },
       { item: "Include waste treatment zone setback from production buildings", critical: true },
       { item: "Submit MoE EIA and CDC QIP applications simultaneously", critical: true },
-      { item: "Use CAMUP-registered architect to sign and seal all drawings", critical: true },
+      { item: "Use BAC-registered architect to sign and seal all architectural drawings", critical: true },
       { item: "Register QIP with GDT within 30 days of CDC certificate issuance", critical: true },
       { item: "Include utility entry points from road boundary in site plan", critical: false },
       { item: "Show fire water tank location and capacity in masterplan", critical: false },
@@ -521,7 +521,7 @@ export const STAGE_CONTENT: StageContent[] = [
       },
       {
         n: 5, title: "Construction Building Permit",
-        desc: "Issued by MLMUPC (Ministry of Land Management, Urban Planning and Construction), delegated to the Provincial or Capital Department of Land Management. Governed by Cambodia Construction Law 2019 (Article 26) and MLMUPC Prakas No. 261 (2026). The review runs 8 sequential stages: document check (2 days) → architectural review covering FAR, BCR, setbacks, and green space (20 days) → fire safety (20 days) → structural review (20 days) → structural engineer sign-off (10 days) → final compilation and permit issuance (2 days). Total official review: ~67 working days. Submit with CAMUP-stamped architectural and structural drawings, land title, topographic survey, MEP drawings, and BCR/FAR calculations — 9 copies required. Note: a separate Occupancy Certificate (Article 44) is required before the building may be occupied.",
+        desc: "Issued by MLMUPC (Ministry of Land Management, Urban Planning and Construction), delegated to the Provincial or Capital Department of Land Management. Governed by Cambodia Construction Law 2019 (Article 26) and MLMUPC Prakas No. 261 (2026). The review runs 8 sequential stages: document check (2 days) → architectural review covering FAR, BCR, setbacks, and green space (20 days) → fire safety (20 days) → structural review (20 days) → structural engineer sign-off (10 days) → final compilation and permit issuance (2 days). Total official review: ~67 working days. Submit with BAC-stamped architectural drawings and BEC-stamped structural drawings, land title, topographic survey, MEP drawings, and BCR/FAR calculations — 9 copies required. Note: a separate Occupancy Certificate (Article 44) is required before the building may be occupied.",
         duration: "8–16 weeks", risk: "high",
       },
       {
@@ -598,7 +598,7 @@ export const STAGE_CONTENT: StageContent[] = [
       { item: "Obtain MISTI licence after MoE ECC, not before", critical: true },
       { item: "Budget EDC connection fee as separate line item, not in main EPC", critical: true },
       { item: "Prepare 9 full copies of all application documents for MLMUPC submission", critical: true },
-      { item: "Ensure architectural and structural drawings are CAMUP-stamped before submission", critical: true },
+      { item: "Ensure architectural drawings are BAC-stamped and structural drawings are BEC-stamped before submission", critical: true },
       { item: "Submit Construction Permit application after CDC masterplan approval", critical: true },
       { item: "Get written building permit fee confirmation before submission (provincial rates vary)", critical: false },
       { item: "Apply for Occupancy Certificate (Art. 44, Construction Law 2019) before using building", critical: true },
@@ -645,8 +645,8 @@ export const STAGE_CONTENT: StageContent[] = [
       { value: "FM2", label: "Minimum floor flatness for logistics", context: "FM2 flatness class (3 mm deviation over 3 m) is required for modern racking systems, forklifts, and automated material handling" },
     ],
     permits: [
-      { name: "CAMUP Architect Stamp & Registration", authority: "Cambodia Architecture & Urban Planning Org.", costMin: 1000, costMax: 3000, weeksMin: 1, weeksMax: 2, notes: "All architectural drawings must be stamped by a CAMUP-registered architect. Foreign architects must work with a local CAMUP-registered co-signatory.", critical: true },
-      { name: "Structural Engineer Registration (CAMUP)", authority: "CAMUP / Ministry of Public Works", costMin: 500, costMax: 2000, weeksMin: 1, weeksMax: 2, notes: "Structural calculations and drawings must be signed by a licensed Cambodia structural engineer or a foreign engineer with local co-signatory." },
+      { name: "BAC Architect Registration & Stamp", authority: "Board of Architect Cambodia (BAC)", costMin: 1000, costMax: 3000, weeksMin: 1, weeksMax: 2, notes: "All architectural drawings must be stamped by a BAC-registered architect. Foreign architects must co-sign with a locally registered BAC member.", critical: true },
+      { name: "BEC Structural Engineer Registration", authority: "Board of Engineer Cambodia (BEC)", costMin: 500, costMax: 2000, weeksMin: 1, weeksMax: 2, notes: "Structural calculations and drawings must be signed by a BEC-registered engineer. Foreign engineers must co-sign with a licensed local BEC member." },
       { name: "Fire Safety System Design Approval", authority: "National Police Fire Department", costMin: 500, costMax: 2000, weeksMin: 2, weeksMax: 4, notes: "Fire protection design (sprinkler, alarm, escape routes) reviewed by Fire Department before building permit submission." },
     ],
     timelineChart: [
@@ -670,14 +670,15 @@ export const STAGE_CONTENT: StageContent[] = [
     ],
     officialSources: [
       { title: "Cambodia National Building Code", org: "Ministry of Public Works & Transport", url: "https://mpwt.gov.kh", type: "gov" },
-      { title: "CAMUP Architect & Engineer Registration", org: "Cambodia Architecture & Urban Planning Org.", url: "https://camup.gov.kh", type: "gov" },
+      { title: "Board of Architect Cambodia (BAC)", org: "Board of Architect Cambodia", url: "https://bac.gov.kh", type: "gov" },
+      { title: "Board of Engineer Cambodia (BEC)", org: "Board of Engineer Cambodia", url: "https://bec.gov.kh", type: "gov" },
       { title: "ASEAN Industrial Construction Standards", org: "ASEAN", url: "https://asean.org", type: "research" },
     ],
     checklist: [
       { item: "Define production line layout and crane/overhead load requirements before structural system selection", critical: true },
       { item: "Specify minimum 1.5 kN/m² roof loading and 150 mm/hr drainage capacity", critical: true },
       { item: "Specify FM2 floor flatness for any logistics, racking, or forklift use", critical: true },
-      { item: "Use CAMUP-registered architect and engineer for all stamped drawings", critical: true },
+      { item: "Use BAC-registered architect for architectural drawings, BEC-registered engineer for structural drawings", critical: true },
       { item: "Size electrical room at minimum 2× calculated requirement", critical: false },
       { item: "Include 20% future expansion provision in column grid layout", critical: false },
       { item: "Confirm loading dock height matches local truck height (typically 1.2 m)", critical: false },
