@@ -30,7 +30,7 @@ const ROADMAP_META: Record<string, {
               <div className="h-full rounded-full" style={{
                 "--bar-w": `${v}%`,
                 backgroundColor: "currentColor",
-                animation: `bar-grow 1.2s cubic-bezier(0.4,0,0.2,1) ${i * 0.15}s both, bar-pulse 3s ease-in-out ${1.2 + i * 0.15}s infinite`,
+                animation: `bar-grow 1s cubic-bezier(0.4,0,0.2,1) ${i * 0.15}s both, bar-pulse ${2 + i * 0.2}s ease-in-out ${1 + i * 0.15}s infinite`,
               } as React.CSSProperties} />
             </div>
             <span className="font-mono text-[8px] opacity-50">{v}</span>
@@ -53,11 +53,14 @@ const ROADMAP_META: Record<string, {
           <div key={s} className="flex items-center gap-1.5">
             <div className="px-1.5 py-0.5 border text-[7px] font-mono font-bold" style={{
               borderColor: "currentColor",
-              animation: `step-light 2.4s ease-in-out ${i * 0.4}s infinite`,
+              animation: `step-light 2s ease-in-out ${i * 0.4}s infinite`,
             }}>
               {s}
             </div>
-            {i < a.length-1 && <div className="w-2 h-px" style={{ backgroundColor: "currentColor", opacity: 0.25 }} />}
+            {i < a.length-1 && <div className="w-2 h-px origin-left" style={{
+              backgroundColor: "currentColor",
+              animation: `connector-flow 2s ease-in-out ${i * 0.4 + 0.2}s infinite`,
+            }} />}
           </div>
         ))}
       </div>
@@ -78,7 +81,7 @@ const ROADMAP_META: Record<string, {
           return <div key={i} className="h-3 rounded-sm" style={{
             "--cell-base": base,
             backgroundColor: "currentColor",
-            animation: `cell-flicker ${2 + (i % 4) * 0.5}s ease-in-out ${(i % 6) * 0.18}s infinite`,
+            animation: `cell-flicker ${1.4 + (i % 4) * 0.35}s ease-in-out ${(i % 6) * 0.15}s infinite`,
           } as React.CSSProperties} />;
         })}
       </div>
@@ -102,7 +105,7 @@ const ROADMAP_META: Record<string, {
               "--col-h": `${h}%`,
               "--col-op": op,
               backgroundColor: "currentColor",
-              animation: `col-rise 0.9s cubic-bezier(0.4,0,0.2,1) ${i * 0.1}s both, bar-pulse ${2.5 + i * 0.2}s ease-in-out ${0.9 + i * 0.1}s infinite`,
+              animation: `col-rise 0.8s cubic-bezier(0.4,0,0.2,1) ${i * 0.1}s both, col-sway ${1.6 + i * 0.15}s ease-in-out ${0.8 + i * 0.1}s infinite`,
             } as React.CSSProperties} />
           );
         })}
@@ -122,7 +125,7 @@ const ROADMAP_META: Record<string, {
           <div key={s} className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full" style={{
               backgroundColor: ["#4ade80","#fbbf24","#f87171"][i],
-              animation: `dot-breathe ${1.8 + i * 0.4}s ease-in-out ${i * 0.6}s infinite`,
+              animation: `dot-breathe ${1.3 + i * 0.3}s ease-in-out ${i * 0.5}s infinite`,
             }} />
             <span className="text-[8px] font-mono opacity-50">{s}</span>
             <div className="flex-1 h-px" style={{ backgroundColor: "currentColor", opacity: 0.1 }} />
@@ -145,17 +148,21 @@ const ROADMAP_META: Record<string, {
           {["Site score","EDC","Title","Labour","Permits"].map((tag, i) => (
             <span key={tag} className="px-1.5 py-0.5 text-[7px] font-mono border rounded-full" style={{
               borderColor: "currentColor",
-              animation: `tag-pop 2s ease-in-out ${i * 0.35}s infinite`,
+              animation: `tag-pop 1.6s ease-in-out ${i * 0.3}s infinite`,
             }}>
               {tag}
             </span>
           ))}
         </div>
-        <div className="mt-2 h-1 rounded-full bg-white/8 overflow-hidden">
+        <div className="mt-2 h-1 rounded-full bg-white/8 overflow-hidden relative">
           <div className="h-full rounded-full" style={{
             backgroundColor: "currentColor",
-            opacity: 0.55,
-            animation: "progress-sweep 3.5s ease-in-out 0.5s infinite",
+            opacity: 0.6,
+            animation: "progress-sweep 2.6s ease-in-out 0.3s infinite",
+          }} />
+          <div className="absolute inset-y-0 w-6 opacity-40" style={{
+            background: "linear-gradient(90deg, transparent, currentColor, transparent)",
+            animation: "shimmer-sweep 2.6s ease-in-out 0.3s infinite",
           }} />
         </div>
       </div>

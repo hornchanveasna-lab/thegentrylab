@@ -752,36 +752,49 @@
 /* ── Roadmap card preview animations ───────────────────── */
 @keyframes bar-grow {
   0%   { width: 0%; opacity: 0; }
-  60%  { opacity: 0.7; }
-  100% { width: var(--bar-w); opacity: 0.6; }
+  55%  { opacity: 0.85; }
+  100% { width: var(--bar-w); opacity: 0.65; }
 }
 @keyframes bar-pulse {
-  0%, 100% { opacity: 0.45; }
-  50%       { opacity: 0.75; }
+  0%, 100%  { width: var(--bar-w); opacity: 0.5; }
+  50%       { width: calc(var(--bar-w) * 1.08); opacity: 0.95; }
 }
 @keyframes step-light {
-  0%, 100% { opacity: 0.25; }
-  50%       { opacity: 0.9; }
+  0%, 100% { opacity: 0.2; transform: scale(1);    box-shadow: 0 0 0 rgba(0,0,0,0); }
+  50%       { opacity: 1;   transform: scale(1.12); box-shadow: 0 0 10px currentColor; }
+}
+@keyframes connector-flow {
+  0%   { opacity: 0.15; transform: scaleX(0.3); }
+  50%  { opacity: 0.9;  transform: scaleX(1); }
+  100% { opacity: 0.15; transform: scaleX(0.3); }
 }
 @keyframes cell-flicker {
-  0%, 100% { opacity: var(--cell-base); }
-  50%       { opacity: calc(var(--cell-base) * 1.6); }
+  0%, 100% { opacity: var(--cell-base); transform: scale(1); }
+  50%       { opacity: 1; transform: scale(1.15); }
 }
 @keyframes col-rise {
   0%   { height: 4px; opacity: 0.1; }
   100% { height: var(--col-h); opacity: var(--col-op); }
 }
+@keyframes col-sway {
+  0%, 100% { height: var(--col-h); opacity: var(--col-op); }
+  50%       { height: calc(var(--col-h) * 1.25); opacity: 1; }
+}
 @keyframes dot-breathe {
-  0%, 100% { transform: scale(1);   opacity: 0.8; }
-  50%       { transform: scale(1.5); opacity: 1; }
+  0%, 100% { transform: scale(1);   opacity: 0.7; box-shadow: 0 0 0 rgba(0,0,0,0); }
+  50%       { transform: scale(1.9); opacity: 1;  box-shadow: 0 0 8px currentColor; }
 }
 @keyframes progress-sweep {
-  0%   { width: 15%; }
-  60%  { width: 85%; }
-  80%  { width: 85%; }
-  100% { width: 15%; }
+  0%   { width: 8%; }
+  55%  { width: 92%; }
+  75%  { width: 92%; }
+  100% { width: 8%; }
 }
 @keyframes tag-pop {
-  0%, 100% { opacity: 0.4; }
-  50%       { opacity: 0.75; }
+  0%, 100% { opacity: 0.35; transform: translateY(0) scale(1); }
+  50%       { opacity: 1;    transform: translateY(-2px) scale(1.08); }
+}
+@keyframes shimmer-sweep {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
 }
