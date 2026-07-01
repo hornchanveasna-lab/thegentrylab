@@ -373,7 +373,18 @@ function StagePage() {
                       <td className="p-3 text-right font-mono whitespace-nowrap text-white/50">
                         {p.weeksMin}–{p.weeksMax} wks
                       </td>
-                      <td className="p-3 text-white/40 max-w-[280px]">{p.notes}</td>
+                      <td className="p-3 text-white/40 max-w-[280px]">
+                        {p.notes.includes("•") ? (
+                          <ul className="space-y-1">
+                            {p.notes.split("•").map(s => s.trim()).filter(Boolean).map((s, si) => (
+                              <li key={si} className="flex gap-1.5">
+                                <span className="shrink-0" style={{ color: "var(--text-faint)" }}>–</span>
+                                <span>{s}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : p.notes}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
