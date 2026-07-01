@@ -301,6 +301,18 @@ const PROVINCES = [
   "Prey Veng","Pursat","Ratanakiri","Stung Treng","Takéo","Tboung Khmum",
   "Recommend best province for my needs",
 ];
+const LOCATION_FIELD_IDS = new Set(["province_preference", "location", "province", "target_province"]);
+const PIN_HANDOFF_KEY = "tgl_advisor_pin_handoff";
+
+/* Match a pinned map address (e.g. reverse-geocoded locality name) to the
+   closest province option so a map pin can pre-fill a brief's location field. */
+function matchProvince(address: string, options: string[]): string | null {
+  const a = address.toLowerCase();
+  return options.find(o => o !== "Recommend best province for my needs" && (
+    a.includes(o.toLowerCase()) || o.toLowerCase().includes(a)
+  )) ?? null;
+}
+
 const BUDGET_RANGES = ["Under USD 500K","USD 500K – 1M","USD 1M – 5M","USD 5M – 20M","USD 20M – 50M","USD 50M – 100M","Over USD 100M"];
 const FACTORY_SIZES = ["Under 500 m²","500 – 1,000 m²","1,000 – 3,000 m²","3,000 – 10,000 m²","10,000 – 30,000 m²","30,000 – 65,000 m²","Over 65,000 m²"];
 const WORKER_COUNTS = ["Under 50","50 – 200","200 – 500","500 – 1,000","1,000 – 3,000","Over 3,000"];
@@ -3020,12 +3032,45 @@ export default function AdvisorPage() {
   const [refining, setRefining] = useState(false);
   const [actualCost, setActualCost] = useState<number | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [pickedLocation, setPickedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
   const { credits, refresh: refreshCredits } = useCredits();
   const outputRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight;
   }, [output]);
+
+  // Pick up a location pinned on /map (via "Use this location"). If the
+  // user got there through the "📍 Pin from map" button on a specific
+  // brief field, resume straight into that brief's form with it filled in.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const lat = p.get("lat"), lng = p.get("lng");
+    if (!lat || !lng) return;
+    const address = p.get("address") || "";
+    setPickedLocation({ lat: parseFloat(lat), lng: parseFloat(lng), address });
+
+    if (p.get("resume") === "1") {
+      try {
+        const raw = localStorage.getItem(PIN_HANDOFF_KEY);
+        if (raw) {
+          const handoff = JSON.parse(raw) as { briefId: string; fieldId: string };
+          const brief = BRIEFS.find(b => b.id === handoff.briefId);
+          if (brief) {
+            setCategory(brief.category);
+            selectBrief(brief);
+            const field = brief.fields.find(f => f.id === handoff.fieldId) ?? brief.fields.find(f => LOCATION_FIELD_IDS.has(f.id));
+            if (field) {
+              const matched = field.options ? matchProvince(address, field.options) : address;
+              setForm(prev => ({ ...prev, [field.id]: matched || address }));
+            }
+          }
+        }
+      } catch { /* ignore malformed handoff */ }
+      localStorage.removeItem(PIN_HANDOFF_KEY);
+    }
+    window.history.replaceState({}, "", "/tools/advisor");
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Print flow — works on desktop and Android mobile
   useEffect(() => {
@@ -3091,8 +3136,6 @@ export default function AdvisorPage() {
 
   function selectBrief(b: BriefType) {
     setSelectedBrief(b);
-    setForm({});
-    setOutput("");
     setSaved(false);
     setSavedBriefId(null);
     setIsEditMode(false);
@@ -3100,6 +3143,26 @@ export default function AdvisorPage() {
     setCreditError(null);
     setUserNotes("");
     setStep("form");
+
+    // If a location was already pinned from the map before a brief was
+    // chosen, auto-fill it into this brief's location field.
+    if (pickedLocation) {
+      const field = b.fields.find(f => LOCATION_FIELD_IDS.has(f.id));
+      const matched = field?.options ? matchProvince(pickedLocation.address, field.options) : pickedLocation.address;
+      setForm(field ? { [field.id]: matched || pickedLocation.address } : {});
+    } else {
+      setForm({});
+    }
+    setOutput("");
+  }
+
+  function pinFromMap(fieldId: string) {
+    if (selectedBrief) {
+      try {
+        localStorage.setItem(PIN_HANDOFF_KEY, JSON.stringify({ briefId: selectedBrief.id, fieldId }));
+      } catch { /* ignore storage errors */ }
+    }
+    window.location.href = "/map?pin=1";
   }
 
   function editAndRegenerate() {
@@ -3663,25 +3726,59 @@ export default function AdvisorPage() {
                 </div>
               </div>
 
+              {pickedLocation && (
+                <div className="mb-4 flex items-center gap-2 rounded-lg px-3 py-2.5" style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.25)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                    <circle cx="12" cy="9" r="2.5"/>
+                  </svg>
+                  <span className="text-[11.5px]" style={{ color: "var(--adv-text-hi)" }}>
+                    Pinned from map: <strong>{pickedLocation.address || `${pickedLocation.lat.toFixed(4)}, ${pickedLocation.lng.toFixed(4)}`}</strong>
+                  </span>
+                  <button onClick={() => setPickedLocation(null)} className="ml-auto shrink-0 font-mono text-[9px] uppercase tracking-widest hover:opacity-70 transition" style={{ color: "var(--adv-text-faint)" }}>
+                    Clear
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {selectedBrief.fields.map(field => (
                   <div key={field.id}>
                     <label className="block font-mono text-[10px] uppercase tracking-widest mb-1.5" style={{ color: "var(--adv-text-sec)" }}>
                       {field.label}{field.required && <span style={{ color: "#ff5100" }}> *</span>}
                     </label>
-                    {field.type === "select" ? (
-                      <CustomSelect
-                        value={form[field.id] ?? ""}
-                        onChange={v => setForm(p => ({ ...p, [field.id]: v }))}
-                        options={field.options ?? []}
-                      />
-                    ) : (
-                      <input type="text" value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
-                        placeholder={field.placeholder}
-                        className="w-full px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition"
-                        style={{ backgroundColor: "var(--adv-input-bg)", border: "1px solid var(--adv-border-input)", color: "var(--adv-text-hi)" }}
-                      />
-                    )}
+                    <div className="flex items-center gap-2">
+                      {field.type === "select" ? (
+                        <div className="flex-1 min-w-0">
+                          <CustomSelect
+                            value={form[field.id] ?? ""}
+                            onChange={v => setForm(p => ({ ...p, [field.id]: v }))}
+                            options={field.options ?? []}
+                          />
+                        </div>
+                      ) : (
+                        <input type="text" value={form[field.id] ?? ""} onChange={e => setForm(p => ({ ...p, [field.id]: e.target.value }))}
+                          placeholder={field.placeholder}
+                          className="flex-1 min-w-0 px-3 py-2.5 rounded-lg text-[12.5px] outline-none transition"
+                          style={{ backgroundColor: "var(--adv-input-bg)", border: "1px solid var(--adv-border-input)", color: "var(--adv-text-hi)" }}
+                        />
+                      )}
+                      {LOCATION_FIELD_IDS.has(field.id) && (
+                        <button
+                          type="button"
+                          onClick={() => pinFromMap(field.id)}
+                          title="Pin this location on the map"
+                          className="shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-lg font-mono text-[9px] uppercase tracking-widest transition hover:opacity-80"
+                          style={{ backgroundColor: "rgba(255,81,0,0.1)", border: "1px solid rgba(255,81,0,0.3)", color: "#ff5100" }}
+                        >
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                            <circle cx="12" cy="9" r="2.5"/>
+                          </svg>
+                          Pin on map
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

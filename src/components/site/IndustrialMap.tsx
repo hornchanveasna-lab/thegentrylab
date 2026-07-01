@@ -1255,6 +1255,37 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
 
+  /* Location callout (empty-map click, Google Maps style) */
+  const [locCallout, setLocCallout] = useState<{
+    lat: number; lng: number;
+    address: string | null;
+    plusCode: string | null;
+    loading: boolean;
+  } | null>(null);
+
+  /* Shared reverse-geocode → populates the location callout for any
+     pinned point (map click, search result, or autocomplete pick) so
+     "Use this location" works the same way from all three entry points. */
+  const showCalloutAt = useCallback(async (lat: number, lng: number) => {
+    setSelected(null);
+    setLocCallout({ lat, lng, address: null, plusCode: null, loading: true });
+    try {
+      const r = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${gKey}`
+      );
+      const j = await r.json();
+      /* Prefer a named locality over Plus Code */
+      const named = j.results?.find((x: { types: string[] }) =>
+        x.types?.some((t: string) => ["locality","sublocality","neighborhood","natural_feature","establishment","point_of_interest"].includes(t))
+      );
+      const plusCode = j.plus_code?.global_code ?? null;
+      const address = named?.address_components?.[0]?.long_name ?? j.results?.[0]?.formatted_address?.split(",")[0] ?? null;
+      setLocCallout({ lat, lng, address, plusCode, loading: false });
+    } catch {
+      setLocCallout((c) => c ? { ...c, loading: false } : null);
+    }
+  }, [gKey]);
+
   /* Fetch Places Autocomplete suggestions via Maps JS SDK (no CORS issue) */
   const fetchSuggestions = useCallback((input: string) => {
     if (input.length < 2) { setSuggestions([]); return; }
@@ -1288,10 +1319,11 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         const loc = results[0].geometry.location;
         setPinMarker({ lat: loc.lat(), lng: loc.lng() });
         setPinTarget({ lat: loc.lat(), lng: loc.lng(), zoom: 15 });
+        showCalloutAt(loc.lat(), loc.lng());
       }
       setLocSearching(false);
     });
-  }, []);
+  }, [showCalloutAt]);
 
   /* Dismiss suggestions on outside click */
   useEffect(() => {
@@ -1304,35 +1336,11 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  /* Location callout (empty-map click, Google Maps style) */
-  const [locCallout, setLocCallout] = useState<{
-    lat: number; lng: number;
-    address: string | null;
-    plusCode: string | null;
-    loading: boolean;
-  } | null>(null);
-
-  const handleMapClick = useCallback(async (e: { detail: { latLng: { lat: number; lng: number } | null } }) => {
+  const handleMapClick = useCallback((e: { detail: { latLng: { lat: number; lng: number } | null } }) => {
     const ll = e.detail.latLng;
     if (!ll) return;
-    setSelected(null);
-    setLocCallout({ lat: ll.lat, lng: ll.lng, address: null, plusCode: null, loading: true });
-    try {
-      const r = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${ll.lat},${ll.lng}&key=${gKey}`
-      );
-      const j = await r.json();
-      /* Prefer a named locality over Plus Code */
-      const named = j.results?.find((x: { types: string[] }) =>
-        x.types?.some((t: string) => ["locality","sublocality","neighborhood","natural_feature","establishment","point_of_interest"].includes(t))
-      );
-      const plusCode = j.plus_code?.global_code ?? null;
-      const address = named?.address_components?.[0]?.long_name ?? j.results?.[0]?.formatted_address?.split(",")[0] ?? null;
-      setLocCallout({ lat: ll.lat, lng: ll.lng, address, plusCode, loading: false });
-    } catch {
-      setLocCallout((c) => c ? { ...c, loading: false } : null);
-    }
-  }, [gKey]);
+    showCalloutAt(ll.lat, ll.lng);
+  }, [showCalloutAt]);
 
   const visible = useMemo(() => {
     if (previewMode) return [];
@@ -1502,6 +1510,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     if (coords) {
       setPinMarker({ lat: coords[0], lng: coords[1] });
       setPinTarget({ lat: coords[0], lng: coords[1], zoom: 13 });
+      showCalloutAt(coords[0], coords[1]);
       setLocError("");
     }
     setLocSearching(false);
@@ -1528,6 +1537,23 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       setPinTarget({ lat: target.lat, lng: target.lng, zoom: 13 });
     }
   }, [sites]);
+
+  /* Pin-for-advisor mode: /map?pin=1 — arrived here from the AI Advisor's
+     "Pin from map" button. Shows a hint banner and routes "Use this
+     location" back to /tools/advisor with lat/lng/address + resume flag
+     so the advisor can restore the exact brief + field that was pinning. */
+  const pinMode = useMemo(() => new URLSearchParams(window.location.search).get("pin") === "1", []);
+
+  const handleUseLocation = useCallback(() => {
+    if (!locCallout) return;
+    const params = new URLSearchParams({
+      lat: String(locCallout.lat),
+      lng: String(locCallout.lng),
+      address: locCallout.address ?? "",
+      ...(pinMode ? { resume: "1" } : {}),
+    });
+    window.location.href = `/tools/advisor?${params.toString()}`;
+  }, [locCallout, pinMode]);
 
   /* layer counts per group */
   const layerCounts = useMemo(() => {
@@ -1621,6 +1647,18 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           </Map>
         </APIProvider>
       </div>
+
+      {/* ── Pin-for-Advisor mode hint ──────────────────────── */}
+      {pinMode && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[600] flex items-center gap-2 px-4 py-2 rounded-full shadow-2xl"
+          style={{ backgroundColor: "rgba(0,0,0,0.9)", border: "1px solid rgba(255,81,0,0.4)" }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "#ff5100" }} />
+          <span className="font-mono text-[10px] uppercase tracking-widest text-white/80 whitespace-nowrap">
+            Search or click the map to pin your project location
+          </span>
+        </div>
+      )}
 
       {/* ── Search bar (beside LAYERS button, top-left) ───── */}
       <div ref={searchWrapRef} className="absolute top-4 z-[600]" style={{ left: "168px", right: "16px", maxWidth: "320px" }}>
@@ -2229,6 +2267,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           loading={locCallout.loading}
           isDark={isDark}
           onClose={() => setLocCallout(null)}
+          onUse={handleUseLocation}
         />
       )}
       {/* ── Map legend & sources (bottom-left) ───────────────── */}
@@ -2396,7 +2435,7 @@ function SiteHoverTooltip({ site, isDark, x, y }: { site: MapSite; isDark: boole
 
 /* ── Location Callout (empty-map click) ─────────────────── */
 function LocationCallout({
-  lat, lng, address, plusCode, loading, isDark, onClose,
+  lat, lng, address, plusCode, loading, isDark, onClose, onUse,
 }: {
   lat: number; lng: number;
   address: string | null;
@@ -2404,6 +2443,7 @@ function LocationCallout({
   loading: boolean;
   isDark: boolean;
   onClose: () => void;
+  onUse: () => void;
 }) {
   const panelBg   = isDark ? "#0d0d0e" : "#ffffff";
   const textMain  = isDark ? "#ffffff" : "#0f172a";
@@ -2463,7 +2503,7 @@ function LocationCallout({
         </div>
       </div>
 
-      <div className="px-4 py-2.5">
+      <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-2 hover:opacity-80 transition">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -2474,6 +2514,21 @@ function LocationCallout({
             View on Google Maps ↗
           </span>
         </a>
+      </div>
+
+      <div className="px-4 py-2.5">
+        <button
+          onClick={onUse}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-md font-mono text-[10px] uppercase tracking-widest transition hover:brightness-110 disabled:opacity-40"
+          style={{ backgroundColor: "#ff5100", color: "#000" }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+            <circle cx="12" cy="9" r="2.5"/>
+          </svg>
+          Use this location →
+        </button>
       </div>
     </div>
   );
