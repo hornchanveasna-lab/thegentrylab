@@ -356,6 +356,8 @@ function NewsPage() {
   const [sector, setSector]     = useState("All");
   const [province, setProvince] = useState("All");
   const [view, setView]         = useState<"grid" | "list">("grid");
+  const PAGE_SIZE = 10;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const sorted  = [...newsItems].sort((a, b) => b.date.localeCompare(a.date));
   const featured = sorted.slice(0, 5);
@@ -363,6 +365,13 @@ function NewsPage() {
   const filtered = sorted.filter(
     (n) => (sector === "All" || n.sector === sector) && (province === "All" || n.province === province),
   );
+
+  // Reset pagination whenever the filter set changes so switching
+  // sector/province doesn't leave a stale "load more" position.
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [sector, province]);
+
+  const visible = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans flex flex-col">
@@ -415,11 +424,11 @@ function NewsPage() {
       <main className="flex-1 max-w-7xl mx-auto px-6 md:px-12 py-10 w-full">
         {view === "grid" ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((n) => <NewsCard key={n.id} item={n} />)}
+            {visible.map((n) => <NewsCard key={n.id} item={n} />)}
           </div>
         ) : (
           <ul className="border border-white/8 divide-y divide-white/8">
-            {filtered.map((n) => {
+            {visible.map((n) => {
               const accent = getAccent(n.sector);
               return (
               <li key={n.id} className="flex gap-0 hover:bg-white/3 transition group">
@@ -452,6 +461,23 @@ function NewsPage() {
         {filtered.length === 0 && (
           <div className="py-24 text-center">
             <p className="font-mono text-[11px] uppercase tracking-widest text-white/25">No articles match current filters</p>
+          </div>
+        )}
+
+        {hasMore && (
+          <div className="flex flex-col items-center gap-2 mt-8">
+            <button
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+              className="px-6 py-2.5 font-mono text-[10px] uppercase tracking-widest border transition-colors"
+              style={{ borderColor: "rgba(255,81,0,0.35)", color: "#ff5100", backgroundColor: "rgba(255,81,0,0.06)" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,81,0,0.12)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,81,0,0.06)")}
+            >
+              Load more
+            </button>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/20">
+              Showing {visible.length} of {filtered.length}
+            </p>
           </div>
         )}
       </main>
