@@ -412,7 +412,7 @@ export const STAGE_CONTENT: StageContent[] = [
       },
       {
         n: 4, title: "Water Source & MOWRAM Permit",
-        desc: "Determine water supply strategy: EDC water (most provinces now offer), local municipal water (Phnom Penh & provincial towns), private borehole (requires MOWRAM drilling and extraction permit), or surface water extraction (MOWRAM watershed use permit). Industrial water demand calculation: process water + cooling + drinking/sanitary. Note: borehole extraction in some provinces is now restricted due to groundwater depletion.",
+        desc: "Determine water supply strategy: for Phnom Penh and surrounding areas, PPWSA (Phnom Penh Water Supply Authority) is the dedicated municipal water utility — the equivalent of EDC for electricity, but for water. Sites outside PPWSA's network rely on provincial municipal water, private borehole (requires MOWRAM drilling and extraction permit), or surface water extraction (MOWRAM watershed use permit). Industrial water demand calculation: process water + cooling + drinking/sanitary. Note: borehole extraction in some provinces is now restricted due to groundwater depletion.",
         duration: "2–4 weeks", risk: "medium",
       },
       {
@@ -430,7 +430,8 @@ export const STAGE_CONTENT: StageContent[] = [
     permits: [
       { name: "EDC Load Application & Feasibility", authority: "Electricité du Cambodge (EDC)", costMin: 500, costMax: 2000, weeksMin: 4, weeksMax: 8, notes: "Determines network feasibility, connection voltage, and substation requirements. Critical path item — submit as early as possible.", critical: true },
       { name: "EDC Power Supply Agreement (PSA)", authority: "Electricité du Cambodge (EDC)", costMin: 10000, costMax: 50000, weeksMin: 4, weeksMax: 12, notes: "Connection fee depends on distance to nearest feeder, substation size, and trenching works. Varies enormously by location — budget $10K–$50K+.", critical: true },
-      { name: "MOWRAM Water Extraction Permit", authority: "Ministry of Water Resources", costMin: 1000, costMax: 5000, weeksMin: 4, weeksMax: 8, notes: "Required for borehole or surface water extraction. Some provinces have restricted borehole extraction — check provincial MOWRAM office first." },
+      { name: "PPWSA Water Supply Connection", authority: "Phnom Penh Water Supply Authority (PPWSA)", costMin: 500, costMax: 3000, weeksMin: 2, weeksMax: 6, notes: "For sites within PPWSA's Phnom Penh network — apply directly for a municipal water connection instead of drilling a borehole. Confirm main-line pressure and capacity at the site before sizing on-site storage." },
+      { name: "MOWRAM Water Extraction Permit", authority: "Ministry of Water Resources", costMin: 1000, costMax: 5000, weeksMin: 4, weeksMax: 8, notes: "Required for borehole or surface water extraction outside PPWSA's network. Some provinces have restricted borehole extraction — check provincial MOWRAM office first." },
       { name: "MIME Wastewater Discharge Permit", authority: "Ministry of Industry (MIME)", costMin: 2000, costMax: 8000, weeksMin: 6, weeksMax: 12, notes: "Must be obtained before factory operations. Requires detailed WWTP design drawings and operating manual. MIME inspects the WWTP before permit issuance.", critical: true },
       { name: "Telecom Infrastructure Agreement", authority: "ISP / Ministry of Post & Telecoms", costMin: 500, costMax: 5000, weeksMin: 2, weeksMax: 8, notes: "Negotiate fibre connection with ISP (Metfone, Cellcard, Smart). Some provinces require MPTC coordination for leased line routing." },
     ],
@@ -456,6 +457,7 @@ export const STAGE_CONTENT: StageContent[] = [
     ],
     officialSources: [
       { title: "EDC Industrial Tariff Schedule", org: "Electricité du Cambodge", url: "https://edc.com.kh", type: "gov" },
+      { title: "PPWSA Water Supply & Connection Info", org: "Phnom Penh Water Supply Authority", url: "https://www.ppwsa.com.kh/", type: "gov" },
       { title: "MIME Industrial Wastewater Standards (Sub-Decree 27)", org: "Ministry of Industry", url: "https://mime.gov.kh", type: "gov" },
       { title: "MOWRAM Water Resources Law", org: "Ministry of Water Resources", url: "https://mowram.gov.kh", type: "gov" },
       { title: "EAC Electricity Regulatory Framework", org: "Electricity Authority of Cambodia", url: "https://eac.gov.kh", type: "gov" },
