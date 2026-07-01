@@ -2105,7 +2105,7 @@ function PrintReport({
   const references = [
     { ref: "1",  src: "Council for the Development of Cambodia (CDC). QIP Investment Registry. Phnom Penh: CDC, 2024.", url: "cdc.gov.kh" },
     { ref: "2",  src: "Special Economic Zone Board (SEZB). Directory of Special Economic Zones. Phnom Penh: SEZB, 2024.", url: "sezb.gov.kh" },
-    { ref: "3",  src: "Ministry of Industry, Science, Technology and Innovation (MISTI). Industrial Development Policy 2015–2025. Phnom Penh: MISTI.", url: "misti.gov.kh" },
+    { ref: "3",  src: "Ministry of Industry, Science, Technology and Innovation (MISTI). Industrial Development Policy 2015–2025. Phnom Penh: MISTI.", url: "https://www.misti.gov.kh/en/" },
     { ref: "4",  src: "Ministry of Environment (MoE). Environmental Compliance Procedures Manual. Phnom Penh: MoE, 2023.", url: "moe.gov.kh" },
     { ref: "5",  src: "Electricité du Cambodge (EDC). Industrial Tariff Schedule and Grid Expansion Plan. Phnom Penh: EDC, 2024.", url: "edc.com.kh" },
     { ref: "6",  src: "Ministry of Labour and Vocational Training (MoLVT). Minimum Wage Prakas No. 429. Phnom Penh: MoLVT, 2024.", url: "molvt.gov.kh" },
@@ -2118,6 +2118,7 @@ function PrintReport({
     { ref: "13", src: "The Gentry Lab. Site Intelligence Database — Cambodia Industrial Sites (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
     { ref: "14", src: "The Gentry Lab. EPC Benchmark Database — Cambodian Industrial Construction (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
     { ref: "15", src: "The Gentry Lab. Permit Timeline Tracker — Ministry Approval Sequences Cambodia (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
+    { ref: "16", src: "Cambodia Investment Review. Cambodia Business & Investment News. Phnom Penh: CIR, 2024–2025.", url: "cambodiainvestmentreview.com" },
   ];
 
   return (

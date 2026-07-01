@@ -34,7 +34,7 @@ const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — 
 **Permits & Timeline**
 - Full permit sequence (done correctly): 8–11 months
 - Common mistakes add 12–18 months: wrong permit order, soft-title land, rejected masterplan
-- Key permits: MoE ECC → MIH operating licence → CDC QIP → fire → customs
+- Key permits: MoE ECC → MISTI operating licence → CDC QIP → fire → customs
 
 **Labour**
 - Garment minimum wage: ~USD 204/month

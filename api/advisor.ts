@@ -37,7 +37,7 @@ const SYSTEM_PROMPT = `You are the GentryLab AI Industrial Advisor — Cambodia'
 **Permits & Timeline**
 - Full permit sequence (done correctly): 8–11 months
 - Wrong order adds 12–18 months
-- Key sequence: MoE ECC → MIH operating licence → CDC QIP → fire → customs
+- Key sequence: MoE ECC → MISTI operating licence → CDC QIP → fire → customs
 - ECC categories: A (major, full EIA), B (standard), C (minor, IEE only)
 - Inside SEZ: simplified, 3–5 months faster
 
@@ -152,7 +152,7 @@ Include: factory build at USD 280–420/m² standard, USD 450–650/m² high-spe
 |-----------|-------------|----------------------|
 | Land selection & due diligence | 4–6 weeks | 6–10 weeks |
 | ECC environmental approval | 2–3 months | 3–5 months |
-| MIH operating licence | 1–2 months | 2–3 months |
+| MISTI operating licence | 1–2 months | 2–3 months |
 | CDC QIP registration | 1–2 months | 2–3 months |
 | Building permit + construction | 8–14 months | 10–18 months |
 | Utility connection (EDC) | 1–3 months | 3–8 months |
@@ -177,7 +177,7 @@ For each shortlisted zone:
 - Waste: wastewater treatment requirement for your sector
 
 ### 🎯 Strategic Recommendation
-A 5-point action plan with specific next steps the investor should take within the next 30 days, 3 months, and 6 months. Include which specific CDC/MIH/MoE offices to engage first.
+A 5-point action plan with specific next steps the investor should take within the next 30 days, 3 months, and 6 months. Include which specific CDC/MISTI/MoE offices to engage first.
 **Feasibility Snapshot**: sections = Project Viability, Cost Breakdown (table), Revenue/Cost Assumptions, Incentives Available, Timeline to Production
 **Incentive Optimizer**: sections = QIP Eligibility, Tax Holiday Structure, Import Duty Waivers, EBA/GSP Access, Stacking Strategy
 **Cambodia vs Region**: sections = Comparison Table (Cambodia vs each), Cost Advantage, Risk Delta, Trade Access, Verdict
