@@ -322,7 +322,7 @@ function Index() {
                         {title}
                       </h3>
                       <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest mt-2 gidf-hint">
-                        {isOpen ? t("gidf.hintClose") : t("gidf.hintOpen")}
+                        {isOpen ? "CAMBODIA INTEL ▲" : "CAMBODIA INTEL ▼"}
                       </span>
                     </div>
                   </div>
@@ -341,9 +341,21 @@ function Index() {
                         <p className="text-[12px] leading-relaxed gidf-body">{process}</p>
                       </div>
                       {/* Implication */}
-                      <div className="pt-3">
+                      <div className="pt-3 pb-4 border-b border-white/8">
                         <p className="font-mono text-[9px] uppercase tracking-widest mb-1.5 gidf-label">{t("gidf.labelImplication")}</p>
                         <p className="text-[12px] leading-relaxed gidf-body-strong">{impl}</p>
+                      </div>
+                      {/* Deep dive link */}
+                      <div className="pt-4">
+                        <Link
+                          to="/framework/$stageId"
+                          params={{ stageId: stage.n }}
+                          onClick={e => e.stopPropagation()}
+                          className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded transition-all hover:opacity-80"
+                          style={{ background: `${accent}18`, color: accent, border: `1px solid ${accent}40` }}
+                        >
+                          Full Analysis + Charts →
+                        </Link>
                       </div>
                     </div>
                   </div>

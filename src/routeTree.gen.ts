@@ -24,8 +24,10 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
+import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
+import { Route as AdminStagesRouteImport } from './routes/admin.stages'
 
 const TrackerRoute = TrackerRouteImport.update({
   id: '/tracker',
@@ -102,6 +104,11 @@ const ToolsAdvisorRoute = ToolsAdvisorRouteImport.update({
   path: '/tools/advisor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
+  id: '/framework/$stageId',
+  path: '/framework/$stageId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthStartRoute = AuthStartRouteImport.update({
   id: '/auth/start',
   path: '/auth/start',
@@ -112,11 +119,16 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminStagesRoute = AdminStagesRouteImport.update({
+  id: '/stages',
+  path: '/stages',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/credits': typeof CreditsRoute
   '/dashboard': typeof DashboardRoute
@@ -128,14 +140,16 @@ export interface FileRoutesByFullPath {
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
+  '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
+  '/framework/$stageId': typeof FrameworkStageIdRoute
   '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/credits': typeof CreditsRoute
   '/dashboard': typeof DashboardRoute
@@ -147,15 +161,17 @@ export interface FileRoutesByTo {
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
+  '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
+  '/framework/$stageId': typeof FrameworkStageIdRoute
   '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/contact': typeof ContactRoute
   '/credits': typeof CreditsRoute
   '/dashboard': typeof DashboardRoute
@@ -167,8 +183,10 @@ export interface FileRoutesById {
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
+  '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
+  '/framework/$stageId': typeof FrameworkStageIdRoute
   '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRouteTypes {
@@ -188,8 +206,10 @@ export interface FileRouteTypes {
     | '/research'
     | '/settings'
     | '/tracker'
+    | '/admin/stages'
     | '/auth/callback'
     | '/auth/start'
+    | '/framework/$stageId'
     | '/tools/advisor'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -207,8 +227,10 @@ export interface FileRouteTypes {
     | '/research'
     | '/settings'
     | '/tracker'
+    | '/admin/stages'
     | '/auth/callback'
     | '/auth/start'
+    | '/framework/$stageId'
     | '/tools/advisor'
   id:
     | '__root__'
@@ -226,15 +248,17 @@ export interface FileRouteTypes {
     | '/research'
     | '/settings'
     | '/tracker'
+    | '/admin/stages'
     | '/auth/callback'
     | '/auth/start'
+    | '/framework/$stageId'
     | '/tools/advisor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ContactRoute: typeof ContactRoute
   CreditsRoute: typeof CreditsRoute
   DashboardRoute: typeof DashboardRoute
@@ -248,6 +272,7 @@ export interface RootRouteChildren {
   TrackerRoute: typeof TrackerRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthStartRoute: typeof AuthStartRoute
+  FrameworkStageIdRoute: typeof FrameworkStageIdRoute
   ToolsAdvisorRoute: typeof ToolsAdvisorRoute
 }
 
@@ -358,6 +383,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsAdvisorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/framework/$stageId': {
+      id: '/framework/$stageId'
+      path: '/framework/$stageId'
+      fullPath: '/framework/$stageId'
+      preLoaderRoute: typeof FrameworkStageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/start': {
       id: '/auth/start'
       path: '/auth/start'
@@ -372,13 +404,30 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/stages': {
+      id: '/admin/stages'
+      path: '/stages'
+      fullPath: '/admin/stages'
+      preLoaderRoute: typeof AdminStagesRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
+
+interface AdminRouteChildren {
+  AdminStagesRoute: typeof AdminStagesRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminStagesRoute: AdminStagesRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   ContactRoute: ContactRoute,
   CreditsRoute: CreditsRoute,
   DashboardRoute: DashboardRoute,
@@ -392,6 +441,7 @@ const rootRouteChildren: RootRouteChildren = {
   TrackerRoute: TrackerRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthStartRoute: AuthStartRoute,
+  FrameworkStageIdRoute: FrameworkStageIdRoute,
   ToolsAdvisorRoute: ToolsAdvisorRoute,
 }
 export const routeTree = rootRouteImport
