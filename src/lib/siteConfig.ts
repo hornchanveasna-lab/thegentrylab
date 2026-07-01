@@ -96,10 +96,10 @@ export const DEFAULT_CONFIG: SiteConfig = {
   heroCta2:     "About the platform",
 
   stats: [
-    { value: "54",  suffix: "",  label: "Active & planned SEZs" },
+    { value: "59",  suffix: "",  label: "SEZs & industrial parks" },
     { value: "9",   suffix: "",  label: "Industrial corridors"  },
-    { value: "110", suffix: "+", label: "Sites on intelligence map" },
-    { value: "12",  suffix: "",  label: "Investment projects tracked" },
+    { value: "260", suffix: "+", label: "Sites on intelligence map" },
+    { value: "26",  suffix: "",  label: "Investment projects tracked" },
   ],
 
   roadmap: [
