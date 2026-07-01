@@ -295,7 +295,7 @@ const CATEGORIES: { id: Category; label: string; color: string; desc: string; ic
   },
 ];
 
-const SECTORS = ["Garment & Textiles","Electronics & PCB","Food Processing","Warehousing & Logistics","Automotive / EV","Data Center","Energy / Solar","Pharmaceutical","Furniture","Footwear","Agro-processing","Chemical / Plastics","Metal Fabrication","Cosmetics / Personal Care","Medical Devices"];
+const SECTORS = ["Agro-processing","Automotive / EV","Chemical / Plastics","Cosmetics / Personal Care","Data Center","Electronics & PCB","Energy / Solar","Food Processing","Footwear","Furniture","Garment & Textiles","Medical Devices","Metal Fabrication","Pharmaceutical","Warehousing & Logistics"];
 const PROVINCES = [
   "Phnom Penh","Kandal","Kampong Speu","Preah Sihanouk (Sihanoukville)","Svay Rieng","Kampong Cham",
   "Kampot","Siem Reap","Battambang","Banteay Meanchey","Kampong Chhnang","Kampong Thom",
