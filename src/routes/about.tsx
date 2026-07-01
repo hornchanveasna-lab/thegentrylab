@@ -27,7 +27,11 @@ const ROADMAP_META: Record<string, {
         {[85,62,91,44,77].map((v,i) => (
           <div key={i} className="flex items-center gap-2">
             <div className="w-14 h-1.5 rounded-full bg-white/8 overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${v}%`, backgroundColor: "currentColor", opacity: 0.6 }} />
+              <div className="h-full rounded-full" style={{
+                "--bar-w": `${v}%`,
+                backgroundColor: "currentColor",
+                animation: `bar-grow 1.2s cubic-bezier(0.4,0,0.2,1) ${i * 0.15}s both, bar-pulse 3s ease-in-out ${1.2 + i * 0.15}s infinite`,
+              } as React.CSSProperties} />
             </div>
             <span className="font-mono text-[8px] opacity-50">{v}</span>
           </div>
@@ -47,7 +51,10 @@ const ROADMAP_META: Record<string, {
       <div className="w-full flex items-center gap-1.5 mb-1">
         {["MoE","MISTI","CDC","EDC","Fire"].map((s,i,a) => (
           <div key={s} className="flex items-center gap-1.5">
-            <div className="px-1.5 py-0.5 border text-[7px] font-mono font-bold" style={{ borderColor: "currentColor", opacity: i < 3 ? 0.8 : 0.3 }}>
+            <div className="px-1.5 py-0.5 border text-[7px] font-mono font-bold" style={{
+              borderColor: "currentColor",
+              animation: `step-light 2.4s ease-in-out ${i * 0.4}s infinite`,
+            }}>
               {s}
             </div>
             {i < a.length-1 && <div className="w-2 h-px" style={{ backgroundColor: "currentColor", opacity: 0.25 }} />}
@@ -67,7 +74,12 @@ const ROADMAP_META: Record<string, {
       <div className="w-full grid grid-cols-6 gap-0.5 mb-1">
         {[...Array(18)].map((_, i) => {
           const v = [0.8,0.4,0.9,0.3,0.6,0.2,0.7,0.5,0.95,0.1,0.85,0.45,0.65,0.35,0.75,0.55,0.3,0.7][i];
-          return <div key={i} className="h-3 rounded-sm" style={{ backgroundColor: "currentColor", opacity: v * 0.7 }} />;
+          const base = +(v * 0.55).toFixed(2);
+          return <div key={i} className="h-3 rounded-sm" style={{
+            "--cell-base": base,
+            backgroundColor: "currentColor",
+            animation: `cell-flicker ${2 + (i % 4) * 0.5}s ease-in-out ${(i % 6) * 0.18}s infinite`,
+          } as React.CSSProperties} />;
         })}
       </div>
     ),
@@ -83,9 +95,16 @@ const ROADMAP_META: Record<string, {
     ),
     preview: (
       <div className="w-full flex items-end gap-1 h-10 mb-1">
-        {[30,55,40,80,60,90,45,70].map((h,i) => (
-          <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, backgroundColor: "currentColor", opacity: 0.15 + (h/100)*0.55 }} />
-        ))}
+        {[30,55,40,80,60,90,45,70].map((h,i) => {
+          const op = +(0.15 + (h/100)*0.55).toFixed(2);
+          return (
+            <div key={i} className="flex-1 rounded-sm" style={{
+              "--col-h": `${h}%`,
+              "--col-op": op,
+              backgroundColor: "currentColor",
+              animation: `col-rise 0.9s cubic-bezier(0.4,0,0.2,1) ${i * 0.1}s both, bar-pulse ${2.5 + i * 0.2}s ease-in-out ${0.9 + i * 0.1}s infinite`,
+            } as React.CSSProperties} />;
+        })}
       </div>
     ),
   },
@@ -100,7 +119,10 @@ const ROADMAP_META: Record<string, {
       <div className="w-full flex flex-col gap-1 mb-1">
         {["Available","Pending","Restricted"].map((s,i) => (
           <div key={s} className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: ["#4ade80","#fbbf24","#f87171"][i], opacity: 0.9 }} />
+            <div className="w-1.5 h-1.5 rounded-full" style={{
+              backgroundColor: ["#4ade80","#fbbf24","#f87171"][i],
+              animation: `dot-breathe ${1.8 + i * 0.4}s ease-in-out ${i * 0.6}s infinite`,
+            }} />
             <span className="text-[8px] font-mono opacity-50">{s}</span>
             <div className="flex-1 h-px" style={{ backgroundColor: "currentColor", opacity: 0.1 }} />
             <span className="text-[8px] font-mono opacity-40">{[24,8,3][i]}</span>
@@ -119,14 +141,21 @@ const ROADMAP_META: Record<string, {
     preview: (
       <div className="w-full mb-1">
         <div className="flex gap-1 flex-wrap">
-          {["Site score","EDC","Title","Labour","Permits"].map((tag) => (
-            <span key={tag} className="px-1.5 py-0.5 text-[7px] font-mono border rounded-full" style={{ borderColor: "currentColor", opacity: 0.5 }}>
+          {["Site score","EDC","Title","Labour","Permits"].map((tag, i) => (
+            <span key={tag} className="px-1.5 py-0.5 text-[7px] font-mono border rounded-full" style={{
+              borderColor: "currentColor",
+              animation: `tag-pop 2s ease-in-out ${i * 0.35}s infinite`,
+            }}>
               {tag}
             </span>
           ))}
         </div>
         <div className="mt-2 h-1 rounded-full bg-white/8 overflow-hidden">
-          <div className="h-full w-3/4 rounded-full" style={{ backgroundColor: "currentColor", opacity: 0.5 }} />
+          <div className="h-full rounded-full" style={{
+            backgroundColor: "currentColor",
+            opacity: 0.55,
+            animation: "progress-sweep 3.5s ease-in-out 0.5s infinite",
+          }} />
         </div>
       </div>
     ),

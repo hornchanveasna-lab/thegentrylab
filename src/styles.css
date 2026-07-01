@@ -748,3 +748,40 @@
   animation: marquee 28s linear infinite;
 }
 .marquee-track:hover { animation-play-state: paused; }
+
+/* ── Roadmap card preview animations ───────────────────── */
+@keyframes bar-grow {
+  0%   { width: 0%; opacity: 0; }
+  60%  { opacity: 0.7; }
+  100% { width: var(--bar-w); opacity: 0.6; }
+}
+@keyframes bar-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.75; }
+}
+@keyframes step-light {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 0.9; }
+}
+@keyframes cell-flicker {
+  0%, 100% { opacity: var(--cell-base); }
+  50%       { opacity: calc(var(--cell-base) * 1.6); }
+}
+@keyframes col-rise {
+  0%   { height: 4px; opacity: 0.1; }
+  100% { height: var(--col-h); opacity: var(--col-op); }
+}
+@keyframes dot-breathe {
+  0%, 100% { transform: scale(1);   opacity: 0.8; }
+  50%       { transform: scale(1.5); opacity: 1; }
+}
+@keyframes progress-sweep {
+  0%   { width: 15%; }
+  60%  { width: 85%; }
+  80%  { width: 85%; }
+  100% { width: 15%; }
+}
+@keyframes tag-pop {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.75; }
+}
