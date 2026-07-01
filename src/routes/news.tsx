@@ -92,6 +92,35 @@ const linkProps      = (url: string) => isRealUrl(url)
   ? { href: url, target: "_blank", rel: "noopener noreferrer" }
   : { href: "#" };
 
+/* ── Small cover thumbnail for list-mode rows ──────────────── */
+function NewsThumb({ item }: { item: NewsItem }) {
+  const src = getItemPhoto(item);
+  const [currentSrc, setCurrentSrc] = useState(src);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (src !== currentSrc) {
+      setLoaded(false);
+      setCurrentSrc(src);
+    }
+  }, [src]);
+
+  return (
+    <div className="relative w-24 h-16 sm:w-28 sm:h-[72px] shrink-0 overflow-hidden rounded-md">
+      <div className="absolute inset-0 bg-[#111]" />
+      <img
+        src={currentSrc}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover transition-opacity duration-500"
+        style={{ opacity: loaded ? 0.75 : 0 }}
+        onLoad={() => setLoaded(true)}
+        onError={() => { setCurrentSrc(getPhoto(item.sector)); }}
+      />
+      <div className="absolute inset-0" style={{ backgroundColor: getAccent(item.sector), opacity: 0.25 }} />
+    </div>
+  );
+}
+
 /* ── Slide background with fade-in (no flash on src change) ── */
 function SliderSlide({ item: n, active }: { item: NewsItem; active: boolean }) {
   const src = getItemPhoto(n);
@@ -385,6 +414,10 @@ function NewsPage() {
               <li key={n.id} className="flex gap-0 hover:bg-white/3 transition group">
                 {/* Sector accent strip */}
                 <div className="w-1 shrink-0 transition-all group-hover:w-1.5" style={{ backgroundColor: accent }} />
+                {/* Cover thumbnail */}
+                <div className="pl-5 py-5 flex items-center shrink-0">
+                  <NewsThumb item={n} />
+                </div>
                 <div className="flex-1 p-5">
                   <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2">
                     <span className="px-2 py-0.5 font-bold text-[9px]"
