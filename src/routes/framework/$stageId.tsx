@@ -308,6 +308,11 @@ function StagePage() {
                   </BarChart>
                 )}
               </ResponsiveContainer>
+              {stage.extraChart.source && (
+                <p className="text-[10px] mt-3 pt-3 leading-relaxed" style={{ color: "var(--text-faint)", borderTop: "1px solid var(--border)" }}>
+                  Source: {stage.extraChart.source}
+                </p>
+              )}
             </div>
           </section>
         )}

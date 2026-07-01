@@ -61,6 +61,7 @@ export interface StageContent {
     type: "bar" | "radar" | "area";
     data: { name: string; value: number; value2?: number }[];
     unit?: string;
+    source?: string;
   };
 }
 
@@ -153,18 +154,19 @@ export const STAGE_CONTENT: StageContent[] = [
       { item: "Shortlist 3 sites before visiting any of them", critical: false },
     ],
     extraChart: {
-      title: "Power Cost by Industrial Corridor (¢/kWh)",
+      title: "Industrial Land Price by Province (USD/m², 50-yr SEZ Lease Benchmark)",
       type: "bar",
-      unit: "¢/kWh",
+      unit: "USD/m²",
       data: [
-        { name: "Phnom Penh", value: 12.4 },
-        { name: "Kandal", value: 12.9 },
-        { name: "Sihanoukville", value: 14.2 },
-        { name: "Kampong Speu", value: 15.5 },
-        { name: "Kampong Cham", value: 16.8 },
-        { name: "Siem Reap", value: 17.1 },
-        { name: "Ratanakiri", value: 18.0 },
+        { name: "Phnom Penh", value: 95 },
+        { name: "Kandal", value: 78 },
+        { name: "Sihanoukville", value: 70 },
+        { name: "Kampong Speu", value: 52 },
+        { name: "Kampong Cham", value: 38 },
+        { name: "Siem Reap", value: 28 },
+        { name: "Ratanakiri", value: 15 },
       ],
+      source: "TGL Research estimate, benchmarked to CBRE Cambodia's national average 50-year SEZ land lease price (~USD 61–69/m², 2024–2025) with provincial differentials reflecting corridor proximity and demand. Verify current asking price with the specific zone developer before budgeting.",
     },
   },
 
