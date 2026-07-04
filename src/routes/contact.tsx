@@ -42,16 +42,7 @@ function ContactPage() {
           {t("contact.body")}
         </p>
 
-        <div className="mt-10 grid md:grid-cols-2 gap-px bg-white/10 border border-white/10">
-          <div className="bg-black p-8">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3">
-              {t("contact.officeLabel")}
-            </p>
-            <p className="text-white leading-relaxed">
-              ISI Tower<br />
-              Phnom Penh, Cambodia
-            </p>
-          </div>
+        <div className="mt-10 border border-white/10">
           <div className="bg-black p-8">
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 mb-3">
               {t("contact.contactLabel")}
@@ -60,8 +51,6 @@ function ContactPage() {
               <a href={`mailto:${EMAIL}`} className="hover:text-brand-accent transition-colors">
                 {EMAIL}
               </a>
-              <br />
-              +855 93 391 884
             </p>
           </div>
         </div>
