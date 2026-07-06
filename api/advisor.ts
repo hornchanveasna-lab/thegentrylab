@@ -1,6 +1,6 @@
 import {
   extractKeywords, fetchRagContext, formatRagContext,
-  fetchZoneDirectory, formatZoneDirectory, logReport,
+  fetchZoneDirectory, formatZoneDirectory, logReport, friendlyApiError,
 } from "./lib/rag.js";
 
 const SYSTEM_PROMPT = `You are the GentryLab AI Industrial Advisor — Cambodia's most advanced industrial intelligence engine. You generate structured, decision-ready investment briefs for manufacturers, investors, developers, banks, and consultants.
@@ -432,7 +432,9 @@ export default async function handler(req: Request): Promise<Response> {
         });
 
         if (!res.ok || !res.body) {
-          controller.enqueue(encoder.encode(`[Error: ${res.status}]`));
+          const text = await res.text();
+          console.error(`AI Advisor upstream error ${res.status}:`, text);
+          controller.enqueue(encoder.encode(friendlyApiError(res.status, text)));
           controller.close();
           return;
         }
@@ -496,7 +498,8 @@ export default async function handler(req: Request): Promise<Response> {
         controller.enqueue(encoder.encode(`\n<COST>${creditCost}</COST>`));
 
       } catch (err) {
-        controller.enqueue(encoder.encode(`\n\n[Error: ${err instanceof Error ? err.message : "Unknown"}]`));
+        console.error("AI Advisor stream error:", err);
+        controller.enqueue(encoder.encode("\n\nSomething went wrong generating this brief. Please try again."));
       } finally {
         controller.close();
       }

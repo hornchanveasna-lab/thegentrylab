@@ -12,6 +12,23 @@
  *  - Service role key used (bypasses RLS) — never exposed to client
  */
 
+// ── User-facing message for an Anthropic API failure. Never surface the raw
+//    status/body to end users — it can leak billing details, internal error
+//    shapes, or other things a visitor shouldn't see. ─────────────────────────
+export function friendlyApiError(status: number, rawBody: string): string {
+  const lower = rawBody.toLowerCase();
+  if (lower.includes("credit balance is too low")) {
+    return "GentryBot is temporarily unavailable while we top up service capacity. Please try again shortly, or contact us directly via the Contact page.";
+  }
+  if (status === 429 || lower.includes("rate_limit")) {
+    return "GentryBot is handling a lot of requests right now. Please wait a moment and try again.";
+  }
+  if (status === 529 || lower.includes("overloaded")) {
+    return "GentryBot is temporarily overloaded. Please try again in a moment.";
+  }
+  return "Something went wrong generating a response. Please try again, or contact us directly if this keeps happening.";
+}
+
 // ── Stop-words filtered out of keyword extraction ───────────────────────────
 const STOP = new Set([
   "what","where","when","which","does","have","this","that","with","from","they",

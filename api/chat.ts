@@ -1,6 +1,6 @@
 import {
   extractKeywords, extractProvince, fetchRagContext, formatRagContext,
-  fetchZoneDirectory, formatZoneDirectory, logChat,
+  fetchZoneDirectory, formatZoneDirectory, logChat, friendlyApiError,
 } from "./lib/rag.js";
 
 const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — Cambodia's industrial intelligence platform. You help foreign manufacturers, investors, and developers make informed decisions about industrial development in Cambodia.
@@ -183,7 +183,8 @@ export default async function handler(req: Request): Promise<Response> {
 
         if (!res.ok || !res.body) {
           const text = await res.text();
-          controller.enqueue(encoder.encode(`[Error: ${res.status} ${text}]`));
+          console.error(`GentryBot upstream error ${res.status}:`, text);
+          controller.enqueue(encoder.encode(friendlyApiError(res.status, text)));
           controller.close();
           return;
         }
@@ -214,8 +215,8 @@ export default async function handler(req: Request): Promise<Response> {
           }
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        controller.enqueue(encoder.encode(`\n\n[Error: ${msg}]`));
+        console.error("GentryBot stream error:", err);
+        controller.enqueue(encoder.encode("\n\nSomething went wrong generating a response. Please try again."));
       } finally {
         controller.close();
       }
