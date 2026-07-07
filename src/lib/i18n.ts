@@ -14,7 +14,7 @@ const EN = {
     h1b: "actually take to",
     h1c: "develop",
     h1d: "Industrial land in Cambodia?",
-    sub: "9 stages. 260+ sites mapped. One free platform built from $500M+ of delivered projects.",
+    sub: "9 stages. 260+ sites mapped. One free platform built from $100M+ of delivered projects.",
     cta1: "Explore the map",
     cta2: "About the platform",
     tags: ["9-Stage GIDF", "260+ Sites", "Free Access", "CDC · EDC · MPWT Data"],

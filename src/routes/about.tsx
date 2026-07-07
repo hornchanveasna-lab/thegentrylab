@@ -260,7 +260,7 @@ function AboutPage() {
             </p>
           </div>
           <h1 className="font-extrabold uppercase leading-[0.88] tracking-tighter text-[clamp(2.8rem,7vw,6rem)] max-w-4xl reveal reveal-delay-1">
-            Built on $500M+<br />
+            Built on $100M+<br />
             of delivered<br />
             <span className="text-gradient">industrial projects</span><br />
             in Cambodia.
@@ -299,7 +299,7 @@ function AboutPage() {
               Market reports.<br />No execution map.
             </h2>
             <p className="text-white/50 leading-relaxed mb-8">
-              Most industrial market intelligence is produced by people who have never permitted a factory, negotiated an EDC connection, or sat across a table with a CDC officer. Since 2014, we have — running site selection across every province, sequencing 9-ministry permit stacks, securing EDC industrial connections, and delivering over $500M in built value across Cambodia.
+              Most industrial market intelligence is produced by people who have never permitted a factory, negotiated an EDC connection, or sat across a table with a CDC officer. Since 2014, we have — running site selection across every province, sequencing 9-ministry permit stacks, securing EDC industrial connections, and delivering over $100M in built value across Cambodia.
             </p>
             <div className="flex flex-col gap-3">
               {[
@@ -326,7 +326,7 @@ function AboutPage() {
                   We don't tell you<br /><span style={{ color: accent }}>where.</span> We show you<br /><span style={{ color: accent }}>how.</span>
                 </h3>
                 <p className="text-white/55 leading-relaxed mb-8">
-                  Over a decade embedded in Cambodia's industrial sector — advising on factories, SEZs, and infrastructure — GentryLab was built from lived execution, not secondary research. $500M+ delivered. Every lesson is in the platform.
+                  Over a decade embedded in Cambodia's industrial sector — advising on factories, SEZs, and infrastructure — GentryLab was built from lived execution, not secondary research. $100M+ delivered. Every lesson is in the platform.
                 </p>
                 <div className="flex flex-col gap-3">
                   {[
@@ -358,7 +358,7 @@ function AboutPage() {
                 Track Record
               </p>
               <h2 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter leading-[0.92]">
-                $500M+ delivered<br />across Cambodia
+                $100M+ delivered<br />across Cambodia
               </h2>
             </div>
           </div>
