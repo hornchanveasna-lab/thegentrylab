@@ -80,7 +80,7 @@ export const STAGE_CONTENT: StageContent[] = [
     whyItMatters:
       "Site selection is the single most consequential decision in a Cambodia industrial project. The site you choose locks your electricity tariff zone for the building's commercial life (typically 20+ years), determines your labour pool depth and recruitment cost, sets your logistics equation to port or border, and — critically — dictates whether you can access CDC fast-track QIP incentives. Investors who arrive with a site already chosen typically spend 14 additional months correcting location decisions made without systematic data.",
     keyInsight:
-      "3 CDC pre-cleared industrial corridors exist in Cambodia — but 30+ provinces have no gazetted industrial land policy, meaning you can buy title on land that has no approved pathway for a construction permit.",
+      "3 CDC pre-cleared industrial corridors exist in Cambodia — but most of the country's 25 provinces have no gazetted industrial land policy, meaning you can buy title on land that has no approved pathway for a construction permit.",
     processSteps: [
       {
         n: 1, title: "Province Screening",
@@ -110,7 +110,7 @@ export const STAGE_CONTENT: StageContent[] = [
     ],
     keyStats: [
       { value: "14 mo", label: "Avg delay without corridor analysis", context: "Projects skipping province/corridor screening average 14 months longer to first production", highlight: true },
-      { value: "30+", label: "Provinces with no industrial land policy", context: "Over 30 of Cambodia's 25 provinces have no gazetted industrial zone or land use plan for industrial development" },
+      { value: "Most", label: "Provinces with no industrial land policy", context: "Most of Cambodia's 25 provinces have no gazetted industrial zone or land use plan for industrial development" },
       { value: "12", label: "Scoring criteria used", context: "GentryLab scores each province against 12 objective criteria — EDC, flood, labour, roads, title clarity, and 7 more" },
       { value: "20 yr", label: "Utility cost lock-in", context: "Your EDC tariff zone determines electricity cost for the building's entire commercial life — a $0.04/kWh error = $840K on 3 MW over 20 years" },
     ],
@@ -785,7 +785,7 @@ export const STAGE_CONTENT: StageContent[] = [
   {
     id: "08",
     title: "Delivery",
-    subtitle: "Construction programme, critical path management, and Cambodia's two dry seasons",
+    subtitle: "Construction programme, critical path management, and Cambodia's dry season window",
     heroStat: { value: "35–45%", label: "construction pace reduction in the June–October wet season" },
     whyItMatters:
       "Cambodia's construction calendar is driven by two factors: the wet season (June–October) reduces construction pace by 35–45% as concrete curing is affected, earthworks are disrupted, and worker attendance drops; and the dry season window (November–May) is the only reliable time for foundation and earthworks on most sites. Projects that miss the dry season window for foundation works typically slip 6 months — the exact length of one full wet season. GentryLab schedules every critical path around Cambodia's two dry windows and sets contractual milestones accordingly.",

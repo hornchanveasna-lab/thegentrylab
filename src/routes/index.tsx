@@ -116,7 +116,7 @@ const STAGE_ICONS: Record<string, React.ReactNode> = {
 const GIDF_STAGES = [
   {
     n: "01", title: "Site Selection",
-    stat: "3 CDC pre-cleared zones — 30+ provinces with NO industrial land policy",
+    stat: "3 CDC pre-cleared zones — most of Cambodia's 25 provinces have NO industrial land policy",
     process: "Province scoring across 12 criteria: EDC headroom, flood risk, NR access, labour pool, title clarity, CDC reach. GentryLab shortlists to 3 sites before client visits.",
     implication: "Investors who skip corridor analysis average 14 months longer to first production. Site choice locks your utility cost for 20 years.",
   },
@@ -136,7 +136,7 @@ const GIDF_STAGES = [
     n: "04", title: "Utility Strategy",
     stat: "EDC industrial tariff: $0.12–$0.18/kWh — new substation: 8–24 months",
     process: "Load calculation → EDC provincial office feasibility → substation sizing → dedicated line vs shared feeder decision → water permit from MOWRAM → wastewater discharge to MIME Class B standard.",
-    implication: "Power cost differential across provinces can be $0.04/kWh. On 3MW demand that's $105K/year difference. Utility strategy done wrong is a 20-year cost penalty.",
+    implication: "Power cost differential across provinces can be $0.04/kWh. On 3MW demand that's $840K over 20 years. Utility strategy done wrong is a 20-year cost penalty.",
   },
   {
     n: "05", title: "Permit Navigation",
@@ -160,7 +160,7 @@ const GIDF_STAGES = [
     n: "08", title: "Delivery",
     stat: "June–October rainy season: construction pace drops 35–45%",
     process: "Mobilisation → site clearing → foundation (critical path in wet season) → structural frame → envelope → MEP rough-in → fit-out → utility connections → testing & commissioning → handover.",
-    implication: "Projects that miss the dry season window (Nov–May) for foundation works typically slip 6 months. GentryLab schedules critical path around Cambodia's two dry seasons.",
+    implication: "Projects that miss the dry season window (Nov–May) for foundation works typically slip 6 months. GentryLab schedules the critical path around Cambodia's dry season.",
   },
   {
     n: "09", title: "Operations",

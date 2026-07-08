@@ -76,7 +76,7 @@ const EN = {
     "EPC Budgeting", "Delivery", "Operations",
   ],
   stageStats: [
-    "3 CDC pre-cleared zones — 30+ provinces with NO industrial land policy",
+    "3 CDC pre-cleared zones — most of Cambodia's 25 provinces have NO industrial land policy",
     "Only 30% of Cambodian industrial land has hard LMAP title",
     "15% green space mandatory — missed by 60% of first CDC submissions",
     "EDC industrial tariff: $0.12–$0.18/kWh — new substation: 8–24 months",
@@ -101,7 +101,7 @@ const EN = {
     "Investors who skip corridor analysis average 14 months longer to first production. Site choice locks your utility cost for 20 years.",
     "Soft-title land can be blocked 2–3 years mid-development. Title risk is the #1 reason foreign industrial projects stall in Cambodia.",
     "QIP status unlocks up to 9 years corporate tax exemption + import duty waiver. A rejected masterplan costs 3–6 months and a full redesign fee.",
-    "Power cost differential across provinces: $0.04/kWh. On 3MW demand that's $105K/year. Utility strategy done wrong is a 20-year cost penalty.",
+    "Power cost differential across provinces: $0.04/kWh. On 3MW demand that's $840K over 20 years. Utility strategy done wrong is a 20-year cost penalty.",
     "Done correctly: 8–11 months. Done incorrectly: 18–30 months. Permit sequencing is GentryLab's highest-value advisory service.",
     "Under-specced factories cost more to upgrade than to build right. GentryLab benchmarks against 60+ buildings — investors save 12–18% vs local estimates.",
     "Benchmarked projects average 8% under final cost vs 23% over for unbenchmarked builds.",
