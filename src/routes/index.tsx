@@ -10,6 +10,12 @@ const IndustrialMap = lazy(() =>
   import("@/components/site/IndustrialMap").then((m) => ({ default: m.IndustrialMap }))
 );
 
+// Lazy-load the Three.js cloud/bird scene — keeps the ~600kB three.js
+// payload out of the main bundle, only fetched when this card renders.
+const CloudBirdScene = lazy(() =>
+  import("@/components/site/CloudBirdScene").then((m) => ({ default: m.CloudBirdScene }))
+);
+
 export const Route = createFileRoute("/")({
   component: Index,
 });
@@ -543,6 +549,13 @@ function Index() {
                   {/* Mekong axis */}
                   <path d="M195 182 L198 250" stroke="#ff5100" strokeWidth="1" opacity="0.35" strokeDasharray="2 3"/>
                 </svg>
+
+                {/* ── Layer 7.5: real 3D clouds + flying bird (WebGL) ── */}
+                <div className="absolute inset-0" style={{ transform: "translateZ(50px)", pointerEvents: "none" }}>
+                  <Suspense fallback={null}>
+                    <CloudBirdScene />
+                  </Suspense>
+                </div>
 
                 {/* ── Layer 8: bottom gradient + CTA ── */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" style={{ transform: "translateZ(10px)" }} />
