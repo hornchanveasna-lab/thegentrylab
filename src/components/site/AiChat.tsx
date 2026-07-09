@@ -41,6 +41,25 @@ const SUGGESTED: string[] = [
   "Which sectors get tax exemptions?",
 ];
 
+/* ── Panel size — user-resizable, persisted across sessions ── */
+const SIZE_KEY = "tgl_chat_size";
+const DEFAULT_SIZE = { width: 360, height: 560 };
+const MAXIMIZED_SIZE = { width: 480, height: 760 };
+const MIN_SIZE = { width: 320, height: 380 };
+const MAX_SIZE = { width: 640, height: 900 };
+
+function loadChatSize(): { width: number; height: number } {
+  try {
+    const raw = localStorage.getItem(SIZE_KEY);
+    if (!raw) return DEFAULT_SIZE;
+    const parsed = JSON.parse(raw);
+    return {
+      width: Math.min(MAX_SIZE.width, Math.max(MIN_SIZE.width, parsed.width ?? DEFAULT_SIZE.width)),
+      height: Math.min(MAX_SIZE.height, Math.max(MIN_SIZE.height, parsed.height ?? DEFAULT_SIZE.height)),
+    };
+  } catch { return DEFAULT_SIZE; }
+}
+
 /* ── Simple markdown-lite renderer ───────────────────────── */
 function MdText({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\n)/g);
@@ -136,10 +155,47 @@ export function AiChat() {
   const [creditsUsed, setCreditsUsed]       = useState(0);
   const [outOfCredits, setOutOfCredits]     = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [size, setSize]           = useState(loadChatSize);
+  const [resizing, setResizing]   = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
   const panelRef  = useRef<HTMLDivElement>(null);
+  const resizeStart = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  /* Drag-resize from the top-left corner grip (panel is bottom-right
+     anchored, so dragging up/left grows it). Persists to localStorage. */
+  const handleResizeStart = (e: React.PointerEvent) => {
+    e.preventDefault();
+    resizeStart.current = { x: e.clientX, y: e.clientY, w: size.width, h: size.height };
+    setResizing(true);
+    const onMove = (ev: PointerEvent) => {
+      if (!resizeStart.current) return;
+      const dx = resizeStart.current.x - ev.clientX; // dragging left = grow
+      const dy = resizeStart.current.y - ev.clientY; // dragging up = grow
+      const next = {
+        width:  Math.min(MAX_SIZE.width,  Math.max(MIN_SIZE.width,  resizeStart.current.w + dx)),
+        height: Math.min(MAX_SIZE.height, Math.max(MIN_SIZE.height, resizeStart.current.h + dy)),
+      };
+      setSize(next);
+    };
+    const onUp = () => {
+      setResizing(false);
+      resizeStart.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setSize((s) => { try { localStorage.setItem(SIZE_KEY, JSON.stringify(s)); } catch {} return s; });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const toggleMaximize = () => {
+    const isMax = size.width >= MAXIMIZED_SIZE.width && size.height >= MAXIMIZED_SIZE.height;
+    const next = isMax ? DEFAULT_SIZE : MAXIMIZED_SIZE;
+    setSize(next);
+    try { localStorage.setItem(SIZE_KEY, JSON.stringify(next)); } catch {}
+  };
 
   /* Push panel above keyboard on mobile */
   useEffect(() => {
@@ -332,19 +388,31 @@ export function AiChat() {
       {/* Chat panel */}
       <div
         ref={panelRef}
-        className={`fixed right-4 z-[9999] w-[360px] max-w-[calc(100vw-2rem)] flex flex-col
-          shadow-2xl overflow-hidden
-          transition-all duration-300 origin-bottom-right
+        className={`fixed right-4 z-[9999] max-w-[calc(100vw-2rem)] flex flex-col
+          shadow-2xl overflow-hidden origin-bottom-right
+          ${resizing ? "" : "transition-all duration-300"}
           ${open ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}`}
         style={{
           bottom: `${(keyboardOffset > 0 ? keyboardOffset + 8 : 80) + 8}px`,
-          height: `min(560px, calc(100dvh - ${keyboardOffset > 0 ? keyboardOffset + 24 : 130}px))`,
+          width: `${size.width}px`,
+          height: `min(${size.height}px, calc(100dvh - ${keyboardOffset > 0 ? keyboardOffset + 24 : 130}px))`,
           borderRadius: 12,
           backgroundColor: "var(--chat-bg)",
           border: "1px solid var(--chat-border)",
           color: "var(--chat-text)",
         }}
       >
+        {/* Resize grip — drag to resize, panel grows toward top-left */}
+        <div
+          onPointerDown={handleResizeStart}
+          className="absolute top-0 left-0 w-5 h-5 z-10 cursor-nwse-resize hidden sm:flex items-center justify-center group"
+          title="Drag to resize"
+        >
+          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className="opacity-40 group-hover:opacity-90 transition" style={{ color: "var(--chat-text-subtle)" }}>
+            <path d="M8 1L1 8M8 5L5 8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+          </svg>
+        </div>
+
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3.5 shrink-0" style={{ backgroundColor: "var(--chat-header-bg)", borderBottom: "1px solid var(--chat-inner-border)" }}>
           {user && avatarUrl ? (
@@ -379,6 +447,19 @@ export function AiChat() {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "var(--chat-text-subtle)" }}>Online</span>
             </div>
+            <button onClick={toggleMaximize}
+              title="Resize chat"
+              className="hidden sm:flex w-6 h-6 items-center justify-center transition" style={{ color: "var(--chat-text-subtle)" }}>
+              {size.width >= MAXIMIZED_SIZE.width && size.height >= MAXIMIZED_SIZE.height ? (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7.5 4.5H10V2M4.5 7.5H2V10M10 2L6.5 5.5M2 10L5.5 6.5"/>
+                </svg>
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 4.5V2h2.5M10 7.5V10H7.5M2 2l3.5 3.5M10 10L6.5 6.5"/>
+                </svg>
+              )}
+            </button>
             <button onClick={() => setOpen(false)}
               className="ml-1 w-6 h-6 flex items-center justify-center transition" style={{ color: "var(--chat-text-subtle)" }}>
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
