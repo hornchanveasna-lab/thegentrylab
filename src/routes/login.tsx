@@ -56,15 +56,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden"
-      style={{ backgroundColor: "#0a0a0b", color: "#ffffff" }}>
+      style={{ backgroundColor: "var(--background)", color: "var(--foreground)" }}>
 
       {/* Background accent glows */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[600px] h-[600px]"
-          style={{ background: "radial-gradient(circle at 80% 20%, #ff5100, transparent 60%)", opacity: 0.04 }} />
+          style={{ background: "radial-gradient(circle at 80% 20%, #ff5100, transparent 60%)", opacity: 0.05 }} />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px]"
-          style={{ background: "radial-gradient(circle at 20% 80%, #ff5100, transparent 60%)", opacity: 0.03 }} />
-        <div className="absolute top-1/2 left-0 right-0 h-px" style={{ backgroundColor: "rgba(255,255,255,0.04)" }} />
+          style={{ background: "radial-gradient(circle at 20% 80%, #ff5100, transparent 60%)", opacity: 0.04 }} />
+        <div className="absolute top-1/2 left-0 right-0 h-px" style={{ backgroundColor: "var(--border)" }} />
       </div>
 
       {/* Top bar */}
@@ -72,13 +72,13 @@ export default function LoginPage() {
         <a href="/" className="inline-flex items-center gap-3 group">
           <GentryMark color="#ff5100" size={30} className="transition group-hover:drop-shadow-[0_0_8px_rgba(255,81,0,0.6)]" />
           <div className="leading-none">
-            <p className="font-extrabold text-[8px] uppercase tracking-[0.22em]" style={{ color: "rgba(255,255,255,0.35)" }}>The</p>
-            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight" style={{ color: "#ffffff" }}>Gentry Lab</p>
-            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight" style={{ color: "#ff5100" }}>IO</p>
+            <p className="font-extrabold text-[8px] uppercase tracking-[0.22em]" style={{ color: "var(--text-muted)" }}>The</p>
+            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight" style={{ color: "var(--text-primary)" }}>Gentry</p>
+            <p className="font-extrabold text-[14px] uppercase tracking-tight leading-tight" style={{ color: "#ff5100" }}>Lab</p>
           </div>
         </a>
         <a href="/" className="font-mono text-[10px] uppercase tracking-widest transition"
-          style={{ color: "rgba(255,255,255,0.25)" }}>
+          style={{ color: "var(--text-subtle)" }}>
           ← Back
         </a>
       </div>
@@ -93,11 +93,11 @@ export default function LoginPage() {
               style={{ color: "#ff5100", border: "1px solid rgba(255,81,0,0.30)" }}>
               Cambodia Industrial Intelligence
             </span>
-            <h1 className="text-[32px] font-extrabold tracking-tight leading-tight" style={{ color: "#ffffff" }}>
+            <h1 className="text-[32px] font-extrabold tracking-tight leading-tight" style={{ color: "var(--text-primary)" }}>
               Your free platform<br />for industrial Cambodia
             </h1>
-            <p className="mt-3 text-[13px] leading-relaxed max-w-sm mx-auto" style={{ color: "rgba(255,255,255,0.40)" }}>
-              110+ sites mapped · AI research assistant · Live project tracker
+            <p className="mt-3 text-[13px] leading-relaxed max-w-sm mx-auto" style={{ color: "var(--text-muted)" }}>
+              260+ sites mapped · AI research assistant · Live project tracker
             </p>
           </div>
 
@@ -106,10 +106,10 @@ export default function LoginPage() {
             style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.20)" }}>
             <div className="text-center">
               <p className="text-[36px] font-extrabold leading-none" style={{ color: "#ff5100" }}>100</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,81,0,0.70)" }}>Credits / Day</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,81,0,0.80)" }}>Credits / Day</p>
             </div>
-            <div className="w-px h-10" style={{ backgroundColor: "rgba(255,255,255,0.10)" }} />
-            <p className="text-[12px] leading-relaxed" style={{ color: "rgba(255,255,255,0.50)" }}>
+            <div className="w-px h-10" style={{ backgroundColor: "var(--border)" }} />
+            <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
               Ask GentryBot 100 questions daily about SEZs, permits, costs, and opportunities — free.
             </p>
           </div>
@@ -129,36 +129,36 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <p className="mt-3 text-center text-[11px] leading-relaxed" style={{ color: "rgba(255,255,255,0.20)" }}>
+          <p className="mt-3 text-center text-[11px] leading-relaxed" style={{ color: "var(--text-subtle)" }}>
             Your name and email only. No password. No spam. Free forever.
           </p>
 
           {/* Divider */}
           <div className="my-7 flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
-            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.15)" }}>Everything included</span>
-            <div className="flex-1 h-px" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
+            <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
+            <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--text-subtle)" }}>Everything included</span>
+            <div className="flex-1 h-px" style={{ backgroundColor: "var(--border)" }} />
           </div>
 
           {/* Benefits grid */}
           <div className="grid grid-cols-2 gap-3">
             {BENEFITS.map((b) => (
               <div key={b.title} className="flex flex-col gap-2.5 p-3.5 rounded-xl transition"
-                style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                style={{ backgroundColor: "var(--surface-1)", border: "1px solid var(--border)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                   style={{ backgroundColor: "rgba(255,81,0,0.10)", color: "#ff5100" }}>
                   {b.icon}
                 </div>
                 <div>
-                  <p className="text-[12px] font-semibold leading-snug" style={{ color: "#ffffff" }}>{b.title}</p>
-                  <p className="text-[10.5px] mt-1 leading-relaxed" style={{ color: "rgba(255,255,255,0.35)" }}>{b.desc}</p>
+                  <p className="text-[12px] font-semibold leading-snug" style={{ color: "var(--text-primary)" }}>{b.title}</p>
+                  <p className="text-[10.5px] mt-1 leading-relaxed" style={{ color: "var(--text-muted)" }}>{b.desc}</p>
                 </div>
               </div>
             ))}
           </div>
 
           {/* Footer note */}
-          <p className="mt-8 text-center text-[10px] font-mono uppercase tracking-widest" style={{ color: "rgba(255,255,255,0.15)" }}>
+          <p className="mt-8 text-center text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--text-subtle)" }}>
             © 2026 The Gentry Lab · Phnom Penh
           </p>
         </div>
