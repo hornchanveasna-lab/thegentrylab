@@ -153,7 +153,7 @@ const GIDF_STAGES = [
   {
     n: "06", title: "Factory Design",
     stat: "Industrial build cost: $280–$420/m² — wrong spec adds 40%+ in retrofit costs",
-    process: "ASEAN industrial code applies. Steel portal frame for garment/light manufacturing. Reinforced concrete for pharma/food. Cambodian wet season roof loading: min 1.5kN/m². Floor flatness: FM2 minimum for logistics.",
+    process: "ASEAN industrial code applies. Steel portal frame for garment/light manufacturing. Reinforced concrete for pharma/food. Roof live load per IBC: 0.96 kN/m² base, reducible to 0.30–0.50 kN/m² with AISC 360-justified PEB calculations. Floor flatness: FM2 minimum for logistics.",
     implication: "Under-specced factories cost more to upgrade than to build right. GentryLab benchmarks against 60+ delivered buildings — investors save 12–18% vs local contractor estimates.",
   },
   {

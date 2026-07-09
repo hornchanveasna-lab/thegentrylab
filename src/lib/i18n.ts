@@ -92,7 +92,7 @@ const EN = {
     "CDC requires masterplan before QIP registration. Layout must show green buffer, fire access road (6m min), internal road grid, utility entry points, waste treatment zone.",
     "Load calculation → EDC feasibility → substation sizing → dedicated line vs shared feeder → water permit from MOWRAM → wastewater discharge to MIME Class B.",
     "Sequence: MoE ECC → MISTI licence → CDC QIP → MoLVT → fire dept → building permit → EDC → water authority → customs (SEZ). Wrong order = restart.",
-    "ASEAN industrial code applies. Steel portal frame for garment/light mfg. Reinforced concrete for pharma/food. Wet season roof loading: min 1.5kN/m². FM2 floor flatness for logistics.",
+    "ASEAN industrial code applies. Steel portal frame for garment/light mfg. Reinforced concrete for pharma/food. Roof live load per IBC: 0.96 kN/m² base, reducible to 0.30–0.50 kN/m² with AISC 360-justified PEB calculations. FM2 floor flatness for logistics.",
     "Bill of quantities → 3 contractor quotes (1 international, 1 regional, 1 local) → contingency for utility works → VAT, stamp duty, professional fees.",
     "Mobilisation → site clearing → foundation → structural frame → envelope → MEP rough-in → fit-out → utility connections → testing & commissioning → handover.",
     "Facility management: MEP maintenance, security, MIME waste audit (quarterly), EDC reconciliation, fire cert (annual), MoLVT labour audit preparation.",
