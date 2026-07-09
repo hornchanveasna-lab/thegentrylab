@@ -41,22 +41,29 @@ const SUGGESTED: string[] = [
   "Which sectors get tax exemptions?",
 ];
 
-/* ── Panel size — user-resizable, persisted across sessions ── */
+/* ── Panel size — user-resizable, persisted across sessions.
+   No fixed max: only bounded by the actual viewport at drag time, so
+   "no limit" really means "as big as your screen allows". ── */
 const SIZE_KEY = "tgl_chat_size";
 const DEFAULT_SIZE = { width: 360, height: 560 };
 const MAXIMIZED_SIZE = { width: 480, height: 760 };
-const MIN_SIZE = { width: 320, height: 380 };
-const MAX_SIZE = { width: 640, height: 900 };
+const MIN_SIZE = { width: 280, height: 320 };
+
+function clampToViewport(size: { width: number; height: number }) {
+  const maxW = window.innerWidth - 32;   // leave a small margin off-screen edge
+  const maxH = window.innerHeight - 100; // leave room for the launcher/margins
+  return {
+    width:  Math.min(maxW, Math.max(MIN_SIZE.width,  size.width)),
+    height: Math.min(maxH, Math.max(MIN_SIZE.height, size.height)),
+  };
+}
 
 function loadChatSize(): { width: number; height: number } {
   try {
     const raw = localStorage.getItem(SIZE_KEY);
     if (!raw) return DEFAULT_SIZE;
     const parsed = JSON.parse(raw);
-    return {
-      width: Math.min(MAX_SIZE.width, Math.max(MIN_SIZE.width, parsed.width ?? DEFAULT_SIZE.width)),
-      height: Math.min(MAX_SIZE.height, Math.max(MIN_SIZE.height, parsed.height ?? DEFAULT_SIZE.height)),
-    };
+    return clampToViewport({ width: parsed.width ?? DEFAULT_SIZE.width, height: parsed.height ?? DEFAULT_SIZE.height });
   } catch { return DEFAULT_SIZE; }
 }
 
@@ -163,9 +170,10 @@ export function AiChat() {
   const panelRef  = useRef<HTMLDivElement>(null);
   const resizeStart = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
 
-  /* Drag-resize from the top-left corner grip (panel is bottom-right
-     anchored, so dragging up/left grows it). Persists to localStorage. */
-  const handleResizeStart = (e: React.PointerEvent) => {
+  /* Drag-resize — panel is bottom-right anchored, so dragging up/left
+     grows it. "corner" resizes both axes, "top" only height, "left"
+     only width. No fixed cap — bounded only by the live viewport. */
+  const handleResizeStart = (axis: "corner" | "top" | "left") => (e: React.PointerEvent) => {
     e.preventDefault();
     resizeStart.current = { x: e.clientX, y: e.clientY, w: size.width, h: size.height };
     setResizing(true);
@@ -173,11 +181,11 @@ export function AiChat() {
       if (!resizeStart.current) return;
       const dx = resizeStart.current.x - ev.clientX; // dragging left = grow
       const dy = resizeStart.current.y - ev.clientY; // dragging up = grow
-      const next = {
-        width:  Math.min(MAX_SIZE.width,  Math.max(MIN_SIZE.width,  resizeStart.current.w + dx)),
-        height: Math.min(MAX_SIZE.height, Math.max(MIN_SIZE.height, resizeStart.current.h + dy)),
+      const raw = {
+        width:  axis === "top"  ? size.width  : resizeStart.current.w + dx,
+        height: axis === "left" ? size.height : resizeStart.current.h + dy,
       };
-      setSize(next);
+      setSize(clampToViewport(raw));
     };
     const onUp = () => {
       setResizing(false);
@@ -402,10 +410,21 @@ export function AiChat() {
           color: "var(--chat-text)",
         }}
       >
-        {/* Resize grip — drag to resize, panel grows toward top-left */}
+        {/* Resize handles — top edge (height), left edge (width), corner (both).
+            Panel is bottom-right anchored, so dragging up/left grows it. */}
         <div
-          onPointerDown={handleResizeStart}
-          className="absolute top-0 left-0 w-5 h-5 z-10 cursor-nwse-resize hidden sm:flex items-center justify-center group"
+          onPointerDown={handleResizeStart("top")}
+          className="absolute top-0 left-5 right-5 h-2 z-10 cursor-ns-resize hidden sm:block"
+          title="Drag to resize height"
+        />
+        <div
+          onPointerDown={handleResizeStart("left")}
+          className="absolute top-5 bottom-0 left-0 w-2 z-10 cursor-ew-resize hidden sm:block"
+          title="Drag to resize width"
+        />
+        <div
+          onPointerDown={handleResizeStart("corner")}
+          className="absolute top-0 left-0 w-5 h-5 z-20 cursor-nwse-resize hidden sm:flex items-center justify-center group"
           title="Drag to resize"
         >
           <svg width="9" height="9" viewBox="0 0 9 9" fill="none" className="opacity-40 group-hover:opacity-90 transition" style={{ color: "var(--chat-text-subtle)" }}>
