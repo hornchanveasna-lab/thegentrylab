@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, useRef, useCallback } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { useReveal, useSnapScroll } from "@/components/site/Counter";
 import { useConfig } from "@/lib/siteConfig";
@@ -176,10 +176,41 @@ const DEFAULT_TICKER = [
   "Cost Benchmarks", "Land Due Diligence",
 ];
 
+/* ── 3D tilt/parallax for the map preview card — cursor-driven tilt
+   like a tilted satellite plane, each layer at its own depth, plus a
+   slow idle "orbit" drift when the pointer isn't over it. ── */
+function useTilt3D() {
+  const [rot, setRot] = useState({ x: 0, y: 0 });
+  const [hovering, setHovering] = useState(false);
+  const frame = useRef<number | null>(null);
+
+  const onMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width - 0.5;   // -0.5..0.5
+    const py = (e.clientY - rect.top) / rect.height - 0.5;
+    if (frame.current) cancelAnimationFrame(frame.current);
+    frame.current = requestAnimationFrame(() => {
+      setRot({ x: py * -14, y: px * 16 });
+    });
+  }, []);
+
+  const onMouseEnter = useCallback(() => setHovering(true), []);
+  const onMouseLeave = useCallback(() => {
+    setHovering(false);
+    setRot({ x: 0, y: 0 });
+  }, []);
+
+  return {
+    rot, hovering,
+    handlers: { onMouseMove, onMouseEnter, onMouseLeave },
+  };
+}
+
 function Index() {
   useReveal();
   useSnapScroll();
   const cfg = useConfig();
+  const tilt = useTilt3D();
   const [openStage, setOpenStage] = useState<string | null>(null);
   const { t, ta, to } = useLang();
 
@@ -412,19 +443,33 @@ function Index() {
               </Link>
             </div>
 
-            {/* Animated map preview with dim real Leaflet map behind */}
+            {/* Animated map preview with dim real Leaflet map behind — 3D tilt/parallax card */}
             <div className="reveal reveal-delay-2">
-              <Link to="/map" className="block relative overflow-hidden border border-white/10 aspect-[4/3] group" style={{ borderRadius: "1rem" }}>
+              <Link
+                to="/map"
+                className={`block relative overflow-hidden border border-white/10 aspect-[4/3] group tilt-card${tilt.hovering ? " tilt-card--active" : ""}`}
+                style={{ borderRadius: "1rem", perspective: "1200px" }}
+                {...tilt.handlers}
+              >
+                <div
+                  className={tilt.hovering ? "" : "tilt-idle-drift"}
+                  style={{
+                    position: "absolute", inset: 0,
+                    transformStyle: "preserve-3d",
+                    transform: `rotateX(${tilt.rot.x}deg) rotateY(${tilt.rot.y}deg) scale3d(1.03,1.03,1.03)`,
+                    transition: tilt.hovering ? "transform 0.15s ease-out" : "transform 0.7s ease-out",
+                  }}
+                >
 
                 {/* ── Layer 1: dim real Cambodia basemap ── */}
-                <div className="absolute inset-0" style={{ opacity: 0.28, pointerEvents: "none" }}>
+                <div className="absolute inset-0" style={{ opacity: 0.28, pointerEvents: "none", transform: "translateZ(0px)" }}>
                   <Suspense fallback={<div className="w-full h-full bg-[#0a0a0b]" />}>
                     <IndustrialMap previewMode />
                   </Suspense>
                 </div>
 
                 {/* ── Layer 2: dark tint so dots pop ── */}
-                <div className="absolute inset-0 bg-[#0a0a0b]/55 pointer-events-none" />
+                <div className="absolute inset-0 bg-[#0a0a0b]/55 pointer-events-none" style={{ transform: "translateZ(4px)" }} />
 
                 {/* ── Layer 3: animated grid lines ── */}
                 <div className="absolute inset-0 pointer-events-none" style={{
@@ -433,10 +478,11 @@ function Index() {
                     linear-gradient(90deg, rgba(255,81,0,0.06) 1px, transparent 1px)
                   `,
                   backgroundSize: "40px 40px",
+                  transform: "translateZ(14px)",
                 }}/>
 
                 {/* ── Layer 4: pulse dots (Cambodia major zones) ── */}
-                <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-0 pointer-events-none" style={{ transform: "translateZ(34px)" }}>
                   {/* Phnom Penh SEZ cluster */}
                   {[
                     { left: "48%",  top: "60%",  size: 8,  delay: "0s",    color: "#ff5100" },
@@ -474,10 +520,10 @@ function Index() {
                 </div>
 
                 {/* ── Layer 5: scan line sweep ── */}
-                <div className="scan-line" />
+                <div className="scan-line" style={{ transform: "translateZ(24px)" }} />
 
                 {/* ── Layer 6: top eyebrow label ── */}
-                <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+                <div className="absolute top-4 left-4 right-4 flex items-center justify-between pointer-events-none" style={{ transform: "translateZ(56px)" }}>
                   <span className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 bg-black/60 border border-white/10" style={{ color: accent }}>
                     {t("mapSection.liveBadge")}
                   </span>
@@ -487,7 +533,7 @@ function Index() {
                 </div>
 
                 {/* ── Layer 7: corridor line art overlay ── */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 300" preserveAspectRatio="none" fill="none">
+                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 300" preserveAspectRatio="none" fill="none" style={{ transform: "translateZ(44px)" }}>
                   {/* NR1 east corridor */}
                   <path d="M195 182 L290 170 L340 178" stroke="#fbbf24" strokeWidth="1.2" opacity="0.55" strokeDasharray="4 3"/>
                   {/* Sihanoukville highway */}
@@ -499,8 +545,8 @@ function Index() {
                 </svg>
 
                 {/* ── Layer 8: bottom gradient + CTA ── */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
-                <div className="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" style={{ transform: "translateZ(10px)" }} />
+                <div className="absolute bottom-0 inset-x-0 p-5 flex items-end justify-between pointer-events-none" style={{ transform: "translateZ(64px)" }}>
                   <div>
                     <p className="font-mono text-[10px] uppercase tracking-widest text-white/50 mb-1">{t("mapSection.corridorLabel")}</p>
                     <p className="font-extrabold text-sm uppercase tracking-tight text-white group-hover:text-[#ff5100] transition-colors">
@@ -518,7 +564,8 @@ function Index() {
                 </div>
 
                 {/* Hover glow border */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ borderRadius: "1rem", boxShadow: `inset 0 0 0 1px ${accent}50` }} />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" style={{ borderRadius: "1rem", boxShadow: `inset 0 0 0 1px ${accent}50`, transform: "translateZ(70px)" }} />
+                </div>
               </Link>
             </div>
           </div>

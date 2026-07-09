@@ -812,3 +812,19 @@ html.snap-scroll {
 @media (max-width: 767px) {
   html.snap-scroll { scroll-snap-type: none; }
 }
+
+/* ── 3D tilt map preview card ─────────────────────────────
+   Slow ambient "orbit" drift while idle; cursor takes over via
+   inline transform (see useTilt3D) as soon as the pointer is over
+   the card, then eases back into the drift loop on mouse-leave. */
+.tilt-card { transform-style: preserve-3d; }
+.tilt-idle-drift {
+  animation: tilt-orbit 9s ease-in-out infinite;
+}
+@keyframes tilt-orbit {
+  0%, 100% { transform: rotateX(2deg)  rotateY(-3deg) scale3d(1.03,1.03,1.03); }
+  50%      { transform: rotateX(-1.5deg) rotateY(3deg)  scale3d(1.03,1.03,1.03); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tilt-idle-drift { animation: none; }
+}
