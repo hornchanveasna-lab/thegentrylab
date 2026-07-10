@@ -303,7 +303,7 @@ function NewsCard({ item }: { item: NewsItem }) {
           className="absolute inset-0 w-full h-full object-cover transform-gpu group-hover:scale-105"
           style={{
             opacity: imgLoaded ? 0.7 : 0,
-            transition: "opacity 0.5s ease, transform 0.7s cubic-bezier(0.4,0,0.2,1)",
+            transition: "opacity 0.5s ease, transform 1.1s cubic-bezier(0.4,0,0.2,1)",
             willChange: "transform",
             backfaceVisibility: "hidden",
           }}
