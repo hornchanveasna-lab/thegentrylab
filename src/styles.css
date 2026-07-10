@@ -829,22 +829,15 @@ html.snap-scroll {
   .tilt-idle-drift { animation: none; }
 }
 
-/* ── Drifting cloud layer over the real interactive map ───
-   Soft radial-gradient blobs sliding left-to-right at varying
-   speeds/altitudes, wrapping around continuously. See MapClouds.tsx. */
-.map-cloud {
+/* ── Cloud layer anchored to real map coordinates ─────────
+   Positioned via google.maps.OverlayView (see MapClouds.tsx) so
+   clouds pan/zoom with the land underneath instead of the screen. */
+.map-cloud-geo {
   position: absolute;
-  left: -50%;
+  pointer-events: none;
   background: radial-gradient(ellipse at center, #ffffff 0%, #ffffff 40%, transparent 72%);
   border-radius: 50%;
-  animation-name: cloud-drift;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-@keyframes cloud-drift {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(220vw); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .map-cloud { animation: none; opacity: 0 !important; }
+  .map-cloud-geo { display: none; }
 }
