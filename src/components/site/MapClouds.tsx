@@ -37,7 +37,7 @@ interface CloudTemplate {
 }
 
 const KM_PER_DEG_LAT = 111.32;
-const CLOUD_COUNT = 12;
+const CLOUD_COUNT = 6;
 const VISIBLE_AT_ZOOM = 15;
 const BOUNDS_PADDING = 0.6; // fraction of viewport span to pad on each side
 
@@ -65,10 +65,10 @@ function makeTemplate(seed: number): CloudTemplate {
     return x - Math.floor(x);
   };
   return {
-    widthKm: 0.25 + rand(1) * 0.65, // 250-900m — fits inside a max-zoom viewport
+    widthKm: 0.25 + rand(1) * 0.55, // 250-800m — fits inside a max-zoom viewport
     aspect: 0.36 + rand(2) * 0.2,
-    windKmh: 12 + rand(3) * 20,
-    baseOpacity: 0.14 + rand(4) * 0.12,
+    windKmh: 35 + rand(3) * 40, // faster, more noticeable drift
+    baseOpacity: 0.08 + rand(4) * 0.07,
     puffs: puffCluster(seed),
   };
 }
