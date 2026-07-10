@@ -6,7 +6,7 @@ import { useMap } from "@vis.gl/react-google-maps";
  * coordinates via google.maps.OverlayView, so they pan/zoom with the
  * map like an actual cloud layer drifting over the land.
  *
- * Two things make these read as real clouds rather than CSS blobs:
+ * Three things make these read as real clouds rather than CSS blobs:
  *  1. Size is defined in real-world km, not pixels — projected through
  *     the map each frame, so a cloud is the same physical size at any
  *     zoom level (grows on-screen as you zoom in, like a real object).
@@ -14,6 +14,9 @@ import { useMap } from "@vis.gl/react-google-maps";
  *     slightly different offsets/sizes (irregular, not a single
  *     ellipse), plus a faint offset shadow blob to suggest the cloud
  *     is floating above the terrain, not painted on it.
+ *  3. Clouds are small (a few km wide) and only fade in once zoomed
+ *     in close to max zoom — at wide/regional zoom they'd just be
+ *     illegible specks, so they stay hidden until useful.
  */
 
 interface Puff {
@@ -57,14 +60,19 @@ function puffCluster(seed: number): Puff[] {
 }
 
 const CLOUDS: CloudSpec[] = [
-  { lat: 14.1, startLng: 102.5, widthKm: 22, aspect: 0.42, speed: 0.0022, baseOpacity: 0.20, puffs: puffCluster(1) },
-  { lat: 13.2, startLng: 104.8, widthKm: 14, aspect: 0.48, speed: 0.0032, baseOpacity: 0.16, puffs: puffCluster(2) },
-  { lat: 12.6, startLng: 103.6, widthKm: 30, aspect: 0.38, speed: 0.0014, baseOpacity: 0.18, puffs: puffCluster(3) },
-  { lat: 11.9, startLng: 106.2, widthKm: 11, aspect: 0.52, speed: 0.0036, baseOpacity: 0.14, puffs: puffCluster(4) },
-  { lat: 11.2, startLng: 102.9, widthKm: 20, aspect: 0.40, speed: 0.0020, baseOpacity: 0.15, puffs: puffCluster(5) },
-  { lat: 10.6, startLng: 105.4, widthKm: 16, aspect: 0.45, speed: 0.0028, baseOpacity: 0.13, puffs: puffCluster(6) },
-  { lat: 12.1, startLng: 108.0, widthKm: 25, aspect: 0.40, speed: 0.0018, baseOpacity: 0.17, puffs: puffCluster(7) },
+  { lat: 14.1, startLng: 102.5, widthKm: 6.5, aspect: 0.42, speed: 0.0022, baseOpacity: 0.20, puffs: puffCluster(1) },
+  { lat: 13.2, startLng: 104.8, widthKm: 4.0, aspect: 0.48, speed: 0.0032, baseOpacity: 0.16, puffs: puffCluster(2) },
+  { lat: 12.6, startLng: 103.6, widthKm: 8.5, aspect: 0.38, speed: 0.0014, baseOpacity: 0.18, puffs: puffCluster(3) },
+  { lat: 11.9, startLng: 106.2, widthKm: 3.2, aspect: 0.52, speed: 0.0036, baseOpacity: 0.14, puffs: puffCluster(4) },
+  { lat: 11.2, startLng: 102.9, widthKm: 5.8, aspect: 0.40, speed: 0.0020, baseOpacity: 0.15, puffs: puffCluster(5) },
+  { lat: 10.6, startLng: 105.4, widthKm: 4.6, aspect: 0.45, speed: 0.0028, baseOpacity: 0.13, puffs: puffCluster(6) },
+  { lat: 12.1, startLng: 108.0, widthKm: 7.2, aspect: 0.40, speed: 0.0018, baseOpacity: 0.17, puffs: puffCluster(7) },
 ];
+
+// Only render clouds once the map is zoomed in close to its max level —
+// at wide/regional zoom they'd just be indistinct specks, so keep them
+// hidden until the user is close enough for them to read as clouds.
+const VISIBLE_AT_ZOOM = 15;
 
 // Sun assumed upper-left → shadow falls lower-right, as a fraction of cluster size.
 const SHADOW_DX = 0.10;
@@ -86,8 +94,10 @@ function makeCloudOverlayClass() {
 
     onAdd() {
       const root = document.createElement("div");
+      root.className = "map-cloud-root";
       root.style.position = "absolute";
       root.style.pointerEvents = "none";
+      root.style.opacity = "0";
 
       const shadow = document.createElement("div");
       shadow.style.position = "absolute";
@@ -167,6 +177,10 @@ function makeCloudOverlayClass() {
       this.position = new google.maps.LatLng(this.spec.lat, lng);
       this.draw();
     }
+
+    setVisible(visible: boolean) {
+      if (this.root) this.root.style.opacity = visible ? "1" : "0";
+    }
   };
 }
 
@@ -184,6 +198,13 @@ export function MapClouds() {
     });
     const lngs = CLOUDS.map((c) => c.startLng);
 
+    const updateVisibility = () => {
+      const visible = (map.getZoom() ?? 0) >= VISIBLE_AT_ZOOM;
+      overlays.forEach((o) => o.setVisible(visible));
+    };
+    updateVisibility();
+    const zoomListener = map.addListener("zoom_changed", updateVisibility);
+
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -200,6 +221,7 @@ export function MapClouds() {
 
     return () => {
       cancelAnimationFrame(raf);
+      google.maps.event.removeListener(zoomListener);
       overlays.forEach((o) => o.setMap(null));
     };
   }, [map]);

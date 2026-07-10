@@ -834,6 +834,9 @@ html.snap-scroll {
    clouds pan/zoom with the land underneath instead of the screen.
    Each cloud is a cluster of overlapping "puffs" (irregular cumulus
    shape) plus a faint offset "shadow" blob for a sense of altitude. */
+.map-cloud-root {
+  transition: opacity 1.2s ease;
+}
 .map-cloud-puff {
   background: radial-gradient(ellipse at 35% 30%, #ffffff 0%, #ffffff 45%, transparent 75%);
   border-radius: 50%;
