@@ -846,6 +846,6 @@ html.snap-scroll {
   background: radial-gradient(ellipse at center, #0a1a12 0%, #0a1a12 35%, transparent 72%);
   border-radius: 50%;
 }
-@media (prefers-reduced-motion: reduce) {
-  .map-cloud-puff, .map-cloud-shadow { display: none; }
-}
+/* Reduced-motion users still see clouds (they're a static ambient detail,
+   not a distracting animation) — MapClouds.tsx skips the drift tick
+   instead of hiding them outright when this preference is set. */

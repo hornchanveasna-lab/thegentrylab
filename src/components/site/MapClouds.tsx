@@ -254,12 +254,14 @@ export function MapClouds() {
       if (isVisibleZoom()) reseedOutOfBounds();
     });
 
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
-      if (isVisibleZoom()) {
+      if (isVisibleZoom() && !reducedMotion) {
         overlays.forEach((o) => o.tick(dt));
       }
       raf = requestAnimationFrame(tick);
