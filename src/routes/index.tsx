@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useRef, useCallback } from "react";
 import { TopNav } from "@/components/site/TopNav";
-import { useReveal, useSnapScroll } from "@/components/site/Counter";
+import { Counter, useReveal, useSnapScroll } from "@/components/site/Counter";
 import { useConfig } from "@/lib/siteConfig";
 import { useLang } from "@/lib/i18n";
 
@@ -424,12 +424,17 @@ function Index() {
                 {t("mapSection.desc")}
               </p>
               <div className="grid grid-cols-2 gap-4 mb-10">
-                {to("mapSection.stats").map((s: { n: string; label: string }) => (
-                  <div key={s.label} className="rounded-lg border border-white/8 px-4 py-3 bg-[#0a0a0b]">
-                    <p className="text-xl font-extrabold tracking-tighter" style={{ color: accent }}>{s.n}</p>
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mt-0.5">{s.label}</p>
-                  </div>
-                ))}
+                {to("mapSection.stats").map((s: { n: string; label: string }) => {
+                  const m = s.n.match(/^(\d+)(.*)$/);
+                  return (
+                    <div key={s.label} className="rounded-lg border border-white/8 px-4 py-3 bg-[#0a0a0b]">
+                      <p className="text-xl font-extrabold tracking-tighter tabular-nums" style={{ color: accent }}>
+                        {m ? <><Counter value={m[1]} />{m[2]}</> : s.n}
+                      </p>
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 mt-0.5">{s.label}</p>
+                    </div>
+                  );
+                })}
               </div>
               <Link
                 to="/map"
