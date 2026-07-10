@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { TopNav } from "@/components/site/TopNav";
 import { IndustrialMap } from "@/components/site/IndustrialMap";
+import { MapClouds } from "@/components/site/MapClouds";
+import { MapAmbientSound } from "@/components/site/MapAmbientSound";
 
 export const Route = createFileRoute("/map")({
   component: MapPage,
@@ -38,6 +40,7 @@ function MapPage() {
               <span className="w-1.5 h-1.5 rounded-full bg-brand-accent pulse-dot" />
               Live
             </span>
+            <MapAmbientSound />
             <Link to="/methodology" className="font-mono text-[10px] uppercase tracking-widest text-white/35 hover:text-white transition-colors">
               Methodology ↗
             </Link>
@@ -45,8 +48,9 @@ function MapPage() {
         </div>
       </div>
       {/* Full-height map */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
         <IndustrialMap />
+        <MapClouds />
       </div>
     </div>
   );
