@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TopNav } from "@/components/site/TopNav";
-import { Counter, useReveal, useSnapScroll } from "@/components/site/Counter";
+import { Counter, useReveal, useSmoothScroll } from "@/components/site/Counter";
 import { loadConfig, type SiteConfig } from "@/lib/siteConfig";
 import { useMapSites, useProjects } from "@/lib/data";
 
@@ -219,7 +219,7 @@ const DEFAULT_TICKER = [
 
 function AboutPage() {
   useReveal();
-  useSnapScroll();
+  useSmoothScroll();
   const [cfg, setCfg] = useState<SiteConfig>(() => loadConfig());
 
   useEffect(() => {
