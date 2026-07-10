@@ -59,15 +59,58 @@ function puffCluster(seed: number): Puff[] {
   return puffs;
 }
 
-const CLOUDS: CloudSpec[] = [
-  { lat: 14.1, startLng: 102.5, widthKm: 6.5, aspect: 0.42, speed: 0.0022, baseOpacity: 0.20, puffs: puffCluster(1) },
-  { lat: 13.2, startLng: 104.8, widthKm: 4.0, aspect: 0.48, speed: 0.0032, baseOpacity: 0.16, puffs: puffCluster(2) },
-  { lat: 12.6, startLng: 103.6, widthKm: 8.5, aspect: 0.38, speed: 0.0014, baseOpacity: 0.18, puffs: puffCluster(3) },
-  { lat: 11.9, startLng: 106.2, widthKm: 3.2, aspect: 0.52, speed: 0.0036, baseOpacity: 0.14, puffs: puffCluster(4) },
-  { lat: 11.2, startLng: 102.9, widthKm: 5.8, aspect: 0.40, speed: 0.0020, baseOpacity: 0.15, puffs: puffCluster(5) },
-  { lat: 10.6, startLng: 105.4, widthKm: 4.6, aspect: 0.45, speed: 0.0028, baseOpacity: 0.13, puffs: puffCluster(6) },
-  { lat: 12.1, startLng: 108.0, widthKm: 7.2, aspect: 0.40, speed: 0.0018, baseOpacity: 0.17, puffs: puffCluster(7) },
-];
+const KM_PER_DEG_LAT = 111.32;
+
+/**
+ * Grid + jitter across Cambodia's landmass so that wherever the user
+ * zooms in close, there's a good chance a cloud is nearby — 7 clouds
+ * spread across the whole country meant most zoomed-in views had none
+ * in frame at all, which read as "nothing is moving."
+ *
+ * Speed is generated from a realistic wind speed (km/h) and converted
+ * to degrees-longitude/sec using each cloud's own latitude, so drift
+ * speed reads consistently regardless of where the cloud sits.
+ */
+function generateClouds(): CloudSpec[] {
+  const rand = (seed: number, n: number) => {
+    const x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
+  const LAT_MIN = 10.3, LAT_MAX = 14.3;
+  const LNG_MIN = 102.2, LNG_MAX = 107.6;
+  const COLS = 8, ROWS = 5;
+
+  const clouds: CloudSpec[] = [];
+  let seed = 1;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      seed++;
+      const jitterLat = (rand(seed, 1) - 0.5) * 0.7;
+      const jitterLng = (rand(seed, 2) - 0.5) * 0.7;
+      const lat = LAT_MIN + ((r + 0.5) / ROWS) * (LAT_MAX - LAT_MIN) + jitterLat;
+      const lng = LNG_MIN + ((c + 0.5) / COLS) * (LNG_MAX - LNG_MIN) + jitterLng;
+
+      const widthKm = 3 + rand(seed, 3) * 6; // 3-9 km
+      const windKmh = 14 + rand(seed, 4) * 22; // 14-36 km/h — visible but calm drift
+      const kmPerDegLng = KM_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
+      const speed = (windKmh / 3600) / kmPerDegLng; // deg lng / sec
+
+      clouds.push({
+        lat,
+        startLng: lng,
+        widthKm,
+        aspect: 0.36 + rand(seed, 5) * 0.2,
+        speed,
+        baseOpacity: 0.12 + rand(seed, 6) * 0.1,
+        puffs: puffCluster(seed),
+      });
+    }
+  }
+  return clouds;
+}
+
+const CLOUDS: CloudSpec[] = generateClouds();
 
 // Only render clouds once the map is zoomed in close to its max level —
 // at wide/regional zoom they'd just be indistinct specks, so keep them
@@ -77,8 +120,6 @@ const VISIBLE_AT_ZOOM = 15;
 // Sun assumed upper-left → shadow falls lower-right, as a fraction of cluster size.
 const SHADOW_DX = 0.10;
 const SHADOW_DY = 0.22;
-
-const KM_PER_DEG_LAT = 111.32;
 
 function makeCloudOverlayClass() {
   return class CloudOverlay extends google.maps.OverlayView {
