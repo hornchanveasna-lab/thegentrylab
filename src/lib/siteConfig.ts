@@ -70,7 +70,7 @@ export interface SiteConfig {
 }
 
 const DEFAULT_NAV_LINKS: NavLinkItem[] = [
-  { id: "map",      label: "Map",      visible: true  },
+  { id: "map",      label: "SeerMap",  visible: true  },
   { id: "tracker",  label: "Tracker",  visible: true  },
   { id: "news",     label: "News",     visible: true  },
   { id: "research", label: "Research", visible: true  },
