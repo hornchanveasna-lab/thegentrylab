@@ -301,7 +301,7 @@ function NewsCard({ item }: { item: NewsItem }) {
           src={imgSrc}
           alt=""
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          style={{ opacity: imgLoaded ? 0.7 : 0, transition: "opacity 0.5s, transform 0.7s" }}
+          style={{ opacity: imgLoaded ? 0.7 : 0, transition: "opacity 0.5s ease, transform 0.7s cubic-bezier(0.4,0,0.2,1)" }}
           onLoad={() => setImgLoaded(true)}
           onError={() => { const next = nextPhotoFallback(imgSrc, item.sector); if (next) setImgSrc(next); }}
         />
