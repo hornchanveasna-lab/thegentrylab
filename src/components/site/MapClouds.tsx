@@ -2,21 +2,23 @@ import { useEffect } from "react";
 import { useMap } from "@vis.gl/react-google-maps";
 
 /**
- * MapClouds — cumulus-style cloud clusters anchored to real lat/lng
- * coordinates via google.maps.OverlayView, so they pan/zoom with the
- * map like an actual cloud layer drifting over the land.
+ * MapClouds — small cumulus clusters that populate whatever part of the
+ * map is currently in view, once zoomed in close to max zoom.
  *
- * Three things make these read as real clouds rather than CSS blobs:
- *  1. Size is defined in real-world km, not pixels — projected through
- *     the map each frame, so a cloud is the same physical size at any
- *     zoom level (grows on-screen as you zoom in, like a real object).
- *  2. Each cloud is a cluster of several overlapping soft puffs at
- *     slightly different offsets/sizes (irregular, not a single
- *     ellipse), plus a faint offset shadow blob to suggest the cloud
- *     is floating above the terrain, not painted on it.
- *  3. Clouds are small (a few km wide) and only fade in once zoomed
- *     in close to max zoom — at wide/regional zoom they'd just be
- *     illegible specks, so they stay hidden until useful.
+ * Earlier versions anchored a fixed, sparse set of clouds to specific
+ * lat/lng points scattered across all of Cambodia. That fails at high
+ * zoom: a max-zoom viewport is only ~1-3km wide, so the odds of one of
+ * those fixed points actually falling inside the visible area were
+ * essentially zero — nothing appeared. Fixed-size (multi-km) clouds
+ * were also far bigger than the whole visible viewport at that zoom.
+ *
+ * This version is a small viewport-relative particle system instead:
+ * a fixed pool of clouds is kept seeded to random points inside the
+ * *current* map bounds (padded), each drifting slowly east. Any cloud
+ * that drifts outside the padded bounds — or whenever the user pans/
+ * zooms somewhere new — gets reseeded to a fresh random point inside
+ * the current view, so there are always a few clouds nearby wherever
+ * you're actually looking.
  */
 
 interface Puff {
@@ -26,22 +28,20 @@ interface Puff {
   opacity: number;
 }
 
-interface CloudSpec {
-  lat: number;
-  startLng: number;
+interface CloudTemplate {
   widthKm: number;
   aspect: number; // height / width
-  speed: number; // degrees longitude per second
+  windKmh: number;
   baseOpacity: number;
   puffs: Puff[];
 }
 
-const MIN_LNG = 101.8;
-const MAX_LNG = 108.2;
+const KM_PER_DEG_LAT = 111.32;
+const CLOUD_COUNT = 12;
+const VISIBLE_AT_ZOOM = 15;
+const BOUNDS_PADDING = 0.6; // fraction of viewport span to pad on each side
 
 function puffCluster(seed: number): Puff[] {
-  // Deterministic pseudo-random-looking puff layout per cloud, so
-  // clusters look organic without needing Math.random() at module load.
   const rand = (n: number) => {
     const x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453;
     return x - Math.floor(x);
@@ -59,63 +59,19 @@ function puffCluster(seed: number): Puff[] {
   return puffs;
 }
 
-const KM_PER_DEG_LAT = 111.32;
-
-/**
- * Grid + jitter across Cambodia's landmass so that wherever the user
- * zooms in close, there's a good chance a cloud is nearby — 7 clouds
- * spread across the whole country meant most zoomed-in views had none
- * in frame at all, which read as "nothing is moving."
- *
- * Speed is generated from a realistic wind speed (km/h) and converted
- * to degrees-longitude/sec using each cloud's own latitude, so drift
- * speed reads consistently regardless of where the cloud sits.
- */
-function generateClouds(): CloudSpec[] {
-  const rand = (seed: number, n: number) => {
-    const x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453;
+function makeTemplate(seed: number): CloudTemplate {
+  const rand = (n: number) => {
+    const x = Math.sin(seed * 37.719 + n * 91.345) * 12543.847;
     return x - Math.floor(x);
   };
-
-  const LAT_MIN = 10.3, LAT_MAX = 14.3;
-  const LNG_MIN = 102.2, LNG_MAX = 107.6;
-  const COLS = 8, ROWS = 5;
-
-  const clouds: CloudSpec[] = [];
-  let seed = 1;
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      seed++;
-      const jitterLat = (rand(seed, 1) - 0.5) * 0.7;
-      const jitterLng = (rand(seed, 2) - 0.5) * 0.7;
-      const lat = LAT_MIN + ((r + 0.5) / ROWS) * (LAT_MAX - LAT_MIN) + jitterLat;
-      const lng = LNG_MIN + ((c + 0.5) / COLS) * (LNG_MAX - LNG_MIN) + jitterLng;
-
-      const widthKm = 3 + rand(seed, 3) * 6; // 3-9 km
-      const windKmh = 14 + rand(seed, 4) * 22; // 14-36 km/h — visible but calm drift
-      const kmPerDegLng = KM_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
-      const speed = (windKmh / 3600) / kmPerDegLng; // deg lng / sec
-
-      clouds.push({
-        lat,
-        startLng: lng,
-        widthKm,
-        aspect: 0.36 + rand(seed, 5) * 0.2,
-        speed,
-        baseOpacity: 0.12 + rand(seed, 6) * 0.1,
-        puffs: puffCluster(seed),
-      });
-    }
-  }
-  return clouds;
+  return {
+    widthKm: 0.25 + rand(1) * 0.65, // 250-900m — fits inside a max-zoom viewport
+    aspect: 0.36 + rand(2) * 0.2,
+    windKmh: 12 + rand(3) * 20,
+    baseOpacity: 0.14 + rand(4) * 0.12,
+    puffs: puffCluster(seed),
+  };
 }
-
-const CLOUDS: CloudSpec[] = generateClouds();
-
-// Only render clouds once the map is zoomed in close to its max level —
-// at wide/regional zoom they'd just be indistinct specks, so keep them
-// hidden until the user is close enough for them to read as clouds.
-const VISIBLE_AT_ZOOM = 15;
 
 // Sun assumed upper-left → shadow falls lower-right, as a fraction of cluster size.
 const SHADOW_DX = 0.10;
@@ -126,11 +82,12 @@ function makeCloudOverlayClass() {
     private root: HTMLDivElement | null = null;
     private shadow: HTMLDivElement | null = null;
     private body: HTMLDivElement | null = null;
-    private position: google.maps.LatLng;
+    lat = 0;
+    lng = 0;
+    degPerSec = 0;
 
-    constructor(private spec: CloudSpec) {
+    constructor(private tpl: CloudTemplate) {
       super();
-      this.position = new google.maps.LatLng(spec.lat, spec.startLng);
     }
 
     onAdd() {
@@ -149,7 +106,7 @@ function makeCloudOverlayClass() {
       body.style.position = "absolute";
       body.style.pointerEvents = "none";
 
-      this.spec.puffs.forEach((p) => {
+      this.tpl.puffs.forEach((p) => {
         const puff = document.createElement("div");
         puff.className = "map-cloud-puff";
         puff.style.position = "absolute";
@@ -157,7 +114,7 @@ function makeCloudOverlayClass() {
         puff.style.top = `${50 + p.dy * 100}%`;
         puff.style.width = `${p.scale * 60}%`;
         puff.style.height = `${p.scale * 60}%`;
-        puff.style.opacity = String(p.opacity * this.spec.baseOpacity * 5);
+        puff.style.opacity = String(p.opacity * this.tpl.baseOpacity * 5);
         puff.style.transform = "translate(-50%, -50%)";
         body.appendChild(puff);
       });
@@ -174,18 +131,16 @@ function makeCloudOverlayClass() {
       const proj = this.getProjection();
       if (!proj || !this.root) return;
 
-      const center = proj.fromLatLngToDivPixel(this.position);
+      const center = proj.fromLatLngToDivPixel(new google.maps.LatLng(this.lat, this.lng));
       if (!center) return;
 
-      const kmPerDegLng = KM_PER_DEG_LAT * Math.cos((this.spec.lat * Math.PI) / 180);
-      const dLng = this.spec.widthKm / kmPerDegLng;
-      const edge = proj.fromLatLngToDivPixel(
-        new google.maps.LatLng(this.spec.lat, this.position.lng() + dLng)
-      );
+      const kmPerDegLng = KM_PER_DEG_LAT * Math.cos((this.lat * Math.PI) / 180);
+      const dLng = this.tpl.widthKm / kmPerDegLng;
+      const edge = proj.fromLatLngToDivPixel(new google.maps.LatLng(this.lat, this.lng + dLng));
       if (!edge) return;
 
-      const widthPx = Math.max(20, Math.abs(edge.x - center.x));
-      const heightPx = widthPx * this.spec.aspect;
+      const widthPx = Math.max(16, Math.abs(edge.x - center.x));
+      const heightPx = widthPx * this.tpl.aspect;
 
       this.root.style.left = `${center.x - widthPx / 2}px`;
       this.root.style.top = `${center.y - heightPx / 2}px`;
@@ -195,15 +150,15 @@ function makeCloudOverlayClass() {
       if (this.body) {
         this.body.style.width = "100%";
         this.body.style.height = "100%";
-        this.body.style.filter = `blur(${Math.max(4, widthPx * 0.045)}px)`;
+        this.body.style.filter = `blur(${Math.max(3, widthPx * 0.05)}px)`;
       }
       if (this.shadow) {
         this.shadow.style.width = "100%";
         this.shadow.style.height = "100%";
         this.shadow.style.left = `${SHADOW_DX * 100}%`;
         this.shadow.style.top = `${SHADOW_DY * 100}%`;
-        this.shadow.style.filter = `blur(${Math.max(6, widthPx * 0.08)}px)`;
-        this.shadow.style.opacity = String(Math.min(0.14, this.spec.baseOpacity * 0.7));
+        this.shadow.style.filter = `blur(${Math.max(5, widthPx * 0.09)}px)`;
+        this.shadow.style.opacity = String(Math.min(0.16, this.tpl.baseOpacity * 0.8));
       }
     }
 
@@ -214,8 +169,16 @@ function makeCloudOverlayClass() {
       this.shadow = null;
     }
 
-    setLng(lng: number) {
-      this.position = new google.maps.LatLng(this.spec.lat, lng);
+    setPosition(lat: number, lng: number) {
+      this.lat = lat;
+      this.lng = lng;
+      const kmPerDegLng = KM_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
+      this.degPerSec = (this.tpl.windKmh / 3600) / kmPerDegLng;
+      this.draw();
+    }
+
+    tick(dt: number) {
+      this.lng += this.degPerSec * dt;
       this.draw();
     }
 
@@ -232,30 +195,73 @@ export function MapClouds() {
     if (!map || typeof google === "undefined") return;
 
     const CloudOverlay = makeCloudOverlayClass();
-    const overlays = CLOUDS.map((spec) => {
-      const o = new CloudOverlay(spec);
+    const overlays = Array.from({ length: CLOUD_COUNT }, (_, i) => {
+      const o = new CloudOverlay(makeTemplate(i + 1));
       o.setMap(map);
       return o;
     });
-    const lngs = CLOUDS.map((c) => c.startLng);
+    let seeded = false;
+
+    const paddedBounds = () => {
+      const b = map.getBounds();
+      if (!b) return null;
+      const ne = b.getNorthEast();
+      const sw = b.getSouthWest();
+      const latSpan = ne.lat() - sw.lat();
+      const lngSpan = ne.lng() - sw.lng();
+      return {
+        latMin: sw.lat() - latSpan * BOUNDS_PADDING,
+        latMax: ne.lat() + latSpan * BOUNDS_PADDING,
+        lngMin: sw.lng() - lngSpan * BOUNDS_PADDING,
+        lngMax: ne.lng() + lngSpan * BOUNDS_PADDING,
+      };
+    };
+
+    const respawn = (o: InstanceType<typeof CloudOverlay>, box: NonNullable<ReturnType<typeof paddedBounds>>) => {
+      const lat = box.latMin + Math.random() * (box.latMax - box.latMin);
+      const lng = box.lngMin + Math.random() * (box.lngMax - box.lngMin);
+      o.setPosition(lat, lng);
+    };
+
+    const isVisibleZoom = () => (map.getZoom() ?? 0) >= VISIBLE_AT_ZOOM;
+
+    const seedAll = () => {
+      const box = paddedBounds();
+      if (!box) return;
+      overlays.forEach((o) => respawn(o, box));
+      seeded = true;
+    };
+
+    const reseedOutOfBounds = () => {
+      const box = paddedBounds();
+      if (!box) return;
+      overlays.forEach((o) => {
+        if (o.lat < box.latMin || o.lat > box.latMax || o.lng < box.lngMin || o.lng > box.lngMax) {
+          respawn(o, box);
+        }
+      });
+    };
 
     const updateVisibility = () => {
-      const visible = (map.getZoom() ?? 0) >= VISIBLE_AT_ZOOM;
+      const visible = isVisibleZoom();
       overlays.forEach((o) => o.setVisible(visible));
+      if (visible && !seeded) seedAll();
     };
     updateVisibility();
+
     const zoomListener = map.addListener("zoom_changed", updateVisibility);
+    const idleListener = map.addListener("idle", () => {
+      if (isVisibleZoom()) reseedOutOfBounds();
+    });
 
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
-      CLOUDS.forEach((spec, i) => {
-        lngs[i] += spec.speed * dt;
-        if (lngs[i] > MAX_LNG) lngs[i] = MIN_LNG;
-        overlays[i].setLng(lngs[i]);
-      });
+      if (isVisibleZoom()) {
+        overlays.forEach((o) => o.tick(dt));
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -263,6 +269,7 @@ export function MapClouds() {
     return () => {
       cancelAnimationFrame(raf);
       google.maps.event.removeListener(zoomListener);
+      google.maps.event.removeListener(idleListener);
       overlays.forEach((o) => o.setMap(null));
     };
   }, [map]);
