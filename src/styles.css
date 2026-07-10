@@ -831,13 +831,18 @@ html.snap-scroll {
 
 /* ── Cloud layer anchored to real map coordinates ─────────
    Positioned via google.maps.OverlayView (see MapClouds.tsx) so
-   clouds pan/zoom with the land underneath instead of the screen. */
-.map-cloud-geo {
+   clouds pan/zoom with the land underneath instead of the screen.
+   Each cloud is a cluster of overlapping "puffs" (irregular cumulus
+   shape) plus a faint offset "shadow" blob for a sense of altitude. */
+.map-cloud-puff {
+  background: radial-gradient(ellipse at 35% 30%, #ffffff 0%, #ffffff 45%, transparent 75%);
+  border-radius: 50%;
+}
+.map-cloud-shadow {
   position: absolute;
-  pointer-events: none;
-  background: radial-gradient(ellipse at center, #ffffff 0%, #ffffff 40%, transparent 72%);
+  background: radial-gradient(ellipse at center, #0a1a12 0%, #0a1a12 35%, transparent 72%);
   border-radius: 50%;
 }
 @media (prefers-reduced-motion: reduce) {
-  .map-cloud-geo { display: none; }
+  .map-cloud-puff, .map-cloud-shadow { display: none; }
 }
