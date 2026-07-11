@@ -840,9 +840,13 @@ html.snap-scroll {
 .map-cloud-puff {
   background: radial-gradient(ellipse at 35% 30%, #ffffff 0%, #ffffff 45%, transparent 75%);
   border-radius: 50%;
+  /* Screen blend lets the terrain show through unevenly, like real light
+     scattering through cloud, instead of a flat opaque sticker. */
+  mix-blend-mode: screen;
 }
 .map-cloud-shadow {
   position: absolute;
+  mix-blend-mode: multiply;
   background: radial-gradient(ellipse at center, #0a1a12 0%, #0a1a12 35%, transparent 72%);
   border-radius: 50%;
 }

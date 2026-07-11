@@ -90,6 +90,35 @@ const SHADOW_DY = 0.22;
 // 156543.03392 / (111.32 km/deg * 1000) — see tick() for derivation.
 const MERCATOR_DEG_CONST = 156543.03392 / (KM_PER_DEG_LAT * 1000);
 
+const FIBER_FILTER_IDS = ["cloud-fiber-a", "cloud-fiber-b", "cloud-fiber-c"];
+
+/**
+ * Injects an SVG <defs> block with a few feTurbulence ("fractalNoise")
+ * filters, once per document. Applying one of these to a puff's radial
+ * gradient carves fibrous, uneven wisps out of its alpha channel —
+ * plain radial-gradient blobs read as flat painted circles; real
+ * clouds have patchy, fibrous density. Idempotent so remounts don't
+ * duplicate it.
+ */
+function ensureCloudFilterDefs() {
+  if (document.getElementById("map-cloud-filter-defs")) return;
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("id", "map-cloud-filter-defs");
+  svg.setAttribute("width", "0");
+  svg.setAttribute("height", "0");
+  svg.style.position = "absolute";
+  svg.style.pointerEvents = "none";
+  const seeds = [7, 23, 41];
+  const freqs = ["0.9 0.35", "0.7 0.5", "1.1 0.4"];
+  svg.innerHTML = `<defs>${FIBER_FILTER_IDS.map((id, i) => `
+    <filter id="${id}" x="-40%" y="-40%" width="180%" height="180%">
+      <feTurbulence type="fractalNoise" baseFrequency="${freqs[i]}" numOctaves="2" seed="${seeds[i]}" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.55 0.55 0.55 0 0" result="noiseAlpha"/>
+      <feComposite in="SourceGraphic" in2="noiseAlpha" operator="in"/>
+    </filter>`).join("")}</defs>`;
+  document.body.appendChild(svg);
+}
+
 function makeCloudOverlayClass() {
   return class CloudOverlay extends google.maps.OverlayView {
     private root: HTMLDivElement | null = null;
@@ -103,6 +132,8 @@ function makeCloudOverlayClass() {
     }
 
     onAdd() {
+      ensureCloudFilterDefs();
+
       const root = document.createElement("div");
       root.className = "map-cloud-root";
       root.style.position = "absolute";
@@ -118,17 +149,35 @@ function makeCloudOverlayClass() {
       body.style.position = "absolute";
       body.style.pointerEvents = "none";
 
-      this.tpl.puffs.forEach((p) => {
-        const puff = document.createElement("div");
-        puff.className = "map-cloud-puff";
-        puff.style.position = "absolute";
-        puff.style.left = `${50 + p.dx * 100}%`;
-        puff.style.top = `${50 + p.dy * 100}%`;
-        puff.style.width = `${p.scale * 60}%`;
-        puff.style.height = `${p.scale * 60}%`;
-        puff.style.opacity = String(p.opacity * this.tpl.baseOpacity * 5);
-        puff.style.transform = "translate(-50%, -50%)";
-        body.appendChild(puff);
+      this.tpl.puffs.forEach((p, i) => {
+        // Two stacked layers per puff position: a soft, heavily-blurred
+        // "base" (no texture — just a diffuse presence) and a smaller
+        // "fiber" layer on top run through an SVG turbulence filter,
+        // which carves patchy, uneven density out of it instead of a
+        // flat painted circle. Together they read as a layered, wispy
+        // cloud rather than a solid blob.
+        const base = document.createElement("div");
+        base.className = "map-cloud-puff map-cloud-puff-base";
+        base.style.position = "absolute";
+        base.style.left = `${50 + p.dx * 100}%`;
+        base.style.top = `${50 + p.dy * 100}%`;
+        base.style.width = `${p.scale * 68}%`;
+        base.style.height = `${p.scale * 68}%`;
+        base.style.opacity = String(p.opacity * this.tpl.baseOpacity * 2.4);
+        base.style.transform = "translate(-50%, -50%)";
+        body.appendChild(base);
+
+        const fiber = document.createElement("div");
+        fiber.className = "map-cloud-puff map-cloud-puff-fiber";
+        fiber.style.position = "absolute";
+        fiber.style.left = `${50 + p.dx * 100}%`;
+        fiber.style.top = `${50 + p.dy * 100}%`;
+        fiber.style.width = `${p.scale * 56}%`;
+        fiber.style.height = `${p.scale * 56}%`;
+        fiber.style.opacity = String(p.opacity * this.tpl.baseOpacity * 4.5);
+        fiber.style.transform = "translate(-50%, -50%)";
+        fiber.dataset.fiberId = FIBER_FILTER_IDS[i % FIBER_FILTER_IDS.length];
+        body.appendChild(fiber);
       });
 
       root.appendChild(shadow);
@@ -162,7 +211,18 @@ function makeCloudOverlayClass() {
       if (this.body) {
         this.body.style.width = "100%";
         this.body.style.height = "100%";
-        this.body.style.filter = `blur(${Math.max(4, widthPx * 0.08)}px)`;
+        // Base layer stays heavily blurred (soft diffuse glow); the fiber
+        // layer keeps a lighter blur so its turbulence texture stays
+        // legible instead of being smoothed away — this contrast is what
+        // reads as "layered" rather than one uniform blurred blob.
+        const baseBlur = Math.max(6, widthPx * 0.14);
+        const fiberBlur = Math.max(2, widthPx * 0.035);
+        this.body.querySelectorAll<HTMLElement>(".map-cloud-puff-base").forEach((el) => {
+          el.style.filter = `blur(${baseBlur}px)`;
+        });
+        this.body.querySelectorAll<HTMLElement>(".map-cloud-puff-fiber").forEach((el) => {
+          el.style.filter = `url(#${el.dataset.fiberId}) blur(${fiberBlur}px)`;
+        });
       }
       if (this.shadow) {
         this.shadow.style.width = "100%";
