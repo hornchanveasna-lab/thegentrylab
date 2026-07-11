@@ -31,7 +31,12 @@ interface Puff {
 interface CloudTemplate {
   widthKm: number;
   aspect: number; // height / width
-  windKmh: number;
+  pxPerSec: number; // drift speed in screen pixels/sec, not real-world wind —
+                     // a real-world km/h speed converts to wildly different
+                     // on-screen speeds depending on zoom (near-zero at low
+                     // zoom, since meters/pixel shrinks a lot at high zoom).
+                     // Fixing the screen speed keeps drift visibly moving at
+                     // any zoom level where clouds are shown.
   baseOpacity: number;
   puffs: Puff[];
 }
@@ -67,7 +72,7 @@ function makeTemplate(seed: number): CloudTemplate {
   return {
     widthKm: 0.25 + rand(1) * 0.55, // 250-800m — fits inside a max-zoom viewport
     aspect: 0.36 + rand(2) * 0.2,
-    windKmh: 35 + rand(3) * 40, // faster, more noticeable drift
+    pxPerSec: 18 + rand(3) * 22, // 18-40 px/s — clearly visible, calm drift
     baseOpacity: 0.08 + rand(4) * 0.07,
     puffs: puffCluster(seed),
   };
@@ -77,6 +82,9 @@ function makeTemplate(seed: number): CloudTemplate {
 const SHADOW_DX = 0.10;
 const SHADOW_DY = 0.22;
 
+// 156543.03392 / (111.32 km/deg * 1000) — see tick() for derivation.
+const MERCATOR_DEG_CONST = 156543.03392 / (KM_PER_DEG_LAT * 1000);
+
 function makeCloudOverlayClass() {
   return class CloudOverlay extends google.maps.OverlayView {
     private root: HTMLDivElement | null = null;
@@ -84,7 +92,6 @@ function makeCloudOverlayClass() {
     private body: HTMLDivElement | null = null;
     lat = 0;
     lng = 0;
-    degPerSec = 0;
 
     constructor(private tpl: CloudTemplate) {
       super();
@@ -172,13 +179,17 @@ function makeCloudOverlayClass() {
     setPosition(lat: number, lng: number) {
       this.lat = lat;
       this.lng = lng;
-      const kmPerDegLng = KM_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
-      this.degPerSec = (this.tpl.windKmh / 3600) / kmPerDegLng;
       this.draw();
     }
 
-    tick(dt: number) {
-      this.lng += this.degPerSec * dt;
+    // Converts the cloud's fixed screen-pixel speed into a lng/sec drift
+    // rate for the current zoom. Standard Web Mercator resolution is
+    // metersPerPixel = 156543.03392 * cos(lat) / 2^zoom — the cos(lat)
+    // term cancels against the same term in meters-per-degree-longitude,
+    // so this ends up independent of latitude, only zoom-dependent.
+    tick(dt: number, zoom: number) {
+      const degPerSec = (this.tpl.pxPerSec * MERCATOR_DEG_CONST) / Math.pow(2, zoom);
+      this.lng += degPerSec * dt;
       this.draw();
     }
 
@@ -262,7 +273,8 @@ export function MapClouds() {
       const dt = (now - last) / 1000;
       last = now;
       if (isVisibleZoom() && !reducedMotion) {
-        overlays.forEach((o) => o.tick(dt));
+        const zoom = map.getZoom() ?? VISIBLE_AT_ZOOM;
+        overlays.forEach((o) => o.tick(dt, zoom));
       }
       raf = requestAnimationFrame(tick);
     };
