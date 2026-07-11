@@ -1,9 +1,10 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useRef, useCallback } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Counter, useReveal, useSnapScroll } from "@/components/site/Counter";
 import { useConfig } from "@/lib/siteConfig";
 import { useLang } from "@/lib/i18n";
+import { CMIndexPage } from "@/routes/cm/index";
 
 // Lazy-load map (Leaflet is browser-only)
 const IndustrialMap = lazy(() =>
@@ -11,15 +12,17 @@ const IndustrialMap = lazy(() =>
 );
 
 export const Route = createFileRoute("/")({
-  beforeLoad: () => {
-    // cm.thegentrylab.io is the Construction Management App's own subdomain —
-    // send its root straight into /cm instead of the industrial intelligence homepage.
-    if (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) {
-      throw redirect({ to: "/cm" });
-    }
-  },
-  component: Index,
+  component: RootRouteComponent,
 });
+
+/** cm.thegentrylab.io is the Construction Management App's own subdomain —
+ *  render it directly at "/" (no client-side redirect to /cm, so the URL stays clean). */
+function RootRouteComponent() {
+  if (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) {
+    return <CMIndexPage />;
+  }
+  return <Index />;
+}
 
 /* ── Speed streaks ───────────────────────────────────────── */
 const STREAKS = [
