@@ -287,6 +287,41 @@ export function IndustrialHomePage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════
+          CONSTRUCTION MANAGEMENT APP — cross-promo
+      ═══════════════════════════════════════════════════ */}
+      <section className="py-16 border-b border-white/8 bg-[#0d0d0e]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <a
+            href="https://cm.thegentrylab.io"
+            className="group flex flex-col md:flex-row md:items-center justify-between gap-6 rounded-3xl p-8 md:p-10 transition-all hover:brightness-110"
+            style={{ background: `linear-gradient(120deg, ${accent}1a 0%, rgba(255,255,255,0.03) 60%)`, border: `1px solid ${accent}30` }}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: accent }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] mb-1.5" style={{ color: accent }}>New — from The Gentry Lab</p>
+                <h3 className="text-2xl font-extrabold uppercase tracking-tight text-white">Construction Management App</h3>
+                <p className="text-white/50 text-sm mt-1.5 max-w-md">Daily site diaries, punch lists, and photo logs for your construction projects — free to start.</p>
+              </div>
+            </div>
+            <span
+              className="shrink-0 inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm uppercase tracking-wider text-black transition-transform group-hover:translate-x-1"
+              style={{ backgroundColor: accent }}
+            >
+              Open the app
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </span>
+          </a>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════
           GIDF 9-STAGE METHODOLOGY — with intelligence tooltips
       ═══════════════════════════════════════════════════ */}
       <section className="snap-section py-24 border-b border-white/8 bg-[#0d0d0e] overflow-hidden">
