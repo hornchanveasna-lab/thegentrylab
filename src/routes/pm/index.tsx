@@ -14,7 +14,7 @@ import {
 export const Route = createFileRoute("/pm/")({
   head: () => ({
     meta: [
-      { title: "Site Diary — Construction Project Management" },
+      { title: "Construction Management App — The Gentry Lab" },
       { name: "description", content: "Daily site diaries, task tracking, and photo logs for construction projects — by The Gentry Lab." },
     ],
   }),
@@ -168,7 +168,7 @@ function PMIndexPage() {
       <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col font-sans">
         <PMHeader />
         <div className="flex-1 flex items-center justify-center px-4">
-          <p className="text-white/40 text-sm">Site Diary requires Supabase to be configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).</p>
+          <p className="text-white/40 text-sm">Construction Management App requires Supabase to be configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).</p>
         </div>
       </div>
     );
@@ -180,7 +180,7 @@ function PMIndexPage() {
         <PMHeader />
         <div className="flex-1 flex items-center justify-center px-4">
           <div className="text-center max-w-sm">
-            <h1 className="text-2xl font-extrabold uppercase tracking-tight mb-3">Site Diary</h1>
+            <h1 className="text-2xl font-extrabold uppercase tracking-tight mb-3">Construction Management App</h1>
             <p className="text-white/45 text-sm mb-6">Daily site diaries, task tracking, and photo logs for your construction projects. Sign in to get started.</p>
             <button onClick={() => signInWithGoogle()}
               className="px-6 py-2.5 text-[11px] font-mono uppercase tracking-widest text-black font-bold"

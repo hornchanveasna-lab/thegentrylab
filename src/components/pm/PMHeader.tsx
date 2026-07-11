@@ -24,7 +24,7 @@ export function PMHeader({ crumb }: { crumb?: string }) {
             <GentryMark color="#ff5100" size={26} className="transition-[filter] group-hover:drop-shadow-[0_0_8px_rgba(255,81,0,0.6)]" />
             <div className="flex flex-col leading-none">
               <span className="font-extrabold text-[9px] uppercase tracking-[0.18em] nav-text-muted">The Gentry Lab</span>
-              <span className="font-extrabold text-[13px] uppercase tracking-tighter nav-text-primary leading-tight">Site Diary</span>
+              <span className="font-extrabold text-[12px] uppercase tracking-tighter nav-text-primary leading-tight whitespace-nowrap">Construction Management</span>
             </div>
           </Link>
           {crumb && (
