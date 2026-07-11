@@ -23,7 +23,8 @@
       "Bash(npx tsc *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "mcp__Claude_Code_Remote__list_repos"
     ]
   }
 }

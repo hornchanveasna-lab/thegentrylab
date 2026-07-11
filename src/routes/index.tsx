@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useRef, useCallback } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Counter, useReveal, useSnapScroll } from "@/components/site/Counter";
@@ -11,6 +11,13 @@ const IndustrialMap = lazy(() =>
 );
 
 export const Route = createFileRoute("/")({
+  beforeLoad: () => {
+    // genzneer.thegentrylab.io is the Construction Management App's own subdomain —
+    // send its root straight into /pm instead of the industrial intelligence homepage.
+    if (typeof window !== "undefined" && window.location.hostname.startsWith("genzneer.")) {
+      throw redirect({ to: "/pm" });
+    }
+  },
   component: Index,
 });
 

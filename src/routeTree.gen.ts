@@ -24,8 +24,10 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResearchIndexRouteImport } from './routes/research.index'
+import { Route as PmIndexRouteImport } from './routes/pm/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
+import { Route as PmProjectIdRouteImport } from './routes/pm/$projectId'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -106,6 +108,11 @@ const ResearchIndexRoute = ResearchIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ResearchRoute,
 } as any)
+const PmIndexRoute = PmIndexRouteImport.update({
+  id: '/pm/',
+  path: '/pm/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsAdvisorRoute = ToolsAdvisorRouteImport.update({
   id: '/tools/advisor',
   path: '/tools/advisor',
@@ -117,6 +124,11 @@ const ResearchSezLandscape2026Route =
     path: '/sez-landscape-2026',
     getParentRoute: () => ResearchRoute,
   } as any)
+const PmProjectIdRoute = PmProjectIdRouteImport.update({
+  id: '/pm/$projectId',
+  path: '/pm/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
   id: '/framework/$stageId',
   path: '/framework/$stageId',
@@ -157,8 +169,10 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/pm/$projectId': typeof PmProjectIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
+  '/pm/': typeof PmIndexRoute
   '/research/': typeof ResearchIndexRoute
 }
 export interface FileRoutesByTo {
@@ -179,8 +193,10 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/pm/$projectId': typeof PmProjectIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
+  '/pm': typeof PmIndexRoute
   '/research': typeof ResearchIndexRoute
 }
 export interface FileRoutesById {
@@ -203,8 +219,10 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/pm/$projectId': typeof PmProjectIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
+  '/pm/': typeof PmIndexRoute
   '/research/': typeof ResearchIndexRoute
 }
 export interface FileRouteTypes {
@@ -228,8 +246,10 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/framework/$stageId'
+    | '/pm/$projectId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
+    | '/pm/'
     | '/research/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -250,8 +270,10 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/framework/$stageId'
+    | '/pm/$projectId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
+    | '/pm'
     | '/research'
   id:
     | '__root__'
@@ -273,8 +295,10 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/framework/$stageId'
+    | '/pm/$projectId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
+    | '/pm/'
     | '/research/'
   fileRoutesById: FileRoutesById
 }
@@ -296,7 +320,9 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthStartRoute: typeof AuthStartRoute
   FrameworkStageIdRoute: typeof FrameworkStageIdRoute
+  PmProjectIdRoute: typeof PmProjectIdRoute
   ToolsAdvisorRoute: typeof ToolsAdvisorRoute
+  PmIndexRoute: typeof PmIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -406,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResearchIndexRouteImport
       parentRoute: typeof ResearchRoute
     }
+    '/pm/': {
+      id: '/pm/'
+      path: '/pm'
+      fullPath: '/pm/'
+      preLoaderRoute: typeof PmIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tools/advisor': {
       id: '/tools/advisor'
       path: '/tools/advisor'
@@ -419,6 +452,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/research/sez-landscape-2026'
       preLoaderRoute: typeof ResearchSezLandscape2026RouteImport
       parentRoute: typeof ResearchRoute
+    }
+    '/pm/$projectId': {
+      id: '/pm/$projectId'
+      path: '/pm/$projectId'
+      fullPath: '/pm/$projectId'
+      preLoaderRoute: typeof PmProjectIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/framework/$stageId': {
       id: '/framework/$stageId'
@@ -493,7 +533,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthStartRoute: AuthStartRoute,
   FrameworkStageIdRoute: FrameworkStageIdRoute,
+  PmProjectIdRoute: PmProjectIdRoute,
   ToolsAdvisorRoute: ToolsAdvisorRoute,
+  PmIndexRoute: PmIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
