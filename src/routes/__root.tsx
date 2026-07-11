@@ -6,10 +6,12 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { AiChat } from "@/components/site/AiChat";
+import { lazy, Suspense, useEffect } from "react";
 import { AuthProvider } from "@/lib/auth";
 import { AuthCMProvider } from "@/lib/auth-cm";
+
+// Only the main site uses this — lazy so cm.thegentrylab.io never fetches its code.
+const AiChat = lazy(() => import("@/components/site/AiChat").then((m) => ({ default: m.AiChat })));
 
 declare global {
   function gtag(...args: unknown[]): void;
@@ -108,7 +110,11 @@ function RootComponent() {
       <AuthCMProvider>
         <QueryClientProvider client={queryClient}>
           <Outlet />
-          {!isCMApp && <AiChat />}
+          {!isCMApp && (
+            <Suspense fallback={null}>
+              <AiChat />
+            </Suspense>
+          )}
         </QueryClientProvider>
       </AuthCMProvider>
     </AuthProvider>
