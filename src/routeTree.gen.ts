@@ -32,6 +32,7 @@ import { Route as CmProjectIdRouteImport } from './routes/cm/$projectId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminStagesRouteImport } from './routes/admin.stages'
+import { Route as CmAuthCallbackRouteImport } from './routes/cm/auth/callback'
 
 const TrackerRoute = TrackerRouteImport.update({
   id: '/tracker',
@@ -149,6 +150,11 @@ const AdminStagesRoute = AdminStagesRouteImport.update({
   path: '/stages',
   getParentRoute: () => AdminRoute,
 } as any)
+const CmAuthCallbackRoute = CmAuthCallbackRouteImport.update({
+  id: '/cm/auth/callback',
+  path: '/cm/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/tools/advisor': typeof ToolsAdvisorRoute
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
+  '/cm/auth/callback': typeof CmAuthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -198,6 +205,7 @@ export interface FileRoutesByTo {
   '/tools/advisor': typeof ToolsAdvisorRoute
   '/cm': typeof CmIndexRoute
   '/research': typeof ResearchIndexRoute
+  '/cm/auth/callback': typeof CmAuthCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -224,6 +232,7 @@ export interface FileRoutesById {
   '/tools/advisor': typeof ToolsAdvisorRoute
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
+  '/cm/auth/callback': typeof CmAuthCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/tools/advisor'
     | '/cm/'
     | '/research/'
+    | '/cm/auth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -275,6 +285,7 @@ export interface FileRouteTypes {
     | '/tools/advisor'
     | '/cm'
     | '/research'
+    | '/cm/auth/callback'
   id:
     | '__root__'
     | '/'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/tools/advisor'
     | '/cm/'
     | '/research/'
+    | '/cm/auth/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   FrameworkStageIdRoute: typeof FrameworkStageIdRoute
   ToolsAdvisorRoute: typeof ToolsAdvisorRoute
   CmIndexRoute: typeof CmIndexRoute
+  CmAuthCallbackRoute: typeof CmAuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -488,6 +501,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStagesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/cm/auth/callback': {
+      id: '/cm/auth/callback'
+      path: '/cm/auth/callback'
+      fullPath: '/cm/auth/callback'
+      preLoaderRoute: typeof CmAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -536,6 +556,7 @@ const rootRouteChildren: RootRouteChildren = {
   FrameworkStageIdRoute: FrameworkStageIdRoute,
   ToolsAdvisorRoute: ToolsAdvisorRoute,
   CmIndexRoute: CmIndexRoute,
+  CmAuthCallbackRoute: CmAuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

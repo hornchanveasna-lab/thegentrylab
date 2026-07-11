@@ -9,6 +9,7 @@ import {
 import { useEffect } from "react";
 import { AiChat } from "@/components/site/AiChat";
 import { AuthProvider } from "@/lib/auth";
+import { AuthCMProvider } from "@/lib/auth-cm";
 
 declare global {
   function gtag(...args: unknown[]): void;
@@ -100,10 +101,12 @@ function RootComponent() {
 
   return (
     <AuthProvider>
-      <QueryClientProvider client={queryClient}>
-        <Outlet />
-        <AiChat />
-      </QueryClientProvider>
+      <AuthCMProvider>
+        <QueryClientProvider client={queryClient}>
+          <Outlet />
+          <AiChat />
+        </QueryClientProvider>
+      </AuthCMProvider>
     </AuthProvider>
   );
 }

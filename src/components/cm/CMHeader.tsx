@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { GentryMark } from "@/components/site/GentryMark";
-import { useAuth } from "@/lib/auth";
+import { useAuthCM } from "@/lib/auth-cm";
 
 function getStoredTheme(): "dark" | "light" {
   try { return (localStorage.getItem("tgl_theme") as "dark" | "light") || "dark"; } catch { return "dark"; }
@@ -11,8 +11,8 @@ function applyTheme(t: "dark" | "light") {
   try { localStorage.setItem("tgl_theme", t); } catch { /* */ }
 }
 
-export function PMHeader({ crumb }: { crumb?: string }) {
-  const { user, signInWithGoogle, signOut } = useAuth();
+export function CMHeader({ crumb }: { crumb?: string }) {
+  const { user, signInWithGoogle, signOut } = useAuthCM();
   const [theme, setTheme] = useState<"dark" | "light">(getStoredTheme);
   useEffect(() => { applyTheme(theme); }, [theme]);
 
