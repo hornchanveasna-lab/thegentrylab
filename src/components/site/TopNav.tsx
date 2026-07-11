@@ -187,6 +187,7 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
                     <p className="font-mono text-[8px] uppercase tracking-[0.2em] nav-text-muted px-1 mb-1.5">Tools</p>
                     {[
                       { label: "AI Industrial Advisor", live: true,  to: "/tools/advisor" },
+                      { label: "Site Diary (PM)",       live: true,  to: "/pm" },
                       { label: "Site Scoring Engine",   live: false, to: null },
                       { label: "Permit Navigator",      live: false, to: null },
                       { label: "Utility Capacity Map",  live: false, to: null },
@@ -328,6 +329,14 @@ export function TopNav({ cfg: cfgProp }: { cfg?: SiteConfig }) {
             style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.18)" }}>
             <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
               AI Industrial Advisor
+            </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+          </Link>
+          <Link to="/pm" onClick={() => setMobileOpen(false)}
+            className="flex items-center justify-between py-2.5 px-3 rounded-lg mb-1 transition-colors"
+            style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.18)" }}>
+            <span className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
+              Site Diary (PM)
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
           </Link>
