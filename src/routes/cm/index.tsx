@@ -43,7 +43,7 @@ const inputCls = "w-full bg-[#0a0a0b] border border-white/10 px-3 py-2 text-[13p
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 
 /* ═══════════════ First-time bootstrap ═══════════════ */
-function BootstrapForm({ displayName, onDone }: { displayName: string; onDone: () => void }) {
+function BootstrapForm({ displayName, onDone }: { displayName: string; onDone: (projectId: string) => void }) {
   const [companyName, setCompanyName] = useState("");
   const [projectName, setProjectName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -51,15 +51,14 @@ function BootstrapForm({ displayName, onDone }: { displayName: string; onDone: (
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.trim() || !projectName.trim()) return;
+    if (saving || !companyName.trim() || !projectName.trim()) return;
     setSaving(true);
     setError("");
     try {
-      await bootstrapCompanyAndProject(companyName.trim(), projectName.trim(), displayName);
-      onDone();
+      const result = await bootstrapCompanyAndProject(companyName.trim(), projectName.trim(), displayName);
+      onDone(result.project_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Setup failed");
-    } finally {
       setSaving(false);
     }
   };
@@ -72,11 +71,11 @@ function BootstrapForm({ displayName, onDone }: { displayName: string; onDone: (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 border border-white/8 bg-[#0d0d0e] p-6">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>Company name ★</span>
-            <input className={inputCls} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. Mekong Builders Co." required autoFocus />
+            <input className={inputCls} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. Mekong Builders Co." required autoFocus disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>First project name ★</span>
-            <input className={inputCls} value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Riverside Warehouse Phase 2" required />
+            <input className={inputCls} value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="e.g. Riverside Warehouse Phase 2" required disabled={saving} />
           </label>
           {error && <p className="text-[12px] text-red-400">{error}</p>}
           <button type="submit" disabled={saving || !companyName.trim() || !projectName.trim()}
@@ -232,9 +231,10 @@ export function CMIndexPage() {
         <CMHeader />
         <BootstrapForm
           displayName={user.user_metadata?.full_name ?? user.email ?? "Web User"}
-          onDone={() => {
+          onDone={(projectId) => {
             queryClient.invalidateQueries({ queryKey: ["cm_telegram_user"] });
             queryClient.invalidateQueries({ queryKey: ["cm_companies"] });
+            navigate({ to: "/cm/$projectId", params: { projectId } });
           }}
         />
       </div>

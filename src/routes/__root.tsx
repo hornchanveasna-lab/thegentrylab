@@ -99,12 +99,16 @@ function RootComponent() {
     }
   }, [pathname]);
 
+  // The industrial-intelligence AI chat widget belongs to the main site only —
+  // hide it on the Construction Management App (its own cm.thegentrylab.io subdomain, or /cm/*).
+  const isCMApp = (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) || pathname.startsWith("/cm");
+
   return (
     <AuthProvider>
       <AuthCMProvider>
         <QueryClientProvider client={queryClient}>
           <Outlet />
-          <AiChat />
+          {!isCMApp && <AiChat />}
         </QueryClientProvider>
       </AuthCMProvider>
     </AuthProvider>
