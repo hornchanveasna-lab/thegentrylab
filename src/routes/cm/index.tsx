@@ -56,6 +56,12 @@ function BootstrapForm({ displayName, onDone }: { displayName: string; onDone: (
     setError("");
     try {
       const result = await bootstrapCompanyAndProject(companyName.trim(), projectName.trim(), displayName);
+      // Bridge telegram_id into this session's JWT now — every RLS policy in this
+      // schema keys off it, so the project page's queries would otherwise 404.
+      if (supabaseCM) {
+        await supabaseCM.auth.updateUser({ data: { telegram_id: result.telegram_id } });
+        await supabaseCM.auth.refreshSession();
+      }
       onDone(result.project_id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Setup failed");
