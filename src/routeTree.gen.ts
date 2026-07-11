@@ -23,6 +23,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ResearchIndexRouteImport } from './routes/research.index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
@@ -100,6 +101,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResearchIndexRoute = ResearchIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ResearchRoute,
+} as any)
 const ToolsAdvisorRoute = ToolsAdvisorRouteImport.update({
   id: '/tools/advisor',
   path: '/tools/advisor',
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
+  '/research/': typeof ResearchIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -166,7 +173,6 @@ export interface FileRoutesByTo {
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/profile': typeof ProfileRoute
-  '/research': typeof ResearchRouteWithChildren
   '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
   '/admin/stages': typeof AdminStagesRoute
@@ -175,6 +181,7 @@ export interface FileRoutesByTo {
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
+  '/research': typeof ResearchIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -198,6 +205,7 @@ export interface FileRoutesById {
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
+  '/research/': typeof ResearchIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -222,6 +230,7 @@ export interface FileRouteTypes {
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
+    | '/research/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -235,7 +244,6 @@ export interface FileRouteTypes {
     | '/methodology'
     | '/news'
     | '/profile'
-    | '/research'
     | '/settings'
     | '/tracker'
     | '/admin/stages'
@@ -244,6 +252,7 @@ export interface FileRouteTypes {
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
+    | '/research'
   id:
     | '__root__'
     | '/'
@@ -266,6 +275,7 @@ export interface FileRouteTypes {
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
+    | '/research/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -389,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/research/': {
+      id: '/research/'
+      path: '/'
+      fullPath: '/research/'
+      preLoaderRoute: typeof ResearchIndexRouteImport
+      parentRoute: typeof ResearchRoute
+    }
     '/tools/advisor': {
       id: '/tools/advisor'
       path: '/tools/advisor'
@@ -446,10 +463,12 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface ResearchRouteChildren {
   ResearchSezLandscape2026Route: typeof ResearchSezLandscape2026Route
+  ResearchIndexRoute: typeof ResearchIndexRoute
 }
 
 const ResearchRouteChildren: ResearchRouteChildren = {
   ResearchSezLandscape2026Route: ResearchSezLandscape2026Route,
+  ResearchIndexRoute: ResearchIndexRoute,
 }
 
 const ResearchRouteWithChildren = ResearchRoute._addFileChildren(
