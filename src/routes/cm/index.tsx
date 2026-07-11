@@ -168,7 +168,7 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
-function CMIndexPage() {
+export function CMIndexPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
