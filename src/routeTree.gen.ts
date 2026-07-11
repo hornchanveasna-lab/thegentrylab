@@ -29,10 +29,14 @@ import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
 import { Route as CmSettingsRouteImport } from './routes/cm/settings'
+import { Route as CmReportsRouteImport } from './routes/cm/reports'
+import { Route as CmPhotosRouteImport } from './routes/cm/photos'
+import { Route as CmDirectoryRouteImport } from './routes/cm/directory'
 import { Route as CmProjectIdRouteImport } from './routes/cm/$projectId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminStagesRouteImport } from './routes/admin.stages'
+import { Route as CmProjectsIndexRouteImport } from './routes/cm/projects/index'
 import { Route as CmAuthCallbackRouteImport } from './routes/cm/auth/callback'
 
 const TrackerRoute = TrackerRouteImport.update({
@@ -136,6 +140,21 @@ const CmSettingsRoute = CmSettingsRouteImport.update({
   path: '/cm/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmReportsRoute = CmReportsRouteImport.update({
+  id: '/cm/reports',
+  path: '/cm/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CmPhotosRoute = CmPhotosRouteImport.update({
+  id: '/cm/photos',
+  path: '/cm/photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CmDirectoryRoute = CmDirectoryRouteImport.update({
+  id: '/cm/directory',
+  path: '/cm/directory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmProjectIdRoute = CmProjectIdRouteImport.update({
   id: '/cm/$projectId',
   path: '/cm/$projectId',
@@ -155,6 +174,11 @@ const AdminStagesRoute = AdminStagesRouteImport.update({
   id: '/stages',
   path: '/stages',
   getParentRoute: () => AdminRoute,
+} as any)
+const CmProjectsIndexRoute = CmProjectsIndexRouteImport.update({
+  id: '/cm/projects/',
+  path: '/cm/projects/',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const CmAuthCallbackRoute = CmAuthCallbackRouteImport.update({
   id: '/cm/auth/callback',
@@ -181,6 +205,9 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
+  '/cm/directory': typeof CmDirectoryRoute
+  '/cm/photos': typeof CmPhotosRoute
+  '/cm/reports': typeof CmReportsRoute
   '/cm/settings': typeof CmSettingsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
@@ -188,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
+  '/cm/projects/': typeof CmProjectsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -207,6 +235,9 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
+  '/cm/directory': typeof CmDirectoryRoute
+  '/cm/photos': typeof CmPhotosRoute
+  '/cm/reports': typeof CmReportsRoute
   '/cm/settings': typeof CmSettingsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
@@ -214,6 +245,7 @@ export interface FileRoutesByTo {
   '/cm': typeof CmIndexRoute
   '/research': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
+  '/cm/projects': typeof CmProjectsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -235,6 +267,9 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
+  '/cm/directory': typeof CmDirectoryRoute
+  '/cm/photos': typeof CmPhotosRoute
+  '/cm/reports': typeof CmReportsRoute
   '/cm/settings': typeof CmSettingsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
@@ -242,6 +277,7 @@ export interface FileRoutesById {
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
+  '/cm/projects/': typeof CmProjectsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -264,6 +300,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
+    | '/cm/directory'
+    | '/cm/photos'
+    | '/cm/reports'
     | '/cm/settings'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
@@ -271,6 +310,7 @@ export interface FileRouteTypes {
     | '/cm/'
     | '/research/'
     | '/cm/auth/callback'
+    | '/cm/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -290,6 +330,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
+    | '/cm/directory'
+    | '/cm/photos'
+    | '/cm/reports'
     | '/cm/settings'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
@@ -297,6 +340,7 @@ export interface FileRouteTypes {
     | '/cm'
     | '/research'
     | '/cm/auth/callback'
+    | '/cm/projects'
   id:
     | '__root__'
     | '/'
@@ -317,6 +361,9 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
+    | '/cm/directory'
+    | '/cm/photos'
+    | '/cm/reports'
     | '/cm/settings'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
@@ -324,6 +371,7 @@ export interface FileRouteTypes {
     | '/cm/'
     | '/research/'
     | '/cm/auth/callback'
+    | '/cm/projects/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -344,11 +392,15 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthStartRoute: typeof AuthStartRoute
   CmProjectIdRoute: typeof CmProjectIdRoute
+  CmDirectoryRoute: typeof CmDirectoryRoute
+  CmPhotosRoute: typeof CmPhotosRoute
+  CmReportsRoute: typeof CmReportsRoute
   CmSettingsRoute: typeof CmSettingsRoute
   FrameworkStageIdRoute: typeof FrameworkStageIdRoute
   ToolsAdvisorRoute: typeof ToolsAdvisorRoute
   CmIndexRoute: typeof CmIndexRoute
   CmAuthCallbackRoute: typeof CmAuthCallbackRoute
+  CmProjectsIndexRoute: typeof CmProjectsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -493,6 +545,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/reports': {
+      id: '/cm/reports'
+      path: '/cm/reports'
+      fullPath: '/cm/reports'
+      preLoaderRoute: typeof CmReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cm/photos': {
+      id: '/cm/photos'
+      path: '/cm/photos'
+      fullPath: '/cm/photos'
+      preLoaderRoute: typeof CmPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cm/directory': {
+      id: '/cm/directory'
+      path: '/cm/directory'
+      fullPath: '/cm/directory'
+      preLoaderRoute: typeof CmDirectoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cm/$projectId': {
       id: '/cm/$projectId'
       path: '/cm/$projectId'
@@ -520,6 +593,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/stages'
       preLoaderRoute: typeof AdminStagesRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/cm/projects/': {
+      id: '/cm/projects/'
+      path: '/cm/projects'
+      fullPath: '/cm/projects/'
+      preLoaderRoute: typeof CmProjectsIndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/cm/auth/callback': {
       id: '/cm/auth/callback'
@@ -573,11 +653,15 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthStartRoute: AuthStartRoute,
   CmProjectIdRoute: CmProjectIdRoute,
+  CmDirectoryRoute: CmDirectoryRoute,
+  CmPhotosRoute: CmPhotosRoute,
+  CmReportsRoute: CmReportsRoute,
   CmSettingsRoute: CmSettingsRoute,
   FrameworkStageIdRoute: FrameworkStageIdRoute,
   ToolsAdvisorRoute: ToolsAdvisorRoute,
   CmIndexRoute: CmIndexRoute,
   CmAuthCallbackRoute: CmAuthCallbackRoute,
+  CmProjectsIndexRoute: CmProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
