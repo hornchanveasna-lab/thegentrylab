@@ -28,6 +28,7 @@ import { Route as CmIndexRouteImport } from './routes/cm/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
+import { Route as CmSettingsRouteImport } from './routes/cm/settings'
 import { Route as CmProjectIdRouteImport } from './routes/cm/$projectId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -130,6 +131,11 @@ const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
   path: '/framework/$stageId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmSettingsRoute = CmSettingsRouteImport.update({
+  id: '/cm/settings',
+  path: '/cm/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmProjectIdRoute = CmProjectIdRouteImport.update({
   id: '/cm/$projectId',
   path: '/cm/$projectId',
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
+  '/cm/settings': typeof CmSettingsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
+  '/cm/settings': typeof CmSettingsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
+  '/cm/settings': typeof CmSettingsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -255,6 +264,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
+    | '/cm/settings'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
+    | '/cm/settings'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -306,6 +317,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
+    | '/cm/settings'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -332,6 +344,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthStartRoute: typeof AuthStartRoute
   CmProjectIdRoute: typeof CmProjectIdRoute
+  CmSettingsRoute: typeof CmSettingsRoute
   FrameworkStageIdRoute: typeof FrameworkStageIdRoute
   ToolsAdvisorRoute: typeof ToolsAdvisorRoute
   CmIndexRoute: typeof CmIndexRoute
@@ -473,6 +486,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FrameworkStageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/settings': {
+      id: '/cm/settings'
+      path: '/cm/settings'
+      fullPath: '/cm/settings'
+      preLoaderRoute: typeof CmSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cm/$projectId': {
       id: '/cm/$projectId'
       path: '/cm/$projectId'
@@ -553,6 +573,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   AuthStartRoute: AuthStartRoute,
   CmProjectIdRoute: CmProjectIdRoute,
+  CmSettingsRoute: CmSettingsRoute,
   FrameworkStageIdRoute: FrameworkStageIdRoute,
   ToolsAdvisorRoute: ToolsAdvisorRoute,
   CmIndexRoute: CmIndexRoute,
