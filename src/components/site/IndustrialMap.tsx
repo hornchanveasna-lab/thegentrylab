@@ -1212,7 +1212,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(true);
-  const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set(["protected", "districts", "communes", "sez_footprints", "railway", "road_network", "main_road", "other_road"] as AreaKey[]));
+  const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set(["protected", "sez_footprints", "railway", "road_network", "main_road"] as AreaKey[]));
   const [areaOpacity, setAreaOpacity] = useState<Record<AreaKey, number>>(
     () => Object.fromEntries(ALL_AREAS.map((k) => [k, AREA_LAYERS[k].defaultOpacity])) as Record<AreaKey, number>
   );
@@ -2382,8 +2382,8 @@ function MapLegend({
             Legend
           </button>
         )}
-        <div className="bg-black/70 backdrop-blur border border-white/8 px-2 py-1">
-          <span className="font-mono text-[8px] text-white/35 leading-tight">{sources.join(" · ")}</span>
+        <div className="bg-black/90 backdrop-blur border border-white/12 px-2 py-1">
+          <span className="font-mono text-[9px] text-white/60 leading-tight">Data: {sources.join(" · ")}</span>
         </div>
       </div>
     </div>
