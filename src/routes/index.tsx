@@ -12,9 +12,9 @@ const IndustrialMap = lazy(() =>
 
 export const Route = createFileRoute("/")({
   beforeLoad: () => {
-    // genzneer.thegentrylab.io is the Construction Management App's own subdomain —
+    // cm.thegentrylab.io is the Construction Management App's own subdomain —
     // send its root straight into /pm instead of the industrial intelligence homepage.
-    if (typeof window !== "undefined" && window.location.hostname.startsWith("genzneer.")) {
+    if (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) {
       throw redirect({ to: "/pm" });
     }
   },
