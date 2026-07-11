@@ -51,14 +51,19 @@ function puffCluster(seed: number): Puff[] {
     const x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453;
     return x - Math.floor(x);
   };
-  const count = 5 + Math.floor(rand(1) * 3); // 5-7 puffs
+  const count = 4 + Math.floor(rand(1) * 2); // 4-5 puffs — fewer, so the cluster doesn't smear into a streak
   const puffs: Puff[] = [];
   for (let i = 0; i < count; i++) {
+    // Puffs cluster tightly around center in a roughly circular spread
+    // (equal dx/dy range) instead of a wide horizontal band, so the
+    // overall shape reads as one round, soft cloud rather than a streak.
+    const angle = rand(i * 2 + 1) * Math.PI * 2;
+    const dist = rand(i * 2 + 2) * 0.28;
     puffs.push({
-      dx: (rand(i * 2 + 1) - 0.5) * 0.85,
-      dy: (rand(i * 2 + 2) - 0.5) * 0.5,
-      scale: 0.45 + rand(i * 3 + 3) * 0.55,
-      opacity: 0.7 + rand(i * 4 + 4) * 0.3,
+      dx: Math.cos(angle) * dist,
+      dy: Math.sin(angle) * dist,
+      scale: 0.55 + rand(i * 3 + 3) * 0.4,
+      opacity: 0.6 + rand(i * 4 + 4) * 0.25,
     });
   }
   return puffs;
@@ -71,9 +76,9 @@ function makeTemplate(seed: number): CloudTemplate {
   };
   return {
     widthKm: 0.25 + rand(1) * 0.55, // 250-800m — fits inside a max-zoom viewport
-    aspect: 0.36 + rand(2) * 0.2,
+    aspect: 0.75 + rand(2) * 0.3, // 0.75-1.05 — round, not a flat streak
     pxPerSec: 18 + rand(3) * 22, // 18-40 px/s — clearly visible, calm drift
-    baseOpacity: 0.08 + rand(4) * 0.07,
+    baseOpacity: 0.06 + rand(4) * 0.05, // softer, less dense
     puffs: puffCluster(seed),
   };
 }
@@ -157,7 +162,7 @@ function makeCloudOverlayClass() {
       if (this.body) {
         this.body.style.width = "100%";
         this.body.style.height = "100%";
-        this.body.style.filter = `blur(${Math.max(3, widthPx * 0.05)}px)`;
+        this.body.style.filter = `blur(${Math.max(4, widthPx * 0.08)}px)`;
       }
       if (this.shadow) {
         this.shadow.style.width = "100%";
