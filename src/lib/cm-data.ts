@@ -22,6 +22,7 @@ export interface CMProject {
   start_date: string | null;
   target_end_date: string | null;
   description: string | null;
+  client_logo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -189,4 +190,426 @@ export async function uploadCMPhoto(ownerId: string, projectId: string, file: Fi
   if (error) throw error;
   const { data } = await client.storage.from("site-media").createSignedUrl(path, 60 * 60 * 24 * 365);
   return data?.signedUrl ?? path;
+}
+
+export async function uploadCMLogo(ownerId: string, projectId: string, file: File): Promise<string> {
+  const client = db();
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${ownerId}/${projectId}/logo-${Date.now()}.${ext}`;
+  const { error } = await client.storage.from("site-media").upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = await client.storage.from("site-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+  return data?.signedUrl ?? path;
+}
+
+/* ── Photos across all of a user's projects (global gallery) ─ */
+export interface CMPhotoWithContext {
+  url: string;
+  date: string;
+  projectId: string;
+  projectName: string;
+}
+
+export function useAllCMPhotos(userId: string | undefined) {
+  return useQuery<CMPhotoWithContext[]>({
+    queryKey: ["cm_all_photos", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db()
+        .from("cm_daily_logs")
+        .select("photos, log_date, project_id, cm_projects(name)")
+        .order("log_date", { ascending: false });
+      if (error) throw error;
+      const rows = data as unknown as Array<{ photos: string[]; log_date: string; project_id: string; cm_projects: { name: string } | null }>;
+      return rows.flatMap((r) =>
+        r.photos.map((url) => ({ url, date: r.log_date, projectId: r.project_id, projectName: r.cm_projects?.name ?? "Untitled project" })),
+      );
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+/* ── Equipment (per project) ───────────────────────────── */
+export type EquipmentStatus = "Operational" | "Maintenance" | "Out of Service";
+
+export interface CMEquipment {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  name: string;
+  type: string | null;
+  quantity: number;
+  status: EquipmentStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMEquipment(projectId: string | undefined) {
+  return useQuery<CMEquipment[]>({
+    queryKey: ["cm_equipment", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_equipment").select("*").eq("project_id", projectId).order("created_at");
+      if (error) throw error;
+      return data as CMEquipment[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMEquipment(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMEquipment, "name"> & Partial<Pick<CMEquipment, "type" | "quantity" | "status" | "notes">>,
+) {
+  const { data, error } = await db().from("cm_equipment").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMEquipment;
+}
+
+export async function updateCMEquipment(id: string, patch: Partial<CMEquipment>) {
+  const { error } = await db().from("cm_equipment").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMEquipment(id: string) {
+  const { error } = await db().from("cm_equipment").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Checklist items (per project) ─────────────────────── */
+export interface CMChecklistItem {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  title: string;
+  category: string | null;
+  is_done: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMChecklistItems(projectId: string | undefined) {
+  return useQuery<CMChecklistItem[]>({
+    queryKey: ["cm_checklist_items", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_checklist_items").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as CMChecklistItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMChecklistItem(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMChecklistItem, "title"> & Partial<Pick<CMChecklistItem, "category">>,
+) {
+  const { data, error } = await db().from("cm_checklist_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMChecklistItem;
+}
+
+export async function updateCMChecklistItem(id: string, patch: Partial<CMChecklistItem>) {
+  const { error } = await db().from("cm_checklist_items").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMChecklistItem(id: string) {
+  const { error } = await db().from("cm_checklist_items").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Directory contacts (global, cross-project) ────────── */
+export interface CMDirectoryContact {
+  id: string;
+  owner_id: string;
+  name: string;
+  company: string | null;
+  trade: string | null;
+  phone: string | null;
+  email: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMDirectoryContacts(userId: string | undefined) {
+  return useQuery<CMDirectoryContact[]>({
+    queryKey: ["cm_directory_contacts", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_directory_contacts").select("*").order("name");
+      if (error) throw error;
+      return data as CMDirectoryContact[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMDirectoryContact(
+  ownerId: string,
+  input: Pick<CMDirectoryContact, "name"> & Partial<Pick<CMDirectoryContact, "company" | "trade" | "phone" | "email" | "notes">>,
+) {
+  const { data, error } = await db().from("cm_directory_contacts").insert({ owner_id: ownerId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMDirectoryContact;
+}
+
+export async function updateCMDirectoryContact(id: string, patch: Partial<CMDirectoryContact>) {
+  const { error } = await db().from("cm_directory_contacts").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMDirectoryContact(id: string) {
+  const { error } = await db().from("cm_directory_contacts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Project subcontractors (directory contact ↔ project) ─ */
+export interface CMProjectSubcontractor {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  contact_id: string;
+  role_on_project: string | null;
+  created_at: string;
+  contact: CMDirectoryContact;
+}
+
+export function useCMProjectSubcontractors(projectId: string | undefined) {
+  return useQuery<CMProjectSubcontractor[]>({
+    queryKey: ["cm_project_subcontractors", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db()
+        .from("cm_project_subcontractors")
+        .select("*, contact:cm_directory_contacts(*)")
+        .eq("project_id", projectId)
+        .order("created_at");
+      if (error) throw error;
+      return data as unknown as CMProjectSubcontractor[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function addCMProjectSubcontractor(ownerId: string, projectId: string, contactId: string, roleOnProject: string | null) {
+  const { error } = await db().from("cm_project_subcontractors").insert({
+    owner_id: ownerId, project_id: projectId, contact_id: contactId, role_on_project: roleOnProject,
+  });
+  if (error) throw error;
+}
+
+export async function removeCMProjectSubcontractor(id: string) {
+  const { error } = await db().from("cm_project_subcontractors").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── BOQ items (per project) ───────────────────────────── */
+export interface CMBOQItem {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  description: string;
+  unit: string | null;
+  quantity: number;
+  unit_cost: number;
+  category: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMBOQItems(projectId: string | undefined) {
+  return useQuery<CMBOQItem[]>({
+    queryKey: ["cm_boq_items", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_boq_items").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as CMBOQItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMBOQItem(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category">>,
+) {
+  const { data, error } = await db().from("cm_boq_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMBOQItem;
+}
+
+export async function updateCMBOQItem(id: string, patch: Partial<CMBOQItem>) {
+  const { error } = await db().from("cm_boq_items").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMBOQItem(id: string) {
+  const { error } = await db().from("cm_boq_items").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Inspections (per project) ─────────────────────────── */
+export type InspectionStatus = "Scheduled" | "Passed" | "Failed" | "Not Applicable";
+
+export interface CMInspection {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  title: string;
+  status: InspectionStatus;
+  inspector: string | null;
+  inspection_date: string;
+  notes: string | null;
+  photos: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMInspections(projectId: string | undefined) {
+  return useQuery<CMInspection[]>({
+    queryKey: ["cm_inspections", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_inspections").select("*").eq("project_id", projectId).order("inspection_date", { ascending: false });
+      if (error) throw error;
+      return data as CMInspection[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMInspection(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "inspector" | "inspection_date" | "notes">>,
+) {
+  const { data, error } = await db().from("cm_inspections").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMInspection;
+}
+
+export async function updateCMInspection(id: string, patch: Partial<CMInspection>) {
+  const { error } = await db().from("cm_inspections").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMInspection(id: string) {
+  const { error } = await db().from("cm_inspections").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Safety records (per project) ──────────────────────── */
+export type SafetyRecordType = "Incident" | "Toolbox Talk" | "Hazard Observation";
+export type SafetySeverity = "Low" | "Medium" | "High" | "Critical";
+export type SafetyStatus = "Open" | "Resolved";
+
+export interface CMSafetyRecord {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  record_type: SafetyRecordType;
+  title: string;
+  description: string | null;
+  severity: SafetySeverity;
+  record_date: string;
+  involved: string | null;
+  photos: string[];
+  status: SafetyStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMSafetyRecords(projectId: string | undefined) {
+  return useQuery<CMSafetyRecord[]>({
+    queryKey: ["cm_safety_records", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_safety_records").select("*").eq("project_id", projectId).order("record_date", { ascending: false });
+      if (error) throw error;
+      return data as CMSafetyRecord[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMSafetyRecord(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMSafetyRecord, "title"> & Partial<Pick<CMSafetyRecord, "record_type" | "description" | "severity" | "record_date" | "involved" | "status">>,
+) {
+  const { data, error } = await db().from("cm_safety_records").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMSafetyRecord;
+}
+
+export async function updateCMSafetyRecord(id: string, patch: Partial<CMSafetyRecord>) {
+  const { error } = await db().from("cm_safety_records").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMSafetyRecord(id: string) {
+  const { error } = await db().from("cm_safety_records").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Submittals (per project) ──────────────────────────── */
+export type SubmittalStatus = "Draft" | "Submitted" | "Under Review" | "Approved" | "Approved as Noted" | "Revise & Resubmit" | "Rejected";
+
+export interface CMSubmittal {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  title: string;
+  spec_section: string | null;
+  status: SubmittalStatus;
+  submitted_date: string | null;
+  due_date: string | null;
+  reviewer: string | null;
+  revision: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMSubmittals(projectId: string | undefined) {
+  return useQuery<CMSubmittal[]>({
+    queryKey: ["cm_submittals", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_submittals").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as CMSubmittal[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMSubmittal(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMSubmittal, "title"> & Partial<Pick<CMSubmittal, "spec_section" | "status" | "submitted_date" | "due_date" | "reviewer" | "notes">>,
+) {
+  const { data, error } = await db().from("cm_submittals").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMSubmittal;
+}
+
+export async function updateCMSubmittal(id: string, patch: Partial<CMSubmittal>) {
+  const { error } = await db().from("cm_submittals").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMSubmittal(id: string) {
+  const { error } = await db().from("cm_submittals").delete().eq("id", id);
+  if (error) throw error;
 }
