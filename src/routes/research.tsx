@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
@@ -19,6 +19,11 @@ export const Route = createFileRoute("/research")({
 });
 
 const EMAIL = "advisory@thegentrylab.io";
+
+/* ── Briefs readable free on-site (no advisory gate) ─────── */
+const FREE_BRIEF_ROUTES: Record<string, string> = {
+  r1: "/research/sez-landscape-2026",
+};
 
 /* ── Teaser stat chips per brief ─────────────────────────── */
 const BRIEF_STATS: Record<string, string[]> = {
@@ -149,6 +154,7 @@ function ResearchCard({
   const style = getCategoryStyle(brief.category);
   const stats = BRIEF_STATS[brief.id] ?? [];
   const photo = BRIEF_PHOTOS[brief.id];
+  const freeRoute = FREE_BRIEF_ROUTES[brief.id];
 
   const cardBg = isDark ? "#0d0d0e" : "#e8e8e8";
 
@@ -176,10 +182,20 @@ function ResearchCard({
 
         <div className="absolute top-4 left-4 text-white" style={{ color: style.accent }}>{style.icon}</div>
 
-        {/* Lock badge */}
-        <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1">
-          <svg width="8" height="9" viewBox="0 0 8 9" fill="none"><rect x="1" y="4" width="6" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.1"/><path d="M2.5 4V2.5a1.5 1.5 0 013 0V4" stroke="currentColor" strokeWidth="1.1"/></svg>
-          <span className="font-mono text-[8px] uppercase tracking-widest text-white/50">{brief.pages}p · Advisory</span>
+        {/* Lock badge — or "free" badge if this brief is publicly readable */}
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 border px-2.5 py-1"
+          style={freeRoute
+            ? { backgroundColor: "rgba(16,185,129,0.15)", borderColor: "rgba(52,211,153,0.4)" }
+            : { backgroundColor: "rgba(0,0,0,0.6)", borderColor: "rgba(255,255,255,0.1)" }}
+        >
+          {freeRoute ? (
+            <span className="font-mono text-[8px] uppercase tracking-widest text-emerald-400">{brief.pages}p · Free preview</span>
+          ) : (
+            <>
+              <svg width="8" height="9" viewBox="0 0 8 9" fill="none"><rect x="1" y="4" width="6" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.1"/><path d="M2.5 4V2.5a1.5 1.5 0 013 0V4" stroke="currentColor" strokeWidth="1.1"/></svg>
+              <span className="font-mono text-[8px] uppercase tracking-widest text-white/50">{brief.pages}p · Advisory</span>
+            </>
+          )}
         </div>
 
         {featured && (
@@ -219,8 +235,20 @@ function ResearchCard({
         {/* CTA */}
         <div className="mt-4 pt-4 flex items-center justify-between gap-3" style={{ borderTop: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.07)" }}>
           <p className="text-[10px] font-mono leading-snug" style={{ color: isDark ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.35)" }}>
-            Full analysis available<br/>to advisory clients
+            {freeRoute ? <>Read the full brief<br/>free, right now</> : <>Full analysis available<br/>to advisory clients</>}
           </p>
+          {freeRoute ? (
+            <Link
+              to={freeRoute}
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 font-mono text-[9px] uppercase tracking-widest transition-all border"
+              style={{ borderColor: "#34d399", color: "#34d399" }}
+              onMouseEnter={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.backgroundColor = "#34d399"; el.style.color = "#000"; }}
+              onMouseLeave={(e) => { const el = e.currentTarget as HTMLAnchorElement; el.style.backgroundColor = "transparent"; el.style.color = "#34d399"; }}
+            >
+              Read free
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M5.5 1.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </Link>
+          ) : (
           <a
             href={`mailto:${EMAIL}?subject=Brief%20request%3A%20${encodeURIComponent(brief.title)}&body=I'd%20like%20access%20to%20this%20research%20brief.`}
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2 font-mono text-[9px] uppercase tracking-widest transition-all border"
@@ -231,6 +259,7 @@ function ResearchCard({
             Get brief
             <svg width="9" height="9" viewBox="0 0 10 10" fill="none"><path d="M1 5h8M5.5 1.5l3.5 3.5-3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </a>
+          )}
         </div>
       </div>
     </article>

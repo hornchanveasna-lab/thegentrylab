@@ -24,6 +24,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
+import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -104,6 +105,12 @@ const ToolsAdvisorRoute = ToolsAdvisorRouteImport.update({
   path: '/tools/advisor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResearchSezLandscape2026Route =
+  ResearchSezLandscape2026RouteImport.update({
+    id: '/sez-landscape-2026',
+    path: '/sez-landscape-2026',
+    getParentRoute: () => ResearchRoute,
+  } as any)
 const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
   id: '/framework/$stageId',
   path: '/framework/$stageId',
@@ -137,13 +144,14 @@ export interface FileRoutesByFullPath {
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/profile': typeof ProfileRoute
-  '/research': typeof ResearchRoute
+  '/research': typeof ResearchRouteWithChildren
   '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
   '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRoutesByTo {
@@ -158,13 +166,14 @@ export interface FileRoutesByTo {
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/profile': typeof ProfileRoute
-  '/research': typeof ResearchRoute
+  '/research': typeof ResearchRouteWithChildren
   '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
   '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRoutesById {
@@ -180,13 +189,14 @@ export interface FileRoutesById {
   '/methodology': typeof MethodologyRoute
   '/news': typeof NewsRoute
   '/profile': typeof ProfileRoute
-  '/research': typeof ResearchRoute
+  '/research': typeof ResearchRouteWithChildren
   '/settings': typeof SettingsRoute
   '/tracker': typeof TrackerRoute
   '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
 }
 export interface FileRouteTypes {
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/framework/$stageId'
+    | '/research/sez-landscape-2026'
     | '/tools/advisor'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/framework/$stageId'
+    | '/research/sez-landscape-2026'
     | '/tools/advisor'
   id:
     | '__root__'
@@ -252,6 +264,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/framework/$stageId'
+    | '/research/sez-landscape-2026'
     | '/tools/advisor'
   fileRoutesById: FileRoutesById
 }
@@ -267,7 +280,7 @@ export interface RootRouteChildren {
   MethodologyRoute: typeof MethodologyRoute
   NewsRoute: typeof NewsRoute
   ProfileRoute: typeof ProfileRoute
-  ResearchRoute: typeof ResearchRoute
+  ResearchRoute: typeof ResearchRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   TrackerRoute: typeof TrackerRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -383,6 +396,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsAdvisorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/research/sez-landscape-2026': {
+      id: '/research/sez-landscape-2026'
+      path: '/sez-landscape-2026'
+      fullPath: '/research/sez-landscape-2026'
+      preLoaderRoute: typeof ResearchSezLandscape2026RouteImport
+      parentRoute: typeof ResearchRoute
+    }
     '/framework/$stageId': {
       id: '/framework/$stageId'
       path: '/framework/$stageId'
@@ -424,6 +444,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface ResearchRouteChildren {
+  ResearchSezLandscape2026Route: typeof ResearchSezLandscape2026Route
+}
+
+const ResearchRouteChildren: ResearchRouteChildren = {
+  ResearchSezLandscape2026Route: ResearchSezLandscape2026Route,
+}
+
+const ResearchRouteWithChildren = ResearchRoute._addFileChildren(
+  ResearchRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -436,7 +468,7 @@ const rootRouteChildren: RootRouteChildren = {
   MethodologyRoute: MethodologyRoute,
   NewsRoute: NewsRoute,
   ProfileRoute: ProfileRoute,
-  ResearchRoute: ResearchRoute,
+  ResearchRoute: ResearchRouteWithChildren,
   SettingsRoute: SettingsRoute,
   TrackerRoute: TrackerRoute,
   AuthCallbackRoute: AuthCallbackRoute,
