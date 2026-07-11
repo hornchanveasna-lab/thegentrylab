@@ -21,7 +21,7 @@ import {
   type ProjectStatus,
 } from "@/lib/pm";
 
-export const Route = createFileRoute("/pm/$projectId")({
+export const Route = createFileRoute("/cm/$projectId")({
   component: PMProjectPage,
 });
 
@@ -439,7 +439,7 @@ function PMProjectPage() {
         <PMHeader />
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <p className="text-white/40 text-sm">Project not found.</p>
-          <Link to="/pm" className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>← Back to projects</Link>
+          <Link to="/cm" className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>← Back to projects</Link>
         </div>
       </div>
     );
@@ -454,7 +454,7 @@ function PMProjectPage() {
       {/* ── Project header ── */}
       <div className="border-b border-white/8">
         <div className="max-w-[1400px] mx-auto px-5 py-6">
-          <Link to="/pm" className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/60 transition-colors mb-3 inline-block">← All projects</Link>
+          <Link to="/cm" className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/60 transition-colors mb-3 inline-block">← All projects</Link>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-extrabold uppercase tracking-tight text-white mb-1.5">{project.name}</h1>

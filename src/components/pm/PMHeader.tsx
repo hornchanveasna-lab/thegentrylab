@@ -20,7 +20,7 @@ export function PMHeader({ crumb }: { crumb?: string }) {
     <header className="sticky top-0 z-50 nav-bar backdrop-blur-md">
       <div className="flex items-center justify-between px-5 py-3 max-w-[1400px] mx-auto">
         <div className="flex items-center gap-3 min-w-0">
-          <Link to="/pm" className="flex items-center gap-2.5 shrink-0 group">
+          <Link to="/cm" className="flex items-center gap-2.5 shrink-0 group">
             <GentryMark color="#ff5100" size={26} className="transition-[filter] group-hover:drop-shadow-[0_0_8px_rgba(255,81,0,0.6)]" />
             <div className="flex flex-col leading-none">
               <span className="font-extrabold text-[9px] uppercase tracking-[0.18em] nav-text-muted">The Gentry Lab</span>

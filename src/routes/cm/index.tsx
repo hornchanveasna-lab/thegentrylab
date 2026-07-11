@@ -11,7 +11,7 @@ import {
   type ProjectStatus,
 } from "@/lib/pm";
 
-export const Route = createFileRoute("/pm/")({
+export const Route = createFileRoute("/cm/")({
   head: () => ({
     meta: [
       { title: "Construction Management App — The Gentry Lab" },
@@ -129,7 +129,7 @@ function NewProjectDialog({ onClose, onCreated }: { onClose: () => void; onCreat
 function ProjectCard({ project }: { project: PMProject }) {
   const sc = STATUS_COLOR[project.status];
   return (
-    <Link to="/pm/$projectId" params={{ projectId: project.id }}
+    <Link to="/cm/$projectId" params={{ projectId: project.id }}
       className="block border border-white/8 bg-[#0d0d0e] hover:border-white/20 transition-all p-5 group">
       <div className="flex items-start justify-between gap-3 mb-3">
         <h3 className="font-extrabold text-[15px] uppercase tracking-tight text-white leading-tight group-hover:text-[#ff5100] transition-colors">
@@ -237,7 +237,7 @@ function PMIndexPage() {
           onCreated={(p) => {
             setShowNew(false);
             queryClient.invalidateQueries({ queryKey: ["pm_projects"] });
-            navigate({ to: "/pm/$projectId", params: { projectId: p.id } });
+            navigate({ to: "/cm/$projectId", params: { projectId: p.id } });
           }}
         />
       )}
