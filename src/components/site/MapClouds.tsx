@@ -51,18 +51,18 @@ function puffCluster(seed: number): Puff[] {
     const x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453;
     return x - Math.floor(x);
   };
-  const count = 4 + Math.floor(rand(1) * 2); // 4-5 puffs — fewer, so the cluster doesn't smear into a streak
+  const count = 5 + Math.floor(rand(1) * 3); // 5-7 puffs — more overlap for an elongated, irregular silhouette
   const puffs: Puff[] = [];
   for (let i = 0; i < count; i++) {
-    // Puffs cluster tightly around center in a roughly circular spread
-    // (equal dx/dy range) instead of a wide horizontal band, so the
-    // overall shape reads as one round, soft cloud rather than a streak.
+    // Elliptical spread (wider on x than y) instead of circular, so the
+    // cluster reads as a stretched, irregular streak of cloud rather
+    // than a neat round puff.
     const angle = rand(i * 2 + 1) * Math.PI * 2;
-    const dist = rand(i * 2 + 2) * 0.28;
+    const dist = rand(i * 2 + 2) * 0.36;
     puffs.push({
-      dx: Math.cos(angle) * dist,
-      dy: Math.sin(angle) * dist,
-      scale: 0.55 + rand(i * 3 + 3) * 0.4,
+      dx: Math.cos(angle) * dist * 1.7,
+      dy: Math.sin(angle) * dist * 0.6,
+      scale: 0.5 + rand(i * 3 + 3) * 0.5,
       opacity: 0.6 + rand(i * 4 + 4) * 0.25,
     });
   }
@@ -75,8 +75,8 @@ function makeTemplate(seed: number): CloudTemplate {
     return x - Math.floor(x);
   };
   return {
-    widthKm: 0.25 + rand(1) * 0.55, // 250-800m — fits inside a max-zoom viewport
-    aspect: 0.75 + rand(2) * 0.3, // 0.75-1.05 — round, not a flat streak
+    widthKm: 0.3 + rand(1) * 0.7, // 300-1000m — fits inside a max-zoom viewport
+    aspect: 0.4 + rand(2) * 0.25, // 0.4-0.65 — stretched, streak-like, not round
     pxPerSec: 18 + rand(3) * 22, // 18-40 px/s — clearly visible, calm drift
     baseOpacity: 0.06 + rand(4) * 0.05, // softer, less dense
     puffs: puffCluster(seed),
@@ -109,11 +109,13 @@ function ensureCloudFilterDefs() {
   svg.style.position = "absolute";
   svg.style.pointerEvents = "none";
   const seeds = [7, 23, 41];
-  const freqs = ["0.9 0.35", "0.7 0.5", "1.1 0.4"];
+  // Lower baseFrequency = bigger, more visible fiber strands; the larger
+  // gap between the two axis frequencies stretches them horizontally.
+  const freqs = ["0.55 0.12", "0.4 0.22", "0.65 0.15"];
   svg.innerHTML = `<defs>${FIBER_FILTER_IDS.map((id, i) => `
     <filter id="${id}" x="-40%" y="-40%" width="180%" height="180%">
-      <feTurbulence type="fractalNoise" baseFrequency="${freqs[i]}" numOctaves="2" seed="${seeds[i]}" result="noise"/>
-      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.55 0.55 0.55 0 0" result="noiseAlpha"/>
+      <feTurbulence type="fractalNoise" baseFrequency="${freqs[i]}" numOctaves="3" seed="${seeds[i]}" result="noise"/>
+      <feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.8 0.8 0.8 0 -0.15" result="noiseAlpha"/>
       <feComposite in="SourceGraphic" in2="noiseAlpha" operator="in"/>
     </filter>`).join("")}</defs>`;
   document.body.appendChild(svg);
@@ -172,9 +174,9 @@ function makeCloudOverlayClass() {
         fiber.style.position = "absolute";
         fiber.style.left = `${50 + p.dx * 100}%`;
         fiber.style.top = `${50 + p.dy * 100}%`;
-        fiber.style.width = `${p.scale * 56}%`;
-        fiber.style.height = `${p.scale * 56}%`;
-        fiber.style.opacity = String(p.opacity * this.tpl.baseOpacity * 4.5);
+        fiber.style.width = `${p.scale * 70}%`;
+        fiber.style.height = `${p.scale * 70}%`;
+        fiber.style.opacity = String(p.opacity * this.tpl.baseOpacity * 5.5);
         fiber.style.transform = "translate(-50%, -50%)";
         fiber.dataset.fiberId = FIBER_FILTER_IDS[i % FIBER_FILTER_IDS.length];
         body.appendChild(fiber);
@@ -215,8 +217,8 @@ function makeCloudOverlayClass() {
         // layer keeps a lighter blur so its turbulence texture stays
         // legible instead of being smoothed away — this contrast is what
         // reads as "layered" rather than one uniform blurred blob.
-        const baseBlur = Math.max(6, widthPx * 0.14);
-        const fiberBlur = Math.max(2, widthPx * 0.035);
+        const baseBlur = Math.max(6, widthPx * 0.12);
+        const fiberBlur = Math.max(1, widthPx * 0.015);
         this.body.querySelectorAll<HTMLElement>(".map-cloud-puff-base").forEach((el) => {
           el.style.filter = `blur(${baseBlur}px)`;
         });
