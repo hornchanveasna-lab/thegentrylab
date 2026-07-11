@@ -28,9 +28,14 @@ import { Route as CmIndexRouteImport } from './routes/cm/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
+import { Route as CmSubmittalRouteImport } from './routes/cm/submittal'
+import { Route as CmSiteDiaryRouteImport } from './routes/cm/site-diary'
 import { Route as CmSettingsRouteImport } from './routes/cm/settings'
+import { Route as CmSafetyRouteImport } from './routes/cm/safety'
 import { Route as CmReportsRouteImport } from './routes/cm/reports'
+import { Route as CmPunchListRouteImport } from './routes/cm/punch-list'
 import { Route as CmPhotosRouteImport } from './routes/cm/photos'
+import { Route as CmInspectionRouteImport } from './routes/cm/inspection'
 import { Route as CmDirectoryRouteImport } from './routes/cm/directory'
 import { Route as CmProjectIdRouteImport } from './routes/cm/$projectId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
@@ -135,9 +140,24 @@ const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
   path: '/framework/$stageId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmSubmittalRoute = CmSubmittalRouteImport.update({
+  id: '/cm/submittal',
+  path: '/cm/submittal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CmSiteDiaryRoute = CmSiteDiaryRouteImport.update({
+  id: '/cm/site-diary',
+  path: '/cm/site-diary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmSettingsRoute = CmSettingsRouteImport.update({
   id: '/cm/settings',
   path: '/cm/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CmSafetyRoute = CmSafetyRouteImport.update({
+  id: '/cm/safety',
+  path: '/cm/safety',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CmReportsRoute = CmReportsRouteImport.update({
@@ -145,9 +165,19 @@ const CmReportsRoute = CmReportsRouteImport.update({
   path: '/cm/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmPunchListRoute = CmPunchListRouteImport.update({
+  id: '/cm/punch-list',
+  path: '/cm/punch-list',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmPhotosRoute = CmPhotosRouteImport.update({
   id: '/cm/photos',
   path: '/cm/photos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CmInspectionRoute = CmInspectionRouteImport.update({
+  id: '/cm/inspection',
+  path: '/cm/inspection',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CmDirectoryRoute = CmDirectoryRouteImport.update({
@@ -206,9 +236,14 @@ export interface FileRoutesByFullPath {
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
   '/cm/directory': typeof CmDirectoryRoute
+  '/cm/inspection': typeof CmInspectionRoute
   '/cm/photos': typeof CmPhotosRoute
+  '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
+  '/cm/safety': typeof CmSafetyRoute
   '/cm/settings': typeof CmSettingsRoute
+  '/cm/site-diary': typeof CmSiteDiaryRoute
+  '/cm/submittal': typeof CmSubmittalRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -236,9 +271,14 @@ export interface FileRoutesByTo {
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
   '/cm/directory': typeof CmDirectoryRoute
+  '/cm/inspection': typeof CmInspectionRoute
   '/cm/photos': typeof CmPhotosRoute
+  '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
+  '/cm/safety': typeof CmSafetyRoute
   '/cm/settings': typeof CmSettingsRoute
+  '/cm/site-diary': typeof CmSiteDiaryRoute
+  '/cm/submittal': typeof CmSubmittalRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -268,9 +308,14 @@ export interface FileRoutesById {
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
   '/cm/directory': typeof CmDirectoryRoute
+  '/cm/inspection': typeof CmInspectionRoute
   '/cm/photos': typeof CmPhotosRoute
+  '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
+  '/cm/safety': typeof CmSafetyRoute
   '/cm/settings': typeof CmSettingsRoute
+  '/cm/site-diary': typeof CmSiteDiaryRoute
+  '/cm/submittal': typeof CmSubmittalRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -301,9 +346,14 @@ export interface FileRouteTypes {
     | '/auth/start'
     | '/cm/$projectId'
     | '/cm/directory'
+    | '/cm/inspection'
     | '/cm/photos'
+    | '/cm/punch-list'
     | '/cm/reports'
+    | '/cm/safety'
     | '/cm/settings'
+    | '/cm/site-diary'
+    | '/cm/submittal'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -331,9 +381,14 @@ export interface FileRouteTypes {
     | '/auth/start'
     | '/cm/$projectId'
     | '/cm/directory'
+    | '/cm/inspection'
     | '/cm/photos'
+    | '/cm/punch-list'
     | '/cm/reports'
+    | '/cm/safety'
     | '/cm/settings'
+    | '/cm/site-diary'
+    | '/cm/submittal'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -362,9 +417,14 @@ export interface FileRouteTypes {
     | '/auth/start'
     | '/cm/$projectId'
     | '/cm/directory'
+    | '/cm/inspection'
     | '/cm/photos'
+    | '/cm/punch-list'
     | '/cm/reports'
+    | '/cm/safety'
     | '/cm/settings'
+    | '/cm/site-diary'
+    | '/cm/submittal'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -393,9 +453,14 @@ export interface RootRouteChildren {
   AuthStartRoute: typeof AuthStartRoute
   CmProjectIdRoute: typeof CmProjectIdRoute
   CmDirectoryRoute: typeof CmDirectoryRoute
+  CmInspectionRoute: typeof CmInspectionRoute
   CmPhotosRoute: typeof CmPhotosRoute
+  CmPunchListRoute: typeof CmPunchListRoute
   CmReportsRoute: typeof CmReportsRoute
+  CmSafetyRoute: typeof CmSafetyRoute
   CmSettingsRoute: typeof CmSettingsRoute
+  CmSiteDiaryRoute: typeof CmSiteDiaryRoute
+  CmSubmittalRoute: typeof CmSubmittalRoute
   FrameworkStageIdRoute: typeof FrameworkStageIdRoute
   ToolsAdvisorRoute: typeof ToolsAdvisorRoute
   CmIndexRoute: typeof CmIndexRoute
@@ -538,11 +603,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FrameworkStageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/submittal': {
+      id: '/cm/submittal'
+      path: '/cm/submittal'
+      fullPath: '/cm/submittal'
+      preLoaderRoute: typeof CmSubmittalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cm/site-diary': {
+      id: '/cm/site-diary'
+      path: '/cm/site-diary'
+      fullPath: '/cm/site-diary'
+      preLoaderRoute: typeof CmSiteDiaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cm/settings': {
       id: '/cm/settings'
       path: '/cm/settings'
       fullPath: '/cm/settings'
       preLoaderRoute: typeof CmSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cm/safety': {
+      id: '/cm/safety'
+      path: '/cm/safety'
+      fullPath: '/cm/safety'
+      preLoaderRoute: typeof CmSafetyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cm/reports': {
@@ -552,11 +638,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/punch-list': {
+      id: '/cm/punch-list'
+      path: '/cm/punch-list'
+      fullPath: '/cm/punch-list'
+      preLoaderRoute: typeof CmPunchListRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cm/photos': {
       id: '/cm/photos'
       path: '/cm/photos'
       fullPath: '/cm/photos'
       preLoaderRoute: typeof CmPhotosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cm/inspection': {
+      id: '/cm/inspection'
+      path: '/cm/inspection'
+      fullPath: '/cm/inspection'
+      preLoaderRoute: typeof CmInspectionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cm/directory': {
@@ -654,9 +754,14 @@ const rootRouteChildren: RootRouteChildren = {
   AuthStartRoute: AuthStartRoute,
   CmProjectIdRoute: CmProjectIdRoute,
   CmDirectoryRoute: CmDirectoryRoute,
+  CmInspectionRoute: CmInspectionRoute,
   CmPhotosRoute: CmPhotosRoute,
+  CmPunchListRoute: CmPunchListRoute,
   CmReportsRoute: CmReportsRoute,
+  CmSafetyRoute: CmSafetyRoute,
   CmSettingsRoute: CmSettingsRoute,
+  CmSiteDiaryRoute: CmSiteDiaryRoute,
+  CmSubmittalRoute: CmSubmittalRoute,
   FrameworkStageIdRoute: FrameworkStageIdRoute,
   ToolsAdvisorRoute: ToolsAdvisorRoute,
   CmIndexRoute: CmIndexRoute,

@@ -114,6 +114,51 @@ export function CMIndexPage() {
               </svg>
             }
           />
+          <AppTile
+            label="Site Diary"
+            to="/cm/site-diary"
+            icon={
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" />
+              </svg>
+            }
+          />
+          <AppTile
+            label="Punch List"
+            to="/cm/punch-list"
+            icon={
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+              </svg>
+            }
+          />
+          <AppTile
+            label="Inspection"
+            to="/cm/inspection"
+            icon={
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8" /><path d="M8 15l2 2 4-4" />
+              </svg>
+            }
+          />
+          <AppTile
+            label="Safety"
+            to="/cm/safety"
+            icon={
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5z" /><path d="M12 8v5" /><circle cx="12" cy="16" r="0.5" fill="currentColor" />
+              </svg>
+            }
+          />
+          <AppTile
+            label="Submittal"
+            to="/cm/submittal"
+            icon={
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+            }
+          />
         </div>
       </main>
     </div>

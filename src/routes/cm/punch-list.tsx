@@ -1,0 +1,205 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuthCM } from "@/lib/auth-cm";
+import { BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import {
+  useCMTasks,
+  createCMTask,
+  updateCMTask,
+  deleteCMTask,
+  type CMTask,
+  type TaskStatus,
+  type TaskPriority,
+} from "@/lib/cm-data";
+
+export const Route = createFileRoute("/cm/punch-list")({
+  head: () => ({ meta: [{ title: "Punch List — Construction Management App" }] }),
+  component: CMPunchListPage,
+});
+
+const STATUS_COLOR: Record<TaskStatus, string> = {
+  "To Do": "#94a3b8", "In Progress": "#ff5100", Blocked: "#f43f5e", Done: "#34d399",
+};
+const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "#fbbf24", High: "#f43f5e" };
+const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Done"];
+const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
+
+function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
+  ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [status, setStatus] = useState<TaskStatus>("To Do");
+  const [priority, setPriority] = useState<TaskPriority>("Medium");
+  const [assignee, setAssignee] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await createCMTask(ownerId, projectId, {
+        title: title.trim(), description: description.trim() || null, status, priority,
+        assignee: assignee.trim() || null, due_date: dueDate || null,
+      });
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add work item");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet title="New Work Item" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>What needs to be done ★</span>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Install door hardware — Unit 4" required autoFocus disabled={saving} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>Details</span>
+          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>Status</span>
+            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} disabled={saving}>
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>Priority</span>
+            <select className={inputCls} value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} disabled={saving}>
+              {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>Assigned to</span>
+            <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>Due date</span>
+            <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
+          </label>
+        </div>
+        {error && <p className="text-[12px] text-red-400">{error}</p>}
+        <button type="submit" disabled={saving || !title.trim()}
+          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
+          style={{ backgroundColor: "#ff5100" }}>
+          {saving ? "Adding…" : "Add to punch list"}
+        </button>
+      </form>
+    </Sheet>
+  );
+}
+
+function PunchItemCard({ item, onChanged }: { item: CMTask; onChanged: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const handleStatusChange = async (status: TaskStatus) => {
+    setBusy(true);
+    try { await updateCMTask(item.id, { status }); onChanged(); } finally { setBusy(false); }
+  };
+  const handleDelete = async () => {
+    if (!confirm("Remove this work item?")) return;
+    setBusy(true);
+    try { await deleteCMTask(item.id); onChanged(); } finally { setBusy(false); }
+  };
+  const sc = STATUS_COLOR[item.status];
+  const pc = PRIORITY_COLOR[item.priority];
+
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-3">
+        <h3 className={`text-[13px] font-bold leading-tight ${item.status === "Done" ? "text-white/40 line-through" : "text-white"}`}>{item.title}</h3>
+        <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+      </div>
+      {item.description && <p className="text-[12px] text-white/45">{item.description}</p>}
+      <div className="flex flex-wrap items-center gap-2 mt-1">
+        <select value={item.status} disabled={busy} onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
+          className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: sc }}>
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: `${pc}15`, color: pc }}>{item.priority}</span>
+        {item.assignee && <span className="text-[11px] text-white/40">{item.assignee}</span>}
+        {item.due_date && <span className="font-mono text-[10px] text-white/30">Due {item.due_date}</span>}
+      </div>
+    </div>
+  );
+}
+
+function CMPunchListPage() {
+  const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const queryClient = useQueryClient();
+  const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const { data: items, isLoading } = useCMTasks(projectId || undefined);
+  const [showNew, setShowNew] = useState(false);
+  const [showCompleted, setShowCompleted] = useState(false);
+
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
+
+  const open = (items ?? []).filter((t) => t.status !== "Done");
+  const done = (items ?? []).filter((t) => t.status === "Done");
+
+  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>Sign in with Google</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+      <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
+        <div className="flex items-center gap-3 mb-2">
+          <BackButton to="/cm" />
+          <h1 className="text-xl font-extrabold tracking-tight text-white">Punch List</h1>
+        </div>
+        <p className="text-[12px] text-white/35 mb-5 ml-[3.25rem]">The work that isn't finished yet.</p>
+        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {projectId && (
+          <>
+            {isLoading && <p className="text-white/30 text-sm">Loading…</p>}
+            {!isLoading && open.length === 0 && done.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                <p className="text-white/40 text-sm">Nothing on the punch list yet.</p>
+              </div>
+            )}
+            {!isLoading && open.length === 0 && done.length > 0 && (
+              <p className="text-white/30 text-sm mb-3">Everything on this project is done. 🎉</p>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} />)}
+            </div>
+
+            {done.length > 0 && (
+              <div className="mt-6">
+                <button onClick={() => setShowCompleted((v) => !v)} className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/55 transition-colors">
+                  {showCompleted ? "Hide" : "Show"} {done.length} completed
+                </button>
+                {showCompleted && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} />)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <FAB label="New work item" onClick={() => setShowNew(true)} />
+          </>
+        )}
+      </main>
+
+      {showNew && projectId && <NewPunchItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+    </div>
+  );
+}
