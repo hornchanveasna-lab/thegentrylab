@@ -1,5 +1,5 @@
 /**
- * Data layer for the Construction Management App (/pm/*).
+ * Data layer for the Construction Management App (/cm/*).
  * User-scoped (RLS: owner_id = auth.uid()) — no static seed fallback, requires auth + Supabase.
  */
 import { useQuery } from "@tanstack/react-query";
