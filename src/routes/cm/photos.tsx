@@ -37,12 +37,15 @@ const MODULE_OPTIONS: CMPhotoModule[] = ["siteDiary", "inspection", "punchList",
 type GroupBy = "date" | "project" | "type";
 const GROUP_OPTIONS: GroupBy[] = ["date", "project", "type"];
 
-function ToggleRow({ label, hint, checked, disabled, onChange }: {
-  label: string; hint: string; checked: boolean; disabled: boolean; onChange: (v: boolean) => void;
+function ToggleRow({ icon, label, hint, checked, disabled, onChange }: {
+  icon: React.ReactNode; label: string; hint: string; checked: boolean; disabled: boolean; onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl bg-white/5 px-4 py-3.5">
-      <div className="min-w-0">
+    <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3.5">
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.14)", color: "#ff5100" }}>
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
         <p className="text-[13px] text-white/85 font-medium">{label}</p>
         <p className="text-[11px] text-white/40 mt-0.5">{hint}</p>
       </div>
@@ -70,10 +73,24 @@ function PhotoSettingsSheet({ ownerId, watermark, timestamp, onClose, onChanged 
   return (
     <Sheet title={t("photos.settingsTitle")} onClose={onClose}>
       <div className="px-6 pb-8 pt-2 flex flex-col gap-3">
-        <ToggleRow label={t("photos.watermark")} hint={t("photos.watermarkHint")} checked={watermark} disabled={busy}
-          onChange={(v) => toggle({ photo_watermark: v })} />
-        <ToggleRow label={t("photos.timestamp")} hint={t("photos.timestampHint")} checked={timestamp} disabled={busy}
-          onChange={(v) => toggle({ photo_timestamp: v })} />
+        <ToggleRow
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.2 2.2 4.8-4.8" strokeWidth="1.6" />
+            </svg>
+          }
+          label={t("photos.watermark")} hint={t("photos.watermarkHint")} checked={watermark} disabled={busy}
+          onChange={(v) => toggle({ photo_watermark: v })}
+        />
+        <ToggleRow
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.2 2" />
+            </svg>
+          }
+          label={t("photos.timestamp")} hint={t("photos.timestampHint")} checked={timestamp} disabled={busy}
+          onChange={(v) => toggle({ photo_timestamp: v })}
+        />
       </div>
     </Sheet>
   );

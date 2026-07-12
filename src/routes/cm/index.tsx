@@ -90,12 +90,12 @@ export function CMIndexPage() {
           <AvatarButton />
         </div>
 
-        <div className="grid grid-cols-3 gap-x-4 gap-y-8">
+        <div className="grid grid-cols-3 border-t border-l border-white/[0.07] rounded-2xl overflow-hidden">
           <AppTile
             label={t("tile.report")}
             to="/cm/reports"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M8 17l2.5-3 2.5 2 3-4" />
               </svg>
             }
@@ -104,8 +104,9 @@ export function CMIndexPage() {
             label={t("tile.photo")}
             to="/cm/photos"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="9" cy="9" r="2" /><path d="M21 15l-5-5L5 21" />
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+                <circle cx="12" cy="13" r="3.4" /><circle cx="17.6" cy="10.4" r="0.6" fill="currentColor" stroke="none" />
               </svg>
             }
           />
@@ -113,8 +114,8 @@ export function CMIndexPage() {
             label={t("tile.projects")}
             to="/cm/projects"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 21V4" /><path d="M6 6h11l-3.2 3.2" /><path d="M13.8 9.2V13" /><path d="M3 21h18" /><path d="M9.5 21v-6.5h4V21" />
               </svg>
             }
           />
@@ -122,8 +123,9 @@ export function CMIndexPage() {
             label={t("tile.directory")}
             to="/cm/directory"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h13a2 2 0 0 1 2 2v14l-3-2-3 2-3-2-3 2-3-2-3 2V6a2 2 0 0 1 2-2z" /><path d="M8 9h8M8 13h5" />
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.2" r="2.1" />
+                <path d="M3.3 20c0-3.3 2.5-5.6 5.7-5.6s5.7 2.3 5.7 5.6" /><path d="M14.8 14.9c2.5.4 4.4 2.5 4.4 5.1" />
               </svg>
             }
           />
@@ -131,8 +133,8 @@ export function CMIndexPage() {
             label={t("tile.siteDiary")}
             to="/cm/site-diary"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="M9 13h6M9 17h6" />
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="4" width="13" height="16" rx="2" /><path d="M8 8.5h5M8 12.5h5" /><path d="M15.3 15.6l4-4 2 2-4 4h-2v-2z" />
               </svg>
             }
           />
@@ -140,7 +142,7 @@ export function CMIndexPage() {
             label={t("tile.punchList")}
             to="/cm/punch-list"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
               </svg>
             }
@@ -149,8 +151,8 @@ export function CMIndexPage() {
             label={t("tile.inspection")}
             to="/cm/inspection"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 7h8M8 11h8" /><path d="M8 15l2 2 4-4" />
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="10.2" cy="10.2" r="6.4" /><path d="M7.3 10.4l1.9 1.9 3.7-3.7" /><path d="M14.8 14.8L20 20" />
               </svg>
             }
           />
@@ -158,8 +160,9 @@ export function CMIndexPage() {
             label={t("tile.safety")}
             to="/cm/safety"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5z" /><path d="M12 8v5" /><circle cx="12" cy="16" r="0.5" fill="currentColor" />
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4.3 15.2a7.7 7.7 0 0 1 15.4 0" /><rect x="2.8" y="15.2" width="18.4" height="2.8" rx="1.4" />
+                <path d="M12 6.3V3.4" /><path d="M12 3.4h2.2" />
               </svg>
             }
           />
@@ -167,7 +170,7 @@ export function CMIndexPage() {
             label={t("tile.submittal")}
             to="/cm/submittal"
             icon={
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
               </svg>
             }
