@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -135,11 +135,11 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
         <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
       </div>
       {item.description && <p className="text-[12px] text-white/45">{item.description}</p>}
-      <div className="flex flex-wrap items-center gap-2 mt-1">
-        <select value={item.status} disabled={busy} onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
-          className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: sc }}>
-          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`taskStatus.${s}`)}</option>)}
-        </select>
+      <SegmentedField
+        options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`taskStatus.${s}`), color: STATUS_COLOR[s] }))}
+        value={item.status} disabled={busy} onChange={handleStatusChange}
+      />
+      <div className="flex flex-wrap items-center gap-2">
         <span className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: `${pc}15`, color: pc }}>{t(`taskPriority.${item.priority}`)}</span>
         {item.assignee && <span className="text-[11px] text-white/40">{item.assignee}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}

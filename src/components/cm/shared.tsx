@@ -93,6 +93,37 @@ export function useSelectedProject(userId: string | undefined) {
   return { projects: projects ?? [], projectId, setProjectId };
 }
 
+export interface SegmentedOption<T extends string> { value: T; label: string; color?: string }
+
+/** A single-row, swipe-to-browse tap-to-select tab bar — the fast alternative
+ *  to a native <select> (one tap instead of open-then-choose) for any small,
+ *  fixed option set: module pickers, status changes, language, etc. */
+export function SegmentedField<T extends string>({ options, value, onChange, disabled }: {
+  options: SegmentedOption<T>[]; value: T; onChange: (v: T) => void; disabled?: boolean;
+}) {
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button key={opt.value} type="button" disabled={disabled} onClick={() => onChange(opt.value)}
+            className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors disabled:opacity-40 ${
+              opt.color ? "bg-white/5" : active ? "" : "bg-white/5 text-white/70 hover:bg-white/10"
+            }`}
+            style={
+              opt.color
+                ? { color: opt.color, boxShadow: active ? `inset 0 0 0 1.5px ${opt.color}` : undefined }
+                : active ? { backgroundColor: "#ff5100", color: "#000" } : undefined
+            }
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ProjectPicker({ projects, value, onChange }: { projects: CMProject[]; value: string; onChange: (id: string) => void }) {
   const { t } = useCMLang();
   if (projects.length === 0) {
@@ -309,30 +340,35 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
   const goPrev = () => index > 0 && onIndexChange(index - 1);
   const goNext = () => index < items.length - 1 && onIndexChange(index + 1);
 
+  // This viewer is meant to stay a dark, immersive overlay no matter which app
+  // theme is active — every color below uses a bracket-arbitrary Tailwind value
+  // instead of the plain opacity shorthand, since the app's light-mode
+  // stylesheet force-flips shorthand classes like text-white/60 to a dark
+  // color globally, which would make this always-dark chrome unreadable.
   return (
-    <div className="fixed inset-0 z-[200] bg-black flex flex-col">
+    <div className="fixed inset-0 z-[200] bg-[#000] flex flex-col">
       <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 bg-gradient-to-b from-black/70 to-transparent">
-        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 text-white/80 hover:text-white shrink-0">
+        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.10] text-white/[0.80] hover:text-white shrink-0">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
         </button>
         <div className="text-center min-w-0 px-2 flex-1">
-          {item.projectName && <p className="text-[12px] font-bold text-white/90 truncate">{item.projectName}</p>}
-          {items.length > 1 && <p className="font-mono text-[10px] text-white/45">{t("photos.counter", { current: String(index + 1), total: String(items.length) })}</p>}
+          {item.projectName && <p className="text-[12px] font-bold text-white/[0.90] truncate">{item.projectName}</p>}
+          {items.length > 1 && <p className="font-mono text-[10px] text-white/[0.45]">{t("photos.counter", { current: String(index + 1), total: String(items.length) })}</p>}
         </div>
         <div className="relative shrink-0">
-          <button onClick={() => setMenuOpen((v) => !v)} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/10 text-white/80 hover:text-white">
+          <button onClick={() => setMenuOpen((v) => !v)} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.10] text-white/[0.80] hover:text-white">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-11 w-52 rounded-2xl bg-[#181818] border border-white/10 overflow-hidden shadow-xl">
+            <div className="absolute right-0 top-11 w-52 rounded-2xl bg-[#181818] border border-white/[0.10] overflow-hidden shadow-xl">
               {onShowInReport && item.recordId && (
                 <button onClick={() => { setMenuOpen(false); onShowInReport(item); }}
-                  className="w-full text-left px-4 py-3 text-[13px] text-white/85 hover:bg-white/5 border-b border-white/6">
+                  className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">
                   {t("photos.showInReport")}
                 </button>
               )}
-              <button onClick={handleSave} className="w-full text-left px-4 py-3 text-[13px] text-white/85 hover:bg-white/5 border-b border-white/6">{t("photos.save")}</button>
-              <button onClick={handleShare} className="w-full text-left px-4 py-3 text-[13px] text-white/85 hover:bg-white/5">{t("photos.share")}</button>
+              <button onClick={handleSave} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">{t("photos.save")}</button>
+              <button onClick={handleShare} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05]">{t("photos.share")}</button>
             </div>
           )}
         </div>
@@ -342,7 +378,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
         <ZoomableImage key={item.url} src={item.url} onSwipeLeft={goNext} onSwipeRight={goPrev} />
       </div>
 
-      {item.caption && <p className="px-6 pb-2 text-center text-[12px] text-white/60 truncate shrink-0">{item.caption}</p>}
+      {item.caption && <p className="px-6 pb-2 text-center text-[12px] text-white/[0.60] truncate shrink-0">{item.caption}</p>}
 
       {items.length > 1 && (
         <div ref={filmstripRef}
@@ -358,7 +394,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
         </div>
       )}
 
-      {toast && <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/15 backdrop-blur text-[12px] text-white z-30">{toast}</div>}
+      {toast && <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/[0.15] backdrop-blur text-[12px] text-white/[0.95] z-30">{toast}</div>}
     </div>
   );
 }

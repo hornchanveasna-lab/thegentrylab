@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -127,10 +127,10 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
       </button>
       {open && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
-          <select value={item.status} disabled={busy} onChange={(e) => handleStatusChange(e.target.value as InspectionStatus)}
-            className="self-start px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: sc }}>
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`inspectionStatus.${s}`)}</option>)}
-          </select>
+          <SegmentedField
+            options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`), color: STATUS_COLOR[s] }))}
+            value={item.status} disabled={busy} onChange={handleStatusChange}
+          />
           {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
           {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
           {item.photos.length > 0 && (

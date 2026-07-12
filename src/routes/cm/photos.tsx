@@ -2,9 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
-import { useCMLang } from "@/lib/cm-i18n";
+import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, MODULE_ROUTES, setPendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -36,6 +36,24 @@ export const Route = createFileRoute("/cm/photos")({
 const MODULE_OPTIONS: CMPhotoModule[] = ["siteDiary", "inspection", "punchList", "safety", "submittal"];
 type GroupBy = "date" | "project" | "type";
 const GROUP_OPTIONS: GroupBy[] = ["date", "project", "type"];
+
+const GROUP_ICON: Record<GroupBy, React.ReactNode> = {
+  date: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" />
+    </svg>
+  ),
+  project: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" />
+    </svg>
+  ),
+  type: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 12.5L12.5 20 4 11.5V4h7.5L20 12.5z" /><circle cx="8" cy="8" r="1.3" fill="currentColor" stroke="none" />
+    </svg>
+  ),
+};
 
 function ToggleRow({ icon, label, hint, checked, disabled, onChange }: {
   icon: React.ReactNode; label: string; hint: string; checked: boolean; disabled: boolean; onChange: (v: boolean) => void;
@@ -109,7 +127,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyName
 }) {
   const { t } = useCMLang();
   const [files, setFiles] = useState<File[]>([]);
-  const [moduleSel, setModuleSel] = useState<CMPhotoModule | null>(null);
+  const [moduleSel, setModuleSel] = useState<CMPhotoModule>(MODULE_OPTIONS[0]);
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -119,10 +137,10 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyName
     setFiles((prev) => [...prev, ...Array.from(list)]);
   };
 
-  const canSave = files.length > 0 && !!moduleSel && !!projectId && !saving;
+  const canSave = files.length > 0 && !!projectId && !saving;
 
   const handleSubmit = async () => {
-    if (!canSave || !moduleSel) return;
+    if (!canSave) return;
     setSaving(true);
     setError("");
     try {
@@ -185,15 +203,12 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyName
 
         <div className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("photos.forWhat")}</span>
-          <div className="flex flex-wrap gap-2">
-            {MODULE_OPTIONS.map((m) => (
-              <button key={m} type="button" onClick={() => setModuleSel(m)} disabled={saving}
-                className="px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors"
-                style={{ backgroundColor: moduleSel === m ? "#ff5100" : "rgba(255,255,255,0.05)", color: moduleSel === m ? "#000" : "rgba(255,255,255,0.7)" }}>
-                {t(`tile.${m}`)}
-              </button>
-            ))}
-          </div>
+          <SegmentedField
+            options={MODULE_OPTIONS.map((m) => ({ value: m, label: t(`tile.${m}`) }))}
+            value={moduleSel}
+            onChange={setModuleSel}
+            disabled={saving}
+          />
         </div>
 
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
@@ -222,9 +237,92 @@ function dateLabel(date: string, t: (k: string) => string) {
   return date;
 }
 
+const MONTH_LOCALE: Record<CMLang, string> = { en: "en-US", km: "km-KH", zh: "zh-CN" };
+
+/** A month-by-month calendar of thumbnails — one representative photo per day
+ *  — so a site engineer can "track back" to a date instead of scrolling a
+ *  long grid, then jump into whichever report that day's photo belongs to. */
+function CalendarView({ photos, lang, onOpenDay }: {
+  photos: CMPhotoWithContext[]; lang: CMLang; onOpenDay: (dayPhotos: CMPhotoWithContext[]) => void;
+}) {
+  const locale = MONTH_LOCALE[lang];
+
+  const weekdayLabels = useMemo(() => {
+    const base = new Date(2024, 0, 1); // a Monday
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d.toLocaleDateString(locale, { weekday: "narrow" });
+    });
+  }, [locale]);
+
+  const photosByDate = useMemo(() => {
+    const map = new Map<string, CMPhotoWithContext[]>();
+    for (const p of photos) {
+      if (!map.has(p.date)) map.set(p.date, []);
+      map.get(p.date)!.push(p);
+    }
+    return map;
+  }, [photos]);
+
+  const months = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of photos) set.add(p.date.slice(0, 7));
+    return Array.from(set).sort().reverse();
+  }, [photos]);
+
+  if (months.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-7 gap-1.5">
+        {weekdayLabels.map((w, i) => (
+          <div key={i} className="text-center font-mono text-[9px] uppercase tracking-widest text-white/30">{w}</div>
+        ))}
+      </div>
+      {months.map((ym) => {
+        const [yearStr, monthStr] = ym.split("-");
+        const year = Number(yearStr);
+        const monthIdx = Number(monthStr) - 1;
+        const daysCount = new Date(year, monthIdx + 1, 0).getDate();
+        const firstWeekday = (new Date(year, monthIdx, 1).getDay() + 6) % 7;
+        const monthLabel = new Date(year, monthIdx, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
+        const cells: Array<{ day: number; dateStr: string } | null> = [];
+        for (let i = 0; i < firstWeekday; i++) cells.push(null);
+        for (let d = 1; d <= daysCount; d++) cells.push({ day: d, dateStr: `${yearStr}-${monthStr}-${String(d).padStart(2, "0")}` });
+
+        return (
+          <div key={ym}>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{monthLabel}</p>
+            <div className="grid grid-cols-7 gap-1.5">
+              {cells.map((cell, i) => {
+                if (!cell) return <div key={i} />;
+                const dayPhotos = photosByDate.get(cell.dateStr);
+                const cover = dayPhotos?.[0];
+                return (
+                  <button key={i} disabled={!cover} onClick={() => dayPhotos && onOpenDay(dayPhotos)}
+                    className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-white/5">
+                    {cover && <img src={cover.url} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+                    <span className={`relative text-[12px] font-bold ${cover ? "text-white/[0.95]" : "text-white/25"}`}
+                      style={cover ? { textShadow: "0 1px 3px rgba(0,0,0,0.85)" } : undefined}>
+                      {cell.day}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+type View = "grid" | "calendar";
+
 function CMPhotosPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: photos, isLoading } = useAllCMPhotos(user?.id);
@@ -233,7 +331,9 @@ function CMPhotosPage() {
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | CMPhotoModule>("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("date");
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [groupMenuOpen, setGroupMenuOpen] = useState(false);
+  const [view, setView] = useState<View>("grid");
+  const [lightbox, setLightbox] = useState<{ items: CMPhotoWithContext[]; index: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -307,40 +407,82 @@ function CMPhotosPage() {
           </select>
         </div>
 
-        <div className="flex items-center gap-2 mb-5">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{t("photos.groupBy")}</span>
-          <div className="flex gap-1.5">
-            {GROUP_OPTIONS.map((g) => (
-              <button key={g} onClick={() => setGroupBy(g)}
-                className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest transition-colors"
-                style={{ backgroundColor: groupBy === g ? "#ff5100" : "rgba(255,255,255,0.05)", color: groupBy === g ? "#000" : "rgba(255,255,255,0.55)" }}>
-                {t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}
+        <div className="flex items-center justify-between gap-2 mb-5">
+          {view === "grid" ? (
+            <div className="relative inline-block">
+              <button onClick={() => setGroupMenuOpen((v) => !v)}
+                className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white/75 hover:text-white transition-colors">
+                {GROUP_ICON[groupBy]}
+                <span className="text-[12px] font-medium">{t(`photos.group${groupBy === "date" ? "Date" : groupBy === "project" ? "Project" : "Type"}`)}</span>
+                <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className="transition-transform" style={{ transform: groupMenuOpen ? "rotate(180deg)" : "none" }}>
+                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
-            ))}
+
+              {groupMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setGroupMenuOpen(false)} />
+                  <div className="absolute left-0 top-11 z-20 w-48 rounded-2xl bg-[#0d0d0e] border border-white/10 overflow-hidden shadow-xl">
+                    {GROUP_OPTIONS.map((g) => (
+                      <button key={g} onClick={() => { setGroupBy(g); setGroupMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
+                        <span className="text-white/50 shrink-0">{GROUP_ICON[g]}</span>
+                        <span className="flex-1 text-[13px] text-white/85">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
+                        {groupBy === g && (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                            <path d="M4 12.5l5 5L20 6" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          ) : <div />}
+
+          <div className="flex gap-1 rounded-xl bg-white/5 border border-white/10 p-1 shrink-0">
+            <button onClick={() => setView("grid")} aria-label={t("photos.viewGrid")}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "grid" ? "" : "text-white/50"}`}
+              style={view === "grid" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+            </button>
+            <button onClick={() => setView("calendar")} aria-label={t("photos.viewCalendar")}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "calendar" ? "" : "text-white/50"}`}
+              style={view === "calendar" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
+              {GROUP_ICON.date}
+            </button>
           </div>
         </div>
 
         {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
         {!isLoading && filtered.length === 0 && <p className="text-white/30 text-sm">{t("photos.noneYet")}</p>}
 
-        <div className="flex flex-col gap-6">
-          {groups.map((group, gi) => (
-            <div key={gi}>
-              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
-              <div className="grid grid-cols-3 gap-2.5">
-                {group.items.map((p, i) => {
-                  const badge = groupBy === "project" ? t(`tile.${p.module}`) : groupBy === "type" ? p.projectName : `${p.projectName} · ${t(`tile.${p.module}`)}`;
-                  return (
-                    <button key={`${p.url}-${i}`} onClick={() => setLightboxIndex(filtered.indexOf(p))} className="relative aspect-square group">
-                      <img src={p.url} alt="" className="w-full h-full rounded-2xl object-cover" />
-                      <span className="absolute bottom-1.5 left-1.5 right-1.5 font-mono text-[8px] px-1.5 py-0.5 rounded-full bg-black/70 text-white/60 truncate text-left">{badge}</span>
-                    </button>
-                  );
-                })}
+        {view === "grid" ? (
+          <div className="flex flex-col gap-6">
+            {groups.map((group, gi) => (
+              <div key={gi}>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {group.items.map((p, i) => {
+                    const badge = groupBy === "project" ? t(`tile.${p.module}`) : groupBy === "type" ? p.projectName : `${p.projectName} · ${t(`tile.${p.module}`)}`;
+                    return (
+                      <button key={`${p.url}-${i}`} onClick={() => setLightbox({ items: filtered, index: filtered.indexOf(p) })} className="relative aspect-square group">
+                        <img src={p.url} alt="" className="w-full h-full rounded-2xl object-cover" />
+                        <span className="absolute bottom-1.5 left-1.5 right-1.5 font-mono text-[8px] px-1.5 py-0.5 rounded-full bg-black/70 text-white/[0.75] truncate text-left">{badge}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <CalendarView photos={filtered} lang={lang} onOpenDay={(dayPhotos) => setLightbox({ items: dayPhotos, index: 0 })} />
+        )}
 
         <FAB label={t("photos.newBtn")} onClick={() => setShowNew(true)} />
       </main>
@@ -369,16 +511,16 @@ function CMPhotosPage() {
         />
       )}
 
-      {lightboxIndex != null && (
+      {lightbox && (
         <PhotoLightbox
-          items={filtered}
-          index={lightboxIndex}
-          onIndexChange={setLightboxIndex}
-          onClose={() => setLightboxIndex(null)}
+          items={lightbox.items}
+          index={lightbox.index}
+          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
+          onClose={() => setLightbox(null)}
           onShowInReport={(item) => {
             if (!item.module || !item.recordId || !item.projectId) return;
             setPendingHighlight(item.module, item.recordId, item.projectId, item.url);
-            setLightboxIndex(null);
+            setLightbox(null);
             navigate({ to: MODULE_ROUTES[item.module] });
           }}
         />

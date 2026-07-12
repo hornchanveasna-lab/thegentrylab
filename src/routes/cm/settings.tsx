@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
+import { SegmentedField } from "@/components/cm/shared";
 import {
   useCMAccountSettings,
   upsertCMAccountSettings,
@@ -154,15 +155,11 @@ function CMSettingsPage() {
 
         <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
           <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.language")}</p>
-          <div className="flex gap-2">
-            {LANG_OPTIONS.map((l) => (
-              <button key={l} onClick={() => handleLangChange(l)}
-                className="flex-1 px-3 py-2.5 rounded-xl text-[12px] font-medium transition-colors"
-                style={{ backgroundColor: lang === l ? "#ff5100" : "rgba(255,255,255,0.05)", color: lang === l ? "#000" : "rgba(255,255,255,0.7)" }}>
-                {t(`settings.lang.${l}`)}
-              </button>
-            ))}
-          </div>
+          <SegmentedField
+            options={LANG_OPTIONS.map((l) => ({ value: l, label: t(`settings.lang.${l}`) }))}
+            value={lang}
+            onChange={handleLangChange}
+          />
         </div>
 
         <div className="rounded-2xl overflow-hidden mb-5">
