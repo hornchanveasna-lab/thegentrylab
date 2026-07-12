@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useCMProjects, type CMProject, type CMPhotoModule } from "@/lib/cm-data";
+import { useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity } from "@/lib/cm-data";
 import { useCMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
@@ -383,6 +383,43 @@ export const MODULE_ROUTES: Record<CMPhotoModule, "/cm/site-diary" | "/cm/inspec
   submittal: "/cm/submittal",
 };
 
+export const MODULE_COLOR: Record<CMPhotoModule, string> = {
+  siteDiary: "#3b82f6",
+  inspection: "#22c55e",
+  punchList: "#a855f7",
+  safety: "#ef4444",
+  submittal: "#06b6d4",
+};
+
+export const MODULE_ICON: Record<CMPhotoModule, React.ReactNode> = {
+  siteDiary: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="13" height="16" rx="2" /><path d="M8 8.5h5M8 12.5h5" /><path d="M15.3 15.6l4-4 2 2-4 4h-2v-2z" />
+    </svg>
+  ),
+  inspection: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10.2" cy="10.2" r="6.4" /><path d="M7.3 10.4l1.9 1.9 3.7-3.7" /><path d="M14.8 14.8L20 20" />
+    </svg>
+  ),
+  punchList: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+  safety: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.3 15.2a7.7 7.7 0 0 1 15.4 0" /><rect x="2.8" y="15.2" width="18.4" height="2.8" rx="1.4" />
+      <path d="M12 6.3V3.4" /><path d="M12 3.4h2.2" />
+    </svg>
+  ),
+  submittal: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+    </svg>
+  ),
+};
+
 const PENDING_HIGHLIGHT_KEY = "cm_pending_highlight";
 
 interface PendingHighlight { module: CMPhotoModule; recordId: string; photoUrl?: string }
@@ -622,6 +659,51 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
       )}
 
       {toast && <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/[0.15] backdrop-blur text-[12px] text-white/[0.95] z-30">{toast}</div>}
+    </div>
+  );
+}
+
+interface CMDailyActivityRow {
+  module: CMPhotoModule;
+  recordId: string;
+  title: string;
+  status: string;
+}
+
+/** Read-only "Today's Activity" list — one tappable row per Inspection/
+ *  Safety/Punch List/Submittal item for a given day, shared by Site Diary
+ *  and Reports. Deep-links via the same setPendingHighlight +
+ *  MODULE_ROUTES flash-and-scroll pattern used for photo-to-record
+ *  navigation. Renders nothing when the day has no cross-module activity. */
+export function CMDailyActivityList({ activity, projectId, onOpenItem }: {
+  activity: CMDailyActivity | undefined;
+  projectId: string;
+  onOpenItem: (module: CMPhotoModule, recordId: string, projectId: string) => void;
+}) {
+  const { t } = useCMLang();
+  if (!activity) return null;
+
+  const rows: CMDailyActivityRow[] = [
+    ...activity.inspections.map((r) => ({ module: "inspection" as const, recordId: r.id, title: r.title, status: r.status })),
+    ...activity.safetyRecords.map((r) => ({ module: "safety" as const, recordId: r.id, title: r.title, status: r.status })),
+    ...activity.tasks.map((r) => ({ module: "punchList" as const, recordId: r.id, title: r.title, status: r.status })),
+    ...activity.submittals.map((r) => ({ module: "submittal" as const, recordId: r.id, title: r.title, status: r.status })),
+  ];
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className={labelCls}>{t("siteDiary.todaysActivity")}</span>
+      {rows.map((row) => (
+        <button key={`${row.module}-${row.recordId}`} type="button" onClick={() => onOpenItem(row.module, row.recordId, projectId)}
+          className="w-full flex items-center gap-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2 text-left transition-colors">
+          <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[row.module], backgroundColor: `${MODULE_COLOR[row.module]}22` }}>
+            {MODULE_ICON[row.module]}
+          </span>
+          <span className="flex-1 min-w-0 text-[12px] text-white/70 truncate">{row.title}</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{row.status}</span>
+        </button>
+      ))}
     </div>
   );
 }

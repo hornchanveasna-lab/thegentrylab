@@ -1,14 +1,15 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight,
+  PhotoLightbox, usePendingHighlight, setPendingHighlight, MODULE_ROUTES, CMDailyActivityList,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
+  useCMDailyActivity,
   createCMDailyLog,
   updateCMDailyLog,
   deleteCMDailyLog,
@@ -226,9 +227,11 @@ type LightboxItem = { url: string; thumbUrl: string };
 
 function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id, () => setOpen(true));
+  const { data: activity } = useCMDailyActivity(log.project_id, log.log_date, { enabled: open });
 
   const handleDelete = async () => {
     if (!confirm(t("siteDiary.confirmDelete"))) return;
@@ -273,6 +276,11 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
           )}
           {log.issues && <Field label={t("siteDiary.issues")} value={log.issues} accent="#f43f5e" />}
           {log.notes && <Field label={t("siteDiary.notes")} value={log.notes} />}
+          <CMDailyActivityList activity={activity} projectId={log.project_id}
+            onOpenItem={(module, recordId, projectId) => {
+              setPendingHighlight(module, recordId, projectId, "");
+              navigate({ to: MODULE_ROUTES[module] });
+            }} />
           {log.photos.length > 0 && (
             <div>
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
