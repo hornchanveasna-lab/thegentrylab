@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   updateCMProject,
   uploadCMLogo,
+  monotonePreviewUrl,
   useCMEquipment,
   createCMEquipment,
   updateCMEquipment,
@@ -24,6 +25,7 @@ import {
   updateCMProjectConsultant,
   deleteCMProjectConsultant,
   type CMProject,
+  type CMProjectConsultant,
   type ProjectStatus,
   type EquipmentStatus,
 } from "@/lib/cm-data";
@@ -35,12 +37,52 @@ const STATUS_OPTIONS: ProjectStatus[] = ["Planning", "Active", "On Hold", "Compl
 const EQUIPMENT_STATUS_OPTIONS: EquipmentStatus[] = ["Operational", "Maintenance", "Out of Service"];
 const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = { Operational: "#34d399", Maintenance: "#fbbf24", "Out of Service": "#f43f5e" };
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl bg-[#0d0d0e] p-5">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-4">{title}</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{title}</p>
+        {action}
+      </div>
       {children}
     </div>
+  );
+}
+
+/** Swaps a logo's `src` for the exact same monotone tint the photo stamp
+ *  would burn onto a photo, so the settings-page preview toggle shows real
+ *  output instead of a rough CSS-filter approximation. */
+function useMonotonePreview(url: string | null | undefined, enabled: boolean): string | null {
+  const [tinted, setTinted] = useState<string | null>(null);
+  useEffect(() => {
+    if (!enabled || !url) {
+      setTinted(null);
+      return;
+    }
+    let cancelled = false;
+    monotonePreviewUrl(url).then((dataUrl) => {
+      if (!cancelled) setTinted(dataUrl);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [url, enabled]);
+  return enabled ? tinted : null;
+}
+
+function MonotonePreviewToggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useCMLang();
+  return (
+    <button type="button" onClick={() => onChange(!enabled)}
+      className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors"
+      style={{ color: enabled ? "#ff5100" : "rgba(255,255,255,0.35)" }}>
+      <span className={`w-7 h-4 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-white/15"}`}
+        style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
+        <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform"
+          style={{ transform: enabled ? "translateX(13px)" : "translateX(2px)" }} />
+      </span>
+      {t("projectSettings.previewMonotone")}
+    </button>
   );
 }
 
@@ -50,7 +92,9 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
   const [name, setName] = useState(project.name);
   const [projectCode, setProjectCode] = useState(project.project_code ?? "");
   const [client, setClient] = useState(project.client ?? "");
+  const [address, setAddress] = useState(project.address ?? "");
   const [location, setLocation] = useState(project.location ?? "");
+  const [locationMapUrl, setLocationMapUrl] = useState(project.location_map_url ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project.status);
   const [startDate, setStartDate] = useState(project.start_date ?? "");
   const [targetEndDate, setTargetEndDate] = useState(project.target_end_date ?? "");
@@ -70,6 +114,7 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
       async (pos) => {
         const { latitude, longitude } = pos.coords;
         const fallback = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        setLocationMapUrl(`https://www.google.com/maps?q=${latitude},${longitude}`);
         try {
           const key = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
           if (!key) { setLocation(fallback); return; }
@@ -98,7 +143,9 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
         name: name.trim(),
         project_code: projectCode.trim() || null,
         client: client.trim() || null,
+        address: address.trim() || null,
         location: location.trim() || null,
+        location_map_url: locationMapUrl.trim() || null,
         status,
         start_date: startDate || null,
         target_end_date: targetEndDate || null,
@@ -129,6 +176,12 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
             <input className={inputCls} value={client} onChange={(e) => setClient(e.target.value)} />
           </label>
           <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projectSettings.address")}</span>
+            <input className={inputCls} value={address} onChange={(e) => setAddress(e.target.value)} placeholder={t("projectSettings.addressPlaceholder")} />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
               <span className={labelCls}>{t("projectSettings.location")}</span>
               <button type="button" onClick={handleUseCurrentLocation} disabled={locating}
@@ -147,6 +200,20 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
             </div>
             <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} />
             {locateError && <p className="text-[11px] text-red-400">{locateError}</p>}
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projectSettings.mapLink")}</span>
+            <div className="flex gap-1.5">
+              <input className={`${inputCls} flex-1`} value={locationMapUrl} onChange={(e) => setLocationMapUrl(e.target.value)}
+                placeholder={t("projectSettings.mapLinkPlaceholder")} />
+              <button type="button" onClick={() => window.open(locationMapUrl, "_blank", "noopener,noreferrer")}
+                disabled={!locationMapUrl.trim()} title={t("projectSettings.openMap")}
+                className="shrink-0 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-[#ff5100] disabled:opacity-30 transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" /><circle cx="12" cy="9" r="2.4" />
+                </svg>
+              </button>
+            </div>
           </label>
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -180,9 +247,22 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
 }
 
 /* ── Client logo ──────────────────────────────────────── */
-function LogoSection({ project, ownerId, onChanged }: { project: CMProject; ownerId: string; onChanged: () => void }) {
+function EditBadge() {
+  return (
+    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black/70 border border-white/10 flex items-center justify-center text-white/70">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+      </svg>
+    </span>
+  );
+}
+
+function LogoSection({ project, ownerId, onChanged, previewMonotone, onTogglePreview }: {
+  project: CMProject; ownerId: string; onChanged: () => void; previewMonotone: boolean; onTogglePreview: (v: boolean) => void;
+}) {
   const { t } = useCMLang();
   const [uploading, setUploading] = useState(false);
+  const previewSrc = useMonotonePreview(project.client_logo_url, previewMonotone);
 
   const handleUpload = async (file: File) => {
     setUploading(true);
@@ -196,25 +276,70 @@ function LogoSection({ project, ownerId, onChanged }: { project: CMProject; owne
   };
 
   return (
-    <Card title={t("projectSettings.clientLogo")}>
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
+    <Card title={t("projectSettings.clientLogo")} action={<MonotonePreviewToggle enabled={previewMonotone} onChange={onTogglePreview} />}>
+      <label className="inline-block relative cursor-pointer">
+        <div className="h-16 max-w-[220px] rounded-2xl overflow-hidden flex items-center justify-center">
           {project.client_logo_url ? (
-            <img src={project.client_logo_url} alt="" className="w-full h-full object-contain" />
+            <img src={previewSrc ?? project.client_logo_url} alt="" className="h-full w-auto object-contain" style={{ opacity: uploading ? 0.4 : 1 }} />
           ) : (
-            <span className="text-white/20 text-[10px] font-mono uppercase">{t("projectSettings.none")}</span>
+            <span className="text-white/20 text-[10px] font-mono uppercase bg-white/5 rounded-2xl px-4 py-5">{t("projectSettings.none")}</span>
           )}
         </div>
-        <input type="file" accept="image/*" disabled={uploading}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
-          className="text-[12px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
-      </div>
+        <EditBadge />
+        <input type="file" accept="image/*" className="hidden" disabled={uploading}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+      </label>
     </Card>
   );
 }
 
+function ConsultantRow({ c, editing, editValue, onEditValueChange, onStartEdit, onCommitEdit, onCancelEdit, uploading, onUploadLogo, onDelete, previewMonotone }: {
+  c: CMProjectConsultant;
+  editing: boolean;
+  editValue: string;
+  onEditValueChange: (v: string) => void;
+  onStartEdit: () => void;
+  onCommitEdit: () => void;
+  onCancelEdit: () => void;
+  uploading: boolean;
+  onUploadLogo: (file: File) => void;
+  onDelete: () => void;
+  previewMonotone: boolean;
+}) {
+  const { t } = useCMLang();
+  const previewSrc = useMonotonePreview(c.logo_url, previewMonotone);
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
+      {editing ? (
+        <input
+          className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
+          value={editValue}
+          autoFocus
+          onChange={(e) => onEditValueChange(e.target.value)}
+          onBlur={onCommitEdit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") onCancelEdit(); }}
+        />
+      ) : (
+        <p onClick={onStartEdit} className="text-[12px] text-white/80 flex-1 truncate cursor-text">{c.name}</p>
+      )}
+      <label className="relative h-10 max-w-[110px] rounded-lg overflow-hidden flex items-center justify-center shrink-0 cursor-pointer">
+        {c.logo_url ? (
+          <img src={previewSrc ?? c.logo_url} alt="" className="h-full w-auto object-contain" style={{ opacity: uploading ? 0.4 : 1 }} />
+        ) : (
+          <span className="text-white/20 text-[8px] font-mono uppercase bg-white/5 rounded-lg px-2 py-3">{uploading ? "…" : t("projectSettings.none")}</span>
+        )}
+        <EditBadge />
+        <input type="file" accept="image/*" className="hidden" disabled={uploading}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadLogo(f); }} />
+      </label>
+      <button onClick={onDelete} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+    </div>
+  );
+}
+
 /* ── Consultants (structural, MEP, etc. — a project can have several) ── */
-function ConsultantsSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: string; projectId: string; previewMonotone: boolean }) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: consultants } = useCMProjectConsultants(projectId);
@@ -261,30 +386,20 @@ function ConsultantsSection({ ownerId, projectId }: { ownerId: string; projectId
     <Card title={t("projectSettings.consultants")}>
       <div className="flex flex-col gap-2">
         {(consultants ?? []).map((c) => (
-          <div key={c.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
-            {editingId === c.id ? (
-              <input
-                className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
-                value={editValue}
-                autoFocus
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => commitEdit(c.id)}
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditingId(null); }}
-              />
-            ) : (
-              <p onClick={() => startEditing(c)} className="text-[12px] text-white/80 flex-1 truncate cursor-text">{c.name}</p>
-            )}
-            <label className="h-10 max-w-[110px] px-1.5 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer">
-              {c.logo_url ? (
-                <img src={c.logo_url} alt="" className="h-full w-auto object-contain" style={{ opacity: uploadingId === c.id ? 0.4 : 1 }} />
-              ) : (
-                <span className="text-white/20 text-[8px] font-mono uppercase px-1">{uploadingId === c.id ? "…" : t("projectSettings.none")}</span>
-              )}
-              <input type="file" accept="image/*" className="hidden" disabled={uploadingId === c.id}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(c.id, f); }} />
-            </label>
-            <button onClick={() => deleteCMProjectConsultant(c.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
-          </div>
+          <ConsultantRow
+            key={c.id}
+            c={c}
+            editing={editingId === c.id}
+            editValue={editValue}
+            onEditValueChange={setEditValue}
+            onStartEdit={() => startEditing(c)}
+            onCommitEdit={() => commitEdit(c.id)}
+            onCancelEdit={() => setEditingId(null)}
+            uploading={uploadingId === c.id}
+            onUploadLogo={(f) => handleUploadLogo(c.id, f)}
+            onDelete={() => deleteCMProjectConsultant(c.id).then(invalidate)}
+            previewMonotone={previewMonotone}
+          />
         ))}
         {(consultants?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noConsultants")}</p>}
         {adding ? (
@@ -538,6 +653,7 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
   project: CMProject; ownerId: string; onBack: () => void; onProjectChanged: () => void;
 }) {
   const { t } = useCMLang();
+  const [previewMonotone, setPreviewMonotone] = useState(false);
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
@@ -548,8 +664,8 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
       </div>
       <div className="flex flex-col gap-4">
         <InfoSection project={project} onChanged={onProjectChanged} />
-        <LogoSection project={project} ownerId={ownerId} onChanged={onProjectChanged} />
-        <ConsultantsSection ownerId={ownerId} projectId={project.id} />
+        <LogoSection project={project} ownerId={ownerId} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
+        <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone} />
         <EquipmentSection ownerId={ownerId} projectId={project.id} />
         <ChecklistSection ownerId={ownerId} projectId={project.id} />
         <SubcontractorsSection ownerId={ownerId} projectId={project.id} />
