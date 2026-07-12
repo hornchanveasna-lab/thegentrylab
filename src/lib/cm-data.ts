@@ -296,15 +296,21 @@ function hexToRgb(hex: string): [number, number, number] {
  *  paint the whole opaque box solid — so when the image carries no real
  *  transparency, alpha is instead derived from luminance (near-white
  *  background -> transparent, dark ink -> opaque), turning the ink itself
- *  into the silhouette. */
+ *  into the silhouette. Runs the pixel analysis at the logo's own native
+ *  resolution rather than the (often much smaller) target stamp size —
+ *  thin knockout strokes and small icon marks get anti-aliased into a
+ *  featureless blur if downsampled before the alpha mask is derived, so
+ *  the caller's `drawImage` does that scaling instead, after tinting. */
 function monotoneTint(logo: HTMLImageElement, w: number, h: number, color: string): HTMLCanvasElement {
+  const srcW = logo.naturalWidth || w;
+  const srcH = logo.naturalHeight || h;
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = srcW;
+  canvas.height = srcH;
   const ctx = canvas.getContext("2d");
   if (!ctx) return canvas;
-  ctx.drawImage(logo, 0, 0, w, h);
-  const img = ctx.getImageData(0, 0, w, h);
+  ctx.drawImage(logo, 0, 0, srcW, srcH);
+  const img = ctx.getImageData(0, 0, srcW, srcH);
   const data = img.data;
   const totalPixels = data.length / 4;
   let transparentCount = 0;
