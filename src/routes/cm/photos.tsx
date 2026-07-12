@@ -518,8 +518,8 @@ function CMPhotosPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
-        <div className="flex items-center gap-3 mb-6">
+      <main className="max-w-md mx-auto w-full px-4 pb-28">
+        <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
           <BackButton to="/cm" />
           <h1 className="text-xl font-extrabold tracking-tight text-white flex-1">{t("photos.title")}</h1>
           <div className="relative shrink-0">
@@ -616,14 +616,14 @@ function CMPhotosPage() {
             {groups.map((group, gi) => (
               <div key={gi}>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
-                <div className="grid grid-cols-3 gap-0.5">
+                <div className="grid grid-cols-3 gap-0.5 rounded-t-2xl overflow-hidden">
                   {group.items.map((p, i) => {
                     const checked = selectedUrls.has(p.url);
                     return (
                       <button key={`${p.url}-${i}`} {...bindLongPress(`${p.url}-${i}`, () => toggleSelected(p.url))}
                         onClick={() => selectMode ? toggleSelected(p.url) : setLightbox({ items: filtered, index: filtered.indexOf(p) })}
                         className="relative aspect-square group">
-                        <img src={p.thumbUrl} alt="" className={`w-full h-full rounded-2xl object-cover transition-opacity ${checked ? "opacity-60" : ""}`} />
+                        <img src={p.thumbUrl} alt="" className={`w-full h-full object-cover transition-opacity ${checked ? "opacity-60" : ""}`} />
                         {selectMode ? (
                           <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2"
                             style={{ backgroundColor: checked ? "#ff5100" : "rgba(0,0,0,0.4)", borderColor: checked ? "#ff5100" : "rgba(255,255,255,0.7)" }}>

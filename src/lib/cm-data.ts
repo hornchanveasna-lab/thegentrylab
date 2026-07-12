@@ -282,30 +282,62 @@ function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w:
   ctx.closePath();
 }
 
+function hexToRgb(hex: string): [number, number, number] {
+  const clean = hex.replace("#", "");
+  const n = parseInt(clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+/** Recolors a logo to one flat tint, tolerating both asset styles brands
+ *  actually hand us: true transparent PNGs (where the existing alpha
+ *  channel already is the silhouette) and flattened logos with an opaque
+ *  white/light background (common for JPEGs and "flattened" PNG exports).
+ *  For the latter, `source-in` on the untouched alpha channel would just
+ *  paint the whole opaque box solid — so when the image carries no real
+ *  transparency, alpha is instead derived from luminance (near-white
+ *  background -> transparent, dark ink -> opaque), turning the ink itself
+ *  into the silhouette. */
+function monotoneTint(logo: HTMLImageElement, w: number, h: number, color: string): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+  ctx.drawImage(logo, 0, 0, w, h);
+  const img = ctx.getImageData(0, 0, w, h);
+  const data = img.data;
+  const totalPixels = data.length / 4;
+  let transparentCount = 0;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < 200) transparentCount++;
+  }
+  const hasRealAlpha = transparentCount > totalPixels * 0.02;
+  const [tr, tg, tb] = hexToRgb(color);
+  for (let i = 0; i < data.length; i += 4) {
+    const alpha = hasRealAlpha
+      ? data[i + 3]
+      : Math.round(255 - (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]));
+    data[i] = tr;
+    data[i + 1] = tg;
+    data[i + 2] = tb;
+    data[i + 3] = alpha;
+  }
+  ctx.putImageData(img, 0, 0);
+  return canvas;
+}
+
 /** Draws a logo clipped to its own rounded-rect — softening its corners
  *  directly instead of putting a backing chip or outline behind it. When
- *  `monotone` is set, the logo's silhouette (its alpha shape) is kept but
- *  every opaque pixel is recolored to a single flat tint — matching the
- *  stamp's own text color for a consistent, single-ink, premium look
- *  instead of a row of differently-colored brand marks. */
+ *  `monotone` is set, the logo's silhouette is kept but every opaque pixel
+ *  is recolored to a single flat tint — matching the stamp's own text
+ *  color for a consistent, single-ink, premium look instead of a row of
+ *  differently-colored brand marks. */
 function drawRoundedLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, x: number, y: number, w: number, h: number, monotone?: string) {
   ctx.save();
   roundedRectPath(ctx, x, y, w, h, Math.min(w, h) * 0.16);
   ctx.clip();
   if (monotone) {
-    const tinted = document.createElement("canvas");
-    tinted.width = w;
-    tinted.height = h;
-    const tctx = tinted.getContext("2d");
-    if (tctx) {
-      tctx.drawImage(logo, 0, 0, w, h);
-      tctx.globalCompositeOperation = "source-in";
-      tctx.fillStyle = monotone;
-      tctx.fillRect(0, 0, w, h);
-      ctx.drawImage(tinted, x, y, w, h);
-    } else {
-      ctx.drawImage(logo, x, y, w, h);
-    }
+    ctx.drawImage(monotoneTint(logo, w, h, monotone), x, y, w, h);
   } else {
     ctx.drawImage(logo, x, y, w, h);
   }
