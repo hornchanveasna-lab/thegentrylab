@@ -41,11 +41,11 @@ function CompanyMark({ userId }: { userId: string | undefined }) {
   const { data: account } = useCMAccountSettings(userId);
   if (!account?.company_logo_url && !account?.company_name) return <div />;
   return (
-    <div className="flex items-center gap-2.5 min-w-0">
+    <div className="flex items-center gap-3 min-w-0">
       {account.company_logo_url && (
-        <img src={account.company_logo_url} alt="" className="w-9 h-9 rounded-xl object-contain bg-white/5 shrink-0" />
+        <img src={account.company_logo_url} alt="" className="h-12 max-w-[160px] w-auto object-contain shrink-0" />
       )}
-      {account.company_name && <span className="text-[14px] font-bold text-white/85 truncate">{account.company_name}</span>}
+      {account.company_name && <span className="text-[16px] font-bold text-white/85 truncate">{account.company_name}</span>}
     </div>
   );
 }
