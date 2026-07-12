@@ -221,6 +221,8 @@ function ConsultantsSection({ ownerId, projectId }: { ownerId: string; projectId
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
   const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_project_consultants", projectId] });
 
   const handleAdd = async () => {
@@ -241,21 +243,43 @@ function ConsultantsSection({ ownerId, projectId }: { ownerId: string; projectId
     }
   };
 
+  const startEditing = (c: { id: string; name: string }) => {
+    setEditingId(c.id);
+    setEditValue(c.name);
+  };
+
+  const commitEdit = async (id: string) => {
+    const trimmed = editValue.trim();
+    setEditingId(null);
+    if (trimmed) {
+      await updateCMProjectConsultant(id, { name: trimmed });
+      invalidate();
+    }
+  };
+
   return (
     <Card title={t("projectSettings.consultants")}>
       <div className="flex flex-col gap-2">
         {(consultants ?? []).map((c) => (
           <div key={c.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
-            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
+            {editingId === c.id ? (
+              <input
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
+                value={editValue}
+                autoFocus
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => commitEdit(c.id)}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditingId(null); }}
+              />
+            ) : (
+              <p onClick={() => startEditing(c)} className="text-[12px] text-white/80 flex-1 truncate cursor-text">{c.name}</p>
+            )}
+            <label className="h-10 max-w-[110px] px-1.5 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer">
               {c.logo_url ? (
-                <img src={c.logo_url} alt="" className="w-full h-full object-contain" />
+                <img src={c.logo_url} alt="" className="h-full w-auto object-contain" style={{ opacity: uploadingId === c.id ? 0.4 : 1 }} />
               ) : (
-                <span className="text-white/20 text-[8px] font-mono uppercase">{t("projectSettings.none")}</span>
+                <span className="text-white/20 text-[8px] font-mono uppercase px-1">{uploadingId === c.id ? "…" : t("projectSettings.none")}</span>
               )}
-            </div>
-            <p className="text-[12px] text-white/80 flex-1 truncate">{c.name}</p>
-            <label className="font-mono text-[9px] uppercase tracking-widest cursor-pointer shrink-0" style={{ color: "#ff5100" }}>
-              {uploadingId === c.id ? "…" : t("projectSettings.consultantLogo")}
               <input type="file" accept="image/*" className="hidden" disabled={uploadingId === c.id}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(c.id, f); }} />
             </label>
