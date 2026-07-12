@@ -74,8 +74,8 @@ function MonotonePreviewToggle({ enabled, onChange }: { enabled: boolean; onChan
   const { t } = useCMLang();
   return (
     <button type="button" onClick={() => onChange(!enabled)}
-      className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors"
-      style={{ color: enabled ? "#ff5100" : "rgba(255,255,255,0.35)" }}>
+      className={`flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${enabled ? "" : "text-white/35"}`}
+      style={enabled ? { color: "#ff5100" } : undefined}>
       <span className={`w-7 h-4 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-white/15"}`}
         style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
         <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform"
@@ -133,6 +133,18 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
+  };
+
+  const handleOpenMap = () => {
+    if (locationMapUrl.trim()) {
+      window.open(locationMapUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const query = address.trim() || location.trim() || [name.trim(), client.trim()].filter(Boolean).join(", ");
+    const url = query
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+      : "https://www.google.com/maps";
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleSave = async () => {
@@ -206,9 +218,8 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
             <div className="flex gap-1.5">
               <input className={`${inputCls} flex-1`} value={locationMapUrl} onChange={(e) => setLocationMapUrl(e.target.value)}
                 placeholder={t("projectSettings.mapLinkPlaceholder")} />
-              <button type="button" onClick={() => window.open(locationMapUrl, "_blank", "noopener,noreferrer")}
-                disabled={!locationMapUrl.trim()} title={t("projectSettings.openMap")}
-                className="shrink-0 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-[#ff5100] disabled:opacity-30 transition-colors">
+              <button type="button" onClick={handleOpenMap} title={t("projectSettings.openMap")}
+                className="shrink-0 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-[#ff5100] transition-colors">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" /><circle cx="12" cy="9" r="2.4" />
                 </svg>
@@ -247,16 +258,6 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
 }
 
 /* ── Client logo ──────────────────────────────────────── */
-function EditBadge() {
-  return (
-    <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-black/70 border border-white/10 flex items-center justify-center text-white/70">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-      </svg>
-    </span>
-  );
-}
-
 function LogoSection({ project, ownerId, onChanged, previewMonotone, onTogglePreview }: {
   project: CMProject; ownerId: string; onChanged: () => void; previewMonotone: boolean; onTogglePreview: (v: boolean) => void;
 }) {
@@ -277,15 +278,15 @@ function LogoSection({ project, ownerId, onChanged, previewMonotone, onTogglePre
 
   return (
     <Card title={t("projectSettings.clientLogo")} action={<MonotonePreviewToggle enabled={previewMonotone} onChange={onTogglePreview} />}>
-      <label className="inline-block relative cursor-pointer">
-        <div className="h-16 max-w-[220px] rounded-2xl overflow-hidden flex items-center justify-center">
+      <label className="inline-block cursor-pointer">
+        <div className="h-16 max-w-[220px] rounded-2xl overflow-hidden flex items-center justify-center"
+          style={previewSrc ? { backgroundColor: "#111318" } : undefined}>
           {project.client_logo_url ? (
-            <img src={previewSrc ?? project.client_logo_url} alt="" className="h-full w-auto object-contain" style={{ opacity: uploading ? 0.4 : 1 }} />
+            <img src={previewSrc ?? project.client_logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-3" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
           ) : (
             <span className="text-white/20 text-[10px] font-mono uppercase bg-white/5 rounded-2xl px-4 py-5">{t("projectSettings.none")}</span>
           )}
         </div>
-        <EditBadge />
         <input type="file" accept="image/*" className="hidden" disabled={uploading}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
       </label>
@@ -323,13 +324,13 @@ function ConsultantRow({ c, editing, editValue, onEditValueChange, onStartEdit, 
       ) : (
         <p onClick={onStartEdit} className="text-[12px] text-white/80 flex-1 truncate cursor-text">{c.name}</p>
       )}
-      <label className="relative h-10 max-w-[110px] rounded-lg overflow-hidden flex items-center justify-center shrink-0 cursor-pointer">
+      <label className="h-10 max-w-[110px] rounded-lg overflow-hidden flex items-center justify-center shrink-0 cursor-pointer"
+        style={previewSrc ? { backgroundColor: "#111318" } : undefined}>
         {c.logo_url ? (
-          <img src={previewSrc ?? c.logo_url} alt="" className="h-full w-auto object-contain" style={{ opacity: uploading ? 0.4 : 1 }} />
+          <img src={previewSrc ?? c.logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-2" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
         ) : (
           <span className="text-white/20 text-[8px] font-mono uppercase bg-white/5 rounded-lg px-2 py-3">{uploading ? "…" : t("projectSettings.none")}</span>
         )}
-        <EditBadge />
         <input type="file" accept="image/*" className="hidden" disabled={uploading}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadLogo(f); }} />
       </label>
