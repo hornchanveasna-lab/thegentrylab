@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -139,11 +139,11 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
         </div>
         <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
       </div>
+      <SegmentedField
+        options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
+        value={item.status} disabled={busy} onChange={handleStatusChange}
+      />
       <div className="flex flex-wrap items-center gap-2 mt-1">
-        <select value={item.status} disabled={busy} onChange={(e) => handleStatusChange(e.target.value as SubmittalStatus)}
-          className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: sc }}>
-          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`submittalStatus.${s}`)}</option>)}
-        </select>
         {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>

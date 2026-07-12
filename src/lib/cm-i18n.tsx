@@ -281,6 +281,8 @@ const EN: Dict = {
   "photos.shareFailed": "Couldn't share this photo",
   "photos.linkCopied": "Link copied",
   "photos.showInReport": "Show in report",
+  "photos.viewGrid": "Grid view",
+  "photos.viewCalendar": "Calendar view",
 
   "directory.title": "Directory",
   "directory.new": "New Contact",
@@ -600,6 +602,8 @@ const KM: Dict = {
   "photos.shareFailed": "មិនអាចចែករំលែករូបភាពនេះបានទេ",
   "photos.linkCopied": "បានចម្លងតំណ",
   "photos.showInReport": "បង្ហាញនៅក្នុងរបាយការណ៍",
+  "photos.viewGrid": "ទិដ្ឋភាពក្រឡាចត្រង្គ",
+  "photos.viewCalendar": "ទិដ្ឋភាពប្រតិទិន",
 
   "directory.title": "បញ្ជីទំនាក់ទំនង",
   "directory.new": "ទំនាក់ទំនងថ្មី",
@@ -919,6 +923,8 @@ const ZH: Dict = {
   "photos.shareFailed": "无法分享此照片",
   "photos.linkCopied": "已复制链接",
   "photos.showInReport": "在报告中查看",
+  "photos.viewGrid": "网格视图",
+  "photos.viewCalendar": "日历视图",
 
   "directory.title": "通讯录",
   "directory.new": "新建联系人",
