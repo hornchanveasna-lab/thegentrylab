@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, MODULE_ROUTES, setPendingHighlight,
+  PhotoLightbox, MODULE_ROUTES, setPendingHighlight, useLongPress,
 } from "@/components/cm/shared";
 import {
   useAllCMPhotos,
@@ -14,6 +14,7 @@ import {
   useCMProjectConsultants,
   stampPhoto,
   uploadCMPhotoWithThumb,
+  deleteCMPhoto,
   createCMDailyLog,
   updateCMDailyLog,
   createCMInspection,
@@ -37,6 +38,43 @@ export const Route = createFileRoute("/cm/photos")({
 const MODULE_OPTIONS: CMPhotoModule[] = ["siteDiary", "inspection", "punchList", "safety", "submittal"];
 type GroupBy = "date" | "project" | "type";
 const GROUP_OPTIONS: GroupBy[] = ["date", "project", "type"];
+
+const MODULE_COLOR: Record<CMPhotoModule, string> = {
+  siteDiary: "#3b82f6",
+  inspection: "#22c55e",
+  punchList: "#a855f7",
+  safety: "#ef4444",
+  submittal: "#06b6d4",
+};
+
+const MODULE_ICON: Record<CMPhotoModule, React.ReactNode> = {
+  siteDiary: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="13" height="16" rx="2" /><path d="M8 8.5h5M8 12.5h5" /><path d="M15.3 15.6l4-4 2 2-4 4h-2v-2z" />
+    </svg>
+  ),
+  inspection: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10.2" cy="10.2" r="6.4" /><path d="M7.3 10.4l1.9 1.9 3.7-3.7" /><path d="M14.8 14.8L20 20" />
+    </svg>
+  ),
+  punchList: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
+  ),
+  safety: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4.3 15.2a7.7 7.7 0 0 1 15.4 0" /><rect x="2.8" y="15.2" width="18.4" height="2.8" rx="1.4" />
+      <path d="M12 6.3V3.4" /><path d="M12 3.4h2.2" />
+    </svg>
+  ),
+  submittal: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+    </svg>
+  ),
+};
 
 const GROUP_ICON: Record<GroupBy, React.ReactNode> = {
   date: (
@@ -82,9 +120,14 @@ function PhotoSettingsSheet({ ownerId, watermark, timestamp, onClose, onChanged 
   ownerId: string; watermark: boolean; timestamp: boolean; onClose: () => void; onChanged: () => void;
 }) {
   const { t } = useCMLang();
+  const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
   const toggle = async (patch: { photo_watermark?: boolean; photo_timestamp?: boolean }) => {
+    // Write straight into the cache first so the switch (and anything else
+    // reading these settings, like the New Photo sheet) reflects the change
+    // instantly instead of waiting on a refetch round-trip.
+    queryClient.setQueryData(["cm_account_settings", ownerId], (old: Record<string, unknown> | undefined) => old ? { ...old, ...patch } : old);
     setBusy(true);
     try { await upsertCMAccountSettings(ownerId, patch); onChanged(); } finally { setBusy(false); }
   };
@@ -133,6 +176,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const addMoreInputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -226,11 +270,12 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
                 className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
             </div>
           ))}
-          <label className="w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 cursor-pointer hover:border-white/40 hover:text-white/60 transition-colors">
+          <button type="button" disabled={saving} onClick={() => addMoreInputRef.current?.click()}
+            className="w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 hover:border-white/40 hover:text-white/60 transition-colors disabled:opacity-40">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            <input type="file" accept="image/*" multiple className="hidden" disabled={saving}
-              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          </label>
+          </button>
+          <input ref={addMoreInputRef} type="file" accept="image/*" multiple className="hidden" disabled={saving}
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -368,12 +413,31 @@ function CMPhotosPage() {
   const [lightbox, setLightbox] = useState<{ items: CMPhotoWithContext[]; index: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [actionItem, setActionItem] = useState<CMPhotoWithContext | null>(null);
+  const bindLongPress = useLongPress();
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_all_photos", user?.id] });
     setShowNew(false);
   };
   const invalidateAccount = () => queryClient.invalidateQueries({ queryKey: ["cm_account_settings", user?.id] });
+
+  const handleSharePhoto = async (p: CMPhotoWithContext) => {
+    try {
+      if (navigator.share) { await navigator.share({ url: p.url }); return; }
+      await navigator.clipboard.writeText(p.url);
+    } catch { /* user cancelled the native share sheet, or clipboard was denied */ }
+  };
+
+  const handleDeletePhoto = async (p: CMPhotoWithContext) => {
+    if (!window.confirm(t("photos.deleteConfirm"))) return;
+    try {
+      await deleteCMPhoto(p.module, p.recordId, p.url);
+      queryClient.invalidateQueries({ queryKey: ["cm_all_photos", user?.id] });
+    } catch {
+      window.alert(t("photos.deleteFailed"));
+    }
+  };
 
   const projectOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -499,15 +563,15 @@ function CMPhotosPage() {
               <div key={gi}>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
                 <div className="grid grid-cols-3 gap-2.5">
-                  {group.items.map((p, i) => {
-                    const badge = groupBy === "project" ? t(`tile.${p.module}`) : groupBy === "type" ? p.projectName : `${p.projectName} · ${t(`tile.${p.module}`)}`;
-                    return (
-                      <button key={`${p.url}-${i}`} onClick={() => setLightbox({ items: filtered, index: filtered.indexOf(p) })} className="relative aspect-square group">
-                        <img src={p.thumbUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
-                        <span className="absolute bottom-1.5 left-1.5 right-1.5 font-mono text-[8px] px-1.5 py-0.5 rounded-full bg-black/70 text-white/[0.75] truncate text-left">{badge}</span>
-                      </button>
-                    );
-                  })}
+                  {group.items.map((p, i) => (
+                    <button key={`${p.url}-${i}`} {...bindLongPress(`${p.url}-${i}`, () => setActionItem(p))}
+                      onClick={() => setLightbox({ items: filtered, index: filtered.indexOf(p) })} className="relative aspect-square group">
+                      <img src={p.thumbUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
+                      <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-black/60" style={{ color: MODULE_COLOR[p.module] }}>
+                        {MODULE_ICON[p.module]}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
             ))}
@@ -555,7 +619,38 @@ function CMPhotosPage() {
             setLightbox(null);
             navigate({ to: MODULE_ROUTES[item.module] });
           }}
+          onDelete={async (item) => {
+            if (!item.module || !item.recordId) return;
+            try {
+              await deleteCMPhoto(item.module, item.recordId, item.url);
+              queryClient.invalidateQueries({ queryKey: ["cm_all_photos", user?.id] });
+              setLightbox(null);
+            } catch {
+              window.alert(t("photos.deleteFailed"));
+            }
+          }}
         />
+      )}
+
+      {actionItem && (
+        <Sheet title={t("photos.actions")} onClose={() => setActionItem(null)}>
+          <div className="px-6 pb-8 pt-2 flex flex-col gap-2">
+            <button onClick={() => { const p = actionItem; setActionItem(null); handleSharePhoto(p); }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[13px] text-white/85 text-left transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="M16 6l-4-4-4 4" /><path d="M12 2v14" />
+              </svg>
+              {t("photos.share")}
+            </button>
+            <button onClick={() => { const p = actionItem; setActionItem(null); handleDeletePhoto(p); }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-[13px] text-red-400 text-left transition-colors">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
+              </svg>
+              {t("photos.delete")}
+            </button>
+          </div>
+        </Sheet>
       )}
     </div>
   );

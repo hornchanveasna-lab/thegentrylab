@@ -243,15 +243,28 @@ export interface StampPhotoOptions {
   location?: string | null;
 }
 
+function chamferRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + c, y);
+  ctx.lineTo(x + w - c, y);
+  ctx.lineTo(x + w, y + c);
+  ctx.lineTo(x + w, y + h - c);
+  ctx.lineTo(x + w - c, y + h);
+  ctx.lineTo(x + c, y + h);
+  ctx.lineTo(x, y + h - c);
+  ctx.lineTo(x, y + c);
+  ctx.closePath();
+}
+
 /** Burns project identification onto a photo before it's uploaded, so the
  *  record stays legible even if it's later exported or shared outside the
- *  app. Layout: the company logo sits alone, top-right, plain (no shadow —
- *  logos don't need one). Bottom-left holds the project logo beside the
- *  project name/code/location, with every consultant logo in a row directly
- *  beneath. Bottom-right holds the capture date/time. Text keeps a soft
- *  drop-shadow for legibility over any background. Keeps the original pixel
- *  dimensions — this is the full-quality photo that gets stored, not a
- *  thumbnail. */
+ *  app. Layout: every logo (company, client/project, all consultants) sits
+ *  together in one centered row at the top, each inside a chamfered chip
+ *  with a translucent light backing and no outline. Bottom-left holds the
+ *  project name/code/location as plain text; bottom-right holds the capture
+ *  date/time. Text keeps a soft drop-shadow for legibility over any
+ *  background. Keeps the original pixel dimensions — this is the
+ *  full-quality photo that gets stored, not a thumbnail. */
 export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<File> {
   if (!opts.watermark && !opts.timestamp) return file;
   const img = await loadImage(file);
@@ -277,61 +290,51 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
   };
 
   if (opts.watermark) {
-    // ── top-right: company logo, alone, plain ──
-    const companyLogo = opts.companyLogoUrl ? await loadExternalImage(opts.companyLogoUrl) : null;
-    if (companyLogo) {
-      const companyLogoH = 52 * scale;
-      const w = (companyLogo.naturalWidth / companyLogo.naturalHeight) * companyLogoH;
-      ctx.drawImage(companyLogo, canvas.width - pad - w, pad, w, companyLogoH);
-    }
-
-    // ── bottom-left: project logo + project name/code/location, with every
-    //    consultant logo in a row directly beneath ──
-    let leftCursorY = canvas.height - pad;
-
-    const consultantLogos = (await Promise.all((opts.consultantLogoUrls ?? []).map(loadExternalImage))).filter(
-      (l): l is HTMLImageElement => !!l,
+    // ── top-center: every logo together, each in a chamfered, translucent chip ──
+    const logoUrls = [opts.companyLogoUrl, opts.clientLogoUrl, ...(opts.consultantLogoUrls ?? [])].filter(
+      (u): u is string => !!u,
     );
-    if (consultantLogos.length > 0) {
-      const maxRowWidth = canvas.width * 0.6;
+    const logos = (await Promise.all(logoUrls.map(loadExternalImage))).filter((l): l is HTMLImageElement => !!l);
+    if (logos.length > 0) {
+      const maxRowWidth = canvas.width * 0.92;
+      const chipPad = 8 * scale;
+      const chamfer = 6 * scale;
       const gap = 8 * scale;
-      let logoH = 40 * scale;
-      const widthAt = (h: number) => consultantLogos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (consultantLogos.length - 1);
-      while (widthAt(logoH) > maxRowWidth && logoH > 18 * scale) logoH -= 2 * scale;
-      let x = pad;
-      const y = leftCursorY - logoH;
-      for (const logo of consultantLogos) {
+      let logoH = 36 * scale;
+      const chipWidthAt = (h: number, l: HTMLImageElement) => (l.naturalWidth / l.naturalHeight) * h + chipPad * 2;
+      const rowWidthAt = (h: number) => logos.reduce((sum, l) => sum + chipWidthAt(h, l), 0) + gap * (logos.length - 1);
+      while (rowWidthAt(logoH) > maxRowWidth && logoH > 16 * scale) logoH -= 2 * scale;
+
+      const chipH = logoH + chipPad * 2;
+      let x = (canvas.width - rowWidthAt(logoH)) / 2;
+      const y = pad;
+      for (const logo of logos) {
         const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
-        ctx.drawImage(logo, x, y, w, logoH);
-        x += w + gap;
+        const chipW = w + chipPad * 2;
+        chamferRectPath(ctx, x, y, chipW, chipH, chamfer);
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fill();
+        ctx.drawImage(logo, x + chipPad, y + chipPad, w, logoH);
+        x += chipW + gap;
       }
-      leftCursorY -= logoH + pad * 0.5;
     }
 
-    const projectLogo = opts.clientLogoUrl ? await loadExternalImage(opts.clientLogoUrl) : null;
+    // ── bottom-left: project name/code/location, plain text ──
     const lines: { text: string; fontSize: number; weight: number }[] = [];
     if (opts.projectName) lines.push({ text: opts.projectName, fontSize: 21 * scale, weight: 700 });
     if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500 });
     if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500 });
 
-    const projectLogoH = 64 * scale;
-    const lineGap = 4 * scale;
-    const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
-
-    let leftX = pad;
-    if (projectLogo) {
-      const w = (projectLogo.naturalWidth / projectLogo.naturalHeight) * projectLogoH;
-      ctx.drawImage(projectLogo, leftX, leftCursorY - projectLogoH, w, projectLogoH);
-      leftX += w + pad * 0.7;
-    }
     if (lines.length > 0) {
+      const lineGap = 4 * scale;
+      const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      let ly = leftCursorY - textBlockH;
+      let ly = canvas.height - pad - textBlockH;
       for (const l of lines) {
         ctx.font = `${l.weight} ${l.fontSize}px sans-serif`;
         ctx.fillStyle = "#fff";
-        fillShadowedText(l.text, leftX, ly);
+        fillShadowedText(l.text, pad, ly);
         ly += l.fontSize + lineGap;
       }
     }
@@ -392,6 +395,48 @@ export async function uploadCMPhotoWithThumb(ownerId: string, projectId: string,
     uploadCMPhoto(ownerId, projectId, thumbFile),
   ]);
   return { url, thumbUrl };
+}
+
+const PHOTO_MODULE_TABLE: Record<CMPhotoModule, string> = {
+  siteDiary: "cm_daily_logs",
+  inspection: "cm_inspections",
+  punchList: "cm_tasks",
+  safety: "cm_safety_records",
+  submittal: "cm_submittals",
+};
+
+function storagePathFromSignedUrl(url: string): string | null {
+  try {
+    const marker = "/object/sign/site-media/";
+    const idx = new URL(url).pathname.indexOf(marker);
+    return idx === -1 ? null : decodeURIComponent(new URL(url).pathname.slice(idx + marker.length));
+  } catch {
+    return null;
+  }
+}
+
+/** Removes one photo from its record's photos/photo_thumbs arrays — the
+ *  long-press delete action in the Photos gallery — and best-effort deletes
+ *  the underlying storage objects so removed photos don't keep costing
+ *  storage. */
+export async function deleteCMPhoto(module: CMPhotoModule, recordId: string, url: string) {
+  const table = PHOTO_MODULE_TABLE[module];
+  const client = db();
+  const { data, error } = await client.from(table).select("photos, photo_thumbs").eq("id", recordId).single();
+  if (error) throw error;
+  const row = data as { photos: string[]; photo_thumbs: string[] };
+  const idx = row.photos.indexOf(url);
+  const thumbUrl = idx !== -1 ? row.photo_thumbs?.[idx] : undefined;
+  const photos = row.photos.filter((_, i) => i !== idx);
+  const photo_thumbs = (row.photo_thumbs ?? []).filter((_, i) => i !== idx);
+
+  const { error: updErr } = await client.from(table).update({ photos, photo_thumbs }).eq("id", recordId);
+  if (updErr) throw updErr;
+
+  const paths = [storagePathFromSignedUrl(url), thumbUrl ? storagePathFromSignedUrl(thumbUrl) : null].filter((p): p is string => !!p);
+  if (paths.length > 0) {
+    try { await client.storage.from("site-media").remove(paths); } catch { /* best-effort cleanup, non-fatal */ }
+  }
 }
 
 export async function uploadCMLogo(ownerId: string, projectId: string, file: File): Promise<string> {
