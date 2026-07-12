@@ -17,7 +17,9 @@ export interface CMProject {
   owner_id: string;
   name: string;
   client: string | null;
+  address: string | null;
   location: string | null;
+  location_map_url: string | null;
   status: ProjectStatus;
   start_date: string | null;
   target_end_date: string | null;
@@ -109,7 +111,7 @@ export function useCMProject(projectId: string | undefined) {
 
 export async function createCMProject(
   ownerId: string,
-  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "location" | "status" | "start_date" | "target_end_date" | "description" | "project_code">>,
+  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "address" | "location" | "location_map_url" | "status" | "start_date" | "target_end_date" | "description" | "project_code">>,
 ) {
   const { data, error } = await db().from("cm_projects").insert({ owner_id: ownerId, ...input }).select().single();
   if (error) throw error;
@@ -330,6 +332,17 @@ function monotoneTint(logo: HTMLImageElement, w: number, h: number, color: strin
   }
   ctx.putImageData(img, 0, 0);
   return canvas;
+}
+
+/** Runs a logo URL through the exact same monotone algorithm used when
+ *  burning the photo stamp, so a settings-page "preview monotone" toggle
+ *  shows the real result instead of a rough CSS-filter approximation.
+ *  Returns null if the image can't be loaded (e.g. CORS). */
+export async function monotonePreviewUrl(logoUrl: string, color = "#ffffff"): Promise<string | null> {
+  const img = await loadExternalImage(logoUrl);
+  if (!img) return null;
+  const canvas = monotoneTint(img, img.naturalWidth, img.naturalHeight, color);
+  return canvas.toDataURL("image/png");
 }
 
 /** Draws a logo clipped to its own rounded-rect — softening its corners
