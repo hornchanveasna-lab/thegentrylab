@@ -15,6 +15,10 @@ const EN: Dict = {
   "common.createProjectFirst": "Create a",
   "common.project": "project",
   "common.first": "first.",
+  "common.search": "Search",
+  "common.sort": "Sort",
+  "common.newestFirst": "Newest first",
+  "common.oldestFirst": "Oldest first",
 
   "home.title": "Construction Management",
   "home.signedOutSubtitle": "Daily site diaries, punch lists, and photo logs for your construction projects.",
@@ -363,6 +367,10 @@ const KM: Dict = {
   "common.createProjectFirst": "បង្កើត",
   "common.project": "គម្រោង",
   "common.first": "សិន។",
+  "common.search": "ស្វែងរក",
+  "common.sort": "តម្រៀប",
+  "common.newestFirst": "ថ្មីបំផុតមុន",
+  "common.oldestFirst": "ចាស់បំផុតមុន",
 
   "home.title": "គ្រប់គ្រងសំណង់",
   "home.signedOutSubtitle": "កំណត់ហេតុប្រចាំថ្ងៃ បញ្ជីការងារនៅសល់ និងរូបភាពសម្រាប់គម្រោងសំណង់របស់អ្នក។",
@@ -711,6 +719,10 @@ const ZH: Dict = {
   "common.createProjectFirst": "请先创建",
   "common.project": "项目",
   "common.first": "。",
+  "common.search": "搜索",
+  "common.sort": "排序",
+  "common.newestFirst": "最新优先",
+  "common.oldestFirst": "最早优先",
 
   "home.title": "施工管理",
   "home.signedOutSubtitle": "为您的建筑项目提供每日施工日志、问题清单和照片记录。",

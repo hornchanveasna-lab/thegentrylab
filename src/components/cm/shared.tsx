@@ -139,6 +139,73 @@ export function BackButton({ onClick, to }: { onClick?: () => void; to?: string 
   return <button onClick={onClick} className={cls}>{content}</button>;
 }
 
+/** The one page-header pattern every module list page shares: a back
+ *  button, a title that swaps for a search input, and a "⋮" menu — all
+ *  pinned (`sticky`) so they stay visible while the list scrolls beneath
+ *  them, matching the Telegram reference the design follows. */
+export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort }: {
+  title: string;
+  search: string;
+  onSearchChange: (v: string) => void;
+  searchPlaceholder?: string;
+  sortAsc: boolean;
+  onToggleSort: (v: boolean) => void;
+}) {
+  const { t } = useCMLang();
+  const [showSearch, setShowSearch] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+
+  return (
+    <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
+      <BackButton to="/cm" />
+      {showSearch ? (
+        <input
+          autoFocus
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder={searchPlaceholder ?? t("common.search")}
+          className="flex-1 min-w-0 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2 text-[14px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+        />
+      ) : (
+        <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
+      )}
+      <button type="button" aria-label={t("common.search")}
+        onClick={() => setShowSearch((v) => { const next = !v; if (!next) onSearchChange(""); return next; })}
+        className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0">
+        {showSearch ? (
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+        )}
+      </button>
+      <div className="relative shrink-0">
+        <button type="button" aria-label={t("common.sort")} onClick={() => setShowMenu((v) => !v)}
+          className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
+        </button>
+        {showMenu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+              {[{ asc: false, label: t("common.newestFirst") }, { asc: true, label: t("common.oldestFirst") }].map((opt) => (
+                <button key={String(opt.asc)} type="button" onClick={() => { onToggleSort(opt.asc); setShowMenu(false); }}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
+                  <span className="text-[13px] text-white/85">{opt.label}</span>
+                  {sortAsc === opt.asc && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <path d="M4 12.5l5 5L20 6" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -483,7 +550,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
         </div>
         <div className="relative shrink-0">
           <button onClick={() => setMenuOpen((v) => !v)} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.10] text-white/[0.80] hover:text-white">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-11 w-52 rounded-2xl bg-[#181818] border border-white/[0.10] overflow-hidden shadow-xl">

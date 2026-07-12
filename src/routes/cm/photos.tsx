@@ -446,6 +446,8 @@ function CMPhotosPage() {
   const [lightbox, setLightbox] = useState<{ items: CMPhotoWithContext[]; index: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [search, setSearch] = useState("");
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
   const selectMode = selectedUrls.size > 0;
   const bindLongPress = useLongPress();
@@ -488,8 +490,11 @@ function CMPhotosPage() {
     return Array.from(map.entries());
   }, [photos]);
 
+  const searchQuery = search.trim().toLowerCase();
   const filtered = (photos ?? []).filter((p) =>
-    (projectFilter === "all" || p.projectId === projectFilter) && (typeFilter === "all" || p.module === typeFilter));
+    (projectFilter === "all" || p.projectId === projectFilter) &&
+    (typeFilter === "all" || p.module === typeFilter) &&
+    (!searchQuery || [p.caption, p.projectName].some((f) => f?.toLowerCase().includes(searchQuery))));
 
   const filterSubtitle = useMemo(() => {
     const parts: string[] = [];
@@ -532,14 +537,33 @@ function CMPhotosPage() {
       <main className="max-w-md mx-auto w-full px-4 pb-28">
         <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
           <BackButton to="/cm" />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-extrabold tracking-tight text-white truncate">{t("photos.title")}</h1>
-            <p className="text-[11px] text-white/40 truncate">{filterSubtitle}</p>
-          </div>
+          {showSearch ? (
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("common.search")}
+              className="flex-1 min-w-0 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2 text-[14px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+            />
+          ) : (
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-extrabold tracking-tight text-white truncate">{t("photos.title")}</h1>
+              <p className="text-[11px] text-white/40 truncate">{filterSubtitle}</p>
+            </div>
+          )}
+          <button type="button" aria-label={t("common.search")}
+            onClick={() => setShowSearch((v) => { const next = !v; if (!next) setSearch(""); return next; })}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0">
+            {showSearch ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+            )}
+          </button>
           <div className="relative shrink-0">
             <button onClick={() => setShowSettings((v) => !v)} aria-label={t("photos.settingsTitle")}
               className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
             </button>
             {showSettings && (
               <PhotoSettingsDropdown

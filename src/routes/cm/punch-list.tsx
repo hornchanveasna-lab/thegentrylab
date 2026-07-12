@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -166,11 +166,20 @@ function CMPunchListPage() {
   const [showNew, setShowNew] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [search, setSearch] = useState("");
+  const [sortAsc, setSortAsc] = useState(false);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
 
-  const open = (items ?? []).filter((t) => t.status !== "Done");
-  const done = (items ?? []).filter((t) => t.status === "Done");
+  const visibleItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = items ?? [];
+    if (q) list = list.filter((it) => [it.title, it.description].some((f) => f?.toLowerCase().includes(q)));
+    return sortAsc ? [...list].reverse() : list;
+  }, [items, search, sortAsc]);
+
+  const open = visibleItems.filter((t) => t.status !== "Done");
+  const done = visibleItems.filter((t) => t.status === "Done");
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -183,12 +192,9 @@ function CMPunchListPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
-        <div className="flex items-center gap-3 mb-2">
-          <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("punchList.title")}</h1>
-        </div>
-        <p className="text-[12px] text-white/35 mb-5 ml-[3.25rem]">{t("punchList.subtitle")}</p>
+      <main className="max-w-md mx-auto w-full px-4 pb-28">
+        <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+        <p className="text-[12px] text-white/35 mb-5">{t("punchList.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
