@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity } from "@/lib/cm-data";
+import { useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus } from "@/lib/cm-data";
 import { useCMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
@@ -10,6 +10,24 @@ const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg
 export interface FieldSelectOption<T extends string> {
   value: T;
   label: string;
+}
+
+export const EQUIPMENT_STATUS_OPTIONS: EquipmentStatus[] = ["Operational", "Maintenance", "Out of Service"];
+export const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = { Operational: "#34d399", Maintenance: "#fbbf24", "Out of Service": "#f43f5e" };
+
+/** A titled card shell used by Project Settings and the new dedicated
+ *  BOQ/Schedule/Manpower/Equipment/Dashboard pages, so every module-level
+ *  "section" reads the same. */
+export function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{title}</p>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 /** A generic add/remove row-list editor — one row card per item with a
