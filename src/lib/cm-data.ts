@@ -232,17 +232,6 @@ function loadExternalImage(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
-function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  if (typeof ctx.roundRect === "function") { ctx.roundRect(x, y, w, h, r); return; }
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
 export interface StampPhotoOptions {
   watermark: boolean;
   timestamp: boolean;
@@ -256,8 +245,10 @@ export interface StampPhotoOptions {
 
 /** Burns project identification onto a photo before it's uploaded, so the
  *  record stays legible even if it's later exported or shared outside the
- *  app: a row of company/client/consultant logos across the top, the project
- *  name/code/location bottom-left, and the capture date/time bottom-right.
+ *  app. Everything sits in a transparent bottom band (a soft drop-shadow
+ *  keeps it legible over any background instead of a solid backing box):
+ *  the company logo (bigger) plus project name/code/location bottom-left,
+ *  and the client/consultant logos plus capture date/time bottom-right.
  *  Keeps the original pixel dimensions — this is the full-quality photo that
  *  gets stored, not a thumbnail. */
 export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<File> {
@@ -271,58 +262,49 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
   ctx.drawImage(img, 0, 0);
 
   const scale = Math.max(1, canvas.width / 1000);
-  const pad = 14 * scale;
+  const pad = 16 * scale;
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.9)";
+  ctx.shadowBlur = 6 * scale;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 1 * scale;
 
   if (opts.watermark) {
-    const logoUrls = [opts.companyLogoUrl, opts.clientLogoUrl, ...(opts.consultantLogoUrls ?? [])].filter((u): u is string => !!u);
-    if (logoUrls.length > 0) {
-      const logos = (await Promise.all(logoUrls.map(loadExternalImage))).filter((l): l is HTMLImageElement => !!l);
-      if (logos.length > 0) {
-        const maxRowWidth = canvas.width * 0.86;
-        const gap = 10 * scale;
-        let logoH = 34 * scale;
-        const widthAt = (h: number) => logos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (logos.length - 1);
-        while (widthAt(logoH) > maxRowWidth && logoH > 14 * scale) logoH -= 2 * scale;
-        const totalW = widthAt(logoH);
-        let x = (canvas.width - totalW) / 2;
-        const y = pad;
-        const chipPad = 4 * scale;
-        for (const logo of logos) {
-          const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
-          ctx.fillStyle = "rgba(255,255,255,0.88)";
-          roundRectPath(ctx, x - chipPad, y - chipPad, w + chipPad * 2, logoH + chipPad * 2, 6 * scale);
-          ctx.fill();
-          ctx.drawImage(logo, x, y, w, logoH);
-          x += w + gap;
-        }
-      }
-    }
+    // ── bottom-left: company logo (bigger) + project name/code/location ──
+    const companyLogo = opts.companyLogoUrl ? await loadExternalImage(opts.companyLogoUrl) : null;
+    const lines: { text: string; fontSize: number; weight: number }[] = [];
+    if (opts.projectName) lines.push({ text: opts.projectName, fontSize: 21 * scale, weight: 700 });
+    if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500 });
+    if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500 });
 
-    const lines: { text: string; fontSize: number; weight: number; color: string }[] = [];
-    if (opts.projectName) lines.push({ text: opts.projectName, fontSize: 21 * scale, weight: 700, color: "#fff" });
-    if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500, color: "rgba(255,255,255,0.8)" });
-    if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500, color: "rgba(255,255,255,0.8)" });
+    const companyLogoH = 52 * scale;
+    const lineGap = 4 * scale;
+    const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
+    const leftBottomY = canvas.height - pad;
+
+    let leftX = pad;
+    if (companyLogo) {
+      const w = (companyLogo.naturalWidth / companyLogo.naturalHeight) * companyLogoH;
+      ctx.drawImage(companyLogo, leftX, leftBottomY - companyLogoH, w, companyLogoH);
+      leftX += w + pad * 0.7;
+    }
     if (lines.length > 0) {
-      const lineGap = 4 * scale;
-      let widest = 0;
-      for (const l of lines) { ctx.font = `${l.weight} ${l.fontSize}px sans-serif`; widest = Math.max(widest, ctx.measureText(l.text).width); }
-      const boxH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * (lines.length - 1) + pad * 1.4;
-      const boxW = widest + pad * 2;
-      const boxX = pad * 0.6;
-      const boxY = canvas.height - boxH - pad * 0.6;
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      roundRectPath(ctx, boxX, boxY, boxW, boxH, 8 * scale);
-      ctx.fill();
+      ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      let ly = boxY + pad * 0.7;
+      let ly = leftBottomY - textBlockH;
       for (const l of lines) {
         ctx.font = `${l.weight} ${l.fontSize}px sans-serif`;
-        ctx.fillStyle = l.color;
-        ctx.fillText(l.text, boxX + pad, ly);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(l.text, leftX, ly);
         ly += l.fontSize + lineGap;
       }
     }
   }
+
+  // ── bottom-right: client/consultant logos, with the timestamp stacked
+  //    directly beneath them so both land together in the same corner ──
+  let rightCursorY = canvas.height - pad;
 
   if (opts.timestamp) {
     const now = new Date();
@@ -335,28 +317,42 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
     const dateFontSize = 16 * scale;
     const timeFontSize = 14 * scale;
     const lineGap = 3 * scale;
-    ctx.font = `700 ${dateFontSize}px sans-serif`;
-    const wDate = ctx.measureText(dateStr).width;
-    ctx.font = `500 ${timeFontSize}px sans-serif`;
-    const wTime = ctx.measureText(timeStr).width;
-    const boxW = Math.max(wDate, wTime) + pad * 2;
-    const boxH = dateFontSize + timeFontSize + lineGap + pad * 1.4;
-    const boxX = canvas.width - boxW - pad * 0.6;
-    const boxY = canvas.height - boxH - pad * 0.6;
 
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    roundRectPath(ctx, boxX, boxY, boxW, boxH, 8 * scale);
-    ctx.fill();
     ctx.textAlign = "right";
-    ctx.textBaseline = "top";
+    ctx.textBaseline = "bottom";
+    ctx.font = `500 ${timeFontSize}px sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.fillText(timeStr, canvas.width - pad, rightCursorY);
+    rightCursorY -= timeFontSize + lineGap;
     ctx.font = `700 ${dateFontSize}px sans-serif`;
     ctx.fillStyle = "#fff";
-    ctx.fillText(dateStr, canvas.width - pad * 0.6 - pad, boxY + pad * 0.7);
-    ctx.font = `500 ${timeFontSize}px sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText(timeStr, canvas.width - pad * 0.6 - pad, boxY + pad * 0.7 + dateFontSize + lineGap);
-    ctx.textAlign = "left";
+    ctx.fillText(dateStr, canvas.width - pad, rightCursorY);
+    rightCursorY -= dateFontSize + pad * 0.5;
   }
+
+  if (opts.watermark) {
+    const rightLogoUrls = [opts.clientLogoUrl, ...(opts.consultantLogoUrls ?? [])].filter((u): u is string => !!u);
+    if (rightLogoUrls.length > 0) {
+      const rightLogos = (await Promise.all(rightLogoUrls.map(loadExternalImage))).filter((l): l is HTMLImageElement => !!l);
+      if (rightLogos.length > 0) {
+        const maxRowWidth = canvas.width * 0.5;
+        const gap = 8 * scale;
+        let logoH = 30 * scale;
+        const widthAt = (h: number) => rightLogos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (rightLogos.length - 1);
+        while (widthAt(logoH) > maxRowWidth && logoH > 14 * scale) logoH -= 2 * scale;
+        const totalW = widthAt(logoH);
+        let x = canvas.width - pad - totalW;
+        const y = rightCursorY - logoH;
+        for (const logo of rightLogos) {
+          const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
+          ctx.drawImage(logo, x, y, w, logoH);
+          x += w + gap;
+        }
+      }
+    }
+  }
+
+  ctx.restore();
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
   if (!blob) return file;
