@@ -39,6 +39,7 @@
   --text-primary: #ffffff;
   --text-muted:   rgba(255,255,255,0.45);
   --text-subtle:  rgba(255,255,255,0.2);
+  --track-off:    rgba(255,255,255,0.15);
 }
 
 /* ── Light mode tokens ───────────────────────────────────── */
@@ -53,6 +54,7 @@
   --text-primary: #111110;
   --text-muted:   rgba(0,0,0,0.50);
   --text-subtle:  rgba(0,0,0,0.25);
+  --track-off:    rgba(0,0,0,0.15);
 }
 
 /* ── Base ────────────────────────────────────────────────── */
@@ -90,6 +92,10 @@
 .nav-link:hover   { color: var(--text-primary); }
 .nav-toggle-btn   { color: var(--text-muted); }
 .nav-toggle-btn:hover { color: var(--text-primary); }
+
+/* ── Translucent dropdown/menu surface (theme-aware) ────── */
+.menu-surface     { background-color: color-mix(in srgb, var(--surface-1) 80%, transparent); }
+.menu-track-off   { background-color: var(--track-off); }
 
 /* ── Chat panel CSS variables ───────────────────────────── */
 :root, [data-theme="dark"] {

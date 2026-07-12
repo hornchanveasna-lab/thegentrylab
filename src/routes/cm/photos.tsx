@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
@@ -102,8 +102,8 @@ function ToggleRow({ icon, label, checked, disabled, onChange }: {
       className="w-full flex items-center gap-3.5 px-4 py-3 text-left hover:bg-white/5 transition-colors disabled:opacity-40">
       <span className="text-white/70 shrink-0">{icon}</span>
       <span className="min-w-0 flex-1 text-[14px] text-white/90">{label}</span>
-      <span role="switch" aria-checked={checked} className="w-10 h-[22px] rounded-full relative shrink-0 transition-colors"
-        style={{ backgroundColor: checked ? "#ff5100" : "rgba(255,255,255,0.15)" }}>
+      <span role="switch" aria-checked={checked} className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors ${checked ? "" : "menu-track-off"}`}
+        style={checked ? { backgroundColor: "#ff5100" } : undefined}>
         <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
           style={{ transform: checked ? "translateX(20px)" : "translateX(2px)" }} />
       </span>
@@ -130,8 +130,7 @@ function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, show
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-11 z-50 w-64 rounded-xl overflow-hidden shadow-xl backdrop-blur-xl"
-        style={{ backgroundColor: "rgba(20,22,28,0.8)" }}>
+      <div className="absolute right-0 top-11 z-50 w-64 rounded-xl overflow-hidden shadow-xl backdrop-blur-xl menu-surface">
         <div className="py-1.5">
           <ToggleRow
             icon={
@@ -178,71 +177,6 @@ function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, show
   );
 }
 
-/** An in-page camera view (getUserMedia + <video>), used instead of handing
- *  off to the OS camera app. Handing off backgrounds the browser tab, and on
- *  memory-constrained devices (or restrictive in-app WebViews) that can get
- *  the tab reloaded while the camera is open — silently wiping out whatever
- *  photo was just taken. Staying on-page avoids that entirely. Falls back to
- *  the native file-picker camera capture if getUserMedia isn't available. */
-function CameraCapture({ onCapture, onCancel, onUnavailable }: {
-  onCapture: (file: File) => void;
-  onCancel: () => void;
-  onUnavailable: () => void;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!navigator.mediaDevices) { onUnavailable(); return; }
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false })
-      .then((stream) => {
-        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-        }
-        setReady(true);
-      })
-      .catch(() => onUnavailable());
-    return () => {
-      cancelled = true;
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleCapture = () => {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0);
-    canvas.toBlob((blob) => {
-      if (blob) onCapture(new File([blob], `capture-${Date.now()}.jpg`, { type: "image/jpeg" }));
-    }, "image/jpeg", 0.92);
-  };
-
-  return (
-    <div className="fixed inset-0 z-[300] bg-black flex flex-col">
-      <video ref={videoRef} autoPlay playsInline muted className="flex-1 w-full h-full object-cover" />
-      <button type="button" onClick={onCancel}
-        className="absolute top-[max(1rem,env(safe-area-inset-top))] left-4 w-9 h-9 rounded-full bg-white/15 text-white flex items-center justify-center">
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></svg>
-      </button>
-      <div className="absolute bottom-0 inset-x-0 flex items-center justify-center pb-[max(2rem,env(safe-area-inset-bottom))] pt-8 bg-gradient-to-t from-black/90 to-transparent">
-        <button type="button" onClick={handleCapture} disabled={!ready} aria-label="Capture"
-          className="w-[68px] h-[68px] rounded-full bg-white ring-4 ring-white/30 disabled:opacity-40 active:scale-95 transition-transform" />
-      </div>
-    </div>
-  );
-}
-
 function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogoUrl, showCompanyLogo, showProjectInfo, showConsultantLogos, timestamp, onClose, onCreated }: {
   ownerId: string;
   projects: CMProject[];
@@ -263,14 +197,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [showCamera, setShowCamera] = useState(false);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
-  const cameraFallbackInputRef = useRef<HTMLInputElement>(null);
-
-  const handleTakePhotoClick = () => {
-    if (navigator.mediaDevices) setShowCamera(true);
-    else cameraFallbackInputRef.current?.click();
-  };
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -324,31 +251,20 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
     }
   };
 
-  if (showCamera) {
-    return (
-      <CameraCapture
-        onCapture={(file) => { setFiles((p) => [...p, file]); setShowCamera(false); }}
-        onCancel={() => setShowCamera(false)}
-        onUnavailable={() => { setShowCamera(false); cameraFallbackInputRef.current?.click(); }}
-      />
-    );
-  }
-
   if (files.length === 0) {
     return (
       <Sheet title={t("photos.capture")} onClose={onClose}>
         <div className="px-6 pb-8 pt-4 flex flex-col gap-3">
-          <button type="button" onClick={handleTakePhotoClick}
-            className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]"
+          <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]"
             style={{ backgroundColor: "#ff5100" }}>
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
               <circle cx="12" cy="13.5" r="3.5" />
             </svg>
             <span className="text-[13px] font-bold uppercase tracking-widest">{t("photos.takePhoto")}</span>
-          </button>
-          <input ref={cameraFallbackInputRef} type="file" accept="image/*" capture="environment" className="hidden"
-            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+            <input type="file" accept="image/*" capture="environment" className="hidden"
+              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          </label>
           <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-white/70 bg-white/5 hover:bg-white/10 cursor-pointer text-center transition-colors">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="16" rx="2" />
