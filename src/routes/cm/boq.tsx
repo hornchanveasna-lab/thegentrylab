@@ -3,15 +3,25 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { ModuleHeader, Sheet, FAB, Card, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import { ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMBOQItems,
   createCMBOQItem,
   updateCMBOQItem,
   deleteCMBOQItem,
   useCMScheduleItems,
+  useCMDailyLogs,
   type CMBOQItem,
 } from "@/lib/cm-data";
+import {
+  parseWorkbookRows,
+  parsePdfRows,
+  detectHeaderRow,
+  rowsToBoqDraftItems,
+  type BoqSheet,
+  type BoqColumnMapping,
+  type BoqField,
+} from "@/lib/cm-boq-import";
 
 export const Route = createFileRoute("/cm/boq")({
   head: () => ({ meta: [{ title: "BOQ — Construction Management App" }] }),
@@ -84,7 +94,7 @@ function NewBoqItemSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function BoqItemRow({ item, onChanged }: { item: CMBOQItem; onChanged: () => void }) {
+function BoqItemRow({ item, delivered, onChanged }: { item: CMBOQItem; delivered: number | undefined; onChanged: () => void }) {
   const { t } = useCMLang();
   const [quantity, setQuantity] = useState(String(item.quantity));
   const [unitCost, setUnitCost] = useState(String(item.unit_cost));
@@ -110,6 +120,12 @@ function BoqItemRow({ item, onChanged }: { item: CMBOQItem; onChanged: () => voi
             onBlur={() => { const v = Number(unitCost) || 0; if (v !== item.unit_cost) commit({ unit_cost: v }); }}
             className="w-20 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
         </div>
+        {delivered != null && (
+          <p className="font-mono text-[9px] text-white/30 mt-1">
+            {t("boq.deliveredToDate")} {delivered.toLocaleString(undefined, { maximumFractionDigits: 2 })} / {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}
+            {item.quantity > 0 && ` (${((delivered / item.quantity) * 100).toFixed(0)}%)`}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>
@@ -122,8 +138,9 @@ function BoqItemRow({ item, onChanged }: { item: CMBOQItem; onChanged: () => voi
   );
 }
 
-function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgActual, onChanged }: {
-  category: string; items: CMBOQItem[]; grandTotal: number; linkedCount: number; linkedAvgActual: number | null; onChanged: () => void;
+function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, onChanged }: {
+  category: string; items: CMBOQItem[]; grandTotal: number; linkedCount: number; linkedAvgActual: number | null;
+  deliveredByBoqItem: Map<string, number>; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
@@ -132,7 +149,7 @@ function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgAc
   return (
     <Card title={category} action={<span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{ratio.toFixed(1)}% {t("boq.ratioOfTotal")}</span>}>
       <div className="flex flex-col gap-2">
-        {items.map((item) => <BoqItemRow key={item.id} item={item} onChanged={onChanged} />)}
+        {items.map((item) => <BoqItemRow key={item.id} item={item} delivered={deliveredByBoqItem.get(item.id)} onChanged={onChanged} />)}
         <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
           <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
@@ -147,6 +164,153 @@ function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgAc
   );
 }
 
+const BOQ_IMPORT_FIELDS: BoqField[] = ["description", "quantity", "unit", "unitCost", "category"];
+
+/** Upload → review/map → confirm. BOQs vary a lot between companies, so
+ *  this never trusts automatic column detection blindly — it always shows
+ *  the user the detected mapping (and a live preview) to confirm or correct
+ *  before anything is imported. One mapping applies across every sheet in
+ *  the workbook (matches the common "one sheet per building, same column
+ *  layout" convention), but each sheet keeps its own detected header row. */
+function ImportBoqSheet({ ownerId, projectId, onClose, onImported }: {
+  ownerId: string; projectId: string; onClose: () => void; onImported: () => void;
+}) {
+  const { t } = useCMLang();
+  const [step, setStep] = useState<"upload" | "review">("upload");
+  const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [sheets, setSheets] = useState<BoqSheet[]>([]);
+  const [headerBySheet, setHeaderBySheet] = useState<Map<string, number>>(new Map());
+  const [mapping, setMapping] = useState<BoqColumnMapping>({ description: null, unit: null, quantity: null, unitCost: null, category: null });
+  const [referenceSheetIdx, setReferenceSheetIdx] = useState(0);
+
+  const handleFile = async (file: File) => {
+    setError("");
+    try {
+      const isPdf = file.name.toLowerCase().endsWith(".pdf");
+      const parsed = isPdf ? await parsePdfRows(file) : await parseWorkbookRows(file);
+      const nonEmptySheets = parsed.filter((s) => s.rows.length > 0);
+      if (nonEmptySheets.length === 0) { setError(t("boq.import.noRows")); return; }
+
+      const headers = new Map<string, number>();
+      let firstMapping: BoqColumnMapping | null = null;
+      let firstIdx = 0;
+      nonEmptySheets.forEach((s, i) => {
+        const detected = detectHeaderRow(s.rows);
+        if (!detected) return;
+        headers.set(s.sheetName, detected.rowIndex);
+        if (!firstMapping) { firstMapping = detected.mapping; firstIdx = i; }
+      });
+      if (!firstMapping) { setError(t("boq.import.noHeaderFound")); return; }
+
+      setSheets(nonEmptySheets);
+      setHeaderBySheet(headers);
+      setMapping(firstMapping);
+      setReferenceSheetIdx(firstIdx);
+      setStep("review");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to parse file");
+    }
+  };
+
+  const referenceSheet = sheets[referenceSheetIdx] as BoqSheet | undefined;
+  const referenceHeaderRow = referenceSheet ? headerBySheet.get(referenceSheet.sheetName) ?? 0 : 0;
+  const referenceHeaderCells = referenceSheet?.rows[referenceHeaderRow] ?? [];
+  // Some BOQs split their header across two rows (a field-group row plus a
+  // Material/Labor/Total sub-header row) — fall back to the row below when
+  // the detected header row's own cell is blank, so columns like "TOTAL"
+  // still get a real label instead of a bare "Col N".
+  const subHeaderCells = referenceSheet?.rows[referenceHeaderRow + 1] ?? [];
+  const columnOptions = referenceHeaderCells.map((cell, i) => ({ value: String(i), label: String(cell || subHeaderCells[i] || `Col ${i + 1}`) }));
+
+  const draftItemsBySheet = useMemo(
+    () => sheets.filter((s) => headerBySheet.has(s.sheetName))
+      .map((s) => ({ sheet: s, items: rowsToBoqDraftItems(s.rows, headerBySheet.get(s.sheetName)!, mapping, s.sheetName) })),
+    [sheets, headerBySheet, mapping],
+  );
+  const allDraftItems = useMemo(() => draftItemsBySheet.flatMap((d) => d.items), [draftItemsBySheet]);
+  const previewItems = draftItemsBySheet.find((d) => d.sheet === referenceSheet)?.items ?? [];
+  const categoryCount = useMemo(() => new Set(allDraftItems.map((i) => i.category)).size, [allDraftItems]);
+  const skippedCount = sheets.length - draftItemsBySheet.length;
+
+  const handleImport = async () => {
+    setImporting(true);
+    setError("");
+    try {
+      const chunkSize = 20;
+      for (let i = 0; i < allDraftItems.length; i += chunkSize) {
+        const chunk = allDraftItems.slice(i, i + chunkSize);
+        await Promise.all(chunk.map((item) => createCMBOQItem(ownerId, projectId, item)));
+      }
+      onImported();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to import BOQ items");
+      setImporting(false);
+    }
+  };
+
+  return (
+    <Sheet title={t("boq.import.title")} onClose={onClose}>
+      <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
+        {step === "upload" && (
+          <>
+            <p className="text-[12px] text-white/40">{t("boq.import.uploadHint")}</p>
+            <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl border border-dashed border-white/15 text-white/60 hover:border-white/30 cursor-pointer text-center transition-colors">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+              </svg>
+              <span className="text-[13px] font-bold uppercase tracking-widest">{t("boq.import.chooseFile")}</span>
+              <input type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+            </label>
+            {error && <p className="text-[12px] text-red-400">{error}</p>}
+          </>
+        )}
+
+        {step === "review" && referenceSheet && (
+          <>
+            <p className="text-[12px] text-white/40">{t("boq.import.reviewHint")}</p>
+            {BOQ_IMPORT_FIELDS.map((field) => (
+              <label key={field} className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t(`boq.import.field.${field}`)}</span>
+                <FieldSelect
+                  value={mapping[field] != null ? String(mapping[field]) : ""}
+                  onChange={(v) => setMapping((m) => ({ ...m, [field]: v === "" ? null : Number(v) }))}
+                  placeholder={t("boq.import.notMapped")}
+                  options={[{ value: "", label: t("boq.import.notMapped") }, ...columnOptions]}
+                  disabled={importing}
+                />
+              </label>
+            ))}
+
+            <div className="rounded-xl bg-white/[0.03] p-3 flex flex-col gap-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.import.preview")} — {referenceSheet.sheetName}</p>
+              {previewItems.slice(0, 5).map((item, i) => (
+                <p key={i} className="text-[11px] text-white/60 truncate">
+                  {item.description} — {item.quantity} {item.unit ?? ""} × {item.unit_cost.toLocaleString()}
+                </p>
+              ))}
+              {previewItems.length === 0 && <p className="text-[11px] text-white/30">{t("boq.import.noItemsDetected")}</p>}
+            </div>
+
+            <div className="rounded-xl bg-white/[0.03] p-3 text-[12px] text-white/60">
+              {t("boq.import.summary", { count: String(allDraftItems.length), categories: String(categoryCount) })}
+              {skippedCount > 0 && <p className="text-white/30 mt-1">{t("boq.import.skipped", { count: String(skippedCount) })}</p>}
+            </div>
+
+            {error && <p className="text-[12px] text-red-400">{error}</p>}
+            <button type="button" onClick={handleImport} disabled={importing || allDraftItems.length === 0}
+              className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
+              style={{ backgroundColor: "#ff5100" }}>
+              {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
+            </button>
+          </>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
 function CMBoqPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
@@ -154,11 +318,17 @@ function CMBoqPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMBOQItems(projectId || undefined);
   const { data: scheduleItems } = useCMScheduleItems(projectId || undefined);
+  const { data: dailyLogs } = useCMDailyLogs(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_boq_items", projectId] }); setShowNew(false); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_boq_items", projectId] });
+    setShowNew(false);
+    setShowImport(false);
+  };
 
   const grandTotal = useMemo(() => (items ?? []).reduce((s, i) => s + i.quantity * i.unit_cost, 0), [items]);
 
@@ -175,6 +345,17 @@ function CMBoqPage() {
     }
     return Array.from(map.entries());
   }, [items, search, sortAsc, t]);
+
+  const deliveredByBoqItem = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const log of dailyLogs ?? []) {
+      for (const d of log.deliveries) {
+        if (!d.boq_item_id) continue;
+        map.set(d.boq_item_id, (map.get(d.boq_item_id) ?? 0) + (Number(d.quantity) || 0));
+      }
+    }
+    return map;
+  }, [dailyLogs]);
 
   const linkedByCategory = useMemo(() => {
     const map = new Map<string, { count: number; avgActual: number }>();
@@ -223,16 +404,24 @@ function CMBoqPage() {
                 const linked = linkedByCategory.get(category);
                 return (
                   <CategorySection key={category} category={category} items={categoryItems} grandTotal={grandTotal}
-                    linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null} onChanged={invalidate} />
+                    linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null}
+                    deliveredByBoqItem={deliveredByBoqItem} onChanged={invalidate} />
                 );
               })}
             </div>
+            <button type="button" onClick={() => setShowImport(true)} aria-label={t("boq.import.title")}
+              className="fixed bottom-24 right-6 w-11 h-11 rounded-full flex items-center justify-center text-white/70 bg-white/10 hover:bg-white/15 active:scale-95 transition-all z-30">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+              </svg>
+            </button>
             <FAB label={t("boq.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}
       </main>
 
       {showNew && projectId && <NewBoqItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showImport && projectId && <ImportBoqSheet ownerId={user.id} projectId={projectId} onClose={() => setShowImport(false)} onImported={invalidate} />}
     </div>
   );
 }
