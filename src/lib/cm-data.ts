@@ -265,14 +265,15 @@ export interface CMPhotoWithContext {
   projectName: string;
   module: CMPhotoModule;
   caption: string | null;
+  recordId: string;
 }
 
-type PhotoRow = { photos: string[]; project_id: string; cm_projects: { name: string } | null };
+type PhotoRow = { id: string; photos: string[]; project_id: string; cm_projects: { name: string } | null };
 
 function photoRowsToContext<T extends PhotoRow>(rows: T[], module: CMPhotoModule, date: (r: T) => string, caption: (r: T) => string | null): CMPhotoWithContext[] {
   return rows.flatMap((r) =>
     r.photos.map((url) => ({
-      url, module, date: date(r), projectId: r.project_id,
+      url, module, date: date(r), projectId: r.project_id, recordId: r.id,
       projectName: r.cm_projects?.name ?? "Untitled project", caption: caption(r),
     })),
   );
@@ -285,11 +286,11 @@ export function useAllCMPhotos(userId: string | undefined) {
     queryFn: async () => {
       const client = db();
       const [logs, inspections, safety, tasks, submittals] = await Promise.all([
-        client.from("cm_daily_logs").select("photos, log_date, activities, project_id, cm_projects(name)"),
-        client.from("cm_inspections").select("photos, inspection_date, title, project_id, cm_projects(name)"),
-        client.from("cm_safety_records").select("photos, record_date, title, project_id, cm_projects(name)"),
-        client.from("cm_tasks").select("photos, created_at, title, project_id, cm_projects(name)"),
-        client.from("cm_submittals").select("photos, submitted_date, created_at, title, project_id, cm_projects(name)"),
+        client.from("cm_daily_logs").select("id, photos, log_date, activities, project_id, cm_projects(name)"),
+        client.from("cm_inspections").select("id, photos, inspection_date, title, project_id, cm_projects(name)"),
+        client.from("cm_safety_records").select("id, photos, record_date, title, project_id, cm_projects(name)"),
+        client.from("cm_tasks").select("id, photos, created_at, title, project_id, cm_projects(name)"),
+        client.from("cm_submittals").select("id, photos, submitted_date, created_at, title, project_id, cm_projects(name)"),
       ]);
       for (const r of [logs, inspections, safety, tasks, submittals]) if (r.error) throw r.error;
 

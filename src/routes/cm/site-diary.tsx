@@ -3,7 +3,10 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import {
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  PhotoLightbox, usePendingHighlight,
+} from "@/components/cm/shared";
 import {
   useCMDailyLogs,
   createCMDailyLog,
@@ -131,10 +134,11 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
+function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id, () => setOpen(true));
 
   const handleDelete = async () => {
     if (!confirm(t("siteDiary.confirmDelete"))) return;
@@ -143,7 +147,7 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
   };
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden">
+    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
@@ -171,8 +175,9 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
             <div>
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
               <div className="flex flex-wrap gap-2">
-                {log.photos.map((url) => (
-                  <button key={url} type="button" onClick={() => onOpenPhoto(url)}>
+                {log.photos.map((url, i) => (
+                  <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(log.photos, i)}
+                    className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
                     <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover" />
                   </button>
                 ))}
@@ -204,7 +209,7 @@ function CMSiteDiaryPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: logs, isLoading } = useCMDailyLogs(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] }); setShowNew(false); };
 
@@ -235,7 +240,7 @@ function CMSiteDiaryPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(logs ?? []).map((l) => <LogCard key={l.id} log={l} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
+              {(logs ?? []).map((l) => <LogCard key={l.id} log={l} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
             </div>
             <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />
           </>
@@ -245,10 +250,12 @@ function CMSiteDiaryPage() {
       {showNew && projectId && <NewLogSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
-        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
-          <button onClick={() => setLightbox(null)} className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-xl">×</button>
-        </div>
+        <PhotoLightbox
+          items={lightbox.photos.map((url) => ({ url }))}
+          index={lightbox.index}
+          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </div>
   );
