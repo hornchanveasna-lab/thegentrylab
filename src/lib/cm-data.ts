@@ -57,6 +57,7 @@ export interface CMTask {
   assignee: string | null;
   due_date: string | null;
   sort_order: number;
+  photos: string[];
   created_at: string;
   updated_at: string;
 }
@@ -192,6 +193,58 @@ export async function uploadCMPhoto(ownerId: string, projectId: string, file: Fi
   return data?.signedUrl ?? path;
 }
 
+/** Burns an optional company-name watermark and/or capture date-time onto a photo
+ *  before it's uploaded, so the record on site stays legible even if it's later
+ *  exported or shared outside the app. */
+export async function stampPhoto(file: File, opts: { companyName?: string | null; watermark: boolean; timestamp: boolean }): Promise<File> {
+  if (!opts.watermark && !opts.timestamp) return file;
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Failed to read photo"));
+      el.src = objectUrl;
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0);
+
+    const scale = Math.max(1, canvas.width / 1000);
+    const pad = 14 * scale;
+
+    if (opts.timestamp) {
+      const text = new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+      const fontSize = 20 * scale;
+      ctx.font = `600 ${fontSize}px sans-serif`;
+      const boxW = ctx.measureText(text).width + pad * 2;
+      const boxH = fontSize + pad * 1.4;
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, canvas.height - boxH, boxW, boxH);
+      ctx.fillStyle = "#fff";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, pad, canvas.height - boxH / 2);
+    }
+    if (opts.watermark && opts.companyName) {
+      const fontSize = 22 * scale;
+      ctx.font = `700 ${fontSize}px sans-serif`;
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(opts.companyName, canvas.width - pad, canvas.height - pad);
+    }
+
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    if (!blob) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export async function uploadCMLogo(ownerId: string, projectId: string, file: File): Promise<string> {
   const client = db();
   const ext = file.name.split(".").pop() || "png";
@@ -203,11 +256,26 @@ export async function uploadCMLogo(ownerId: string, projectId: string, file: Fil
 }
 
 /* ── Photos across all of a user's projects (global gallery) ─ */
+export type CMPhotoModule = "siteDiary" | "inspection" | "punchList" | "safety" | "submittal";
+
 export interface CMPhotoWithContext {
   url: string;
   date: string;
   projectId: string;
   projectName: string;
+  module: CMPhotoModule;
+  caption: string | null;
+}
+
+type PhotoRow = { photos: string[]; project_id: string; cm_projects: { name: string } | null };
+
+function photoRowsToContext<T extends PhotoRow>(rows: T[], module: CMPhotoModule, date: (r: T) => string, caption: (r: T) => string | null): CMPhotoWithContext[] {
+  return rows.flatMap((r) =>
+    r.photos.map((url) => ({
+      url, module, date: date(r), projectId: r.project_id,
+      projectName: r.cm_projects?.name ?? "Untitled project", caption: caption(r),
+    })),
+  );
 }
 
 export function useAllCMPhotos(userId: string | undefined) {
@@ -215,15 +283,29 @@ export function useAllCMPhotos(userId: string | undefined) {
     queryKey: ["cm_all_photos", userId],
     enabled: !!userId && !!supabaseCM,
     queryFn: async () => {
-      const { data, error } = await db()
-        .from("cm_daily_logs")
-        .select("photos, log_date, project_id, cm_projects(name)")
-        .order("log_date", { ascending: false });
-      if (error) throw error;
-      const rows = data as unknown as Array<{ photos: string[]; log_date: string; project_id: string; cm_projects: { name: string } | null }>;
-      return rows.flatMap((r) =>
-        r.photos.map((url) => ({ url, date: r.log_date, projectId: r.project_id, projectName: r.cm_projects?.name ?? "Untitled project" })),
-      );
+      const client = db();
+      const [logs, inspections, safety, tasks, submittals] = await Promise.all([
+        client.from("cm_daily_logs").select("photos, log_date, activities, project_id, cm_projects(name)"),
+        client.from("cm_inspections").select("photos, inspection_date, title, project_id, cm_projects(name)"),
+        client.from("cm_safety_records").select("photos, record_date, title, project_id, cm_projects(name)"),
+        client.from("cm_tasks").select("photos, created_at, title, project_id, cm_projects(name)"),
+        client.from("cm_submittals").select("photos, submitted_date, created_at, title, project_id, cm_projects(name)"),
+      ]);
+      for (const r of [logs, inspections, safety, tasks, submittals]) if (r.error) throw r.error;
+
+      const all = [
+        ...photoRowsToContext(logs.data as unknown as (PhotoRow & { log_date: string; activities: string | null })[],
+          "siteDiary", (r) => r.log_date, (r) => r.activities?.slice(0, 60) || null),
+        ...photoRowsToContext(inspections.data as unknown as (PhotoRow & { inspection_date: string; title: string })[],
+          "inspection", (r) => r.inspection_date, (r) => r.title),
+        ...photoRowsToContext(safety.data as unknown as (PhotoRow & { record_date: string; title: string })[],
+          "safety", (r) => r.record_date, (r) => r.title),
+        ...photoRowsToContext(tasks.data as unknown as (PhotoRow & { created_at: string; title: string })[],
+          "punchList", (r) => r.created_at.slice(0, 10), (r) => r.title),
+        ...photoRowsToContext(submittals.data as unknown as (PhotoRow & { submitted_date: string | null; created_at: string; title: string })[],
+          "submittal", (r) => r.submitted_date ?? r.created_at.slice(0, 10), (r) => r.title),
+      ];
+      return all.sort((a, b) => b.date.localeCompare(a.date));
     },
     staleTime: STALE_TIME,
   });
@@ -577,6 +659,7 @@ export interface CMSubmittal {
   reviewer: string | null;
   revision: number;
   notes: string | null;
+  photos: string[];
   created_at: string;
   updated_at: string;
 }
@@ -620,6 +703,8 @@ export interface CMAccountSettings {
   company_name: string | null;
   company_logo_url: string | null;
   language: "en" | "km" | "zh";
+  photo_watermark: boolean;
+  photo_timestamp: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -3,12 +3,13 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMSubmittals,
   createCMSubmittal,
   updateCMSubmittal,
   deleteCMSubmittal,
+  uploadCMPhoto,
   type CMSubmittal,
   type SubmittalStatus,
 } from "@/lib/cm-data";
@@ -34,6 +35,7 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
   const [dueDate, setDueDate] = useState("");
   const [reviewer, setReviewer] = useState("");
   const [notes, setNotes] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,11 +45,15 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      await createCMSubmittal(ownerId, projectId, {
+      const item = await createCMSubmittal(ownerId, projectId, {
         title: title.trim(), spec_section: specSection.trim() || null, status,
         due_date: dueDate || null, reviewer: reviewer.trim() || null, notes: notes.trim() || null,
         submitted_date: status !== "Draft" ? new Date().toISOString().slice(0, 10) : null,
       });
+      if (photos.length > 0) {
+        const urls = await Promise.all(photos.map((f) => uploadCMPhoto(ownerId, projectId, f)));
+        await updateCMSubmittal(item.id, { photos: urls });
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create submittal");
@@ -88,6 +94,7 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
           <span className={labelCls}>{t("submittal.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[48px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
+        <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -99,7 +106,7 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function SubmittalCard({ item, onChanged }: { item: CMSubmittal; onChanged: () => void }) {
+function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const sc = STATUS_COLOR[item.status];
@@ -136,6 +143,15 @@ function SubmittalCard({ item, onChanged }: { item: CMSubmittal; onChanged: () =
         {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>
+      {item.photos.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-1">
+          {item.photos.map((url) => (
+            <button key={url} type="button" onClick={() => onOpenPhoto(url)}>
+              <img src={url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -147,6 +163,7 @@ function CMSubmittalPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); setShowNew(false); };
 
@@ -177,7 +194,7 @@ function CMSubmittalPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} />)}
+              {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
             </div>
             <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />
           </>
@@ -185,6 +202,13 @@ function CMSubmittalPage() {
       </main>
 
       {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+
+      {lightbox && (
+        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
+          <button onClick={() => setLightbox(null)} className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-xl">×</button>
+        </div>
+      )}
     </div>
   );
 }

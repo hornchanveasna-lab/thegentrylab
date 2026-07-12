@@ -121,13 +121,13 @@ function CMSettingsPage() {
         <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
           <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.companyBranding")}</p>
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
-              {account?.company_logo_url ? (
-                <img src={account.company_logo_url} alt="" className="w-full h-full object-contain" />
-              ) : (
+            {account?.company_logo_url ? (
+              <img src={account.company_logo_url} alt="" className="h-16 max-w-[180px] w-auto object-contain shrink-0" />
+            ) : (
+              <div className="w-16 h-16 rounded-2xl border border-dashed border-white/10 flex items-center justify-center shrink-0">
                 <span className="text-white/20 text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>
-              )}
-            </div>
+              </div>
+            )}
             <div className="flex flex-col gap-1">
               <span className="text-[11px] text-white/50">{t("settings.companyLogo")}</span>
               <input type="file" accept="image/*" disabled={uploadingLogo}

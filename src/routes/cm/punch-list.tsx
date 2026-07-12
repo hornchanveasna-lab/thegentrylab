@@ -3,12 +3,13 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMTasks,
   createCMTask,
   updateCMTask,
   deleteCMTask,
+  uploadCMPhoto,
   type CMTask,
   type TaskStatus,
   type TaskPriority,
@@ -36,6 +37,7 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
   const [priority, setPriority] = useState<TaskPriority>("Medium");
   const [assignee, setAssignee] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -45,10 +47,14 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      await createCMTask(ownerId, projectId, {
+      const item = await createCMTask(ownerId, projectId, {
         title: title.trim(), description: description.trim() || null, status, priority,
         assignee: assignee.trim() || null, due_date: dueDate || null,
       });
+      if (photos.length > 0) {
+        const urls = await Promise.all(photos.map((f) => uploadCMPhoto(ownerId, projectId, f)));
+        await updateCMTask(item.id, { photos: urls });
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add work item");
@@ -91,6 +97,7 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
             <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
           </label>
         </div>
+        <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -102,7 +109,7 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function PunchItemCard({ item, onChanged }: { item: CMTask; onChanged: () => void }) {
+function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const handleStatusChange = async (status: TaskStatus) => {
@@ -133,6 +140,15 @@ function PunchItemCard({ item, onChanged }: { item: CMTask; onChanged: () => voi
         {item.assignee && <span className="text-[11px] text-white/40">{item.assignee}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>
+      {item.photos.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-1">
+          {item.photos.map((url) => (
+            <button key={url} type="button" onClick={() => onOpenPhoto(url)}>
+              <img src={url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -145,6 +161,7 @@ function CMPunchListPage() {
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
 
@@ -182,7 +199,7 @@ function CMPunchListPage() {
               <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} />)}
+              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
             </div>
 
             {done.length > 0 && (
@@ -192,7 +209,7 @@ function CMPunchListPage() {
                 </button>
                 {showCompleted && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} />)}
+                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
                   </div>
                 )}
               </div>
@@ -204,6 +221,13 @@ function CMPunchListPage() {
       </main>
 
       {showNew && projectId && <NewPunchItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+
+      {lightbox && (
+        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
+          <button onClick={() => setLightbox(null)} className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-xl">×</button>
+        </div>
+      )}
     </div>
   );
 }
