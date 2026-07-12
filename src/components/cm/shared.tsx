@@ -38,6 +38,40 @@ export function useLongPress(delay = 500) {
   };
 }
 
+/** Shares the actual photo file(s) to whatever app the user picks (WhatsApp,
+ *  Telegram, etc.) via the Web Share API's file support, instead of just a
+ *  link — falling back to a link share/clipboard copy on browsers that
+ *  can't share files. */
+export async function sharePhotoFiles(urls: string[]): Promise<"shared" | "copied" | "cancelled" | "failed"> {
+  let files: File[] = [];
+  try {
+    files = await Promise.all(
+      urls.map(async (url, i) => {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        return new File([blob], `photo-${i + 1}.jpg`, { type: blob.type || "image/jpeg" });
+      }),
+    );
+  } catch {
+    files = [];
+  }
+  try {
+    if (files.length > 0 && navigator.canShare?.({ files })) {
+      await navigator.share({ files });
+      return "shared";
+    }
+    if (navigator.share) {
+      await navigator.share({ url: urls[0] });
+      return "shared";
+    }
+    await navigator.clipboard.writeText(urls.join("\n"));
+    return "copied";
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") return "cancelled";
+    return "failed";
+  }
+}
+
 export function BackButton({ onClick, to }: { onClick?: () => void; to?: string }) {
   const content = (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -359,16 +393,9 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
 
   const handleShare = async () => {
     setMenuOpen(false);
-    try {
-      if (navigator.share) {
-        await navigator.share({ url: item.url });
-        return;
-      }
-      await navigator.clipboard.writeText(item.url);
-      setToast(t("photos.linkCopied"));
-    } catch {
-      setToast(t("photos.shareFailed"));
-    }
+    const result = await sharePhotoFiles([item.url]);
+    if (result === "copied") setToast(t("photos.linkCopied"));
+    else if (result === "failed") setToast(t("photos.shareFailed"));
   };
 
   const handleDelete = async () => {
