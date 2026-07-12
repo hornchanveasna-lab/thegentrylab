@@ -232,6 +232,31 @@ function loadExternalImage(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
+/** Pads an arbitrary (usually non-square) company logo onto a white square
+ *  canvas, sized for use as a home-screen/favicon icon — Android and iOS
+ *  both expect roughly-square icons, and most uploaded logos are wide
+ *  badges rather than square marks. Returns null if the logo can't be
+ *  loaded (e.g. blocked by CORS), so the caller can just keep the default
+ *  app icon instead. */
+export async function makeSquareIconDataUrl(logoUrl: string, size = 512): Promise<string | null> {
+  const img = await loadExternalImage(logoUrl);
+  if (!img) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
+  const pad = size * 0.14;
+  const maxDim = size - pad * 2;
+  const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight);
+  const w = img.naturalWidth * scale;
+  const h = img.naturalHeight * scale;
+  ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  return canvas.toDataURL("image/png");
+}
+
 export interface StampPhotoOptions {
   showCompanyLogo: boolean;
   showProjectInfo: boolean;

@@ -8,8 +8,9 @@ import {
 } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect } from "react";
 import { AuthProvider } from "@/lib/auth";
-import { AuthCMProvider } from "@/lib/auth-cm";
+import { AuthCMProvider, useAuthCM } from "@/lib/auth-cm";
 import { CMLangProvider } from "@/lib/cm-i18n";
+import { useCMAccountSettings, makeSquareIconDataUrl } from "@/lib/cm-data";
 
 // Only the main site uses this — lazy so cm.thegentrylab.io never fetches its code.
 const AiChat = lazy(() => import("@/components/site/AiChat").then((m) => ({ default: m.AiChat })));
@@ -83,6 +84,38 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+/** Swaps the favicon/home-screen-icon links to the signed-in CM user's own
+ *  company logo (padded onto a square canvas), so a fresh "Add to Home
+ *  Screen" install picks up their brand instead of the site's default icon.
+ *  Browsers generally don't re-fetch the icon for an *already* installed
+ *  shortcut, so this only takes effect on new installs — not a live push to
+ *  icons already sitting on someone's home screen. */
+function CMAppIconSync() {
+  const { user } = useAuthCM();
+  const { data: account } = useCMAccountSettings(user?.id);
+  const logoUrl = account?.company_logo_url;
+
+  useEffect(() => {
+    if (!logoUrl) return;
+    let cancelled = false;
+    makeSquareIconDataUrl(logoUrl).then((dataUrl) => {
+      if (cancelled || !dataUrl) return;
+      for (const rel of ["icon", "apple-touch-icon", "shortcut icon"]) {
+        let link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
+        if (!link) {
+          link = document.createElement("link");
+          link.rel = rel;
+          document.head.appendChild(link);
+        }
+        link.href = dataUrl;
+      }
+    });
+    return () => { cancelled = true; };
+  }, [logoUrl]);
+
+  return null;
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -112,6 +145,7 @@ function RootComponent() {
         <CMLangProvider>
           <QueryClientProvider client={queryClient}>
             <Outlet />
+            {isCMApp && <CMAppIconSync />}
             {!isCMApp && (
               <Suspense fallback={null}>
                 <AiChat />
