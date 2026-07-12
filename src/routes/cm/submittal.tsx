@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import { BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -26,6 +27,7 @@ const STATUS_OPTIONS: SubmittalStatus[] = ["Draft", "Submitted", "Under Review",
 function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
   ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
 }) {
+  const { t } = useCMLang();
   const [title, setTitle] = useState("");
   const [specSection, setSpecSection] = useState("");
   const [status, setStatus] = useState<SubmittalStatus>("Draft");
@@ -54,43 +56,43 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title="New Submittal" onClose={onClose}>
+    <Sheet title={t("submittal.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Title ★</span>
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Structural steel shop drawings" required autoFocus disabled={saving} />
+          <span className={labelCls}>{t("submittal.titleField")}</span>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("submittal.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Spec section</span>
-            <input className={inputCls} value={specSection} onChange={(e) => setSpecSection(e.target.value)} placeholder="e.g. 05 12 00" disabled={saving} />
+            <span className={labelCls}>{t("submittal.specSection")}</span>
+            <input className={inputCls} value={specSection} onChange={(e) => setSpecSection(e.target.value)} placeholder={t("submittal.specSectionPlaceholder")} disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Status</span>
+            <span className={labelCls}>{t("submittal.status")}</span>
             <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as SubmittalStatus)} disabled={saving}>
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`submittalStatus.${s}`)}</option>)}
             </select>
           </label>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Due date</span>
+            <span className={labelCls}>{t("submittal.dueDate")}</span>
             <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Reviewer</span>
+            <span className={labelCls}>{t("submittal.reviewer")}</span>
             <input className={inputCls} value={reviewer} onChange={(e) => setReviewer(e.target.value)} disabled={saving} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Notes</span>
+          <span className={labelCls}>{t("submittal.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[48px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? "Creating…" : "Create submittal"}
+          {saving ? t("submittal.creating") : t("submittal.create")}
         </button>
       </form>
     </Sheet>
@@ -98,6 +100,7 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
 }
 
 function SubmittalCard({ item, onChanged }: { item: CMSubmittal; onChanged: () => void }) {
+  const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const sc = STATUS_COLOR[item.status];
 
@@ -128,10 +131,10 @@ function SubmittalCard({ item, onChanged }: { item: CMSubmittal; onChanged: () =
       <div className="flex flex-wrap items-center gap-2 mt-1">
         <select value={item.status} disabled={busy} onChange={(e) => handleStatusChange(e.target.value as SubmittalStatus)}
           className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: sc }}>
-          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`submittalStatus.${s}`)}</option>)}
         </select>
         {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
-        {item.due_date && <span className="font-mono text-[10px] text-white/30">Due {item.due_date}</span>}
+        {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>
     </div>
   );
@@ -139,6 +142,7 @@ function SubmittalCard({ item, onChanged }: { item: CMSubmittal; onChanged: () =
 
 function CMSubmittalPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
@@ -150,7 +154,7 @@ function CMSubmittalPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>Sign in with Google</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -160,22 +164,22 @@ function CMSubmittalPage() {
       <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">Submittal</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("submittal.title")}</h1>
         </div>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">Loading…</p>}
+            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {!isLoading && (submittals?.length ?? 0) === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">No submittals yet.</p>
+                <p className="text-white/40 text-sm">{t("submittal.noneYet")}</p>
               </div>
             )}
             <div className="flex flex-col gap-3">
               {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} />)}
             </div>
-            <FAB label="New submittal" onClick={() => setShowNew(true)} />
+            <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}
       </main>

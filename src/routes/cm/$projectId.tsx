@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import { ProjectSettingsView } from "@/components/cm/ProjectSettingsView";
 import { useCMProject, type ProjectStatus } from "@/lib/cm-data";
 
@@ -15,6 +16,7 @@ const PROJECT_STATUS_COLOR: Record<ProjectStatus, string> = {
 function CMProjectPage() {
   const { projectId } = Route.useParams();
   const { user, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: project, isLoading: projectLoading } = useCMProject(projectId);
@@ -27,7 +29,7 @@ function CMProjectPage() {
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
           style={{ backgroundColor: "#ff5100" }}>
-          Sign in with Google
+          {t("common.signInGoogle")}
         </button>
       </div>
     );
@@ -40,8 +42,8 @@ function CMProjectPage() {
   if (!project) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col items-center justify-center gap-3 font-sans">
-        <p className="text-white/40 text-sm">Project not found.</p>
-        <Link to="/cm/projects" className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>← Back to projects</Link>
+        <p className="text-white/40 text-sm">{t("projects.notFound")}</p>
+        <Link to="/cm/projects" className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>← {t("projects.title")}</Link>
       </div>
     );
   }
@@ -62,7 +64,7 @@ function CMProjectPage() {
             </div>
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: `${sc}15` }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{project.status}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{t(`status.${project.status}`)}</span>
             </span>
           </div>
           {(project.start_date || project.target_end_date) && (

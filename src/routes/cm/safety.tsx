@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMSafetyRecords,
@@ -26,6 +27,7 @@ const SEVERITY_OPTIONS: SafetySeverity[] = ["Low", "Medium", "High", "Critical"]
 function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
   ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
 }) {
+  const { t } = useCMLang();
   const [recordType, setRecordType] = useState<SafetyRecordType>("Toolbox Talk");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -58,38 +60,38 @@ function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title="New Safety Record" onClose={onClose}>
+    <Sheet title={t("safety.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Type</span>
+            <span className={labelCls}>{t("safety.type")}</span>
             <select className={inputCls} value={recordType} onChange={(e) => setRecordType(e.target.value as SafetyRecordType)} disabled={saving}>
-              {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+              {TYPE_OPTIONS.map((rt) => <option key={rt} value={rt}>{t(`safetyType.${rt}`)}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Severity</span>
+            <span className={labelCls}>{t("safety.severity")}</span>
             <select className={inputCls} value={severity} onChange={(e) => setSeverity(e.target.value as SafetySeverity)} disabled={saving}>
-              {SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{t(`safetySeverity.${s}`)}</option>)}
             </select>
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Title ★</span>
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Fall protection toolbox talk" required autoFocus disabled={saving} />
+          <span className={labelCls}>{t("safety.titleField")}</span>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("safety.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Description</span>
+          <span className={labelCls}>{t("safety.description")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Date</span>
+            <span className={labelCls}>{t("safety.date")}</span>
             <input type="date" className={inputCls} value={recordDate} onChange={(e) => setRecordDate(e.target.value)} disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Involved</span>
-            <input className={inputCls} value={involved} onChange={(e) => setInvolved(e.target.value)} placeholder="Names / trades" disabled={saving} />
+            <span className={labelCls}>{t("safety.involved")}</span>
+            <input className={inputCls} value={involved} onChange={(e) => setInvolved(e.target.value)} placeholder={t("safety.involvedPlaceholder")} disabled={saving} />
           </label>
         </div>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
@@ -97,7 +99,7 @@ function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? "Saving…" : "Save record"}
+          {saving ? t("safety.saving") : t("safety.save")}
         </button>
       </form>
     </Sheet>
@@ -105,6 +107,7 @@ function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
 }
 
 function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
+  const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const sc = SEVERITY_COLOR[item.severity];
@@ -114,7 +117,7 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
     try { await updateCMSafetyRecord(item.id, { status: item.status === "Open" ? "Resolved" : "Open" }); onChanged(); } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm("Delete this safety record?")) return;
+    if (!confirm(t("safety.confirmDelete"))) return;
     setBusy(true);
     try { await deleteCMSafetyRecord(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -124,15 +127,15 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.record_date}</span>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{item.record_type}</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`safetyType.${item.record_type}`)}</span>
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest shrink-0" style={{ backgroundColor: `${sc}15`, color: sc }}>{item.severity}</span>
+        <span className="px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest shrink-0" style={{ backgroundColor: `${sc}15`, color: sc }}>{t(`safetySeverity.${item.severity}`)}</span>
       </button>
       {open && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
           {item.description && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.description}</p>}
-          {item.involved && <p className="text-[12px] text-white/50">Involved: {item.involved}</p>}
+          {item.involved && <p className="text-[12px] text-white/50">{t("safety.involved")}: {item.involved}</p>}
           {item.photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {item.photos.map((url) => (
@@ -145,9 +148,9 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
           <div className="flex items-center gap-3">
             <button onClick={handleResolve} disabled={busy} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest"
               style={{ backgroundColor: item.status === "Open" ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", color: item.status === "Open" ? "#34d399" : "rgba(255,255,255,0.5)" }}>
-              {item.status === "Open" ? "Mark resolved" : "Resolved"}
+              {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
             </button>
-            <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">Delete</button>
+            <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
           </div>
         </div>
       )}
@@ -157,6 +160,7 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
 
 function CMSafetyPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: records, isLoading } = useCMSafetyRecords(projectId || undefined);
@@ -169,7 +173,7 @@ function CMSafetyPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>Sign in with Google</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -179,22 +183,22 @@ function CMSafetyPage() {
       <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">Safety</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("safety.title")}</h1>
         </div>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">Loading…</p>}
+            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {!isLoading && (records?.length ?? 0) === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">No safety records yet.</p>
+                <p className="text-white/40 text-sm">{t("safety.noneYet")}</p>
               </div>
             )}
             <div className="flex flex-col gap-3">
               {(records ?? []).map((s) => <SafetyCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
             </div>
-            <FAB label="New safety record" onClick={() => setShowNew(true)} />
+            <FAB label={t("safety.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}
       </main>

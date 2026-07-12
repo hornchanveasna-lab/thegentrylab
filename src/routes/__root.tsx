@@ -9,6 +9,7 @@ import {
 import { lazy, Suspense, useEffect } from "react";
 import { AuthProvider } from "@/lib/auth";
 import { AuthCMProvider } from "@/lib/auth-cm";
+import { CMLangProvider } from "@/lib/cm-i18n";
 
 // Only the main site uses this — lazy so cm.thegentrylab.io never fetches its code.
 const AiChat = lazy(() => import("@/components/site/AiChat").then((m) => ({ default: m.AiChat })));
@@ -108,14 +109,16 @@ function RootComponent() {
   return (
     <AuthProvider>
       <AuthCMProvider>
-        <QueryClientProvider client={queryClient}>
-          <Outlet />
-          {!isCMApp && (
-            <Suspense fallback={null}>
-              <AiChat />
-            </Suspense>
-          )}
-        </QueryClientProvider>
+        <CMLangProvider>
+          <QueryClientProvider client={queryClient}>
+            <Outlet />
+            {!isCMApp && (
+              <Suspense fallback={null}>
+                <AiChat />
+              </Suspense>
+            )}
+          </QueryClientProvider>
+        </CMLangProvider>
       </AuthCMProvider>
     </AuthProvider>
   );

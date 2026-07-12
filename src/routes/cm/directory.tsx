@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import {
   useCMDirectoryContacts,
   createCMDirectoryContact,
@@ -18,6 +19,7 @@ const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 
 function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onClose: () => void; onCreated: () => void }) {
+  const { t } = useCMLang();
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
   const [trade, setTrade] = useState("");
@@ -53,43 +55,43 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
       <div className="w-full sm:max-w-lg bg-[#0d0d0e] rounded-t-3xl sm:rounded-3xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mt-3 sm:hidden" />
         <div className="flex items-center justify-between px-6 pt-4 pb-2">
-          <h2 className="font-extrabold text-base tracking-tight text-white">New Contact</h2>
+          <h2 className="font-extrabold text-base tracking-tight text-white">{t("directory.new")}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors">×</button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Name ★</span>
-            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Sok" required autoFocus disabled={saving} />
+            <span className={labelCls}>{t("directory.name")}</span>
+            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("directory.namePlaceholder")} required autoFocus disabled={saving} />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Company</span>
+              <span className={labelCls}>{t("directory.company")}</span>
               <input className={inputCls} value={company} onChange={(e) => setCompany(e.target.value)} disabled={saving} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Trade</span>
-              <input className={inputCls} value={trade} onChange={(e) => setTrade(e.target.value)} placeholder="e.g. Electrical" disabled={saving} />
+              <span className={labelCls}>{t("directory.trade")}</span>
+              <input className={inputCls} value={trade} onChange={(e) => setTrade(e.target.value)} placeholder={t("directory.tradePlaceholder")} disabled={saving} />
             </label>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Phone</span>
+              <span className={labelCls}>{t("directory.phone")}</span>
               <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} disabled={saving} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Email</span>
+              <span className={labelCls}>{t("directory.email")}</span>
               <input type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} disabled={saving} />
             </label>
           </div>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Notes</span>
+            <span className={labelCls}>{t("directory.notes")}</span>
             <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
           </label>
           {error && <p className="text-[12px] text-red-400">{error}</p>}
           <button type="submit" disabled={saving || !name.trim()}
             className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
             style={{ backgroundColor: "#ff5100" }}>
-            {saving ? "Saving…" : "Add contact"}
+            {saving ? t("directory.adding") : t("directory.add")}
           </button>
         </form>
       </div>
@@ -98,9 +100,10 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
 }
 
 function ContactCard({ contact, onDeleted }: { contact: CMDirectoryContact; onDeleted: () => void }) {
+  const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const handleDelete = async () => {
-    if (!confirm(`Remove ${contact.name} from your directory?`)) return;
+    if (!confirm(t("directory.confirmRemove", { name: contact.name }))) return;
     setBusy(true);
     try { await deleteCMDirectoryContact(contact.id); onDeleted(); } finally { setBusy(false); }
   };
@@ -124,6 +127,7 @@ function ContactCard({ contact, onDeleted }: { contact: CMDirectoryContact; onDe
 
 function CMDirectoryPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { data: contacts, isLoading } = useCMDirectoryContacts(user?.id);
   const [showNew, setShowNew] = useState(false);
@@ -141,7 +145,7 @@ function CMDirectoryPage() {
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
           style={{ backgroundColor: "#ff5100" }}>
-          Sign in with Google
+          {t("common.signInGoogle")}
         </button>
       </div>
     );
@@ -154,17 +158,17 @@ function CMDirectoryPage() {
           <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
           </Link>
-          <h1 className="text-xl font-extrabold tracking-tight text-white">Directory</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("directory.title")}</h1>
         </div>
 
-        {isLoading && <p className="text-white/30 text-sm">Loading contacts…</p>}
+        {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
         {!isLoading && (contacts?.length ?? 0) === 0 && (
           <div className="rounded-2xl border border-dashed border-white/10 py-16 flex flex-col items-center justify-center text-center px-4">
-            <p className="text-white/40 text-sm mb-4">No contacts yet.</p>
+            <p className="text-white/40 text-sm mb-4">{t("directory.noneYet")}</p>
             <button onClick={() => setShowNew(true)}
               className="px-5 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest"
               style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100" }}>
-              Add your first contact
+              {t("directory.addFirst")}
             </button>
           </div>
         )}
@@ -175,7 +179,7 @@ function CMDirectoryPage() {
 
       <button
         onClick={() => setShowNew(true)}
-        aria-label="New contact"
+        aria-label={t("directory.new")}
         className="fixed bottom-7 right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform"
         style={{ backgroundColor: "#ff5100" }}
       >
