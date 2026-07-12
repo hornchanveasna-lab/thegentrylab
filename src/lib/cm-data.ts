@@ -346,12 +346,12 @@ function drawRoundedLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, 
 
 /** Burns project identification onto a photo before it's uploaded, so the
  *  record stays legible even if it's later exported or shared outside the
- *  app. Layout: company logo alone top-right; client/project logo beside
- *  the project name/code/location bottom-left; every consultant logo in a
- *  centered row bottom-middle; capture date/time bottom-right. Every logo
- *  is clipped to its own rounded corners with nothing drawn behind or
- *  around it. Text keeps a soft drop-shadow for legibility over any
- *  background. Keeps the original pixel dimensions — this is the
+ *  app. Layout: company logo alone top-right; project name/code/location
+ *  text bottom-left; client logo stacked directly above the centered row
+ *  of consultant logos, bottom-middle; capture date/time bottom-right.
+ *  Every logo is clipped to its own rounded corners with nothing drawn
+ *  behind or around it. Text keeps a soft drop-shadow for legibility over
+ *  any background. Keeps the original pixel dimensions — this is the
  *  full-quality photo that gets stored, not a thumbnail. */
 export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<File> {
   if (!opts.showCompanyLogo && !opts.showProjectInfo && !opts.showConsultantLogos && !opts.timestamp) return file;
@@ -389,42 +389,36 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
   }
 
   if (opts.showProjectInfo) {
-    // ── bottom-left: client/project logo beside project name/code/location ──
-    const clientLogo = opts.clientLogoUrl ? await loadExternalImage(opts.clientLogoUrl) : null;
+    // ── bottom-left: project name/code/location text ──
     const lines: { text: string; fontSize: number; weight: number }[] = [];
     if (opts.projectName) lines.push({ text: opts.projectName, fontSize: 21 * scale, weight: 700 });
     if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500 });
     if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500 });
 
-    const clientLogoH = 52 * scale;
     const lineGap = 4 * scale;
     const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
-    const bottomY = canvas.height - pad;
-
-    let leftX = pad;
-    if (clientLogo) {
-      const w = (clientLogo.naturalWidth / clientLogo.naturalHeight) * clientLogoH;
-      drawRoundedLogo(ctx, clientLogo, leftX, bottomY - clientLogoH, w, clientLogoH, monotoneColor);
-      leftX += w + pad * 0.7;
-    }
     if (lines.length > 0) {
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      let ly = bottomY - textBlockH;
+      let ly = canvas.height - pad - textBlockH;
       for (const l of lines) {
         ctx.font = `${l.weight} ${l.fontSize}px sans-serif`;
         ctx.fillStyle = "#fff";
-        fillShadowedText(l.text, leftX, ly);
+        fillShadowedText(l.text, pad, ly);
         ly += l.fontSize + lineGap;
       }
     }
   }
 
-  if (opts.showConsultantLogos) {
-    // ── bottom-middle: every consultant logo, centered row, rounded corners ──
-    const consultantLogos = (await Promise.all((opts.consultantLogoUrls ?? []).map(loadExternalImage))).filter(
-      (l): l is HTMLImageElement => !!l,
-    );
+  {
+    // ── bottom-middle, stacked: client logo directly above the centered
+    // row of consultant logos, so the two read as one grouped mark ──
+    const clientLogo = opts.showProjectInfo && opts.clientLogoUrl ? await loadExternalImage(opts.clientLogoUrl) : null;
+    const consultantLogos = opts.showConsultantLogos
+      ? (await Promise.all((opts.consultantLogoUrls ?? []).map(loadExternalImage))).filter((l): l is HTMLImageElement => !!l)
+      : [];
+
+    let stackBottomY = canvas.height - pad;
     if (consultantLogos.length > 0) {
       const maxRowWidth = canvas.width * 0.5;
       const gap = 8 * scale;
@@ -432,12 +426,19 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
       const widthAt = (h: number) => consultantLogos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (consultantLogos.length - 1);
       while (widthAt(logoH) > maxRowWidth && logoH > 16 * scale) logoH -= 2 * scale;
       let x = (canvas.width - widthAt(logoH)) / 2;
-      const y = canvas.height - pad - logoH;
+      const y = stackBottomY - logoH;
       for (const logo of consultantLogos) {
         const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
         drawRoundedLogo(ctx, logo, x, y, w, logoH, monotoneColor);
         x += w + gap;
       }
+      stackBottomY = y - 10 * scale;
+    }
+    if (clientLogo) {
+      const h = 48 * scale;
+      const w = (clientLogo.naturalWidth / clientLogo.naturalHeight) * h;
+      const x = (canvas.width - w) / 2;
+      drawRoundedLogo(ctx, clientLogo, x, stackBottomY - h, w, h, monotoneColor);
     }
   }
 
