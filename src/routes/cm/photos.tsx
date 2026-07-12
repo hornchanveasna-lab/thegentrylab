@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, MODULE_ROUTES, setPendingHighlight, useLongPress, sharePhotoFiles,
 } from "@/components/cm/shared";
 import {
@@ -491,6 +491,17 @@ function CMPhotosPage() {
   const filtered = (photos ?? []).filter((p) =>
     (projectFilter === "all" || p.projectId === projectFilter) && (typeFilter === "all" || p.module === typeFilter));
 
+  const filterSubtitle = useMemo(() => {
+    const parts: string[] = [];
+    if (projectFilter !== "all") {
+      const name = projectOptions.find(([id]) => id === projectFilter)?.[1];
+      if (name) parts.push(name);
+    }
+    if (typeFilter !== "all") parts.push(t(`tile.${typeFilter}`));
+    if (parts.length === 0) return t("photos.photoCount", { count: String(filtered.length) });
+    return parts.join(" · ");
+  }, [projectFilter, typeFilter, projectOptions, filtered.length, t]);
+
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; items: CMPhotoWithContext[] }>();
     for (const p of filtered) {
@@ -521,7 +532,10 @@ function CMPhotosPage() {
       <main className="max-w-md mx-auto w-full px-4 pb-28">
         <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1">{t("photos.title")}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-extrabold tracking-tight text-white truncate">{t("photos.title")}</h1>
+            <p className="text-[11px] text-white/40 truncate">{filterSubtitle}</p>
+          </div>
           <div className="relative shrink-0">
             <button onClick={() => setShowSettings((v) => !v)} aria-label={t("photos.settingsTitle")}
               className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
@@ -544,17 +558,21 @@ function CMPhotosPage() {
 
         <div className="flex flex-wrap gap-2 mb-4">
           {projectOptions.length > 1 && (
-            <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}
-              className="flex-1 bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#ff5100]/60 min-w-[120px]">
-              <option value="all">{t("photos.allProjects")}</option>
-              {projectOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-            </select>
+            <FieldSelect
+              className="flex-1 min-w-[120px]"
+              triggerClassName="w-full flex items-center justify-between gap-2 bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white transition-colors"
+              value={projectFilter}
+              onChange={setProjectFilter}
+              options={[{ value: "all", label: t("photos.allProjects") }, ...projectOptions.map(([id, name]) => ({ value: id, label: name }))]}
+            />
           )}
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as "all" | CMPhotoModule)}
-            className="flex-1 bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#ff5100]/60 min-w-[120px]">
-            <option value="all">{t("photos.allTypes")}</option>
-            {MODULE_OPTIONS.map((m) => <option key={m} value={m}>{t(`tile.${m}`)}</option>)}
-          </select>
+          <FieldSelect
+            className="flex-1 min-w-[120px]"
+            triggerClassName="w-full flex items-center justify-between gap-2 bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white transition-colors"
+            value={typeFilter}
+            onChange={(v) => setTypeFilter(v as "all" | CMPhotoModule)}
+            options={[{ value: "all", label: t("photos.allTypes") }, ...MODULE_OPTIONS.map((m) => ({ value: m, label: t(`tile.${m}`) }))]}
+          />
         </div>
 
         <div className="flex items-center justify-between gap-2 mb-5">

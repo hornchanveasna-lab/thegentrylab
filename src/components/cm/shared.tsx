@@ -5,6 +5,62 @@ import { useCMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
+const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white disabled:opacity-40 transition-colors";
+
+export interface FieldSelectOption<T extends string> {
+  value: T;
+  label: string;
+}
+
+/** A flat, rounded overlay list with a checkmark on the selected row —
+ *  the app's one dropdown pattern, replacing every native `<select>` so
+ *  option lists always look and behave the same regardless of platform
+ *  (native pickers render wildly differently per OS/browser). */
+export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, disabled, placeholder }: {
+  value: T;
+  options: FieldSelectOption<T>[];
+  onChange: (v: T) => void;
+  className?: string;
+  triggerClassName?: string;
+  triggerStyle?: React.CSSProperties;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <div className={`relative ${className ?? ""}`}>
+      <button type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
+        className={triggerClassName ?? fieldSelectTriggerCls} style={triggerStyle}>
+        <span className="truncate text-left">{selected?.label ?? placeholder ?? ""}</span>
+        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>
+          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+            <div className="max-h-72 overflow-y-auto">
+              {options.map((opt) => (
+                <button key={opt.value} type="button" onClick={() => { onChange(opt.value); setOpen(false); }}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
+                  <span className="text-[13px] text-white/85 truncate">{opt.label}</span>
+                  {opt.value === value && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <path d="M4 12.5l5 5L20 6" />
+                    </svg>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 /** A single hook call returns a `bind(key, onLongPress)` factory so each item
  *  in a list can get its own long-press handlers without calling a hook
@@ -200,9 +256,12 @@ export function ProjectPicker({ projects, value, onChange }: { projects: CMProje
     );
   }
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className={`${inputCls} mb-5`}>
-      {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-    </select>
+    <FieldSelect
+      className="mb-5"
+      value={value}
+      onChange={onChange}
+      options={projects.map((p) => ({ value: p.id, label: p.name }))}
+    />
   );
 }
 

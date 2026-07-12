@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -70,9 +70,7 @@ function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("inspection.status")}</span>
-            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as InspectionStatus)} disabled={saving}>
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`inspectionStatus.${s}`)}</option>)}
-            </select>
+            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("inspection.date")}</span>

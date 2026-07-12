@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -68,15 +68,11 @@ function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("safety.type")}</span>
-            <select className={inputCls} value={recordType} onChange={(e) => setRecordType(e.target.value as SafetyRecordType)} disabled={saving}>
-              {TYPE_OPTIONS.map((rt) => <option key={rt} value={rt}>{t(`safetyType.${rt}`)}</option>)}
-            </select>
+            <FieldSelect value={recordType} onChange={setRecordType} disabled={saving} options={TYPE_OPTIONS.map((rt) => ({ value: rt, label: t(`safetyType.${rt}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("safety.severity")}</span>
-            <select className={inputCls} value={severity} onChange={(e) => setSeverity(e.target.value as SafetySeverity)} disabled={saving}>
-              {SEVERITY_OPTIONS.map((s) => <option key={s} value={s}>{t(`safetySeverity.${s}`)}</option>)}
-            </select>
+            <FieldSelect value={severity} onChange={setSeverity} disabled={saving} options={SEVERITY_OPTIONS.map((s) => ({ value: s, label: t(`safetySeverity.${s}`) }))} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
