@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -170,8 +170,17 @@ function CMSubmittalPage() {
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [search, setSearch] = useState("");
+  const [sortAsc, setSortAsc] = useState(false);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); setShowNew(false); };
+
+  const visibleSubmittals = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = submittals ?? [];
+    if (q) list = list.filter((s) => [s.title, s.spec_section, s.notes, s.reviewer].some((f) => f?.toLowerCase().includes(q)));
+    return sortAsc ? [...list].reverse() : list;
+  }, [submittals, search, sortAsc]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -184,23 +193,20 @@ function CMSubmittalPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
-        <div className="flex items-center gap-3 mb-6">
-          <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("submittal.title")}</h1>
-        </div>
+      <main className="max-w-md mx-auto w-full px-4 pb-28">
+        <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && (submittals?.length ?? 0) === 0 && (
+            {!isLoading && visibleSubmittals.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
                 <p className="text-white/40 text-sm">{t("submittal.noneYet")}</p>
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+              {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
             </div>
             <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />
           </>
