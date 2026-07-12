@@ -35,8 +35,11 @@ function CMReportsPage() {
   );
 
   const totalPhotos = filtered.reduce((sum, l) => sum + l.photos.length, 0);
-  const workforceDays = filtered.filter((l) => l.workforce_count != null);
-  const avgWorkforce = workforceDays.length ? Math.round(workforceDays.reduce((s, l) => s + (l.workforce_count ?? 0), 0) / workforceDays.length) : null;
+  const manpowerDays = filtered.filter((l) => l.manpower.length > 0);
+  const avgWorkforce = manpowerDays.length
+    ? Math.round(manpowerDays.reduce((s, l) => s + l.manpower.reduce((ms, m) => ms + m.count, 0), 0) / manpowerDays.length)
+    : null;
+  const totalDelayHours = filtered.reduce((sum, l) => sum + l.delays.reduce((ds, d) => ds + d.hours_lost, 0), 0);
   const latestProgress = [...filtered].reverse().find((l) => l.progress_pct != null)?.progress_pct ?? null;
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
@@ -110,11 +113,12 @@ function CMReportsPage() {
             {logsLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
 
             {!logsLoading && (
-              <div className="grid grid-cols-3 gap-3 print:border print:border-black/10 print:rounded-none">
+              <div className="grid grid-cols-2 gap-3 print:border print:border-black/10 print:rounded-none">
                 {[
                   { label: t("reports.diaryEntries"), value: filtered.length },
                   { label: t("reports.avgWorkforce"), value: avgWorkforce ?? "—" },
                   { label: t("reports.latestProgress"), value: latestProgress != null ? `${latestProgress}%` : "—" },
+                  { label: t("reports.delayHours"), value: totalDelayHours > 0 ? totalDelayHours : "—" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-2xl bg-[#0d0d0e] print:bg-white print:border print:border-black/10 px-3 py-3 text-center">
                     <p className="text-lg font-extrabold print:text-black">{s.value}</p>
@@ -135,7 +139,7 @@ function CMReportsPage() {
                     <span className="font-mono text-[11px] text-white/70 print:text-black">{l.log_date}</span>
                     {l.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{l.progress_pct}%</span>}
                   </div>
-                  {l.weather && <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 print:text-black/50 mb-1">{t(`weather.${l.weather}`)}{l.workforce_count != null ? ` · ${l.workforce_count} ${t("reports.workers")}` : ""}</p>}
+                  {l.weather && <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 print:text-black/50 mb-1">{t(`weather.${l.weather}`)}{l.manpower.length > 0 ? ` · ${l.manpower.reduce((s, m) => s + m.count, 0)} ${t("reports.workers")}` : ""}</p>}
                   {l.activities && <p className="text-[12px] text-white/60 print:text-black/80">{l.activities}</p>}
                   {l.issues && <p className="text-[11px] text-red-400/80 print:text-red-700 mt-1">{t("reports.issue")} {l.issues}</p>}
                 </div>

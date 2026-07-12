@@ -40,6 +40,36 @@ export interface CMProjectConsultant {
   updated_at: string;
 }
 
+export interface CMManpowerRow {
+  trade: string;
+  company: string | null;
+  count: number;
+}
+
+export interface CMDeliveryRow {
+  material: string;
+  quantity: string;
+  unit: string | null;
+  supplier: string | null;
+}
+
+export type CMVisitorKind = "visitor" | "instruction";
+
+export interface CMVisitorRow {
+  name: string;
+  organization: string | null;
+  kind: CMVisitorKind;
+  note: string;
+}
+
+export type CMDelayCause = "Weather" | "Material" | "Labor" | "Other";
+
+export interface CMDelayRow {
+  cause: CMDelayCause;
+  description: string;
+  hours_lost: number;
+}
+
 export interface CMDailyLog {
   id: string;
   project_id: string;
@@ -47,13 +77,16 @@ export interface CMDailyLog {
   log_date: string;
   weather: string | null;
   temperature_c: number | null;
-  workforce_count: number | null;
   progress_pct: number | null;
   activities: string | null;
   materials_used: string | null;
   equipment_used: string | null;
   issues: string | null;
   notes: string | null;
+  manpower: CMManpowerRow[];
+  deliveries: CMDeliveryRow[];
+  visitors: CMVisitorRow[];
+  delays: CMDelayRow[];
   photos: string[];
   photo_thumbs: string[];
   created_at: string;

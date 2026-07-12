@@ -12,6 +12,37 @@ export interface FieldSelectOption<T extends string> {
   label: string;
 }
 
+/** A generic add/remove row-list editor — one row card per item with a
+ *  remove "×" and an "+ Add" button, used for any small repeatable
+ *  sub-section inside a form (manpower, deliveries, visitors, delays,
+ *  etc.) instead of writing a bespoke editor per shape. */
+export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, renderRow }: {
+  label: string;
+  addLabel: string;
+  rows: T[];
+  onChange: (rows: T[]) => void;
+  emptyRow: T;
+  renderRow: (row: T, update: (patch: Partial<T>) => void) => React.ReactNode;
+}) {
+  const updateRow = (i: number, patch: Partial<T>) => onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  const removeRow = (i: number) => onChange(rows.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className={labelCls}>{label}</span>
+      {rows.map((row, i) => (
+        <div key={i} className="relative rounded-xl bg-white/[0.03] p-3 pr-9">
+          {renderRow(row, (patch) => updateRow(i, patch))}
+          <button type="button" onClick={() => removeRow(i)}
+            className="absolute top-2 right-2 text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        </div>
+      ))}
+      <button type="button" onClick={() => onChange([...rows, emptyRow])}
+        className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{addLabel}</button>
+    </div>
+  );
+}
+
 /** A flat, rounded overlay list with a checkmark on the selected row —
  *  the app's one dropdown pattern, replacing every native `<select>` so
  *  option lists always look and behave the same regardless of platform
