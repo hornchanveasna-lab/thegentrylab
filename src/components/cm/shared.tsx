@@ -144,6 +144,7 @@ export function ProjectPicker({ projects, value, onChange }: { projects: CMProje
 
 export interface PhotoLightboxItem {
   url: string;
+  thumbUrl?: string;
   recordId?: string;
   module?: CMPhotoModule;
   projectId?: string;
@@ -388,7 +389,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
             <button key={`${it.url}-${i}`} data-idx={i} onClick={() => onIndexChange(i)}
               className="shrink-0 w-12 h-12 rounded-lg overflow-hidden transition-opacity"
               style={{ outline: i === index ? "2px solid #ff5100" : "none", opacity: i === index ? 1 : 0.5 }}>
-              <img src={it.url} alt="" className="w-full h-full object-cover" />
+              <img src={it.thumbUrl ?? it.url} alt="" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>

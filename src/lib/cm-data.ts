@@ -42,6 +42,7 @@ export interface CMDailyLog {
   issues: string | null;
   notes: string | null;
   photos: string[];
+  photo_thumbs: string[];
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +59,7 @@ export interface CMTask {
   due_date: string | null;
   sort_order: number;
   photos: string[];
+  photo_thumbs: string[];
   created_at: string;
   updated_at: string;
 }
@@ -193,56 +195,86 @@ export async function uploadCMPhoto(ownerId: string, projectId: string, file: Fi
   return data?.signedUrl ?? path;
 }
 
+/** Decodes a File into an <img> via a transient object URL. Safe to revoke the
+ *  URL as soon as the image has decoded — the bitmap stays usable afterward. */
+function loadImage(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const el = new Image();
+    el.onload = () => { URL.revokeObjectURL(url); resolve(el); };
+    el.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Failed to read photo")); };
+    el.src = url;
+  });
+}
+
 /** Burns an optional company-name watermark and/or capture date-time onto a photo
  *  before it's uploaded, so the record on site stays legible even if it's later
- *  exported or shared outside the app. */
+ *  exported or shared outside the app. Keeps the original pixel dimensions —
+ *  this is the full-quality photo that gets stored, not a thumbnail. */
 export async function stampPhoto(file: File, opts: { companyName?: string | null; watermark: boolean; timestamp: boolean }): Promise<File> {
   if (!opts.watermark && !opts.timestamp) return file;
-  const objectUrl = URL.createObjectURL(file);
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("Failed to read photo"));
-      el.src = objectUrl;
-    });
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return file;
-    ctx.drawImage(img, 0, 0);
+  const img = await loadImage(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(img, 0, 0);
 
-    const scale = Math.max(1, canvas.width / 1000);
-    const pad = 14 * scale;
+  const scale = Math.max(1, canvas.width / 1000);
+  const pad = 14 * scale;
 
-    if (opts.timestamp) {
-      const text = new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-      const fontSize = 20 * scale;
-      ctx.font = `600 ${fontSize}px sans-serif`;
-      const boxW = ctx.measureText(text).width + pad * 2;
-      const boxH = fontSize + pad * 1.4;
-      ctx.fillStyle = "rgba(0,0,0,0.55)";
-      ctx.fillRect(0, canvas.height - boxH, boxW, boxH);
-      ctx.fillStyle = "#fff";
-      ctx.textBaseline = "middle";
-      ctx.fillText(text, pad, canvas.height - boxH / 2);
-    }
-    if (opts.watermark && opts.companyName) {
-      const fontSize = 22 * scale;
-      ctx.font = `700 ${fontSize}px sans-serif`;
-      ctx.fillStyle = "rgba(255,255,255,0.4)";
-      ctx.textAlign = "right";
-      ctx.textBaseline = "bottom";
-      ctx.fillText(opts.companyName, canvas.width - pad, canvas.height - pad);
-    }
-
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-    if (!blob) return file;
-    return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
-  } finally {
-    URL.revokeObjectURL(objectUrl);
+  if (opts.timestamp) {
+    const text = new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    const fontSize = 20 * scale;
+    ctx.font = `600 ${fontSize}px sans-serif`;
+    const boxW = ctx.measureText(text).width + pad * 2;
+    const boxH = fontSize + pad * 1.4;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(0, canvas.height - boxH, boxW, boxH);
+    ctx.fillStyle = "#fff";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, pad, canvas.height - boxH / 2);
   }
+  if (opts.watermark && opts.companyName) {
+    const fontSize = 22 * scale;
+    ctx.font = `700 ${fontSize}px sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(opts.companyName, canvas.width - pad, canvas.height - pad);
+  }
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+  if (!blob) return file;
+  return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
+}
+
+/** A small, fast-loading rendition for grid/calendar/filmstrip tiles — the
+ *  original full-quality file is uploaded separately and untouched, so this
+ *  only affects how quickly thumbnails load, never the stored photo quality. */
+export async function makeThumbnail(file: File, maxDim = 480): Promise<File> {
+  const img = await loadImage(file);
+  const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.72));
+  if (!blob) return file;
+  return new File([blob], file.name.replace(/\.\w+$/, "-thumb.jpg"), { type: "image/jpeg" });
+}
+
+/** Uploads the file at full quality, plus a small companion thumbnail, in parallel. */
+export async function uploadCMPhotoWithThumb(ownerId: string, projectId: string, file: File): Promise<{ url: string; thumbUrl: string }> {
+  const thumbFile = await makeThumbnail(file);
+  const [url, thumbUrl] = await Promise.all([
+    uploadCMPhoto(ownerId, projectId, file),
+    uploadCMPhoto(ownerId, projectId, thumbFile),
+  ]);
+  return { url, thumbUrl };
 }
 
 export async function uploadCMLogo(ownerId: string, projectId: string, file: File): Promise<string> {
@@ -260,6 +292,7 @@ export type CMPhotoModule = "siteDiary" | "inspection" | "punchList" | "safety" 
 
 export interface CMPhotoWithContext {
   url: string;
+  thumbUrl: string;
   date: string;
   projectId: string;
   projectName: string;
@@ -268,12 +301,12 @@ export interface CMPhotoWithContext {
   recordId: string;
 }
 
-type PhotoRow = { id: string; photos: string[]; project_id: string; cm_projects: { name: string } | null };
+type PhotoRow = { id: string; photos: string[]; photo_thumbs: string[]; project_id: string; cm_projects: { name: string } | null };
 
 function photoRowsToContext<T extends PhotoRow>(rows: T[], module: CMPhotoModule, date: (r: T) => string, caption: (r: T) => string | null): CMPhotoWithContext[] {
   return rows.flatMap((r) =>
-    r.photos.map((url) => ({
-      url, module, date: date(r), projectId: r.project_id, recordId: r.id,
+    r.photos.map((url, i) => ({
+      url, thumbUrl: r.photo_thumbs[i] || url, module, date: date(r), projectId: r.project_id, recordId: r.id,
       projectName: r.cm_projects?.name ?? "Untitled project", caption: caption(r),
     })),
   );
@@ -286,11 +319,11 @@ export function useAllCMPhotos(userId: string | undefined) {
     queryFn: async () => {
       const client = db();
       const [logs, inspections, safety, tasks, submittals] = await Promise.all([
-        client.from("cm_daily_logs").select("id, photos, log_date, activities, project_id, cm_projects(name)"),
-        client.from("cm_inspections").select("id, photos, inspection_date, title, project_id, cm_projects(name)"),
-        client.from("cm_safety_records").select("id, photos, record_date, title, project_id, cm_projects(name)"),
-        client.from("cm_tasks").select("id, photos, created_at, title, project_id, cm_projects(name)"),
-        client.from("cm_submittals").select("id, photos, submitted_date, created_at, title, project_id, cm_projects(name)"),
+        client.from("cm_daily_logs").select("id, photos, photo_thumbs, log_date, activities, project_id, cm_projects(name)"),
+        client.from("cm_inspections").select("id, photos, photo_thumbs, inspection_date, title, project_id, cm_projects(name)"),
+        client.from("cm_safety_records").select("id, photos, photo_thumbs, record_date, title, project_id, cm_projects(name)"),
+        client.from("cm_tasks").select("id, photos, photo_thumbs, created_at, title, project_id, cm_projects(name)"),
+        client.from("cm_submittals").select("id, photos, photo_thumbs, submitted_date, created_at, title, project_id, cm_projects(name)"),
       ]);
       for (const r of [logs, inspections, safety, tasks, submittals]) if (r.error) throw r.error;
 
@@ -554,6 +587,7 @@ export interface CMInspection {
   inspection_date: string;
   notes: string | null;
   photos: string[];
+  photo_thumbs: string[];
   created_at: string;
   updated_at: string;
 }
@@ -607,6 +641,7 @@ export interface CMSafetyRecord {
   record_date: string;
   involved: string | null;
   photos: string[];
+  photo_thumbs: string[];
   status: SafetyStatus;
   created_at: string;
   updated_at: string;
@@ -661,6 +696,7 @@ export interface CMSubmittal {
   revision: number;
   notes: string | null;
   photos: string[];
+  photo_thumbs: string[];
   created_at: string;
   updated_at: string;
 }

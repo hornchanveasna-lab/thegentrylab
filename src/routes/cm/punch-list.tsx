@@ -12,7 +12,7 @@ import {
   createCMTask,
   updateCMTask,
   deleteCMTask,
-  uploadCMPhoto,
+  uploadCMPhotoWithThumb,
   type CMTask,
   type TaskStatus,
   type TaskPriority,
@@ -55,8 +55,8 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
         assignee: assignee.trim() || null, due_date: dueDate || null,
       });
       if (photos.length > 0) {
-        const urls = await Promise.all(photos.map((f) => uploadCMPhoto(ownerId, projectId, f)));
-        await updateCMTask(item.id, { photos: urls });
+        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+        await updateCMTask(item.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
       }
       onCreated();
     } catch (err) {
@@ -112,7 +112,9 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
+type LightboxItem = { url: string; thumbUrl: string };
+
+function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("punchList", item.id);
@@ -147,9 +149,10 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
       {item.photos.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-1">
           {item.photos.map((url, i) => (
-            <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(item.photos, i)}
+            <button key={url} type="button" data-photo-url={url}
+              onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
               className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-              <img src={url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+              <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
             </button>
           ))}
         </div>
@@ -166,7 +169,7 @@ function CMPunchListPage() {
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
 
@@ -204,7 +207,7 @@ function CMPunchListPage() {
               <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
+              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
             </div>
 
             {done.length > 0 && (
@@ -214,7 +217,7 @@ function CMPunchListPage() {
                 </button>
                 {showCompleted && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
+                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                   </div>
                 )}
               </div>
@@ -229,7 +232,7 @@ function CMPunchListPage() {
 
       {lightbox && (
         <PhotoLightbox
-          items={lightbox.photos.map((url) => ({ url }))}
+          items={lightbox.items}
           index={lightbox.index}
           onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
           onClose={() => setLightbox(null)}
