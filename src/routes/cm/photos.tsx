@@ -111,14 +111,14 @@ function ToggleRow({ icon, label, checked, disabled, onChange }: {
   );
 }
 
-function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, showConsultantLogos, timestamp, onClose, onChanged }: {
-  ownerId: string; showCompanyLogo: boolean; showProjectInfo: boolean; showConsultantLogos: boolean; timestamp: boolean; onClose: () => void; onChanged: () => void;
+function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, showConsultantLogos, monotoneLogos, timestamp, onClose, onChanged }: {
+  ownerId: string; showCompanyLogo: boolean; showProjectInfo: boolean; showConsultantLogos: boolean; monotoneLogos: boolean; timestamp: boolean; onClose: () => void; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
-  const toggle = async (patch: { photo_show_company_logo?: boolean; photo_show_project_info?: boolean; photo_show_consultant_logos?: boolean; photo_timestamp?: boolean }) => {
+  const toggle = async (patch: { photo_show_company_logo?: boolean; photo_show_project_info?: boolean; photo_show_consultant_logos?: boolean; photo_monotone_logos?: boolean; photo_timestamp?: boolean }) => {
     // Write straight into the cache first so the switch (and anything else
     // reading these settings, like the New Photo sheet) reflects the change
     // instantly instead of waiting on a refetch round-trip.
@@ -165,6 +165,17 @@ function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, show
           <ToggleRow
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
+              </svg>
+            }
+            label={t("photos.monotoneLogos")} checked={monotoneLogos} disabled={busy}
+            onChange={(v) => toggle({ photo_monotone_logos: v })}
+          />
+        </div>
+        <div className="border-t border-white/10 py-1.5">
+          <ToggleRow
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.2 2" />
               </svg>
             }
@@ -177,7 +188,7 @@ function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, show
   );
 }
 
-function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogoUrl, showCompanyLogo, showProjectInfo, showConsultantLogos, timestamp, onClose, onCreated }: {
+function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogoUrl, showCompanyLogo, showProjectInfo, showConsultantLogos, monotoneLogos, timestamp, onClose, onCreated }: {
   ownerId: string;
   projects: CMProject[];
   projectId: string;
@@ -186,6 +197,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   showCompanyLogo: boolean;
   showProjectInfo: boolean;
   showConsultantLogos: boolean;
+  monotoneLogos: boolean;
   timestamp: boolean;
   onClose: () => void;
   onCreated: () => void;
@@ -213,7 +225,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
     try {
       const project = projects.find((p) => p.id === projectId);
       const stampOpts = {
-        showCompanyLogo, showProjectInfo, showConsultantLogos, timestamp,
+        showCompanyLogo, showProjectInfo, showConsultantLogos, monotoneLogos, timestamp,
         companyLogoUrl,
         clientLogoUrl: project?.client_logo_url ?? null,
         consultantLogoUrls: (consultants ?? []).map((c) => c.logo_url).filter((u): u is string => !!u),
@@ -521,6 +533,7 @@ function CMPhotosPage() {
                 showCompanyLogo={account?.photo_show_company_logo ?? true}
                 showProjectInfo={account?.photo_show_project_info ?? true}
                 showConsultantLogos={account?.photo_show_consultant_logos ?? true}
+                monotoneLogos={account?.photo_monotone_logos ?? false}
                 timestamp={account?.photo_timestamp ?? true}
                 onClose={() => setShowSettings(false)}
                 onChanged={invalidateAccount}
@@ -603,7 +616,7 @@ function CMPhotosPage() {
             {groups.map((group, gi) => (
               <div key={gi}>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-3 gap-0.5">
                   {group.items.map((p, i) => {
                     const checked = selectedUrls.has(p.url);
                     return (
@@ -649,6 +662,7 @@ function CMPhotosPage() {
           showCompanyLogo={account?.photo_show_company_logo ?? true}
           showProjectInfo={account?.photo_show_project_info ?? true}
           showConsultantLogos={account?.photo_show_consultant_logos ?? true}
+          monotoneLogos={account?.photo_monotone_logos ?? false}
           timestamp={account?.photo_timestamp ?? true}
           onClose={() => setShowNew(false)}
           onCreated={invalidate}

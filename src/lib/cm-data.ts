@@ -261,6 +261,7 @@ export interface StampPhotoOptions {
   showCompanyLogo: boolean;
   showProjectInfo: boolean;
   showConsultantLogos: boolean;
+  monotoneLogos: boolean;
   timestamp: boolean;
   companyLogoUrl?: string | null;
   clientLogoUrl?: string | null;
@@ -282,12 +283,32 @@ function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w:
 }
 
 /** Draws a logo clipped to its own rounded-rect — softening its corners
- *  directly instead of putting a backing chip or outline behind it. */
-function drawRoundedLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, x: number, y: number, w: number, h: number) {
+ *  directly instead of putting a backing chip or outline behind it. When
+ *  `monotone` is set, the logo's silhouette (its alpha shape) is kept but
+ *  every opaque pixel is recolored to a single flat tint — matching the
+ *  stamp's own text color for a consistent, single-ink, premium look
+ *  instead of a row of differently-colored brand marks. */
+function drawRoundedLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, x: number, y: number, w: number, h: number, monotone?: string) {
   ctx.save();
   roundedRectPath(ctx, x, y, w, h, Math.min(w, h) * 0.16);
   ctx.clip();
-  ctx.drawImage(logo, x, y, w, h);
+  if (monotone) {
+    const tinted = document.createElement("canvas");
+    tinted.width = w;
+    tinted.height = h;
+    const tctx = tinted.getContext("2d");
+    if (tctx) {
+      tctx.drawImage(logo, 0, 0, w, h);
+      tctx.globalCompositeOperation = "source-in";
+      tctx.fillStyle = monotone;
+      tctx.fillRect(0, 0, w, h);
+      ctx.drawImage(tinted, x, y, w, h);
+    } else {
+      ctx.drawImage(logo, x, y, w, h);
+    }
+  } else {
+    ctx.drawImage(logo, x, y, w, h);
+  }
   ctx.restore();
 }
 
@@ -312,6 +333,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
 
   const scale = Math.max(1, canvas.width / 1000);
   const pad = 16 * scale;
+  const monotoneColor = opts.monotoneLogos ? "#ffffff" : undefined;
 
   const fillShadowedText = (text: string, x: number, y: number) => {
     ctx.shadowColor = "rgba(0,0,0,0.9)";
@@ -330,7 +352,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
     if (companyLogo) {
       const h = 52 * scale;
       const w = (companyLogo.naturalWidth / companyLogo.naturalHeight) * h;
-      drawRoundedLogo(ctx, companyLogo, canvas.width - pad - w, pad, w, h);
+      drawRoundedLogo(ctx, companyLogo, canvas.width - pad - w, pad, w, h, monotoneColor);
     }
   }
 
@@ -350,7 +372,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
     let leftX = pad;
     if (clientLogo) {
       const w = (clientLogo.naturalWidth / clientLogo.naturalHeight) * clientLogoH;
-      drawRoundedLogo(ctx, clientLogo, leftX, bottomY - clientLogoH, w, clientLogoH);
+      drawRoundedLogo(ctx, clientLogo, leftX, bottomY - clientLogoH, w, clientLogoH, monotoneColor);
       leftX += w + pad * 0.7;
     }
     if (lines.length > 0) {
@@ -381,7 +403,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
       const y = canvas.height - pad - logoH;
       for (const logo of consultantLogos) {
         const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
-        drawRoundedLogo(ctx, logo, x, y, w, logoH);
+        drawRoundedLogo(ctx, logo, x, y, w, logoH, monotoneColor);
         x += w + gap;
       }
     }
@@ -982,6 +1004,7 @@ export interface CMAccountSettings {
   photo_show_company_logo: boolean;
   photo_show_project_info: boolean;
   photo_show_consultant_logos: boolean;
+  photo_monotone_logos: boolean;
   photo_timestamp: boolean;
   created_at: string;
   updated_at: string;
