@@ -245,12 +245,13 @@ export interface StampPhotoOptions {
 
 /** Burns project identification onto a photo before it's uploaded, so the
  *  record stays legible even if it's later exported or shared outside the
- *  app. Everything sits in a transparent bottom band (a soft drop-shadow
- *  keeps it legible over any background instead of a solid backing box):
- *  the company logo (bigger) plus project name/code/location bottom-left,
- *  and the client/consultant logos plus capture date/time bottom-right.
- *  Keeps the original pixel dimensions — this is the full-quality photo that
- *  gets stored, not a thumbnail. */
+ *  app. Layout: the company logo sits alone, top-right, plain (no shadow —
+ *  logos don't need one). Bottom-left holds the project logo beside the
+ *  project name/code/location, with every consultant logo in a row directly
+ *  beneath. Bottom-right holds the capture date/time. Text keeps a soft
+ *  drop-shadow for legibility over any background. Keeps the original pixel
+ *  dimensions — this is the full-quality photo that gets stored, not a
+ *  thumbnail. */
 export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<File> {
   if (!opts.watermark && !opts.timestamp) return file;
   const img = await loadImage(file);
@@ -264,55 +265,86 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
   const scale = Math.max(1, canvas.width / 1000);
   const pad = 16 * scale;
 
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.9)";
-  ctx.shadowBlur = 6 * scale;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 1 * scale;
+  const fillShadowedText = (text: string, x: number, y: number) => {
+    ctx.shadowColor = "rgba(0,0,0,0.9)";
+    ctx.shadowBlur = 6 * scale;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 1 * scale;
+    ctx.fillText(text, x, y);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+  };
 
   if (opts.watermark) {
-    // ── bottom-left: company logo (bigger) + project name/code/location ──
+    // ── top-right: company logo, alone, plain ──
     const companyLogo = opts.companyLogoUrl ? await loadExternalImage(opts.companyLogoUrl) : null;
+    if (companyLogo) {
+      const companyLogoH = 52 * scale;
+      const w = (companyLogo.naturalWidth / companyLogo.naturalHeight) * companyLogoH;
+      ctx.drawImage(companyLogo, canvas.width - pad - w, pad, w, companyLogoH);
+    }
+
+    // ── bottom-left: project logo + project name/code/location, with every
+    //    consultant logo in a row directly beneath ──
+    let leftCursorY = canvas.height - pad;
+
+    const consultantLogos = (await Promise.all((opts.consultantLogoUrls ?? []).map(loadExternalImage))).filter(
+      (l): l is HTMLImageElement => !!l,
+    );
+    if (consultantLogos.length > 0) {
+      const maxRowWidth = canvas.width * 0.6;
+      const gap = 8 * scale;
+      let logoH = 26 * scale;
+      const widthAt = (h: number) => consultantLogos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (consultantLogos.length - 1);
+      while (widthAt(logoH) > maxRowWidth && logoH > 12 * scale) logoH -= 2 * scale;
+      let x = pad;
+      const y = leftCursorY - logoH;
+      for (const logo of consultantLogos) {
+        const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
+        ctx.drawImage(logo, x, y, w, logoH);
+        x += w + gap;
+      }
+      leftCursorY -= logoH + pad * 0.5;
+    }
+
+    const projectLogo = opts.clientLogoUrl ? await loadExternalImage(opts.clientLogoUrl) : null;
     const lines: { text: string; fontSize: number; weight: number }[] = [];
     if (opts.projectName) lines.push({ text: opts.projectName, fontSize: 21 * scale, weight: 700 });
     if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500 });
     if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500 });
 
-    const companyLogoH = 52 * scale;
+    const projectLogoH = 52 * scale;
     const lineGap = 4 * scale;
     const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
-    const leftBottomY = canvas.height - pad;
 
     let leftX = pad;
-    if (companyLogo) {
-      const w = (companyLogo.naturalWidth / companyLogo.naturalHeight) * companyLogoH;
-      ctx.drawImage(companyLogo, leftX, leftBottomY - companyLogoH, w, companyLogoH);
+    if (projectLogo) {
+      const w = (projectLogo.naturalWidth / projectLogo.naturalHeight) * projectLogoH;
+      ctx.drawImage(projectLogo, leftX, leftCursorY - projectLogoH, w, projectLogoH);
       leftX += w + pad * 0.7;
     }
     if (lines.length > 0) {
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      let ly = leftBottomY - textBlockH;
+      let ly = leftCursorY - textBlockH;
       for (const l of lines) {
         ctx.font = `${l.weight} ${l.fontSize}px sans-serif`;
         ctx.fillStyle = "#fff";
-        ctx.fillText(l.text, leftX, ly);
+        fillShadowedText(l.text, leftX, ly);
         ly += l.fontSize + lineGap;
       }
     }
   }
 
-  // ── bottom-right: client/consultant logos, with the timestamp stacked
-  //    directly beneath them so both land together in the same corner ──
-  let rightCursorY = canvas.height - pad;
-
+  // ── bottom-right: capture date/time, e.g. "Sun-12-Jul-2026" / "02:11:45 PM" ──
   if (opts.timestamp) {
     const now = new Date();
-    const dateStr = `${String(now.getDate()).padStart(2, "0")}-${now.toLocaleDateString("en-US", { month: "short" })}-${now.getFullYear()}`;
+    const dateStr = `${now.toLocaleDateString("en-US", { weekday: "short" })}-${String(now.getDate()).padStart(2, "0")}-${now.toLocaleDateString("en-US", { month: "short" })}-${now.getFullYear()}`;
     let hours = now.getHours();
-    const ampm = hours >= 12 ? "pm" : "am";
+    const ampm = hours >= 12 ? "PM" : "AM";
     hours = hours % 12 || 12;
-    const timeStr = `${String(hours).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}${ampm}`;
+    const timeStr = `${String(hours).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")} ${ampm}`;
 
     const dateFontSize = 16 * scale;
     const timeFontSize = 14 * scale;
@@ -320,39 +352,15 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
 
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
+    let y = canvas.height - pad;
     ctx.font = `500 ${timeFontSize}px sans-serif`;
     ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.fillText(timeStr, canvas.width - pad, rightCursorY);
-    rightCursorY -= timeFontSize + lineGap;
+    fillShadowedText(timeStr, canvas.width - pad, y);
+    y -= timeFontSize + lineGap;
     ctx.font = `700 ${dateFontSize}px sans-serif`;
     ctx.fillStyle = "#fff";
-    ctx.fillText(dateStr, canvas.width - pad, rightCursorY);
-    rightCursorY -= dateFontSize + pad * 0.5;
+    fillShadowedText(dateStr, canvas.width - pad, y);
   }
-
-  if (opts.watermark) {
-    const rightLogoUrls = [opts.clientLogoUrl, ...(opts.consultantLogoUrls ?? [])].filter((u): u is string => !!u);
-    if (rightLogoUrls.length > 0) {
-      const rightLogos = (await Promise.all(rightLogoUrls.map(loadExternalImage))).filter((l): l is HTMLImageElement => !!l);
-      if (rightLogos.length > 0) {
-        const maxRowWidth = canvas.width * 0.5;
-        const gap = 8 * scale;
-        let logoH = 30 * scale;
-        const widthAt = (h: number) => rightLogos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (rightLogos.length - 1);
-        while (widthAt(logoH) > maxRowWidth && logoH > 14 * scale) logoH -= 2 * scale;
-        const totalW = widthAt(logoH);
-        let x = canvas.width - pad - totalW;
-        const y = rightCursorY - logoH;
-        for (const logo of rightLogos) {
-          const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
-          ctx.drawImage(logo, x, y, w, logoH);
-          x += w + gap;
-        }
-      }
-    }
-  }
-
-  ctx.restore();
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
   if (!blob) return file;
