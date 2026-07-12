@@ -51,6 +51,9 @@ export interface CMDeliveryRow {
   quantity: string;
   unit: string | null;
   supplier: string | null;
+  /** Links this delivery to a cm_boq_items row so quantities can be tallied
+   *  against the BOQ's planned quantity; null for free-text "Custom" rows. */
+  boq_item_id: string | null;
 }
 
 export type CMVisitorKind = "visitor" | "instruction";
@@ -213,6 +216,74 @@ export async function findOrCreateCMDailyLog(
   if (error) throw error;
   if (existing) return existing as CMDailyLog;
   return createCMDailyLog(ownerId, projectId, { log_date: logDate, ...createDefaults });
+}
+
+/** Merges any project+day that has more than one `cm_daily_logs` row (a
+ *  leftover from before `findOrCreateCMDailyLog` existed, or a race between
+ *  two concurrent submissions) into a single entry, then deletes the
+ *  extras. Array fields concatenate, narrative text fields join with a
+ *  separator, and single-value fields keep the most recent non-null value.
+ *  Returns whether anything was merged, so callers know to re-fetch. */
+export async function mergeDuplicateCMDailyLogs(logs: CMDailyLog[]): Promise<boolean> {
+  const groups = new Map<string, CMDailyLog[]>();
+  for (const log of logs) {
+    const key = `${log.project_id}|${log.log_date}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(log);
+  }
+
+  let mergedAny = false;
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const sorted = [...group].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const [primary, ...dupes] = sorted;
+    const latestNonNull = <T,>(pick: (l: CMDailyLog) => T | null) => [...sorted].reverse().map(pick).find((v) => v != null) ?? null;
+    const joinText = (pick: (l: CMDailyLog) => string | null) => sorted.map(pick).filter((v): v is string => !!v).join("\n---\n") || null;
+
+    await updateCMDailyLog(primary.id, {
+      photos: sorted.flatMap((l) => l.photos),
+      photo_thumbs: sorted.flatMap((l) => l.photo_thumbs),
+      manpower: sorted.flatMap((l) => l.manpower),
+      deliveries: sorted.flatMap((l) => l.deliveries),
+      visitors: sorted.flatMap((l) => l.visitors),
+      delays: sorted.flatMap((l) => l.delays),
+      weather: latestNonNull((l) => l.weather),
+      temperature_c: latestNonNull((l) => l.temperature_c),
+      progress_pct: latestNonNull((l) => l.progress_pct),
+      activities: joinText((l) => l.activities),
+      materials_used: joinText((l) => l.materials_used),
+      equipment_used: joinText((l) => l.equipment_used),
+      issues: joinText((l) => l.issues),
+      notes: joinText((l) => l.notes),
+    });
+    await Promise.all(dupes.map((d) => deleteCMDailyLog(d.id)));
+    mergedAny = true;
+  }
+  return mergedAny;
+}
+
+export interface CMDailyLogWithProject extends CMDailyLog {
+  projectName: string;
+}
+
+/** Site Diary's "All Projects" filter — same cross-project pattern as
+ *  useAllCMPhotos, joined with the project name for display since multiple
+ *  projects' entries now interleave by date. */
+export function useAllCMDailyLogs(userId: string | undefined) {
+  return useQuery<CMDailyLogWithProject[]>({
+    queryKey: ["cm_all_daily_logs", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_daily_logs").select("*, cm_projects(name)")
+        .order("log_date", { ascending: false }).order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as (CMDailyLog & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...log } = r;
+        return { ...log, projectName: cm_projects?.name ?? "Untitled project" };
+      });
+    },
+    staleTime: STALE_TIME,
+  });
 }
 
 /* ── Tasks ──────────────────────────────────────────────── */
@@ -1252,6 +1323,28 @@ export interface CMDailyActivity {
 
 function emptyCMDailyActivity(): CMDailyActivity {
   return { inspections: [], safetyRecords: [], tasks: [], submittals: [] };
+}
+
+export interface CMDailyPhoto {
+  url: string;
+  thumbUrl: string;
+  module: CMPhotoModule;
+  recordId: string;
+}
+
+/** Flattens a day's cross-module activity into one photo list, so Site
+ *  Diary can show every picture taken that day — not just its own — in a
+ *  single combined gallery. */
+export function flattenCMDailyActivityPhotos(activity: CMDailyActivity | undefined): CMDailyPhoto[] {
+  if (!activity) return [];
+  const fromRows = <T extends { id: string; photos: string[]; photo_thumbs: string[] }>(rows: T[], module: CMPhotoModule) =>
+    rows.flatMap((r) => r.photos.map((url, i) => ({ url, thumbUrl: r.photo_thumbs[i] || url, module, recordId: r.id })));
+  return [
+    ...fromRows(activity.inspections, "inspection"),
+    ...fromRows(activity.safetyRecords, "safety"),
+    ...fromRows(activity.tasks, "punchList"),
+    ...fromRows(activity.submittals, "submittal"),
+  ];
 }
 
 /** Punch List tasks have no clean "activity day" field, so — consistent with

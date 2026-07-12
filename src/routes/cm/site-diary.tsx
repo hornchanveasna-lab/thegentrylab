@@ -1,20 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, setPendingHighlight, MODULE_ROUTES, CMDailyActivityList,
+  PhotoLightbox, usePendingHighlight, setPendingHighlight, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, CMDailyActivityList,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
+  useAllCMDailyLogs,
   useCMDailyActivity,
-  createCMDailyLog,
+  findOrCreateCMDailyLog,
+  mergeDuplicateCMDailyLogs,
+  flattenCMDailyActivityPhotos,
   updateCMDailyLog,
   deleteCMDailyLog,
   uploadCMPhotoWithThumb,
+  useCMBOQItems,
   type CMDailyLog,
+  type CMDailyLogWithProject,
   type CMManpowerRow,
   type CMDeliveryRow,
   type CMVisitorRow,
@@ -33,7 +38,7 @@ const VISITOR_KIND_OPTIONS: CMVisitorKind[] = ["visitor", "instruction"];
 const DELAY_CAUSE_OPTIONS: CMDelayCause[] = ["Weather", "Material", "Labor", "Other"];
 
 const EMPTY_MANPOWER: CMManpowerRow = { trade: "", company: null, count: 0 };
-const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null };
+const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null };
 const EMPTY_VISITOR: CMVisitorRow = { name: "", organization: null, kind: "visitor", note: "" };
 const EMPTY_DELAY: CMDelayRow = { cause: "Weather", description: "", hours_lost: 0 };
 
@@ -45,6 +50,7 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
+  const { data: boqItems } = useCMBOQItems(projectId);
   const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [weather, setWeather] = useState(WEATHER_OPTIONS[0]);
   const [temperature, setTemperature] = useState("");
@@ -68,25 +74,29 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const log = await createCMDailyLog(ownerId, projectId, {
-        log_date: logDate,
-        weather,
-        temperature_c: temperature ? Number(temperature) : null,
-        progress_pct: progressPct ? Number(progressPct) : null,
-        activities: activities.trim() || null,
-        materials_used: materials.trim() || null,
-        equipment_used: equipment.trim() || null,
-        issues: issues.trim() || null,
-        notes: notes.trim() || null,
-        manpower: manpower.filter((r) => r.trade.trim()),
-        deliveries: deliveries.filter((r) => r.material.trim()),
-        visitors: visitors.filter((r) => r.name.trim()),
-        delays: delays.filter((r) => r.description.trim()),
+      // Find-or-create that day's single entry, then merge this submission's
+      // fields into it (append rows/photos, keep new scalar values where the
+      // form provided one) — this is the fix for the "one report per day"
+      // duplicate-entry bug: re-opening "New Entry" for a day that already
+      // has data adds to it instead of inserting a second row.
+      const log = await findOrCreateCMDailyLog(ownerId, projectId, logDate, {});
+      const uploaded = photos.length > 0 ? await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : [];
+      await updateCMDailyLog(log.id, {
+        weather: weather || log.weather,
+        temperature_c: temperature ? Number(temperature) : log.temperature_c,
+        progress_pct: progressPct ? Number(progressPct) : log.progress_pct,
+        activities: activities.trim() || log.activities,
+        materials_used: materials.trim() || log.materials_used,
+        equipment_used: equipment.trim() || log.equipment_used,
+        issues: issues.trim() || log.issues,
+        notes: notes.trim() || log.notes,
+        manpower: [...log.manpower, ...manpower.filter((r) => r.trade.trim())],
+        deliveries: [...log.deliveries, ...deliveries.filter((r) => r.material.trim())],
+        visitors: [...log.visitors, ...visitors.filter((r) => r.name.trim())],
+        delays: [...log.delays, ...delays.filter((r) => r.description.trim())],
+        photos: [...log.photos, ...uploaded.map((u) => u.url)],
+        photo_thumbs: [...log.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
       });
-      if (photos.length > 0) {
-        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
-        await updateCMDailyLog(log.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
-      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save diary entry");
@@ -155,13 +165,26 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
           onChange={setDeliveries}
           emptyRow={EMPTY_DELIVERY}
           renderRow={(row, update) => (
-            <div className="grid grid-cols-2 gap-2">
-              <input className={inputCls} placeholder={t("siteDiary.material")} value={row.material} onChange={(e) => update({ material: e.target.value })} disabled={saving} />
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-2">
+              <FieldSelect
+                value={row.boq_item_id ?? ""}
+                onChange={(id) => {
+                  if (!id) { update({ boq_item_id: null }); return; }
+                  const item = (boqItems ?? []).find((b) => b.id === id);
+                  update({ boq_item_id: id, material: item?.description ?? row.material, unit: item?.unit ?? row.unit });
+                }}
+                placeholder={t("siteDiary.customMaterial")}
+                options={[{ value: "", label: t("siteDiary.customMaterial") }, ...(boqItems ?? []).map((b) => ({ value: b.id, label: b.description }))]}
+                disabled={saving}
+              />
+              {!row.boq_item_id && (
+                <input className={inputCls} placeholder={t("siteDiary.material")} value={row.material} onChange={(e) => update({ material: e.target.value })} disabled={saving} />
+              )}
+              <div className="grid grid-cols-2 gap-2">
                 <input className={inputCls} placeholder={t("siteDiary.quantity")} value={row.quantity} onChange={(e) => update({ quantity: e.target.value })} disabled={saving} />
                 <input className={inputCls} placeholder={t("siteDiary.unit")} value={row.unit ?? ""} onChange={(e) => update({ unit: e.target.value || null })} disabled={saving} />
               </div>
-              <input className={`${inputCls} col-span-2`} placeholder={t("siteDiary.supplier")} value={row.supplier ?? ""} onChange={(e) => update({ supplier: e.target.value || null })} disabled={saving} />
+              <input className={inputCls} placeholder={t("siteDiary.supplier")} value={row.supplier ?? ""} onChange={(e) => update({ supplier: e.target.value || null })} disabled={saving} />
             </div>
           )}
         />
@@ -225,13 +248,23 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
+function LogCard({ log, projectName, onChanged, onOpenPhoto }: {
+  log: CMDailyLog; projectName?: string; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+}) {
   const { t } = useCMLang();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id, () => setOpen(true));
   const { data: activity } = useCMDailyActivity(log.project_id, log.log_date, { enabled: open });
+
+  // "Today's pictures" combines the diary's own photos with every other
+  // module's photos from the same project+day, so this one gallery is the
+  // full picture of what was captured that day — not just the diary's own.
+  const allDayPhotos = useMemo(() => {
+    const own = log.photos.map((url, i) => ({ url, thumbUrl: log.photo_thumbs[i] || url, module: "siteDiary" as const, recordId: log.id }));
+    return [...own, ...flattenCMDailyActivityPhotos(activity)];
+  }, [log, activity]);
 
   const handleDelete = async () => {
     if (!confirm(t("siteDiary.confirmDelete"))) return;
@@ -244,6 +277,7 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
+          {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
           {log.weather && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`weather.${log.weather}`)}</span>}
           {log.activities && <span className="text-[12px] text-white/45 truncate">{log.activities}</span>}
         </div>
@@ -281,15 +315,18 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
               setPendingHighlight(module, recordId, projectId, "");
               navigate({ to: MODULE_ROUTES[module] });
             }} />
-          {log.photos.length > 0 && (
+          {allDayPhotos.length > 0 && (
             <div>
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
               <div className="flex flex-wrap gap-2">
-                {log.photos.map((url, i) => (
-                  <button key={url} type="button" data-photo-url={url}
-                    onClick={() => onOpenPhoto(log.photos.map((u, idx) => ({ url: u, thumbUrl: log.photo_thumbs[idx] || u })), i)}
-                    className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                    <img src={log.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                {allDayPhotos.map((p, i) => (
+                  <button key={`${p.module}-${p.recordId}-${p.url}`} type="button" data-photo-url={p.url}
+                    onClick={() => onOpenPhoto(allDayPhotos.map((d) => ({ url: d.url, thumbUrl: d.thumbUrl })), i)}
+                    className={`relative rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === p.url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+                    <img src={p.thumbUrl} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                    <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-black/60" style={{ color: MODULE_COLOR[p.module] }}>
+                      {MODULE_ICON[p.module]}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -318,13 +355,48 @@ function CMSiteDiaryPage() {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: logs, isLoading } = useCMDailyLogs(projectId || undefined);
+  const [viewAll, setViewAll] = useState(false);
+  const { data: singleLogs, isLoading: singleLoading } = useCMDailyLogs(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allLogs, isLoading: allLoading } = useAllCMDailyLogs(viewAll ? user?.id : undefined);
+  const logs: (CMDailyLog | CMDailyLogWithProject)[] | undefined = viewAll ? allLogs : singleLogs;
+  const isLoading = viewAll ? allLoading : singleLoading;
   const [showNew, setShowNew] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] }); setShowNew(false); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_daily_logs", user?.id] });
+    setShowNew(false);
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
+
+  // Silently merges any project+day that ended up with more than one entry
+  // (see mergeDuplicateCMDailyLogs) whenever the log list loads — no button,
+  // self-terminates once a re-fetch finds nothing left to merge.
+  const mergingRef = useRef(false);
+  useEffect(() => {
+    if (!logs || logs.length === 0 || mergingRef.current) return;
+    const counts = new Map<string, number>();
+    for (const l of logs) {
+      const key = `${l.project_id}|${l.log_date}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    if (![...counts.values()].some((c) => c > 1)) return;
+    mergingRef.current = true;
+    mergeDuplicateCMDailyLogs(logs).then((merged) => {
+      if (merged) invalidate();
+      mergingRef.current = false;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logs]);
 
   const visibleLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -349,9 +421,9 @@ function CMSiteDiaryPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {!isLoading && visibleLogs.length === 0 && (
@@ -360,14 +432,17 @@ function CMSiteDiaryPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {visibleLogs.map((l) => <LogCard key={l.id} log={l} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+              {visibleLogs.map((l) => (
+                <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
+                  onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
+              ))}
             </div>
-            <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />
+            {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && <NewLogSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && !viewAll && projectId && <NewLogSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
         <PhotoLightbox

@@ -362,7 +362,7 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
   );
 }
 
-export function ProjectPicker({ projects, value, onChange }: { projects: CMProject[]; value: string; onChange: (id: string) => void }) {
+export function ProjectPicker({ projects, value, onChange }: { projects: { id: string; name: string }[]; value: string; onChange: (id: string) => void }) {
   const { t } = useCMLang();
   if (projects.length === 0) {
     return (
