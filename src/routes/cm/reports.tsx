@@ -1,9 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { useCMProjects, useCMDailyLogs } from "@/lib/cm-data";
-import { FieldSelect } from "@/components/cm/shared";
+import { useCMProjects, useCMDailyLogs, useCMDailyActivityRange } from "@/lib/cm-data";
+import { FieldSelect, CMDailyActivityList, MODULE_ROUTES, setPendingHighlight } from "@/components/cm/shared";
 
 export const Route = createFileRoute("/cm/reports")({
   head: () => ({ meta: [{ title: "Reports — Construction Management App" }] }),
@@ -22,11 +22,13 @@ function isoDaysAgo(days: number) {
 function CMReportsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const { data: projects } = useCMProjects(user?.id);
   const [projectId, setProjectId] = useState<string>("");
   const [fromDate, setFromDate] = useState(() => isoDaysAgo(7));
   const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const { data: logs, isLoading: logsLoading } = useCMDailyLogs(projectId || undefined);
+  const { data: activityByDate } = useCMDailyActivityRange(projectId || undefined, fromDate, toDate);
 
   const activeProject = (projects ?? []).find((p) => p.id === projectId);
   const filtered = useMemo(
@@ -142,6 +144,13 @@ function CMReportsPage() {
                   {l.weather && <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 print:text-black/50 mb-1">{t(`weather.${l.weather}`)}{l.manpower.length > 0 ? ` · ${l.manpower.reduce((s, m) => s + m.count, 0)} ${t("reports.workers")}` : ""}</p>}
                   {l.activities && <p className="text-[12px] text-white/60 print:text-black/80">{l.activities}</p>}
                   {l.issues && <p className="text-[11px] text-red-400/80 print:text-red-700 mt-1">{t("reports.issue")} {l.issues}</p>}
+                  <div className="print:hidden mt-2">
+                    <CMDailyActivityList activity={activityByDate?.get(l.log_date)} projectId={l.project_id}
+                      onOpenItem={(module, recordId, projectId) => {
+                        setPendingHighlight(module, recordId, projectId, "");
+                        navigate({ to: MODULE_ROUTES[module] });
+                      }} />
+                  </div>
                 </div>
               ))}
             </div>

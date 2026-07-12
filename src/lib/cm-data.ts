@@ -3,7 +3,7 @@
  * Supabase project (own auth.users, standard auth.uid()-based RLS — no shared
  * account system, no custom JWT claims).
  */
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseCM } from "./supabase-cm";
 
 const STALE_TIME = 60 * 1000;
@@ -196,16 +196,37 @@ export async function deleteCMDailyLog(id: string) {
   if (error) throw error;
 }
 
+/** Returns the existing diary entry for a project+day if one exists,
+ *  otherwise creates it. Used so photos captured from the global Photos
+ *  flow land in that day's real Site Diary entry instead of a new one.
+ *  Two concurrent submissions for the same project+day could each pass the
+ *  lookup and insert their own row — acceptable for a single-crew tool. */
+export async function findOrCreateCMDailyLog(
+  ownerId: string,
+  projectId: string,
+  logDate: string,
+  createDefaults?: Partial<Omit<CMDailyLog, "id" | "project_id" | "owner_id" | "log_date" | "created_at" | "updated_at">>,
+): Promise<CMDailyLog> {
+  const { data: existing, error } = await db().from("cm_daily_logs").select("*")
+    .eq("project_id", projectId).eq("log_date", logDate)
+    .order("created_at", { ascending: true }).limit(1).maybeSingle();
+  if (error) throw error;
+  if (existing) return existing as CMDailyLog;
+  return createCMDailyLog(ownerId, projectId, { log_date: logDate, ...createDefaults });
+}
+
 /* ── Tasks ──────────────────────────────────────────────── */
+async function fetchCMTasksList(projectId: string): Promise<CMTask[]> {
+  const { data, error } = await db().from("cm_tasks").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
+  if (error) throw error;
+  return data as CMTask[];
+}
+
 export function useCMTasks(projectId: string | undefined) {
   return useQuery<CMTask[]>({
     queryKey: ["cm_tasks", projectId],
     enabled: !!projectId && !!supabaseCM,
-    queryFn: async () => {
-      const { data, error } = await db().from("cm_tasks").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
-      if (error) throw error;
-      return data as CMTask[];
-    },
+    queryFn: () => fetchCMTasksList(projectId!),
     staleTime: STALE_TIME,
   });
 }
@@ -1055,15 +1076,17 @@ export interface CMSubmittal {
   updated_at: string;
 }
 
+async function fetchCMSubmittalsList(projectId: string): Promise<CMSubmittal[]> {
+  const { data, error } = await db().from("cm_submittals").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as CMSubmittal[];
+}
+
 export function useCMSubmittals(projectId: string | undefined) {
   return useQuery<CMSubmittal[]>({
     queryKey: ["cm_submittals", projectId],
     enabled: !!projectId && !!supabaseCM,
-    queryFn: async () => {
-      const { data, error } = await db().from("cm_submittals").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as CMSubmittal[];
-    },
+    queryFn: () => fetchCMSubmittalsList(projectId!),
     staleTime: STALE_TIME,
   });
 }
@@ -1086,6 +1109,95 @@ export async function updateCMSubmittal(id: string, patch: Partial<CMSubmittal>)
 export async function deleteCMSubmittal(id: string) {
   const { error } = await db().from("cm_submittals").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ── Cross-module daily activity (Site Diary "Today's Activity", Reports) ── */
+export interface CMDailyActivity {
+  inspections: CMInspection[];
+  safetyRecords: CMSafetyRecord[];
+  tasks: CMTask[];
+  submittals: CMSubmittal[];
+}
+
+function emptyCMDailyActivity(): CMDailyActivity {
+  return { inspections: [], safetyRecords: [], tasks: [], submittals: [] };
+}
+
+/** Punch List tasks have no clean "activity day" field, so — consistent with
+ *  useAllCMPhotos — a task is bucketed under its creation day, not the day
+ *  its status last changed. Submittals fall back to created_at the same way
+ *  when submitted_date is unset. */
+function activityDayOfTask(t: CMTask): string {
+  return t.created_at.slice(0, 10);
+}
+function activityDayOfSubmittal(s: CMSubmittal): string {
+  return s.submitted_date ?? s.created_at.slice(0, 10);
+}
+
+/** Shared fetch behind both daily-activity hooks below. Inspections/safety
+ *  are queried directly by their date range; tasks/submittals are deduped
+ *  against the same query-cache keys useCMTasks/useCMSubmittals already use
+ *  (via queryClient.fetchQuery) and then filtered in memory by day, so
+ *  visiting Punch List/Submittals first means this costs zero extra
+ *  network calls. */
+async function fetchCMDailyActivityRange(
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string,
+  fromDate: string,
+  toDate: string,
+): Promise<Map<string, CMDailyActivity>> {
+  const [inspections, safety, tasks, submittals] = await Promise.all([
+    db().from("cm_inspections").select("*").eq("project_id", projectId).gte("inspection_date", fromDate).lte("inspection_date", toDate),
+    db().from("cm_safety_records").select("*").eq("project_id", projectId).gte("record_date", fromDate).lte("record_date", toDate),
+    queryClient.fetchQuery({ queryKey: ["cm_tasks", projectId], queryFn: () => fetchCMTasksList(projectId), staleTime: STALE_TIME }),
+    queryClient.fetchQuery({ queryKey: ["cm_submittals", projectId], queryFn: () => fetchCMSubmittalsList(projectId), staleTime: STALE_TIME }),
+  ]);
+  if (inspections.error) throw inspections.error;
+  if (safety.error) throw safety.error;
+
+  const map = new Map<string, CMDailyActivity>();
+  const bucket = (date: string) => {
+    let entry = map.get(date);
+    if (!entry) { entry = emptyCMDailyActivity(); map.set(date, entry); }
+    return entry;
+  };
+  for (const r of inspections.data as CMInspection[]) bucket(r.inspection_date).inspections.push(r);
+  for (const r of safety.data as CMSafetyRecord[]) bucket(r.record_date).safetyRecords.push(r);
+  for (const r of tasks) {
+    const day = activityDayOfTask(r);
+    if (day >= fromDate && day <= toDate) bucket(day).tasks.push(r);
+  }
+  for (const r of submittals) {
+    const day = activityDayOfSubmittal(r);
+    if (day >= fromDate && day <= toDate) bucket(day).submittals.push(r);
+  }
+  return map;
+}
+
+/** One project's cross-module activity (Inspection/Safety/Punch List/
+ *  Submittal) for a single day — used by Site Diary's "Today's Activity". */
+export function useCMDailyActivity(projectId: string | undefined, date: string | undefined, opts?: { enabled?: boolean }) {
+  const queryClient = useQueryClient();
+  const query = useQuery<Map<string, CMDailyActivity>>({
+    queryKey: ["cm_daily_activity_range", projectId, date, date],
+    enabled: !!projectId && !!date && !!supabaseCM && (opts?.enabled ?? true),
+    queryFn: () => fetchCMDailyActivityRange(queryClient, projectId!, date!, date!),
+    staleTime: STALE_TIME,
+  });
+  return { ...query, data: query.data?.get(date ?? "") ?? emptyCMDailyActivity() };
+}
+
+/** Same cross-module activity, bucketed per day across a date range — used
+ *  by Reports so it costs one query per module for the whole visible range
+ *  instead of one per rendered day. */
+export function useCMDailyActivityRange(projectId: string | undefined, fromDate: string, toDate: string) {
+  const queryClient = useQueryClient();
+  return useQuery<Map<string, CMDailyActivity>>({
+    queryKey: ["cm_daily_activity_range", projectId, fromDate, toDate],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: () => fetchCMDailyActivityRange(queryClient, projectId!, fromDate, toDate),
+    staleTime: STALE_TIME,
+  });
 }
 
 /* ── Account settings (company branding, language) ─────── */

@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, MODULE_ROUTES, setPendingHighlight, useLongPress, sharePhotoFiles,
+  PhotoLightbox, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles,
 } from "@/components/cm/shared";
 import {
   useAllCMPhotos,
@@ -15,7 +15,7 @@ import {
   stampPhoto,
   uploadCMPhotoWithThumb,
   deleteCMPhoto,
-  createCMDailyLog,
+  findOrCreateCMDailyLog,
   updateCMDailyLog,
   createCMInspection,
   updateCMInspection,
@@ -38,43 +38,6 @@ export const Route = createFileRoute("/cm/photos")({
 const MODULE_OPTIONS: CMPhotoModule[] = ["siteDiary", "inspection", "punchList", "safety", "submittal"];
 type GroupBy = "date" | "project" | "type";
 const GROUP_OPTIONS: GroupBy[] = ["date", "project", "type"];
-
-const MODULE_COLOR: Record<CMPhotoModule, string> = {
-  siteDiary: "#3b82f6",
-  inspection: "#22c55e",
-  punchList: "#a855f7",
-  safety: "#ef4444",
-  submittal: "#06b6d4",
-};
-
-const MODULE_ICON: Record<CMPhotoModule, React.ReactNode> = {
-  siteDiary: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="4" width="13" height="16" rx="2" /><path d="M8 8.5h5M8 12.5h5" /><path d="M15.3 15.6l4-4 2 2-4 4h-2v-2z" />
-    </svg>
-  ),
-  inspection: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10.2" cy="10.2" r="6.4" /><path d="M7.3 10.4l1.9 1.9 3.7-3.7" /><path d="M14.8 14.8L20 20" />
-    </svg>
-  ),
-  punchList: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-    </svg>
-  ),
-  safety: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4.3 15.2a7.7 7.7 0 0 1 15.4 0" /><rect x="2.8" y="15.2" width="18.4" height="2.8" rx="1.4" />
-      <path d="M12 6.3V3.4" /><path d="M12 3.4h2.2" />
-    </svg>
-  ),
-  submittal: (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
-    </svg>
-  ),
-};
 
 const GROUP_ICON: Record<GroupBy, React.ReactNode> = {
   date: (
@@ -206,6 +169,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   const { data: consultants } = useCMProjectConsultants(projectId);
   const [files, setFiles] = useState<File[]>([]);
   const [moduleSel, setModuleSel] = useState<CMPhotoModule>(MODULE_OPTIONS[0]);
+  const [siteDiaryDate, setSiteDiaryDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -241,8 +205,11 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
       const title = caption.trim() || `${t(`tile.${moduleSel}`)} — ${today}`;
 
       if (moduleSel === "siteDiary") {
-        const log = await createCMDailyLog(ownerId, projectId, { log_date: today, notes: caption.trim() || null });
-        await updateCMDailyLog(log.id, { photos: urls, photo_thumbs: thumbs });
+        const log = await findOrCreateCMDailyLog(ownerId, projectId, siteDiaryDate, { notes: caption.trim() || null });
+        await updateCMDailyLog(log.id, {
+          photos: [...log.photos, ...urls],
+          photo_thumbs: [...log.photo_thumbs, ...thumbs],
+        });
       } else if (moduleSel === "inspection") {
         const item = await createCMInspection(ownerId, projectId, { title, status: "Scheduled", inspection_date: today });
         await updateCMInspection(item.id, { photos: urls, photo_thumbs: thumbs });
@@ -322,6 +289,13 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
         </div>
 
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {moduleSel === "siteDiary" && (
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("siteDiary.date")}</span>
+            <input type="date" className={inputCls} value={siteDiaryDate} onChange={(e) => setSiteDiaryDate(e.target.value)} disabled={saving} />
+          </label>
+        )}
 
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("photos.note")}</span>
@@ -454,6 +428,7 @@ function CMPhotosPage() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_all_photos", user?.id] });
+    queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
     setShowNew(false);
   };
   const invalidateAccount = () => queryClient.invalidateQueries({ queryKey: ["cm_account_settings", user?.id] });
