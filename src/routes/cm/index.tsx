@@ -92,6 +92,15 @@ export function CMIndexPage() {
 
         <div className="grid grid-cols-3 border-t border-l border-white/[0.07] rounded-2xl overflow-hidden">
           <AppTile
+            label={t("tile.dashboard")}
+            to="/cm/dashboard"
+            icon={
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12h4l2-7 4 14 2-7h6" />
+              </svg>
+            }
+          />
+          <AppTile
             label={t("tile.report")}
             to="/cm/reports"
             icon={
@@ -172,6 +181,42 @@ export function CMIndexPage() {
             icon={
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+            }
+          />
+          <AppTile
+            label={t("tile.schedule")}
+            to="/cm/schedule"
+            icon={
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" /><path d="M7 13h4M7 17h7" />
+              </svg>
+            }
+          />
+          <AppTile
+            label={t("tile.boq")}
+            to="/cm/boq"
+            icon={
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" />
+              </svg>
+            }
+          />
+          <AppTile
+            label={t("tile.manpower")}
+            to="/cm/manpower"
+            icon={
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" /><path d="M12 3v3" />
+              </svg>
+            }
+          />
+          <AppTile
+            label={t("tile.equipment")}
+            to="/cm/equipment"
+            icon={
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" />
               </svg>
             }
           />

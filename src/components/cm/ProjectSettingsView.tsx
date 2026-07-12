@@ -1,15 +1,11 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
-import { FieldSelect } from "@/components/cm/shared";
+import { FieldSelect, Card } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
   monotonePreviewUrl,
-  useCMEquipment,
-  createCMEquipment,
-  updateCMEquipment,
-  deleteCMEquipment,
   useCMChecklistItems,
   createCMChecklistItem,
   updateCMChecklistItem,
@@ -18,9 +14,6 @@ import {
   useCMProjectSubcontractors,
   addCMProjectSubcontractor,
   removeCMProjectSubcontractor,
-  useCMBOQItems,
-  createCMBOQItem,
-  deleteCMBOQItem,
   useCMProjectConsultants,
   createCMProjectConsultant,
   updateCMProjectConsultant,
@@ -28,27 +21,12 @@ import {
   type CMProject,
   type CMProjectConsultant,
   type ProjectStatus,
-  type EquipmentStatus,
 } from "@/lib/cm-data";
 
 const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
 const STATUS_OPTIONS: ProjectStatus[] = ["Planning", "Active", "On Hold", "Completed"];
-const EQUIPMENT_STATUS_OPTIONS: EquipmentStatus[] = ["Operational", "Maintenance", "Out of Service"];
-const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = { Operational: "#34d399", Maintenance: "#fbbf24", "Out of Service": "#f43f5e" };
-
-function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl bg-[#0d0d0e] p-5">
-      <div className="flex items-center justify-between mb-4">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{title}</p>
-        {action}
-      </div>
-      {children}
-    </div>
-  );
-}
 
 /** Swaps a logo's `src` for the exact same monotone tint the photo stamp
  *  would burn onto a photo, so the settings-page preview toggle shows real
@@ -418,66 +396,6 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: 
   );
 }
 
-/* ── Equipment ────────────────────────────────────────── */
-function EquipmentSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
-  const { t } = useCMLang();
-  const qc = useQueryClient();
-  const { data: items } = useCMEquipment(projectId);
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_equipment", projectId] });
-
-  const handleAdd = async () => {
-    if (!name.trim()) return;
-    await createCMEquipment(ownerId, projectId, { name: name.trim(), type: type.trim() || null, quantity: Number(quantity) || 1 });
-    setName(""); setType(""); setQuantity("1"); setAdding(false);
-    invalidate();
-  };
-
-  return (
-    <Card title={t("projectSettings.equipment")}>
-      <div className="flex flex-col gap-2">
-        {(items ?? []).map((eq) => (
-          <div key={eq.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
-              <p className="font-mono text-[10px] text-white/30">{t("projectSettings.qty")} {eq.quantity}</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <FieldSelect
-                value={eq.status}
-                onChange={(v) => updateCMEquipment(eq.id, { status: v }).then(invalidate)}
-                options={EQUIPMENT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`equipmentStatus.${s}`) }))}
-                triggerClassName="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5"
-                triggerStyle={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}
-              />
-              <button onClick={() => deleteCMEquipment(eq.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
-            </div>
-          </div>
-        ))}
-        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noEquipment")}</p>}
-        {adding ? (
-          <div className="flex flex-col gap-2 mt-1">
-            <input className={inputCls} placeholder={t("projectSettings.equipmentName")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-            <div className="grid grid-cols-2 gap-2">
-              <input className={inputCls} placeholder={t("projectSettings.type")} value={type} onChange={(e) => setType(e.target.value)} />
-              <input type="number" min={1} className={inputCls} placeholder={t("projectSettings.qty")} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-            </div>
-            <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
-            </div>
-          </div>
-        ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addEquipment")}</button>
-        )}
-      </div>
-    </Card>
-  );
-}
-
 /* ── Checklist ────────────────────────────────────────── */
 function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
   const { t } = useCMLang();
@@ -586,73 +504,6 @@ function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projec
   );
 }
 
-/* ── BOQ ──────────────────────────────────────────────── */
-function BOQSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
-  const { t } = useCMLang();
-  const qc = useQueryClient();
-  const { data: items } = useCMBOQItems(projectId);
-  const [adding, setAdding] = useState(false);
-  const [description, setDescription] = useState("");
-  const [unit, setUnit] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unitCost, setUnitCost] = useState("");
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_boq_items", projectId] });
-
-  const handleAdd = async () => {
-    if (!description.trim()) return;
-    await createCMBOQItem(ownerId, projectId, {
-      description: description.trim(), unit: unit.trim() || null,
-      quantity: quantity ? Number(quantity) : 0, unit_cost: unitCost ? Number(unitCost) : 0,
-    });
-    setDescription(""); setUnit(""); setQuantity(""); setUnitCost(""); setAdding(false);
-    invalidate();
-  };
-
-  const total = (items ?? []).reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
-
-  return (
-    <Card title={t("projectSettings.boq")}>
-      <div className="flex flex-col gap-2">
-        {(items ?? []).map((item) => (
-          <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-[12px] text-white/80 truncate">{item.description}</p>
-              <p className="font-mono text-[10px] text-white/30">{item.quantity} {item.unit ?? ""} × {item.unit_cost.toLocaleString()}</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              <button onClick={() => deleteCMBOQItem(item.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
-            </div>
-          </div>
-        ))}
-        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noBoq")}</p>}
-        {(items?.length ?? 0) > 0 && (
-          <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("projectSettings.total")}</span>
-            <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-          </div>
-        )}
-        {adding ? (
-          <div className="flex flex-col gap-2 mt-1">
-            <input className={inputCls} placeholder={t("projectSettings.itemDescription")} value={description} onChange={(e) => setDescription(e.target.value)} autoFocus />
-            <div className="grid grid-cols-3 gap-2">
-              <input className={inputCls} placeholder={t("projectSettings.unit")} value={unit} onChange={(e) => setUnit(e.target.value)} />
-              <input type="number" className={inputCls} placeholder={t("projectSettings.qty")} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-              <input type="number" className={inputCls} placeholder={t("projectSettings.unitCost")} value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
-            </div>
-            <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
-            </div>
-          </div>
-        ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addBoqItem")}</button>
-        )}
-      </div>
-    </Card>
-  );
-}
-
 /* ── Main settings view ──────────────────────────────── */
 export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged }: {
   project: CMProject; ownerId: string; onBack: () => void; onProjectChanged: () => void;
@@ -671,10 +522,8 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
         <InfoSection project={project} onChanged={onProjectChanged} />
         <LogoSection project={project} ownerId={ownerId} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
         <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone} />
-        <EquipmentSection ownerId={ownerId} projectId={project.id} />
         <ChecklistSection ownerId={ownerId} projectId={project.id} />
         <SubcontractorsSection ownerId={ownerId} projectId={project.id} />
-        <BOQSection ownerId={ownerId} projectId={project.id} />
       </div>
     </>
   );

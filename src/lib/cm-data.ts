@@ -949,6 +949,137 @@ export async function deleteCMBOQItem(id: string) {
   if (error) throw error;
 }
 
+/* ── Schedule items (WBS plan-vs-actual, per project) ──── */
+export interface CMScheduleItem {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  group_label: string;
+  title: string;
+  boq_category: string | null;
+  plan_start: string;
+  plan_finish: string;
+  weight: number;
+  actual_percent: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMScheduleItems(projectId: string | undefined) {
+  return useQuery<CMScheduleItem[]>({
+    queryKey: ["cm_schedule_items", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_schedule_items").select("*").eq("project_id", projectId).order("sort_order").order("plan_start");
+      if (error) throw error;
+      return data as CMScheduleItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMScheduleItem(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "weight" | "actual_percent">>,
+) {
+  const { data, error } = await db().from("cm_schedule_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMScheduleItem;
+}
+
+export async function updateCMScheduleItem(id: string, patch: Partial<CMScheduleItem>) {
+  const { error } = await db().from("cm_schedule_items").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMScheduleItem(id: string) {
+  const { error } = await db().from("cm_schedule_items").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** Linear ramp 0→100 between start and finish (inclusive), clamped; a
+ *  same-day span is a step function switching at that single date. */
+function linearRamp(start: string, finish: string, date: string): number {
+  if (start === finish) return date >= start ? 100 : 0;
+  if (date <= start) return 0;
+  if (date >= finish) return 100;
+  const span = new Date(finish).getTime() - new Date(start).getTime();
+  const elapsed = new Date(date).getTime() - new Date(start).getTime();
+  return (elapsed / span) * 100;
+}
+
+/** A single activity's plan-completion ramp for a given day. */
+export function scheduleItemPlanPercent(item: CMScheduleItem, date: string): number {
+  return linearRamp(item.plan_start, item.plan_finish, date);
+}
+
+/** Weighted-average plan% across all of a project's schedule items for a
+ *  given day — the "Plan" line of the S-curve. */
+export function projectPlanPercent(items: CMScheduleItem[], date: string): number {
+  if (items.length === 0) return 0;
+  const totalWeight = items.reduce((s, i) => s + i.weight, 0) || 1;
+  return items.reduce((s, i) => s + i.weight * scheduleItemPlanPercent(i, date), 0) / totalWeight;
+}
+
+function isoDateRange(from: string, to: string): string[] {
+  const dates: string[] = [];
+  const cursor = new Date(from);
+  const end = new Date(to);
+  while (cursor <= end) {
+    dates.push(cursor.toISOString().slice(0, 10));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+export interface SCurvePoint {
+  date: string;
+  manpower: number;
+  plan: number;
+  actual: number | null;
+}
+
+/** Builds the S-Curve series for a project: daily manpower headcount (bars),
+ *  a Plan % line (weighted linear ramp across schedule items, or a straight
+ *  line between the contract dates if no schedule items exist yet), and an
+ *  Actual % line (the last known Site Diary `progress_pct`, forward-filled
+ *  between entries — mirrors how these paper S-curves plot actual progress). */
+export function buildSCurveSeries(project: CMProject, logs: CMDailyLog[], scheduleItems: CMScheduleItem[]): SCurvePoint[] {
+  const candidateDates = [
+    project.start_date, project.target_end_date,
+    ...logs.map((l) => l.log_date),
+    ...scheduleItems.flatMap((i) => [i.plan_start, i.plan_finish]),
+  ].filter((d): d is string => !!d);
+  if (candidateDates.length === 0) return [];
+
+  const from = candidateDates.reduce((a, b) => (a < b ? a : b));
+  const to = candidateDates.reduce((a, b) => (a > b ? a : b));
+
+  const manpowerByDate = new Map<string, number>();
+  const progressByDate = new Map<string, number>();
+  for (const log of logs) {
+    manpowerByDate.set(log.log_date, log.manpower.reduce((s, m) => s + m.count, 0));
+    if (log.progress_pct != null) progressByDate.set(log.log_date, log.progress_pct);
+  }
+
+  let lastActual: number | null = null;
+  return isoDateRange(from, to).map((date) => {
+    if (progressByDate.has(date)) lastActual = progressByDate.get(date)!;
+    return {
+      date,
+      manpower: manpowerByDate.get(date) ?? 0,
+      plan: scheduleItems.length > 0
+        ? projectPlanPercent(scheduleItems, date)
+        : project.start_date && project.target_end_date
+          ? linearRamp(project.start_date, project.target_end_date, date)
+          : 0,
+      actual: lastActual,
+    };
+  });
+}
+
 /* ── Inspections (per project) ─────────────────────────── */
 export type InspectionStatus = "Scheduled" | "Passed" | "Failed" | "Not Applicable";
 
