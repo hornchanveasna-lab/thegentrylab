@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -87,9 +87,7 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
         <div className="grid grid-cols-3 gap-3">
           <label className="flex flex-col gap-1.5 col-span-1">
             <span className={labelCls}>{t("siteDiary.weather")}</span>
-            <select className={inputCls} value={weather} onChange={(e) => setWeather(e.target.value)} disabled={saving}>
-              {WEATHER_OPTIONS.map((w) => <option key={w} value={w}>{t(`weather.${w}`)}</option>)}
-            </select>
+            <FieldSelect value={weather} onChange={setWeather} disabled={saving} options={WEATHER_OPTIONS.map((w) => ({ value: w, label: t(`weather.${w}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("siteDiary.tempC")}</span>

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { useCMProjects, useCMDailyLogs } from "@/lib/cm-data";
+import { FieldSelect } from "@/components/cm/shared";
 
 export const Route = createFileRoute("/cm/reports")({
   head: () => ({ meta: [{ title: "Reports — Construction Management App" }] }),
@@ -65,10 +66,12 @@ function CMReportsPage() {
         <div className="flex flex-col gap-3 mb-6 print:hidden">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("reports.project")}</span>
-            <select className={inputCls} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-              <option value="">{t("reports.selectProject")}</option>
-              {(projects ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            <FieldSelect
+              value={projectId}
+              onChange={setProjectId}
+              placeholder={t("reports.selectProject")}
+              options={(projects ?? []).map((p) => ({ value: p.id, label: p.name }))}
+            />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">

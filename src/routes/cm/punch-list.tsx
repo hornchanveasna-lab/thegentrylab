@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -79,15 +79,11 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("punchList.status")}</span>
-            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} disabled={saving}>
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`taskStatus.${s}`)}</option>)}
-            </select>
+            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`taskStatus.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("punchList.priority")}</span>
-            <select className={inputCls} value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} disabled={saving}>
-              {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{t(`taskPriority.${p}`)}</option>)}
-            </select>
+            <FieldSelect value={priority} onChange={setPriority} disabled={saving} options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))} />
           </label>
         </div>
         <div className="grid grid-cols-2 gap-3">

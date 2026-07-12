@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
+import { FieldSelect } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
@@ -230,9 +231,7 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
         <div className="grid grid-cols-3 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("projectSettings.status")}</span>
-            <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
-            </select>
+            <FieldSelect value={status} onChange={setStatus} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`status.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("projectSettings.start")}</span>
@@ -447,10 +446,13 @@ function EquipmentSection({ ownerId, projectId }: { ownerId: string; projectId: 
               <p className="font-mono text-[10px] text-white/30">{t("projectSettings.qty")} {eq.quantity}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <select value={eq.status} onChange={(e) => updateCMEquipment(eq.id, { status: e.target.value as EquipmentStatus }).then(invalidate)}
-                className="px-2 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}>
-                {EQUIPMENT_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`equipmentStatus.${s}`)}</option>)}
-              </select>
+              <FieldSelect
+                value={eq.status}
+                onChange={(v) => updateCMEquipment(eq.id, { status: v }).then(invalidate)}
+                options={EQUIPMENT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`equipmentStatus.${s}`) }))}
+                triggerClassName="flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5"
+                triggerStyle={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}
+              />
               <button onClick={() => deleteCMEquipment(eq.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
             </div>
           </div>
@@ -564,10 +566,12 @@ function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projec
         )}
         {adding ? (
           <div className="flex flex-col gap-2 mt-1">
-            <select className={inputCls} value={contactId} onChange={(e) => setContactId(e.target.value)}>
-              <option value="">{t("projectSettings.selectContact")}</option>
-              {(contacts ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}{c.trade ? ` (${c.trade})` : ""}</option>)}
-            </select>
+            <FieldSelect
+              value={contactId}
+              onChange={setContactId}
+              placeholder={t("projectSettings.selectContact")}
+              options={(contacts ?? []).map((c) => ({ value: c.id, label: `${c.name}${c.trade ? ` (${c.trade})` : ""}` }))}
+            />
             <input className={inputCls} placeholder={t("projectSettings.roleOnProject")} value={role} onChange={(e) => setRole(e.target.value)} />
             <div className="flex gap-2">
               <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>

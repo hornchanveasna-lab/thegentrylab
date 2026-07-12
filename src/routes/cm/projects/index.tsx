@@ -10,6 +10,7 @@ import {
   type CMProject,
   type ProjectStatus,
 } from "@/lib/cm-data";
+import { FieldSelect } from "@/components/cm/shared";
 
 export const Route = createFileRoute("/cm/projects/")({
   head: () => ({
@@ -106,11 +107,7 @@ function NewProjectSheet({ onClose, onCreated }: { onClose: () => void; onCreate
           <div className="grid grid-cols-3 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("projects.status")}</span>
-              <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)} disabled={saving}>
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{t(`status.${s}`)}</option>
-                ))}
-              </select>
+              <FieldSelect value={status} onChange={setStatus} disabled={saving} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`status.${s}`) }))} />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("projects.start")}</span>
