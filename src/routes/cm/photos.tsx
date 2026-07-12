@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
@@ -176,6 +176,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const addMoreInputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -269,11 +270,12 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
                 className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
             </div>
           ))}
-          <label className="w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 cursor-pointer hover:border-white/40 hover:text-white/60 transition-colors">
+          <button type="button" disabled={saving} onClick={() => addMoreInputRef.current?.click()}
+            className="w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 hover:border-white/40 hover:text-white/60 transition-colors disabled:opacity-40">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            <input type="file" accept="image/*" multiple className="hidden" disabled={saving}
-              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          </label>
+          </button>
+          <input ref={addMoreInputRef} type="file" accept="image/*" multiple className="hidden" disabled={saving}
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
         </div>
 
         <div className="flex flex-col gap-1.5">
