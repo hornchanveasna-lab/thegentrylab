@@ -587,6 +587,7 @@ export interface CMPhotoWithContext {
   url: string;
   thumbUrl: string;
   date: string;
+  createdAt: string;
   projectId: string;
   projectName: string;
   module: CMPhotoModule;
@@ -594,15 +595,22 @@ export interface CMPhotoWithContext {
   recordId: string;
 }
 
-type PhotoRow = { id: string; photos: string[]; photo_thumbs: string[]; project_id: string; cm_projects: { name: string } | null };
+type PhotoRow = { id: string; photos: string[]; photo_thumbs: string[]; project_id: string; created_at: string; cm_projects: { name: string } | null };
 
+/** Reverses each record's own photo array so the most-recently-appended
+ *  photo (the last one pushed onto `photos`) sorts first within that
+ *  record, then tags every photo with the record's `created_at` so the
+ *  cross-record merge below can order strictly by real timestamp instead
+ *  of the day-only date string used for grouping/labels. */
 function photoRowsToContext<T extends PhotoRow>(rows: T[], module: CMPhotoModule, date: (r: T) => string, caption: (r: T) => string | null): CMPhotoWithContext[] {
-  return rows.flatMap((r) =>
-    r.photos.map((url, i) => ({
-      url, thumbUrl: r.photo_thumbs[i] || url, module, date: date(r), projectId: r.project_id, recordId: r.id,
+  return rows.flatMap((r) => {
+    const photos = [...r.photos].reverse();
+    const thumbs = [...r.photo_thumbs].reverse();
+    return photos.map((url, i) => ({
+      url, thumbUrl: thumbs[i] || url, module, date: date(r), createdAt: r.created_at, projectId: r.project_id, recordId: r.id,
       projectName: r.cm_projects?.name ?? "Untitled project", caption: caption(r),
-    })),
-  );
+    }));
+  });
 }
 
 export function useAllCMPhotos(userId: string | undefined) {
@@ -612,9 +620,9 @@ export function useAllCMPhotos(userId: string | undefined) {
     queryFn: async () => {
       const client = db();
       const [logs, inspections, safety, tasks, submittals] = await Promise.all([
-        client.from("cm_daily_logs").select("id, photos, photo_thumbs, log_date, activities, project_id, cm_projects(name)"),
-        client.from("cm_inspections").select("id, photos, photo_thumbs, inspection_date, title, project_id, cm_projects(name)"),
-        client.from("cm_safety_records").select("id, photos, photo_thumbs, record_date, title, project_id, cm_projects(name)"),
+        client.from("cm_daily_logs").select("id, photos, photo_thumbs, log_date, activities, project_id, created_at, cm_projects(name)"),
+        client.from("cm_inspections").select("id, photos, photo_thumbs, inspection_date, title, project_id, created_at, cm_projects(name)"),
+        client.from("cm_safety_records").select("id, photos, photo_thumbs, record_date, title, project_id, created_at, cm_projects(name)"),
         client.from("cm_tasks").select("id, photos, photo_thumbs, created_at, title, project_id, cm_projects(name)"),
         client.from("cm_submittals").select("id, photos, photo_thumbs, submitted_date, created_at, title, project_id, cm_projects(name)"),
       ]);
@@ -632,7 +640,7 @@ export function useAllCMPhotos(userId: string | undefined) {
         ...photoRowsToContext(submittals.data as unknown as (PhotoRow & { submitted_date: string | null; created_at: string; title: string })[],
           "submittal", (r) => r.submitted_date ?? r.created_at.slice(0, 10), (r) => r.title),
       ];
-      return all.sort((a, b) => b.date.localeCompare(a.date));
+      return all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     staleTime: STALE_TIME,
   });
