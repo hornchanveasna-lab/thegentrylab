@@ -19,6 +19,10 @@ import {
   useCMBOQItems,
   createCMBOQItem,
   deleteCMBOQItem,
+  useCMProjectConsultants,
+  createCMProjectConsultant,
+  updateCMProjectConsultant,
+  deleteCMProjectConsultant,
   type CMProject,
   type ProjectStatus,
   type EquipmentStatus,
@@ -44,6 +48,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function InfoSection({ project, onChanged }: { project: CMProject; onChanged: () => void }) {
   const { t } = useCMLang();
   const [name, setName] = useState(project.name);
+  const [projectCode, setProjectCode] = useState(project.project_code ?? "");
   const [client, setClient] = useState(project.client ?? "");
   const [location, setLocation] = useState(project.location ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project.status);
@@ -58,6 +63,7 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
     try {
       await updateCMProject(project.id, {
         name: name.trim(),
+        project_code: projectCode.trim() || null,
         client: client.trim() || null,
         location: location.trim() || null,
         status,
@@ -74,10 +80,16 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
   return (
     <Card title={t("projectSettings.information")}>
       <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("projectSettings.name")}</span>
-          <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projectSettings.name")}</span>
+            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projectSettings.code")}</span>
+            <input className={inputCls} value={projectCode} onChange={(e) => setProjectCode(e.target.value)} placeholder={t("projectSettings.codePlaceholder")} />
+          </label>
+        </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("projectSettings.client")}</span>
@@ -147,6 +159,72 @@ function LogoSection({ project, ownerId, onChanged }: { project: CMProject; owne
         <input type="file" accept="image/*" disabled={uploading}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
           className="text-[12px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
+      </div>
+    </Card>
+  );
+}
+
+/* ── Consultants (structural, MEP, etc. — a project can have several) ── */
+function ConsultantsSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: consultants } = useCMProjectConsultants(projectId);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_project_consultants", projectId] });
+
+  const handleAdd = async () => {
+    if (!name.trim()) return;
+    await createCMProjectConsultant(ownerId, projectId, name.trim());
+    setName(""); setAdding(false);
+    invalidate();
+  };
+
+  const handleUploadLogo = async (consultantId: string, file: File) => {
+    setUploadingId(consultantId);
+    try {
+      const url = await uploadCMLogo(ownerId, projectId, file);
+      await updateCMProjectConsultant(consultantId, { logo_url: url });
+      invalidate();
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
+  return (
+    <Card title={t("projectSettings.consultants")}>
+      <div className="flex flex-col gap-2">
+        {(consultants ?? []).map((c) => (
+          <div key={c.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
+            <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
+              {c.logo_url ? (
+                <img src={c.logo_url} alt="" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-white/20 text-[8px] font-mono uppercase">{t("projectSettings.none")}</span>
+              )}
+            </div>
+            <p className="text-[12px] text-white/80 flex-1 truncate">{c.name}</p>
+            <label className="font-mono text-[9px] uppercase tracking-widest cursor-pointer shrink-0" style={{ color: "#ff5100" }}>
+              {uploadingId === c.id ? "…" : t("projectSettings.consultantLogo")}
+              <input type="file" accept="image/*" className="hidden" disabled={uploadingId === c.id}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(c.id, f); }} />
+            </label>
+            <button onClick={() => deleteCMProjectConsultant(c.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+          </div>
+        ))}
+        {(consultants?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noConsultants")}</p>}
+        {adding ? (
+          <div className="flex flex-col gap-2 mt-1">
+            <input className={inputCls} placeholder={t("projectSettings.consultantName")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <div className="flex gap-2">
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addConsultant")}</button>
+        )}
       </div>
     </Card>
   );
@@ -398,6 +476,7 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
       <div className="flex flex-col gap-4">
         <InfoSection project={project} onChanged={onProjectChanged} />
         <LogoSection project={project} ownerId={ownerId} onChanged={onProjectChanged} />
+        <ConsultantsSection ownerId={ownerId} projectId={project.id} />
         <EquipmentSection ownerId={ownerId} projectId={project.id} />
         <ChecklistSection ownerId={ownerId} projectId={project.id} />
         <SubcontractorsSection ownerId={ownerId} projectId={project.id} />

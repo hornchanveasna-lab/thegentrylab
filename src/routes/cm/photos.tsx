@@ -11,6 +11,7 @@ import {
   useAllCMPhotos,
   useCMAccountSettings,
   upsertCMAccountSettings,
+  useCMProjectConsultants,
   stampPhoto,
   uploadCMPhotoWithThumb,
   createCMDailyLog,
@@ -114,18 +115,19 @@ function PhotoSettingsSheet({ ownerId, watermark, timestamp, onClose, onChanged 
   );
 }
 
-function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyName, watermark, timestamp, onClose, onCreated }: {
+function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogoUrl, watermark, timestamp, onClose, onCreated }: {
   ownerId: string;
   projects: CMProject[];
   projectId: string;
   setProjectId: (id: string) => void;
-  companyName: string | null;
+  companyLogoUrl: string | null;
   watermark: boolean;
   timestamp: boolean;
   onClose: () => void;
   onCreated: () => void;
 }) {
   const { t } = useCMLang();
+  const { data: consultants } = useCMProjectConsultants(projectId);
   const [files, setFiles] = useState<File[]>([]);
   const [moduleSel, setModuleSel] = useState<CMPhotoModule>(MODULE_OPTIONS[0]);
   const [caption, setCaption] = useState("");
@@ -144,7 +146,17 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyName
     setSaving(true);
     setError("");
     try {
-      const stamped = await Promise.all(files.map((f) => stampPhoto(f, { companyName, watermark, timestamp })));
+      const project = projects.find((p) => p.id === projectId);
+      const stampOpts = {
+        watermark, timestamp,
+        companyLogoUrl,
+        clientLogoUrl: project?.client_logo_url ?? null,
+        consultantLogoUrls: (consultants ?? []).map((c) => c.logo_url).filter((u): u is string => !!u),
+        projectName: project?.name ?? null,
+        projectCode: project?.project_code ?? null,
+        location: project?.location ?? null,
+      };
+      const stamped = await Promise.all(files.map((f) => stampPhoto(f, stampOpts)));
       const uploaded = await Promise.all(stamped.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
       const urls = uploaded.map((u) => u.url);
       const thumbs = uploaded.map((u) => u.thumbUrl);
@@ -495,7 +507,7 @@ function CMPhotosPage() {
           projects={projects}
           projectId={projectId}
           setProjectId={setProjectId}
-          companyName={account?.company_name ?? null}
+          companyLogoUrl={account?.company_logo_url ?? null}
           watermark={account?.photo_watermark ?? true}
           timestamp={account?.photo_timestamp ?? true}
           onClose={() => setShowNew(false)}
