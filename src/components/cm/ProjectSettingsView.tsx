@@ -56,6 +56,39 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
   const [targetEndDate, setTargetEndDate] = useState(project.target_end_date ?? "");
   const [description, setDescription] = useState(project.description ?? "");
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState("");
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocateError(t("projectSettings.locateUnsupported"));
+      return;
+    }
+    setLocating(true);
+    setLocateError("");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const fallback = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        try {
+          const key = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
+          if (!key) { setLocation(fallback); return; }
+          const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${key}`);
+          const json = await res.json();
+          setLocation(json?.results?.[0]?.formatted_address || fallback);
+        } catch {
+          setLocation(fallback);
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocateError(t("projectSettings.locateFailed"));
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const handleSave = async () => {
     if (!name.trim() || saving) return;
@@ -96,8 +129,24 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
             <input className={inputCls} value={client} onChange={(e) => setClient(e.target.value)} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("projectSettings.location")}</span>
+            <div className="flex items-center justify-between">
+              <span className={labelCls}>{t("projectSettings.location")}</span>
+              <button type="button" onClick={handleUseCurrentLocation} disabled={locating}
+                title={t("projectSettings.useCurrentLocation")}
+                className="text-white/40 hover:text-[#ff5100] disabled:opacity-40 transition-colors">
+                {locating ? (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-spin">
+                    <path d="M21 12a9 9 0 1 1-9-9" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" /><circle cx="12" cy="9" r="2.4" />
+                  </svg>
+                )}
+              </button>
+            </div>
             <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} />
+            {locateError && <p className="text-[11px] text-red-400">{locateError}</p>}
           </label>
         </div>
         <div className="grid grid-cols-3 gap-3">

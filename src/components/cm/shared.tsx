@@ -6,6 +6,38 @@ import { useCMLang } from "@/lib/cm-i18n";
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 
+/** A single hook call returns a `bind(key, onLongPress)` factory so each item
+ *  in a list can get its own long-press handlers without calling a hook
+ *  per-item (which would break the Rules of Hooks as the list's length
+ *  changes). A long press suppresses the click that follows it, so it
+ *  doesn't also trigger whatever tap action sits underneath. */
+export function useLongPress(delay = 500) {
+  const state = useRef(new Map<string, { timer: ReturnType<typeof setTimeout> | null; fired: boolean }>());
+
+  return (key: string, onLongPress: () => void) => {
+    const get = () => {
+      let s = state.current.get(key);
+      if (!s) { s = { timer: null, fired: false }; state.current.set(key, s); }
+      return s;
+    };
+    return {
+      onPointerDown: () => {
+        const s = get();
+        s.fired = false;
+        s.timer = setTimeout(() => { s.fired = true; onLongPress(); }, delay);
+      },
+      onPointerUp: () => { const s = get(); if (s.timer) clearTimeout(s.timer); },
+      onPointerLeave: () => { const s = get(); if (s.timer) clearTimeout(s.timer); },
+      onPointerCancel: () => { const s = get(); if (s.timer) clearTimeout(s.timer); },
+      onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+      onClickCapture: (e: React.MouseEvent) => {
+        const s = get();
+        if (s.fired) { e.preventDefault(); e.stopPropagation(); }
+      },
+    };
+  };
+}
+
 export function BackButton({ onClick, to }: { onClick?: () => void; to?: string }) {
   const content = (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -282,12 +314,13 @@ function ZoomableImage({ src, onSwipeLeft, onSwipeRight }: { src: string; onSwip
   );
 }
 
-export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInReport }: {
+export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInReport, onDelete }: {
   items: PhotoLightboxItem[];
   index: number;
   onIndexChange: (i: number) => void;
   onClose: () => void;
   onShowInReport?: (item: PhotoLightboxItem) => void;
+  onDelete?: (item: PhotoLightboxItem) => void | Promise<void>;
 }) {
   const { t } = useCMLang();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -338,6 +371,12 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
     }
   };
 
+  const handleDelete = async () => {
+    setMenuOpen(false);
+    if (!onDelete || !window.confirm(t("photos.deleteConfirm"))) return;
+    await onDelete(item);
+  };
+
   const goPrev = () => index > 0 && onIndexChange(index - 1);
   const goNext = () => index < items.length - 1 && onIndexChange(index + 1);
 
@@ -369,7 +408,10 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
                 </button>
               )}
               <button onClick={handleSave} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">{t("photos.save")}</button>
-              <button onClick={handleShare} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05]">{t("photos.share")}</button>
+              <button onClick={handleShare} className={`w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] ${onDelete ? "border-b border-white/[0.06]" : ""}`}>{t("photos.share")}</button>
+              {onDelete && (
+                <button onClick={handleDelete} className="w-full text-left px-4 py-3 text-[13px] text-red-400 hover:bg-white/[0.05]">{t("photos.delete")}</button>
+              )}
             </div>
           )}
         </div>
