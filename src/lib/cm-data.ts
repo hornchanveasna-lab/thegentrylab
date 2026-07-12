@@ -23,6 +23,17 @@ export interface CMProject {
   target_end_date: string | null;
   description: string | null;
   client_logo_url: string | null;
+  project_code: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CMProjectConsultant {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  name: string;
+  logo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -98,7 +109,7 @@ export function useCMProject(projectId: string | undefined) {
 
 export async function createCMProject(
   ownerId: string,
-  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "location" | "status" | "start_date" | "target_end_date" | "description">>,
+  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "location" | "status" | "start_date" | "target_end_date" | "description" | "project_code">>,
 ) {
   const { data, error } = await db().from("cm_projects").insert({ owner_id: ownerId, ...input }).select().single();
   if (error) throw error;
@@ -207,11 +218,49 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-/** Burns an optional company-name watermark and/or capture date-time onto a photo
- *  before it's uploaded, so the record on site stays legible even if it's later
- *  exported or shared outside the app. Keeps the original pixel dimensions —
- *  this is the full-quality photo that gets stored, not a thumbnail. */
-export async function stampPhoto(file: File, opts: { companyName?: string | null; watermark: boolean; timestamp: boolean }): Promise<File> {
+/** Loads a logo (or any other already-hosted image) for drawing onto a canvas.
+ *  Needs crossOrigin set since these come from Supabase Storage on a different
+ *  origin than the app — otherwise the canvas is "tainted" and toBlob() throws.
+ *  Returns null on failure so one broken logo never blocks the whole stamp. */
+function loadExternalImage(url: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const el = new Image();
+    el.crossOrigin = "anonymous";
+    el.onload = () => resolve(el);
+    el.onerror = () => resolve(null);
+    el.src = url;
+  });
+}
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+export interface StampPhotoOptions {
+  watermark: boolean;
+  timestamp: boolean;
+  companyLogoUrl?: string | null;
+  clientLogoUrl?: string | null;
+  consultantLogoUrls?: string[];
+  projectName?: string | null;
+  projectCode?: string | null;
+  location?: string | null;
+}
+
+/** Burns project identification onto a photo before it's uploaded, so the
+ *  record stays legible even if it's later exported or shared outside the
+ *  app: a row of company/client/consultant logos across the top, the project
+ *  name/code/location bottom-left, and the capture date/time bottom-right.
+ *  Keeps the original pixel dimensions — this is the full-quality photo that
+ *  gets stored, not a thumbnail. */
+export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<File> {
   if (!opts.watermark && !opts.timestamp) return file;
   const img = await loadImage(file);
   const canvas = document.createElement("canvas");
@@ -224,25 +273,89 @@ export async function stampPhoto(file: File, opts: { companyName?: string | null
   const scale = Math.max(1, canvas.width / 1000);
   const pad = 14 * scale;
 
-  if (opts.timestamp) {
-    const text = new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-    const fontSize = 20 * scale;
-    ctx.font = `600 ${fontSize}px sans-serif`;
-    const boxW = ctx.measureText(text).width + pad * 2;
-    const boxH = fontSize + pad * 1.4;
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(0, canvas.height - boxH, boxW, boxH);
-    ctx.fillStyle = "#fff";
-    ctx.textBaseline = "middle";
-    ctx.fillText(text, pad, canvas.height - boxH / 2);
+  if (opts.watermark) {
+    const logoUrls = [opts.companyLogoUrl, opts.clientLogoUrl, ...(opts.consultantLogoUrls ?? [])].filter((u): u is string => !!u);
+    if (logoUrls.length > 0) {
+      const logos = (await Promise.all(logoUrls.map(loadExternalImage))).filter((l): l is HTMLImageElement => !!l);
+      if (logos.length > 0) {
+        const maxRowWidth = canvas.width * 0.86;
+        const gap = 10 * scale;
+        let logoH = 34 * scale;
+        const widthAt = (h: number) => logos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (logos.length - 1);
+        while (widthAt(logoH) > maxRowWidth && logoH > 14 * scale) logoH -= 2 * scale;
+        const totalW = widthAt(logoH);
+        let x = (canvas.width - totalW) / 2;
+        const y = pad;
+        const chipPad = 4 * scale;
+        for (const logo of logos) {
+          const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
+          ctx.fillStyle = "rgba(255,255,255,0.88)";
+          roundRectPath(ctx, x - chipPad, y - chipPad, w + chipPad * 2, logoH + chipPad * 2, 6 * scale);
+          ctx.fill();
+          ctx.drawImage(logo, x, y, w, logoH);
+          x += w + gap;
+        }
+      }
+    }
+
+    const lines: { text: string; fontSize: number; weight: number; color: string }[] = [];
+    if (opts.projectName) lines.push({ text: opts.projectName, fontSize: 21 * scale, weight: 700, color: "#fff" });
+    if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500, color: "rgba(255,255,255,0.8)" });
+    if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500, color: "rgba(255,255,255,0.8)" });
+    if (lines.length > 0) {
+      const lineGap = 4 * scale;
+      let widest = 0;
+      for (const l of lines) { ctx.font = `${l.weight} ${l.fontSize}px sans-serif`; widest = Math.max(widest, ctx.measureText(l.text).width); }
+      const boxH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * (lines.length - 1) + pad * 1.4;
+      const boxW = widest + pad * 2;
+      const boxX = pad * 0.6;
+      const boxY = canvas.height - boxH - pad * 0.6;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      roundRectPath(ctx, boxX, boxY, boxW, boxH, 8 * scale);
+      ctx.fill();
+      ctx.textBaseline = "top";
+      let ly = boxY + pad * 0.7;
+      for (const l of lines) {
+        ctx.font = `${l.weight} ${l.fontSize}px sans-serif`;
+        ctx.fillStyle = l.color;
+        ctx.fillText(l.text, boxX + pad, ly);
+        ly += l.fontSize + lineGap;
+      }
+    }
   }
-  if (opts.watermark && opts.companyName) {
-    const fontSize = 22 * scale;
-    ctx.font = `700 ${fontSize}px sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.4)";
+
+  if (opts.timestamp) {
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2, "0")}-${now.toLocaleDateString("en-US", { month: "short" })}-${now.getFullYear()}`;
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12 || 12;
+    const timeStr = `${String(hours).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}${ampm}`;
+
+    const dateFontSize = 16 * scale;
+    const timeFontSize = 14 * scale;
+    const lineGap = 3 * scale;
+    ctx.font = `700 ${dateFontSize}px sans-serif`;
+    const wDate = ctx.measureText(dateStr).width;
+    ctx.font = `500 ${timeFontSize}px sans-serif`;
+    const wTime = ctx.measureText(timeStr).width;
+    const boxW = Math.max(wDate, wTime) + pad * 2;
+    const boxH = dateFontSize + timeFontSize + lineGap + pad * 1.4;
+    const boxX = canvas.width - boxW - pad * 0.6;
+    const boxY = canvas.height - boxH - pad * 0.6;
+
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    roundRectPath(ctx, boxX, boxY, boxW, boxH, 8 * scale);
+    ctx.fill();
     ctx.textAlign = "right";
-    ctx.textBaseline = "bottom";
-    ctx.fillText(opts.companyName, canvas.width - pad, canvas.height - pad);
+    ctx.textBaseline = "top";
+    ctx.font = `700 ${dateFontSize}px sans-serif`;
+    ctx.fillStyle = "#fff";
+    ctx.fillText(dateStr, canvas.width - pad * 0.6 - pad, boxY + pad * 0.7);
+    ctx.font = `500 ${timeFontSize}px sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillText(timeStr, canvas.width - pad * 0.6 - pad, boxY + pad * 0.7 + dateFontSize + lineGap);
+    ctx.textAlign = "left";
   }
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
@@ -285,6 +398,36 @@ export async function uploadCMLogo(ownerId: string, projectId: string, file: Fil
   if (error) throw error;
   const { data } = await client.storage.from("site-media").createSignedUrl(path, 60 * 60 * 24 * 365);
   return data?.signedUrl ?? path;
+}
+
+/* ── Project consultants (a project can have several: structural, MEP, etc.) ── */
+export function useCMProjectConsultants(projectId: string | undefined) {
+  return useQuery<CMProjectConsultant[]>({
+    queryKey: ["cm_project_consultants", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_consultants").select("*").eq("project_id", projectId).order("created_at");
+      if (error) throw error;
+      return data as CMProjectConsultant[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMProjectConsultant(ownerId: string, projectId: string, name: string) {
+  const { data, error } = await db().from("cm_project_consultants").insert({ owner_id: ownerId, project_id: projectId, name }).select().single();
+  if (error) throw error;
+  return data as CMProjectConsultant;
+}
+
+export async function updateCMProjectConsultant(id: string, patch: Partial<Pick<CMProjectConsultant, "name" | "logo_url">>) {
+  const { error } = await db().from("cm_project_consultants").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMProjectConsultant(id: string) {
+  const { error } = await db().from("cm_project_consultants").delete().eq("id", id);
+  if (error) throw error;
 }
 
 /* ── Photos across all of a user's projects (global gallery) ─ */
