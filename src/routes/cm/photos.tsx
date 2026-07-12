@@ -1,9 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import {
+  BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  PhotoLightbox, MODULE_ROUTES, setPendingHighlight,
+} from "@/components/cm/shared";
 import {
   useAllCMPhotos,
   useCMAccountSettings,
@@ -205,6 +208,7 @@ function dateLabel(date: string, t: (k: string) => string) {
 function CMPhotosPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: photos, isLoading } = useAllCMPhotos(user?.id);
   const { data: account } = useCMAccountSettings(user?.id);
@@ -212,7 +216,7 @@ function CMPhotosPage() {
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | CMPhotoModule>("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("date");
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -310,7 +314,7 @@ function CMPhotosPage() {
                 {group.items.map((p, i) => {
                   const badge = groupBy === "project" ? t(`tile.${p.module}`) : groupBy === "type" ? p.projectName : `${p.projectName} · ${t(`tile.${p.module}`)}`;
                   return (
-                    <button key={`${p.url}-${i}`} onClick={() => setLightbox(p.url)} className="relative aspect-square group">
+                    <button key={`${p.url}-${i}`} onClick={() => setLightboxIndex(filtered.indexOf(p))} className="relative aspect-square group">
                       <img src={p.url} alt="" className="w-full h-full rounded-2xl object-cover" />
                       <span className="absolute bottom-1.5 left-1.5 right-1.5 font-mono text-[8px] px-1.5 py-0.5 rounded-full bg-black/70 text-white/60 truncate text-left">{badge}</span>
                     </button>
@@ -348,11 +352,19 @@ function CMPhotosPage() {
         />
       )}
 
-      {lightbox && (
-        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
-          <button onClick={() => setLightbox(null)} className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-xl">×</button>
-        </div>
+      {lightboxIndex != null && (
+        <PhotoLightbox
+          items={filtered}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onShowInReport={(item) => {
+            if (!item.module || !item.recordId || !item.projectId) return;
+            setPendingHighlight(item.module, item.recordId, item.projectId, item.url);
+            setLightboxIndex(null);
+            navigate({ to: MODULE_ROUTES[item.module] });
+          }}
+        />
       )}
     </div>
   );

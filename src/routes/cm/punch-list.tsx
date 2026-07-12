@@ -3,7 +3,10 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import {
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  PhotoLightbox, usePendingHighlight,
+} from "@/components/cm/shared";
 import {
   useCMTasks,
   createCMTask,
@@ -109,9 +112,10 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
+function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
+  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("punchList", item.id);
   const handleStatusChange = async (status: TaskStatus) => {
     setBusy(true);
     try { await updateCMTask(item.id, { status }); onChanged(); } finally { setBusy(false); }
@@ -125,7 +129,7 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
   const pc = PRIORITY_COLOR[item.priority];
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2">
+    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2 transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className={`text-[13px] font-bold leading-tight ${item.status === "Done" ? "text-white/40 line-through" : "text-white"}`}>{item.title}</h3>
         <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
@@ -142,8 +146,9 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
       </div>
       {item.photos.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-1">
-          {item.photos.map((url) => (
-            <button key={url} type="button" onClick={() => onOpenPhoto(url)}>
+          {item.photos.map((url, i) => (
+            <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(item.photos, i)}
+              className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
               <img src={url} alt="" className="w-16 h-16 rounded-xl object-cover" />
             </button>
           ))}
@@ -161,7 +166,7 @@ function CMPunchListPage() {
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
 
@@ -199,7 +204,7 @@ function CMPunchListPage() {
               <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
+              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
             </div>
 
             {done.length > 0 && (
@@ -209,7 +214,7 @@ function CMPunchListPage() {
                 </button>
                 {showCompleted && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
+                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
                   </div>
                 )}
               </div>
@@ -223,10 +228,12 @@ function CMPunchListPage() {
       {showNew && projectId && <NewPunchItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
-        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
-          <button onClick={() => setLightbox(null)} className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-xl">×</button>
-        </div>
+        <PhotoLightbox
+          items={lightbox.photos.map((url) => ({ url }))}
+          index={lightbox.index}
+          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </div>
   );

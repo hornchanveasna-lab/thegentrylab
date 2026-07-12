@@ -3,7 +3,10 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import {
+  BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls,
+  PhotoLightbox, usePendingHighlight,
+} from "@/components/cm/shared";
 import {
   useCMSubmittals,
   createCMSubmittal,
@@ -106,9 +109,10 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
+function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
+  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id);
   const sc = STATUS_COLOR[item.status];
 
   const handleStatusChange = async (status: SubmittalStatus) => {
@@ -127,7 +131,7 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
   };
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2">
+    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2 transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-[13px] font-bold text-white leading-tight truncate">{item.title}</h3>
@@ -145,8 +149,9 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
       </div>
       {item.photos.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-1">
-          {item.photos.map((url) => (
-            <button key={url} type="button" onClick={() => onOpenPhoto(url)}>
+          {item.photos.map((url, i) => (
+            <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(item.photos, i)}
+              className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
               <img src={url} alt="" className="w-16 h-16 rounded-xl object-cover" />
             </button>
           ))}
@@ -163,7 +168,7 @@ function CMSubmittalPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
-  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); setShowNew(false); };
 
@@ -194,7 +199,7 @@ function CMSubmittalPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
+              {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
             </div>
             <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />
           </>
@@ -204,10 +209,12 @@ function CMSubmittalPage() {
       {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
-        <div className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-6" onClick={() => setLightbox(null)}>
-          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-2xl object-contain" />
-          <button onClick={() => setLightbox(null)} className="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/10 text-white/70 hover:text-white flex items-center justify-center text-xl">×</button>
-        </div>
+        <PhotoLightbox
+          items={lightbox.photos.map((url) => ({ url }))}
+          index={lightbox.index}
+          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </div>
   );
