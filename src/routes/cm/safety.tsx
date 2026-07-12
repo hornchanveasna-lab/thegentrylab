@@ -12,7 +12,7 @@ import {
   createCMSafetyRecord,
   updateCMSafetyRecord,
   deleteCMSafetyRecord,
-  uploadCMPhoto,
+  uploadCMPhotoWithThumb,
   type CMSafetyRecord,
   type SafetyRecordType,
   type SafetySeverity,
@@ -52,8 +52,8 @@ function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
         severity, record_date: recordDate, involved: involved.trim() || null,
       });
       if (photos.length > 0) {
-        const urls = await Promise.all(photos.map((f) => uploadCMPhoto(ownerId, projectId, f)));
-        await updateCMSafetyRecord(record.id, { photos: urls });
+        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+        await updateCMSafetyRecord(record.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
       }
       onCreated();
     } catch (err) {
@@ -109,7 +109,9 @@ function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
+type LightboxItem = { url: string; thumbUrl: string };
+
+function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -143,9 +145,10 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
           {item.photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {item.photos.map((url, i) => (
-                <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(item.photos, i)}
+                <button key={url} type="button" data-photo-url={url}
+                  onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
                   className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                  <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                  <img src={item.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
                 </button>
               ))}
             </div>
@@ -170,7 +173,7 @@ function CMSafetyPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: records, isLoading } = useCMSafetyRecords(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_safety_records", projectId] }); setShowNew(false); };
 
@@ -201,7 +204,7 @@ function CMSafetyPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(records ?? []).map((s) => <SafetyCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
+              {(records ?? []).map((s) => <SafetyCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
             </div>
             <FAB label={t("safety.newBtn")} onClick={() => setShowNew(true)} />
           </>
@@ -212,7 +215,7 @@ function CMSafetyPage() {
 
       {lightbox && (
         <PhotoLightbox
-          items={lightbox.photos.map((url) => ({ url }))}
+          items={lightbox.items}
           index={lightbox.index}
           onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
           onClose={() => setLightbox(null)}

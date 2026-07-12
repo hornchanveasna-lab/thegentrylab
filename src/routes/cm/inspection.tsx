@@ -12,7 +12,7 @@ import {
   createCMInspection,
   updateCMInspection,
   deleteCMInspection,
-  uploadCMPhoto,
+  uploadCMPhotoWithThumb,
   type CMInspection,
   type InspectionStatus,
 } from "@/lib/cm-data";
@@ -50,8 +50,8 @@ function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
         title: title.trim(), status, inspector: inspector.trim() || null, inspection_date: inspectionDate, notes: notes.trim() || null,
       });
       if (photos.length > 0) {
-        const urls = await Promise.all(photos.map((f) => uploadCMPhoto(ownerId, projectId, f)));
-        await updateCMInspection(inspection.id, { photos: urls });
+        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+        await updateCMInspection(inspection.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
       }
       onCreated();
     } catch (err) {
@@ -99,7 +99,9 @@ function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
+type LightboxItem = { url: string; thumbUrl: string };
+
+function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -136,9 +138,10 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
           {item.photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {item.photos.map((url, i) => (
-                <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(item.photos, i)}
+                <button key={url} type="button" data-photo-url={url}
+                  onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
                   className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                  <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                  <img src={item.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
                 </button>
               ))}
             </div>
@@ -157,7 +160,7 @@ function CMInspectionPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: inspections, isLoading } = useCMInspections(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_inspections", projectId] }); setShowNew(false); };
 
@@ -188,7 +191,7 @@ function CMInspectionPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(inspections ?? []).map((i) => <InspectionCard key={i.id} item={i} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
+              {(inspections ?? []).map((i) => <InspectionCard key={i.id} item={i} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
             </div>
             <FAB label={t("inspection.newBtn")} onClick={() => setShowNew(true)} />
           </>
@@ -199,7 +202,7 @@ function CMInspectionPage() {
 
       {lightbox && (
         <PhotoLightbox
-          items={lightbox.photos.map((url) => ({ url }))}
+          items={lightbox.items}
           index={lightbox.index}
           onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
           onClose={() => setLightbox(null)}

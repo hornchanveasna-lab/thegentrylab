@@ -12,7 +12,7 @@ import {
   createCMDailyLog,
   updateCMDailyLog,
   deleteCMDailyLog,
-  uploadCMPhoto,
+  uploadCMPhotoWithThumb,
   type CMDailyLog,
 } from "@/lib/cm-data";
 
@@ -60,8 +60,8 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
         notes: notes.trim() || null,
       });
       if (photos.length > 0) {
-        const urls = await Promise.all(photos.map((f) => uploadCMPhoto(ownerId, projectId, f)));
-        await updateCMDailyLog(log.id, { photos: urls });
+        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+        await updateCMDailyLog(log.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
       }
       onCreated();
     } catch (err) {
@@ -134,7 +134,9 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
+type LightboxItem = { url: string; thumbUrl: string };
+
+function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -176,9 +178,10 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
               <div className="flex flex-wrap gap-2">
                 {log.photos.map((url, i) => (
-                  <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(log.photos, i)}
+                  <button key={url} type="button" data-photo-url={url}
+                    onClick={() => onOpenPhoto(log.photos.map((u, idx) => ({ url: u, thumbUrl: log.photo_thumbs[idx] || u })), i)}
                     className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                    <img src={url} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                    <img src={log.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
                   </button>
                 ))}
               </div>
@@ -209,7 +212,7 @@ function CMSiteDiaryPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: logs, isLoading } = useCMDailyLogs(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] }); setShowNew(false); };
 
@@ -240,7 +243,7 @@ function CMSiteDiaryPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(logs ?? []).map((l) => <LogCard key={l.id} log={l} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
+              {(logs ?? []).map((l) => <LogCard key={l.id} log={l} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
             </div>
             <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />
           </>
@@ -251,7 +254,7 @@ function CMSiteDiaryPage() {
 
       {lightbox && (
         <PhotoLightbox
-          items={lightbox.photos.map((url) => ({ url }))}
+          items={lightbox.items}
           index={lightbox.index}
           onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
           onClose={() => setLightbox(null)}

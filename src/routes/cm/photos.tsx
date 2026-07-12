@@ -12,7 +12,7 @@ import {
   useCMAccountSettings,
   upsertCMAccountSettings,
   stampPhoto,
-  uploadCMPhoto,
+  uploadCMPhotoWithThumb,
   createCMDailyLog,
   updateCMDailyLog,
   createCMInspection,
@@ -145,25 +145,27 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyName
     setError("");
     try {
       const stamped = await Promise.all(files.map((f) => stampPhoto(f, { companyName, watermark, timestamp })));
-      const urls = await Promise.all(stamped.map((f) => uploadCMPhoto(ownerId, projectId, f)));
+      const uploaded = await Promise.all(stamped.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      const urls = uploaded.map((u) => u.url);
+      const thumbs = uploaded.map((u) => u.thumbUrl);
       const today = new Date().toISOString().slice(0, 10);
       const title = caption.trim() || `${t(`tile.${moduleSel}`)} — ${today}`;
 
       if (moduleSel === "siteDiary") {
         const log = await createCMDailyLog(ownerId, projectId, { log_date: today, notes: caption.trim() || null });
-        await updateCMDailyLog(log.id, { photos: urls });
+        await updateCMDailyLog(log.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "inspection") {
         const item = await createCMInspection(ownerId, projectId, { title, status: "Scheduled", inspection_date: today });
-        await updateCMInspection(item.id, { photos: urls });
+        await updateCMInspection(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "punchList") {
         const item = await createCMTask(ownerId, projectId, { title, status: "To Do", priority: "Medium" });
-        await updateCMTask(item.id, { photos: urls });
+        await updateCMTask(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "safety") {
         const item = await createCMSafetyRecord(ownerId, projectId, { title, record_type: "Hazard Observation", severity: "Low", record_date: today });
-        await updateCMSafetyRecord(item.id, { photos: urls });
+        await updateCMSafetyRecord(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "submittal") {
         const item = await createCMSubmittal(ownerId, projectId, { title, status: "Draft" });
-        await updateCMSubmittal(item.id, { photos: urls });
+        await updateCMSubmittal(item.id, { photos: urls, photo_thumbs: thumbs });
       }
       onCreated();
     } catch (err) {
@@ -302,7 +304,7 @@ function CalendarView({ photos, lang, onOpenDay }: {
                 return (
                   <button key={i} disabled={!cover} onClick={() => dayPhotos && onOpenDay(dayPhotos)}
                     className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-white/5">
-                    {cover && <img src={cover.url} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+                    {cover && <img src={cover.thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />}
                     <span className={`relative text-[12px] font-bold ${cover ? "text-white/[0.95]" : "text-white/25"}`}
                       style={cover ? { textShadow: "0 1px 3px rgba(0,0,0,0.85)" } : undefined}>
                       {cell.day}
@@ -471,7 +473,7 @@ function CMPhotosPage() {
                     const badge = groupBy === "project" ? t(`tile.${p.module}`) : groupBy === "type" ? p.projectName : `${p.projectName} · ${t(`tile.${p.module}`)}`;
                     return (
                       <button key={`${p.url}-${i}`} onClick={() => setLightbox({ items: filtered, index: filtered.indexOf(p) })} className="relative aspect-square group">
-                        <img src={p.url} alt="" className="w-full h-full rounded-2xl object-cover" />
+                        <img src={p.thumbUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
                         <span className="absolute bottom-1.5 left-1.5 right-1.5 font-mono text-[8px] px-1.5 py-0.5 rounded-full bg-black/70 text-white/[0.75] truncate text-left">{badge}</span>
                       </button>
                     );

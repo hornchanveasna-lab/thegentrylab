@@ -12,7 +12,7 @@ import {
   createCMSubmittal,
   updateCMSubmittal,
   deleteCMSubmittal,
-  uploadCMPhoto,
+  uploadCMPhotoWithThumb,
   type CMSubmittal,
   type SubmittalStatus,
 } from "@/lib/cm-data";
@@ -54,8 +54,8 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
         submitted_date: status !== "Draft" ? new Date().toISOString().slice(0, 10) : null,
       });
       if (photos.length > 0) {
-        const urls = await Promise.all(photos.map((f) => uploadCMPhoto(ownerId, projectId, f)));
-        await updateCMSubmittal(item.id, { photos: urls });
+        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+        await updateCMSubmittal(item.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
       }
       onCreated();
     } catch (err) {
@@ -109,7 +109,9 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; onChanged: () => void; onOpenPhoto: (photos: string[], index: number) => void }) {
+type LightboxItem = { url: string; thumbUrl: string };
+
+function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id);
@@ -150,9 +152,10 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
       {item.photos.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-1">
           {item.photos.map((url, i) => (
-            <button key={url} type="button" data-photo-url={url} onClick={() => onOpenPhoto(item.photos, i)}
+            <button key={url} type="button" data-photo-url={url}
+              onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
               className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-              <img src={url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+              <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
             </button>
           ))}
         </div>
@@ -168,7 +171,7 @@ function CMSubmittalPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
-  const [lightbox, setLightbox] = useState<{ photos: string[]; index: number } | null>(null);
+  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); setShowNew(false); };
 
@@ -199,7 +202,7 @@ function CMSubmittalPage() {
               </div>
             )}
             <div className="flex flex-col gap-3">
-              {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(photos, index) => setLightbox({ photos, index })} />)}
+              {(submittals ?? []).map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
             </div>
             <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />
           </>
@@ -210,7 +213,7 @@ function CMSubmittalPage() {
 
       {lightbox && (
         <PhotoLightbox
-          items={lightbox.photos.map((url) => ({ url }))}
+          items={lightbox.items}
           index={lightbox.index}
           onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
           onClose={() => setLightbox(null)}
