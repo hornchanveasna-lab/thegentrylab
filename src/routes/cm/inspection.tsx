@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMInspections,
@@ -26,6 +27,7 @@ const STATUS_OPTIONS: InspectionStatus[] = ["Scheduled", "Passed", "Failed", "No
 function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
   ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
 }) {
+  const { t } = useCMLang();
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<InspectionStatus>("Scheduled");
   const [inspector, setInspector] = useState("");
@@ -56,30 +58,30 @@ function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title="New Inspection" onClose={onClose}>
+    <Sheet title={t("inspection.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Title ★</span>
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Rebar inspection — footing F3" required autoFocus disabled={saving} />
+          <span className={labelCls}>{t("inspection.titleField")}</span>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("inspection.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Status</span>
+            <span className={labelCls}>{t("inspection.status")}</span>
             <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as InspectionStatus)} disabled={saving}>
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`inspectionStatus.${s}`)}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Date</span>
+            <span className={labelCls}>{t("inspection.date")}</span>
             <input type="date" className={inputCls} value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} disabled={saving} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Inspector</span>
+          <span className={labelCls}>{t("inspection.inspector")}</span>
           <input className={inputCls} value={inspector} onChange={(e) => setInspector(e.target.value)} disabled={saving} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Notes</span>
+          <span className={labelCls}>{t("inspection.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
@@ -87,7 +89,7 @@ function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? "Saving…" : "Save inspection"}
+          {saving ? t("inspection.saving") : t("inspection.save")}
         </button>
       </form>
     </Sheet>
@@ -95,6 +97,7 @@ function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
 }
 
 function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
+  const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const sc = STATUS_COLOR[item.status];
@@ -104,7 +107,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
     try { await updateCMInspection(item.id, { status }); onChanged(); } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm("Delete this inspection?")) return;
+    if (!confirm(t("inspection.confirmDelete"))) return;
     setBusy(true);
     try { await deleteCMInspection(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -116,15 +119,15 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest shrink-0" style={{ backgroundColor: `${sc}15`, color: sc }}>{item.status}</span>
+        <span className="px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest shrink-0" style={{ backgroundColor: `${sc}15`, color: sc }}>{t(`inspectionStatus.${item.status}`)}</span>
       </button>
       {open && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
           <select value={item.status} disabled={busy} onChange={(e) => handleStatusChange(e.target.value as InspectionStatus)}
             className="self-start px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: sc }}>
-            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`inspectionStatus.${s}`)}</option>)}
           </select>
-          {item.inspector && <p className="text-[12px] text-white/60">Inspector: {item.inspector}</p>}
+          {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
           {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
           {item.photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -135,7 +138,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
               ))}
             </div>
           )}
-          <button onClick={handleDelete} disabled={busy} className="self-start font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">Delete inspection</button>
+          <button onClick={handleDelete} disabled={busy} className="self-start font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>
         </div>
       )}
     </div>
@@ -144,6 +147,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
 
 function CMInspectionPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: inspections, isLoading } = useCMInspections(projectId || undefined);
@@ -156,7 +160,7 @@ function CMInspectionPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>Sign in with Google</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -166,22 +170,22 @@ function CMInspectionPage() {
       <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">Inspection</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("inspection.title")}</h1>
         </div>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">Loading…</p>}
+            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {!isLoading && (inspections?.length ?? 0) === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">No inspections logged yet.</p>
+                <p className="text-white/40 text-sm">{t("inspection.noneYet")}</p>
               </div>
             )}
             <div className="flex flex-col gap-3">
               {(inspections ?? []).map((i) => <InspectionCard key={i.id} item={i} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
             </div>
-            <FAB label="New inspection" onClick={() => setShowNew(true)} />
+            <FAB label={t("inspection.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}
       </main>

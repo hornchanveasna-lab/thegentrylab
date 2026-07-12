@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import { BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -22,6 +23,7 @@ const WEATHER_OPTIONS = ["Sunny", "Partly Cloudy", "Cloudy", "Light Rain", "Heav
 function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
 }) {
+  const { t } = useCMLang();
   const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [weather, setWeather] = useState(WEATHER_OPTIONS[0]);
   const [temperature, setTemperature] = useState("");
@@ -67,54 +69,54 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title="New Diary Entry" onClose={onClose}>
+    <Sheet title={t("siteDiary.newEntry")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Date</span>
+            <span className={labelCls}>{t("siteDiary.date")}</span>
             <input type="date" className={inputCls} value={logDate} onChange={(e) => setLogDate(e.target.value)} required disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Progress %</span>
+            <span className={labelCls}>{t("siteDiary.progressPct")}</span>
             <input type="number" min={0} max={100} className={inputCls} value={progressPct} onChange={(e) => setProgressPct(e.target.value)} disabled={saving} />
           </label>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <label className="flex flex-col gap-1.5 col-span-1">
-            <span className={labelCls}>Weather</span>
+            <span className={labelCls}>{t("siteDiary.weather")}</span>
             <select className={inputCls} value={weather} onChange={(e) => setWeather(e.target.value)} disabled={saving}>
-              {WEATHER_OPTIONS.map((w) => <option key={w} value={w}>{w}</option>)}
+              {WEATHER_OPTIONS.map((w) => <option key={w} value={w}>{t(`weather.${w}`)}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Temp °C</span>
+            <span className={labelCls}>{t("siteDiary.tempC")}</span>
             <input type="number" className={inputCls} value={temperature} onChange={(e) => setTemperature(e.target.value)} disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Workforce</span>
+            <span className={labelCls}>{t("siteDiary.workforce")}</span>
             <input type="number" min={0} className={inputCls} value={workforceCount} onChange={(e) => setWorkforceCount(e.target.value)} disabled={saving} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Activities</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={activities} onChange={(e) => setActivities(e.target.value)} placeholder="Work performed today..." disabled={saving} />
+          <span className={labelCls}>{t("siteDiary.activities")}</span>
+          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={activities} onChange={(e) => setActivities(e.target.value)} placeholder={t("siteDiary.activitiesPlaceholder")} disabled={saving} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Materials used</span>
+            <span className={labelCls}>{t("siteDiary.materialsUsed")}</span>
             <textarea className={`${inputCls} resize-y min-h-[48px]`} value={materials} onChange={(e) => setMaterials(e.target.value)} disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Equipment used</span>
+            <span className={labelCls}>{t("siteDiary.equipmentUsed")}</span>
             <textarea className={`${inputCls} resize-y min-h-[48px]`} value={equipment} onChange={(e) => setEquipment(e.target.value)} disabled={saving} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Issues / delays</span>
-          <textarea className={`${inputCls} resize-y min-h-[48px]`} value={issues} onChange={(e) => setIssues(e.target.value)} placeholder="Safety incidents, delays, blockers..." disabled={saving} />
+          <span className={labelCls}>{t("siteDiary.issues")}</span>
+          <textarea className={`${inputCls} resize-y min-h-[48px]`} value={issues} onChange={(e) => setIssues(e.target.value)} placeholder={t("siteDiary.issuesPlaceholder")} disabled={saving} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Notes</span>
+          <span className={labelCls}>{t("siteDiary.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[40px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
@@ -122,7 +124,7 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
         <button type="submit" disabled={saving}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? "Saving…" : "Save entry"}
+          {saving ? t("siteDiary.saving") : t("siteDiary.saveEntry")}
         </button>
       </form>
     </Sheet>
@@ -130,11 +132,12 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
 }
 
 function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: () => void; onOpenPhoto: (url: string) => void }) {
+  const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm("Delete this diary entry? This cannot be undone.")) return;
+    if (!confirm(t("siteDiary.confirmDelete"))) return;
     setBusy(true);
     try { await deleteCMDailyLog(log.id); onChanged(); } finally { setBusy(false); }
   };
@@ -144,7 +147,7 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
-          {log.weather && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{log.weather}</span>}
+          {log.weather && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`weather.${log.weather}`)}</span>}
           {log.activities && <span className="text-[12px] text-white/45 truncate">{log.activities}</span>}
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -157,16 +160,16 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
       {open && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
-            {log.temperature_c != null && <Field label="Temperature" value={`${log.temperature_c}°C`} />}
-            {log.workforce_count != null && <Field label="Workforce" value={String(log.workforce_count)} />}
+            {log.temperature_c != null && <Field label={t("siteDiary.temperature")} value={`${log.temperature_c}°C`} />}
+            {log.workforce_count != null && <Field label={t("siteDiary.workforceField")} value={String(log.workforce_count)} />}
           </div>
-          {log.materials_used && <Field label="Materials used" value={log.materials_used} />}
-          {log.equipment_used && <Field label="Equipment used" value={log.equipment_used} />}
-          {log.issues && <Field label="Issues / delays" value={log.issues} accent="#f43f5e" />}
-          {log.notes && <Field label="Notes" value={log.notes} />}
+          {log.materials_used && <Field label={t("siteDiary.materialsUsed")} value={log.materials_used} />}
+          {log.equipment_used && <Field label={t("siteDiary.equipmentUsed")} value={log.equipment_used} />}
+          {log.issues && <Field label={t("siteDiary.issues")} value={log.issues} accent="#f43f5e" />}
+          {log.notes && <Field label={t("siteDiary.notes")} value={log.notes} />}
           {log.photos.length > 0 && (
             <div>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">Photos</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
               <div className="flex flex-wrap gap-2">
                 {log.photos.map((url) => (
                   <button key={url} type="button" onClick={() => onOpenPhoto(url)}>
@@ -177,7 +180,7 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
             </div>
           )}
           <button onClick={handleDelete} disabled={busy} className="self-start font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
-            Delete entry
+            {t("siteDiary.deleteEntry")}
           </button>
         </div>
       )}
@@ -196,6 +199,7 @@ function Field({ label, value, accent }: { label: string; value: string; accent?
 
 function CMSiteDiaryPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: logs, isLoading } = useCMDailyLogs(projectId || undefined);
@@ -208,7 +212,7 @@ function CMSiteDiaryPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>Sign in with Google</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -218,22 +222,22 @@ function CMSiteDiaryPage() {
       <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">Site Diary</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("siteDiary.title")}</h1>
         </div>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">Loading…</p>}
+            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {!isLoading && (logs?.length ?? 0) === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">No diary entries yet. Log your first day on site.</p>
+                <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
               </div>
             )}
             <div className="flex flex-col gap-3">
               {(logs ?? []).map((l) => <LogCard key={l.id} log={l} onChanged={invalidate} onOpenPhoto={setLightbox} />)}
             </div>
-            <FAB label="New diary entry" onClick={() => setShowNew(true)} />
+            <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />
           </>
         )}
       </main>

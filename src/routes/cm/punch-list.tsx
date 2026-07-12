@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import { BackButton, Sheet, FAB, ProjectPicker, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMTasks,
@@ -28,6 +29,7 @@ const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
   ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
 }) {
+  const { t } = useCMLang();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TaskStatus>("To Do");
@@ -55,37 +57,37 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title="New Work Item" onClose={onClose}>
+    <Sheet title={t("punchList.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>What needs to be done ★</span>
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Install door hardware — Unit 4" required autoFocus disabled={saving} />
+          <span className={labelCls}>{t("punchList.whatNeedsDone")}</span>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("punchList.whatNeedsDonePlaceholder")} required autoFocus disabled={saving} />
         </label>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Details</span>
+          <span className={labelCls}>{t("punchList.details")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Status</span>
+            <span className={labelCls}>{t("punchList.status")}</span>
             <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as TaskStatus)} disabled={saving}>
-              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`taskStatus.${s}`)}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Priority</span>
+            <span className={labelCls}>{t("punchList.priority")}</span>
             <select className={inputCls} value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} disabled={saving}>
-              {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+              {PRIORITY_OPTIONS.map((p) => <option key={p} value={p}>{t(`taskPriority.${p}`)}</option>)}
             </select>
           </label>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Assigned to</span>
+            <span className={labelCls}>{t("punchList.assignedTo")}</span>
             <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} disabled={saving} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Due date</span>
+            <span className={labelCls}>{t("punchList.dueDate")}</span>
             <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
           </label>
         </div>
@@ -93,7 +95,7 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? "Adding…" : "Add to punch list"}
+          {saving ? t("punchList.adding") : t("punchList.addToPunchList")}
         </button>
       </form>
     </Sheet>
@@ -101,13 +103,14 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
 }
 
 function PunchItemCard({ item, onChanged }: { item: CMTask; onChanged: () => void }) {
+  const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const handleStatusChange = async (status: TaskStatus) => {
     setBusy(true);
     try { await updateCMTask(item.id, { status }); onChanged(); } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm("Remove this work item?")) return;
+    if (!confirm(t("punchList.confirmRemove"))) return;
     setBusy(true);
     try { await deleteCMTask(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -124,11 +127,11 @@ function PunchItemCard({ item, onChanged }: { item: CMTask; onChanged: () => voi
       <div className="flex flex-wrap items-center gap-2 mt-1">
         <select value={item.status} disabled={busy} onChange={(e) => handleStatusChange(e.target.value as TaskStatus)}
           className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: sc }}>
-          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+          {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`taskStatus.${s}`)}</option>)}
         </select>
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: `${pc}15`, color: pc }}>{item.priority}</span>
+        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: `${pc}15`, color: pc }}>{t(`taskPriority.${item.priority}`)}</span>
         {item.assignee && <span className="text-[11px] text-white/40">{item.assignee}</span>}
-        {item.due_date && <span className="font-mono text-[10px] text-white/30">Due {item.due_date}</span>}
+        {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>
     </div>
   );
@@ -136,6 +139,7 @@ function PunchItemCard({ item, onChanged }: { item: CMTask; onChanged: () => voi
 
 function CMPunchListPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
@@ -151,7 +155,7 @@ function CMPunchListPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>Sign in with Google</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -161,21 +165,21 @@ function CMPunchListPage() {
       <main className="max-w-md mx-auto w-full px-4 pt-6 pb-28">
         <div className="flex items-center gap-3 mb-2">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">Punch List</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("punchList.title")}</h1>
         </div>
-        <p className="text-[12px] text-white/35 mb-5 ml-[3.25rem]">The work that isn't finished yet.</p>
+        <p className="text-[12px] text-white/35 mb-5 ml-[3.25rem]">{t("punchList.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">Loading…</p>}
+            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {!isLoading && open.length === 0 && done.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">Nothing on the punch list yet.</p>
+                <p className="text-white/40 text-sm">{t("punchList.nothingYet")}</p>
               </div>
             )}
             {!isLoading && open.length === 0 && done.length > 0 && (
-              <p className="text-white/30 text-sm mb-3">Everything on this project is done. 🎉</p>
+              <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} />)}
@@ -184,7 +188,7 @@ function CMPunchListPage() {
             {done.length > 0 && (
               <div className="mt-6">
                 <button onClick={() => setShowCompleted((v) => !v)} className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/55 transition-colors">
-                  {showCompleted ? "Hide" : "Show"} {done.length} completed
+                  {showCompleted ? t("punchList.hideCompleted") : t("punchList.showCompleted")} {done.length} {t("punchList.completedSuffix")}
                 </button>
                 {showCompleted && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
@@ -194,7 +198,7 @@ function CMPunchListPage() {
               </div>
             )}
 
-            <FAB label="New work item" onClick={() => setShowNew(true)} />
+            <FAB label={t("punchList.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}
       </main>

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { supabaseCM } from "@/lib/supabase-cm";
+import { useCMLang } from "@/lib/cm-i18n";
 import {
   useCMProjects,
   createCMProject,
@@ -26,6 +27,7 @@ const STATUS_COLOR: Record<ProjectStatus, string> = {
   "On Hold": "#fbbf24",
   Completed: "#34d399",
 };
+const STATUS_OPTIONS: ProjectStatus[] = ["Planning", "Active", "On Hold", "Completed"];
 
 const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
@@ -42,6 +44,7 @@ function BackButton() {
 
 function NewProjectSheet({ onClose, onCreated }: { onClose: () => void; onCreated: (p: CMProject) => void }) {
   const { user } = useAuthCM();
+  const { t } = useCMLang();
   const [name, setName] = useState("");
   const [client, setClient] = useState("");
   const [location, setLocation] = useState("");
@@ -82,51 +85,51 @@ function NewProjectSheet({ onClose, onCreated }: { onClose: () => void; onCreate
       >
         <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mt-3 sm:hidden" />
         <div className="flex items-center justify-between px-6 pt-4 pb-2">
-          <h2 className="font-extrabold text-base tracking-tight text-white">New Project</h2>
+          <h2 className="font-extrabold text-base tracking-tight text-white">{t("projects.new")}</h2>
           <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors">×</button>
         </div>
         <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Project name ★</span>
-            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Riverside Warehouse Phase 2" required autoFocus disabled={saving} />
+            <span className={labelCls}>{t("projects.name")}</span>
+            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder={t("projects.namePlaceholder")} required autoFocus disabled={saving} />
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Client</span>
-              <input className={inputCls} value={client} onChange={(e) => setClient(e.target.value)} placeholder="Client name" disabled={saving} />
+              <span className={labelCls}>{t("projects.client")}</span>
+              <input className={inputCls} value={client} onChange={(e) => setClient(e.target.value)} placeholder={t("projects.clientPlaceholder")} disabled={saving} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Location</span>
-              <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Site address" disabled={saving} />
+              <span className={labelCls}>{t("projects.location")}</span>
+              <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t("projects.locationPlaceholder")} disabled={saving} />
             </label>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Status</span>
+              <span className={labelCls}>{t("projects.status")}</span>
               <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)} disabled={saving}>
-                {(["Planning", "Active", "On Hold", "Completed"] as ProjectStatus[]).map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{t(`status.${s}`)}</option>
                 ))}
               </select>
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Start</span>
+              <span className={labelCls}>{t("projects.start")}</span>
               <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={saving} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>Finish</span>
+              <span className={labelCls}>{t("projects.finish")}</span>
               <input type="date" className={inputCls} value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)} disabled={saving} />
             </label>
           </div>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Description</span>
-            <textarea className={`${inputCls} resize-y min-h-[72px]`} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Scope, notes..." disabled={saving} />
+            <span className={labelCls}>{t("projects.description")}</span>
+            <textarea className={`${inputCls} resize-y min-h-[72px]`} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("projects.descriptionPlaceholder")} disabled={saving} />
           </label>
           {error && <p className="text-[12px] text-red-400">{error}</p>}
           <button type="submit" disabled={saving || !name.trim()}
             className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
             style={{ backgroundColor: "#ff5100" }}>
-            {saving ? "Creating…" : "Create project"}
+            {saving ? t("projects.creating") : t("projects.create")}
           </button>
         </form>
       </div>
@@ -135,6 +138,7 @@ function NewProjectSheet({ onClose, onCreated }: { onClose: () => void; onCreate
 }
 
 function ProjectCard({ project }: { project: CMProject }) {
+  const { t } = useCMLang();
   const sc = STATUS_COLOR[project.status];
   return (
     <Link to="/cm/$projectId" params={{ projectId: project.id }}
@@ -145,10 +149,10 @@ function ProjectCard({ project }: { project: CMProject }) {
         </h3>
         <span className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: `${sc}15` }}>
           <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
-          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{project.status}</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{t(`status.${project.status}`)}</span>
         </span>
       </div>
-      {project.client && <p className="text-[12px] text-white/45 mb-1">Client: <span className="text-white/70">{project.client}</span></p>}
+      {project.client && <p className="text-[12px] text-white/45 mb-1">{t("projects.clientLabel")} <span className="text-white/70">{project.client}</span></p>}
       {project.location && (
         <p className="text-[12px] text-white/45 flex items-center gap-1.5">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -166,6 +170,7 @@ function ProjectCard({ project }: { project: CMProject }) {
 
 export function CMProjectsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: projects, isLoading, error } = useCMProjects(user?.id);
@@ -174,7 +179,7 @@ export function CMProjectsPage() {
   if (!supabaseCM) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <p className="text-white/40 text-sm text-center">Construction Management App requires its Supabase project to be configured.</p>
+        <p className="text-white/40 text-sm text-center">{t("home.notConfigured")}</p>
       </div>
     );
   }
@@ -187,12 +192,12 @@ export function CMProjectsPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
         <div className="text-center max-w-sm">
-          <h1 className="text-2xl font-extrabold tracking-tight mb-3">Construction Management</h1>
-          <p className="text-white/45 text-sm mb-8">Daily site diaries, punch lists, and photo logs for your construction projects.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight mb-3">{t("home.title")}</h1>
+          <p className="text-white/45 text-sm mb-8">{t("home.signedOutSubtitle")}</p>
           <button onClick={() => signInWithGoogle()}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
             style={{ backgroundColor: "#ff5100" }}>
-            Sign in with Google
+            {t("common.signInGoogle")}
           </button>
         </div>
       </div>
@@ -205,21 +210,21 @@ export function CMProjectsPage() {
         <div className="flex items-center gap-3 mb-6">
           <BackButton />
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-white">Projects</h1>
-            <p className="text-[12px] text-white/35 mt-0.5">Site diaries, punch lists, photos.</p>
+            <h1 className="text-xl font-extrabold tracking-tight text-white">{t("projects.title")}</h1>
+            <p className="text-[12px] text-white/35 mt-0.5">{t("projects.subtitle")}</p>
           </div>
         </div>
 
-        {isLoading && <p className="text-white/30 text-sm">Loading projects…</p>}
-        {error && <p className="text-red-400 text-sm">Failed to load projects: {(error as Error).message}</p>}
+        {isLoading && <p className="text-white/30 text-sm">{t("projects.loading")}</p>}
+        {error && <p className="text-red-400 text-sm">{t("projects.failedLoad")}: {(error as Error).message}</p>}
 
         {!isLoading && !error && (projects?.length ?? 0) === 0 && (
           <div className="rounded-2xl border border-dashed border-white/10 py-16 flex flex-col items-center justify-center text-center px-4">
-            <p className="text-white/40 text-sm mb-4">No projects yet.</p>
+            <p className="text-white/40 text-sm mb-4">{t("projects.noneYet")}</p>
             <button onClick={() => setShowNew(true)}
               className="px-5 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest"
               style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100" }}>
-              Create your first project
+              {t("projects.createFirst")}
             </button>
           </div>
         )}
@@ -233,7 +238,7 @@ export function CMProjectsPage() {
 
       <button
         onClick={() => setShowNew(true)}
-        aria-label="New project"
+        aria-label={t("projects.new")}
         className="fixed bottom-7 right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform"
         style={{ backgroundColor: "#ff5100" }}
       >

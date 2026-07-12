@@ -613,3 +613,41 @@ export async function deleteCMSubmittal(id: string) {
   const { error } = await db().from("cm_submittals").delete().eq("id", id);
   if (error) throw error;
 }
+
+/* ── Account settings (company branding, language) ─────── */
+export interface CMAccountSettings {
+  owner_id: string;
+  company_name: string | null;
+  company_logo_url: string | null;
+  language: "en" | "km" | "zh";
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMAccountSettings(userId: string | undefined) {
+  return useQuery<CMAccountSettings | null>({
+    queryKey: ["cm_account_settings", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_account_settings").select("*").eq("owner_id", userId).maybeSingle();
+      if (error) throw error;
+      return data as CMAccountSettings | null;
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function upsertCMAccountSettings(ownerId: string, patch: Partial<Omit<CMAccountSettings, "owner_id" | "created_at" | "updated_at">>) {
+  const { error } = await db().from("cm_account_settings").upsert({ owner_id: ownerId, ...patch }, { onConflict: "owner_id" });
+  if (error) throw error;
+}
+
+export async function uploadCMCompanyLogo(ownerId: string, file: File): Promise<string> {
+  const client = db();
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${ownerId}/company-logo-${Date.now()}.${ext}`;
+  const { error } = await client.storage.from("site-media").upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = await client.storage.from("site-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+  return data?.signedUrl ?? path;
+}

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCMLang } from "@/lib/cm-i18n";
 import {
   updateCMProject,
   uploadCMLogo,
@@ -26,6 +27,7 @@ import {
 const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
+const STATUS_OPTIONS: ProjectStatus[] = ["Planning", "Active", "On Hold", "Completed"];
 const EQUIPMENT_STATUS_OPTIONS: EquipmentStatus[] = ["Operational", "Maintenance", "Out of Service"];
 const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = { Operational: "#34d399", Maintenance: "#fbbf24", "Out of Service": "#f43f5e" };
 
@@ -40,6 +42,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 /* ── Project info ─────────────────────────────────────── */
 function InfoSection({ project, onChanged }: { project: CMProject; onChanged: () => void }) {
+  const { t } = useCMLang();
   const [name, setName] = useState(project.name);
   const [client, setClient] = useState(project.client ?? "");
   const [location, setLocation] = useState(project.location ?? "");
@@ -69,46 +72,46 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
   };
 
   return (
-    <Card title="Project information">
+    <Card title={t("projectSettings.information")}>
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Name</span>
+          <span className={labelCls}>{t("projectSettings.name")}</span>
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Client</span>
+            <span className={labelCls}>{t("projectSettings.client")}</span>
             <input className={inputCls} value={client} onChange={(e) => setClient(e.target.value)} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Location</span>
+            <span className={labelCls}>{t("projectSettings.location")}</span>
             <input className={inputCls} value={location} onChange={(e) => setLocation(e.target.value)} />
           </label>
         </div>
         <div className="grid grid-cols-3 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Status</span>
+            <span className={labelCls}>{t("projectSettings.status")}</span>
             <select className={inputCls} value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
-              {(["Planning", "Active", "On Hold", "Completed"] as ProjectStatus[]).map((s) => <option key={s} value={s}>{s}</option>)}
+              {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
             </select>
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Start</span>
+            <span className={labelCls}>{t("projectSettings.start")}</span>
             <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>Finish</span>
+            <span className={labelCls}>{t("projectSettings.finish")}</span>
             <input type="date" className={inputCls} value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>Description</span>
+          <span className={labelCls}>{t("projectSettings.description")}</span>
           <textarea className={`${inputCls} resize-y min-h-[64px]`} value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
         <button onClick={handleSave} disabled={saving || !name.trim()}
           className="self-start px-5 py-2 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? t("projectSettings.saving") : t("projectSettings.saveChanges")}
         </button>
       </div>
     </Card>
@@ -117,6 +120,7 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
 
 /* ── Client logo ──────────────────────────────────────── */
 function LogoSection({ project, ownerId, onChanged }: { project: CMProject; ownerId: string; onChanged: () => void }) {
+  const { t } = useCMLang();
   const [uploading, setUploading] = useState(false);
 
   const handleUpload = async (file: File) => {
@@ -131,13 +135,13 @@ function LogoSection({ project, ownerId, onChanged }: { project: CMProject; owne
   };
 
   return (
-    <Card title="Client logo">
+    <Card title={t("projectSettings.clientLogo")}>
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
           {project.client_logo_url ? (
             <img src={project.client_logo_url} alt="" className="w-full h-full object-contain" />
           ) : (
-            <span className="text-white/20 text-[10px] font-mono uppercase">None</span>
+            <span className="text-white/20 text-[10px] font-mono uppercase">{t("projectSettings.none")}</span>
           )}
         </div>
         <input type="file" accept="image/*" disabled={uploading}
@@ -150,6 +154,7 @@ function LogoSection({ project, ownerId, onChanged }: { project: CMProject; owne
 
 /* ── Equipment ────────────────────────────────────────── */
 function EquipmentSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+  const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: items } = useCMEquipment(projectId);
   const [adding, setAdding] = useState(false);
@@ -166,38 +171,38 @@ function EquipmentSection({ ownerId, projectId }: { ownerId: string; projectId: 
   };
 
   return (
-    <Card title="Equipment">
+    <Card title={t("projectSettings.equipment")}>
       <div className="flex flex-col gap-2">
         {(items ?? []).map((eq) => (
           <div key={eq.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
             <div className="min-w-0">
               <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
-              <p className="font-mono text-[10px] text-white/30">Qty {eq.quantity}</p>
+              <p className="font-mono text-[10px] text-white/30">{t("projectSettings.qty")} {eq.quantity}</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <select value={eq.status} onChange={(e) => updateCMEquipment(eq.id, { status: e.target.value as EquipmentStatus }).then(invalidate)}
                 className="px-2 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5 border-0" style={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}>
-                {EQUIPMENT_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                {EQUIPMENT_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`equipmentStatus.${s}`)}</option>)}
               </select>
               <button onClick={() => deleteCMEquipment(eq.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
             </div>
           </div>
         ))}
-        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">No equipment logged yet.</p>}
+        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noEquipment")}</p>}
         {adding ? (
           <div className="flex flex-col gap-2 mt-1">
-            <input className={inputCls} placeholder="Equipment name" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <input className={inputCls} placeholder={t("projectSettings.equipmentName")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             <div className="grid grid-cols-2 gap-2">
-              <input className={inputCls} placeholder="Type" value={type} onChange={(e) => setType(e.target.value)} />
-              <input type="number" min={1} className={inputCls} placeholder="Qty" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              <input className={inputCls} placeholder={t("projectSettings.type")} value={type} onChange={(e) => setType(e.target.value)} />
+              <input type="number" min={1} className={inputCls} placeholder={t("projectSettings.qty")} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>Add</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>Cancel</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>+ Add equipment</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addEquipment")}</button>
         )}
       </div>
     </Card>
@@ -206,6 +211,7 @@ function EquipmentSection({ ownerId, projectId }: { ownerId: string; projectId: 
 
 /* ── Checklist ────────────────────────────────────────── */
 function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+  const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: items } = useCMChecklistItems(projectId);
   const [adding, setAdding] = useState(false);
@@ -221,7 +227,7 @@ function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: 
   };
 
   return (
-    <Card title="Checklist">
+    <Card title={t("projectSettings.checklist")}>
       <div className="flex flex-col gap-2">
         {(items ?? []).map((item) => (
           <div key={item.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
@@ -235,18 +241,18 @@ function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: 
             <button onClick={() => deleteCMChecklistItem(item.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
           </div>
         ))}
-        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">No checklist items yet.</p>}
+        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noChecklist")}</p>}
         {adding ? (
           <div className="flex flex-col gap-2 mt-1">
-            <input className={inputCls} placeholder="Checklist item" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-            <input className={inputCls} placeholder="Category (optional)" value={category} onChange={(e) => setCategory(e.target.value)} />
+            <input className={inputCls} placeholder={t("projectSettings.itemTitle")} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+            <input className={inputCls} placeholder={t("projectSettings.category")} value={category} onChange={(e) => setCategory(e.target.value)} />
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>Add</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>Cancel</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>+ Add item</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addItem")}</button>
         )}
       </div>
     </Card>
@@ -255,6 +261,7 @@ function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: 
 
 /* ── Subcontractors ───────────────────────────────────── */
 function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+  const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: contacts } = useCMDirectoryContacts(ownerId);
   const { data: assigned } = useCMProjectSubcontractors(projectId);
@@ -271,7 +278,7 @@ function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projec
   };
 
   return (
-    <Card title="Subcontractors">
+    <Card title={t("projectSettings.subcontractors")}>
       <div className="flex flex-col gap-2">
         {(assigned ?? []).map((a) => (
           <div key={a.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
@@ -282,24 +289,26 @@ function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projec
             <button onClick={() => removeCMProjectSubcontractor(a.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
           </div>
         ))}
-        {(assigned?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">No subcontractors assigned yet.</p>}
+        {(assigned?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noSubcontractors")}</p>}
         {(contacts?.length ?? 0) === 0 && (
-          <p className="text-[11px] text-white/30">Add contacts in <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>Directory</a> first.</p>
+          <p className="text-[11px] text-white/30">
+            {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
+          </p>
         )}
         {adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <select className={inputCls} value={contactId} onChange={(e) => setContactId(e.target.value)}>
-              <option value="">Select a contact…</option>
+              <option value="">{t("projectSettings.selectContact")}</option>
               {(contacts ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}{c.trade ? ` (${c.trade})` : ""}</option>)}
             </select>
-            <input className={inputCls} placeholder="Role on this project (optional)" value={role} onChange={(e) => setRole(e.target.value)} />
+            <input className={inputCls} placeholder={t("projectSettings.roleOnProject")} value={role} onChange={(e) => setRole(e.target.value)} />
             <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>Add</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>Cancel</button>
+              <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>+ Assign subcontractor</button>
+          (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.assign")}</button>
         )}
       </div>
     </Card>
@@ -308,6 +317,7 @@ function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projec
 
 /* ── BOQ ──────────────────────────────────────────────── */
 function BOQSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+  const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: items } = useCMBOQItems(projectId);
   const [adding, setAdding] = useState(false);
@@ -330,7 +340,7 @@ function BOQSection({ ownerId, projectId }: { ownerId: string; projectId: string
   const total = (items ?? []).reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
 
   return (
-    <Card title="Bill of Quantities">
+    <Card title={t("projectSettings.boq")}>
       <div className="flex flex-col gap-2">
         {(items ?? []).map((item) => (
           <div key={item.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
@@ -344,28 +354,28 @@ function BOQSection({ ownerId, projectId }: { ownerId: string; projectId: string
             </div>
           </div>
         ))}
-        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">No BOQ items yet.</p>}
+        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noBoq")}</p>}
         {(items?.length ?? 0) > 0 && (
           <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">Total</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("projectSettings.total")}</span>
             <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{total.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
         )}
         {adding ? (
           <div className="flex flex-col gap-2 mt-1">
-            <input className={inputCls} placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} autoFocus />
+            <input className={inputCls} placeholder={t("projectSettings.itemDescription")} value={description} onChange={(e) => setDescription(e.target.value)} autoFocus />
             <div className="grid grid-cols-3 gap-2">
-              <input className={inputCls} placeholder="Unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
-              <input type="number" className={inputCls} placeholder="Qty" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-              <input type="number" className={inputCls} placeholder="Unit cost" value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
+              <input className={inputCls} placeholder={t("projectSettings.unit")} value={unit} onChange={(e) => setUnit(e.target.value)} />
+              <input type="number" className={inputCls} placeholder={t("projectSettings.qty")} value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+              <input type="number" className={inputCls} placeholder={t("projectSettings.unitCost")} value={unitCost} onChange={(e) => setUnitCost(e.target.value)} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>Add</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>Cancel</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>+ Add BOQ item</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addBoqItem")}</button>
         )}
       </div>
     </Card>
@@ -376,13 +386,14 @@ function BOQSection({ ownerId, projectId }: { ownerId: string; projectId: string
 export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged }: {
   project: CMProject; ownerId: string; onBack: () => void; onProjectChanged: () => void;
 }) {
+  const { t } = useCMLang();
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
         <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
         </button>
-        <h1 className="text-xl font-extrabold tracking-tight text-white">Project Settings</h1>
+        <h1 className="text-xl font-extrabold tracking-tight text-white">{t("projectSettings.title")}</h1>
       </div>
       <div className="flex flex-col gap-4">
         <InfoSection project={project} onChanged={onProjectChanged} />

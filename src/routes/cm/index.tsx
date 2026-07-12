@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuthCM } from "@/lib/auth-cm";
 import { supabaseCM } from "@/lib/supabase-cm";
+import { useCMLang } from "@/lib/cm-i18n";
+import { useCMAccountSettings } from "@/lib/cm-data";
 import { AppTile } from "@/components/cm/AppTile";
 
 export const Route = createFileRoute("/cm/")({
@@ -35,13 +37,27 @@ function AvatarButton() {
   );
 }
 
+function CompanyMark({ userId }: { userId: string | undefined }) {
+  const { data: account } = useCMAccountSettings(userId);
+  if (!account?.company_logo_url && !account?.company_name) return <div />;
+  return (
+    <div className="flex items-center gap-2.5 min-w-0">
+      {account.company_logo_url && (
+        <img src={account.company_logo_url} alt="" className="w-9 h-9 rounded-xl object-contain bg-white/5 shrink-0" />
+      )}
+      {account.company_name && <span className="text-[14px] font-bold text-white/85 truncate">{account.company_name}</span>}
+    </div>
+  );
+}
+
 export function CMIndexPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
+  const { t } = useCMLang();
 
   if (!supabaseCM) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <p className="text-white/40 text-sm text-center">Construction Management App requires its Supabase project to be configured.</p>
+        <p className="text-white/40 text-sm text-center">{t("home.notConfigured")}</p>
       </div>
     );
   }
@@ -54,12 +70,12 @@ export function CMIndexPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
         <div className="text-center max-w-sm">
-          <h1 className="text-2xl font-extrabold tracking-tight mb-3">Construction Management</h1>
-          <p className="text-white/45 text-sm mb-8">Daily site diaries, punch lists, and photo logs for your construction projects.</p>
+          <h1 className="text-2xl font-extrabold tracking-tight mb-3">{t("home.title")}</h1>
+          <p className="text-white/45 text-sm mb-8">{t("home.signedOutSubtitle")}</p>
           <button onClick={() => signInWithGoogle()}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
             style={{ backgroundColor: "#ff5100" }}>
-            Sign in with Google
+            {t("common.signInGoogle")}
           </button>
         </div>
       </div>
@@ -69,17 +85,14 @@ export function CMIndexPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md mx-auto w-full px-4 pt-8 pb-28">
-        <div className="flex items-start justify-between mb-10">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/30 mb-1">The Gentry Lab</p>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white">Construction Management</h1>
-          </div>
+        <div className="flex items-center justify-between mb-10">
+          <CompanyMark userId={user.id} />
           <AvatarButton />
         </div>
 
         <div className="grid grid-cols-3 gap-x-4 gap-y-8">
           <AppTile
-            label="Report"
+            label={t("tile.report")}
             to="/cm/reports"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -88,7 +101,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Photo"
+            label={t("tile.photo")}
             to="/cm/photos"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -97,7 +110,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Projects"
+            label={t("tile.projects")}
             to="/cm/projects"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -106,7 +119,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Directory"
+            label={t("tile.directory")}
             to="/cm/directory"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -115,7 +128,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Site Diary"
+            label={t("tile.siteDiary")}
             to="/cm/site-diary"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -124,7 +137,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Punch List"
+            label={t("tile.punchList")}
             to="/cm/punch-list"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -133,7 +146,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Inspection"
+            label={t("tile.inspection")}
             to="/cm/inspection"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -142,7 +155,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Safety"
+            label={t("tile.safety")}
             to="/cm/safety"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -151,7 +164,7 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label="Submittal"
+            label={t("tile.submittal")}
             to="/cm/submittal"
             icon={
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

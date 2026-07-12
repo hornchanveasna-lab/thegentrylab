@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useCMProjects, type CMProject } from "@/lib/cm-data";
+import { useCMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
@@ -45,9 +46,10 @@ export function FAB({ onClick, label }: { onClick: () => void; label: string }) 
 }
 
 export function PhotoPicker({ photos, setPhotos, disabled }: { photos: File[]; setPhotos: (fn: (p: File[]) => File[]) => void; disabled: boolean }) {
+  const { t } = useCMLang();
   return (
     <label className="flex flex-col gap-1.5">
-      <span className={labelCls}>Photos</span>
+      <span className={labelCls}>{t("common.photos")}</span>
       <input type="file" accept="image/*" multiple disabled={disabled}
         onChange={(e) => setPhotos((p) => [...p, ...Array.from(e.target.files ?? [])])}
         className="text-[12px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
@@ -92,10 +94,11 @@ export function useSelectedProject(userId: string | undefined) {
 }
 
 export function ProjectPicker({ projects, value, onChange }: { projects: CMProject[]; value: string; onChange: (id: string) => void }) {
+  const { t } = useCMLang();
   if (projects.length === 0) {
     return (
       <p className="text-[12px] text-white/40 mb-5">
-        Create a <Link to="/cm/projects" className="underline" style={{ color: "#ff5100" }}>project</Link> first.
+        {t("common.createProjectFirst")} <Link to="/cm/projects" className="underline" style={{ color: "#ff5100" }}>{t("common.project")}</Link> {t("common.first")}
       </p>
     );
   }
