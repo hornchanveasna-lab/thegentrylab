@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight,
 } from "@/components/cm/shared";
 import {
@@ -14,6 +14,12 @@ import {
   deleteCMDailyLog,
   uploadCMPhotoWithThumb,
   type CMDailyLog,
+  type CMManpowerRow,
+  type CMDeliveryRow,
+  type CMVisitorRow,
+  type CMVisitorKind,
+  type CMDelayRow,
+  type CMDelayCause,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/site-diary")({
@@ -22,6 +28,17 @@ export const Route = createFileRoute("/cm/site-diary")({
 });
 
 const WEATHER_OPTIONS = ["Sunny", "Partly Cloudy", "Cloudy", "Light Rain", "Heavy Rain", "Storm"];
+const VISITOR_KIND_OPTIONS: CMVisitorKind[] = ["visitor", "instruction"];
+const DELAY_CAUSE_OPTIONS: CMDelayCause[] = ["Weather", "Material", "Labor", "Other"];
+
+const EMPTY_MANPOWER: CMManpowerRow = { trade: "", company: null, count: 0 };
+const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null };
+const EMPTY_VISITOR: CMVisitorRow = { name: "", organization: null, kind: "visitor", note: "" };
+const EMPTY_DELAY: CMDelayRow = { cause: "Weather", description: "", hours_lost: 0 };
+
+function totalManpower(rows: CMManpowerRow[]) {
+  return rows.reduce((sum, r) => sum + (r.count || 0), 0);
+}
 
 function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
@@ -30,13 +47,16 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [weather, setWeather] = useState(WEATHER_OPTIONS[0]);
   const [temperature, setTemperature] = useState("");
-  const [workforceCount, setWorkforceCount] = useState("");
   const [progressPct, setProgressPct] = useState("");
   const [activities, setActivities] = useState("");
   const [materials, setMaterials] = useState("");
   const [equipment, setEquipment] = useState("");
   const [issues, setIssues] = useState("");
   const [notes, setNotes] = useState("");
+  const [manpower, setManpower] = useState<CMManpowerRow[]>([]);
+  const [deliveries, setDeliveries] = useState<CMDeliveryRow[]>([]);
+  const [visitors, setVisitors] = useState<CMVisitorRow[]>([]);
+  const [delays, setDelays] = useState<CMDelayRow[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -51,13 +71,16 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
         log_date: logDate,
         weather,
         temperature_c: temperature ? Number(temperature) : null,
-        workforce_count: workforceCount ? Number(workforceCount) : null,
         progress_pct: progressPct ? Number(progressPct) : null,
         activities: activities.trim() || null,
         materials_used: materials.trim() || null,
         equipment_used: equipment.trim() || null,
         issues: issues.trim() || null,
         notes: notes.trim() || null,
+        manpower: manpower.filter((r) => r.trade.trim()),
+        deliveries: deliveries.filter((r) => r.material.trim()),
+        visitors: visitors.filter((r) => r.name.trim()),
+        delays: delays.filter((r) => r.description.trim()),
       });
       if (photos.length > 0) {
         const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
@@ -84,8 +107,8 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
             <input type="number" min={0} max={100} className={inputCls} value={progressPct} onChange={(e) => setProgressPct(e.target.value)} disabled={saving} />
           </label>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <label className="flex flex-col gap-1.5 col-span-1">
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("siteDiary.weather")}</span>
             <FieldSelect value={weather} onChange={setWeather} disabled={saving} options={WEATHER_OPTIONS.map((w) => ({ value: w, label: t(`weather.${w}`) }))} />
           </label>
@@ -93,11 +116,23 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
             <span className={labelCls}>{t("siteDiary.tempC")}</span>
             <input type="number" className={inputCls} value={temperature} onChange={(e) => setTemperature(e.target.value)} disabled={saving} />
           </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("siteDiary.workforce")}</span>
-            <input type="number" min={0} className={inputCls} value={workforceCount} onChange={(e) => setWorkforceCount(e.target.value)} disabled={saving} />
-          </label>
         </div>
+
+        <RepeatingRows
+          label={`${t("siteDiary.manpower")} (${t("siteDiary.total")}: ${totalManpower(manpower)})`}
+          addLabel={t("siteDiary.addManpower")}
+          rows={manpower}
+          onChange={setManpower}
+          emptyRow={EMPTY_MANPOWER}
+          renderRow={(row, update) => (
+            <div className="grid grid-cols-3 gap-2">
+              <input className={inputCls} placeholder={t("siteDiary.trade")} value={row.trade} onChange={(e) => update({ trade: e.target.value })} disabled={saving} />
+              <input className={inputCls} placeholder={t("siteDiary.company")} value={row.company ?? ""} onChange={(e) => update({ company: e.target.value || null })} disabled={saving} />
+              <input type="number" min={0} className={inputCls} placeholder={t("siteDiary.headcount")} value={row.count || ""} onChange={(e) => update({ count: Number(e.target.value) || 0 })} disabled={saving} />
+            </div>
+          )}
+        />
+
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("siteDiary.activities")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={activities} onChange={(e) => setActivities(e.target.value)} placeholder={t("siteDiary.activitiesPlaceholder")} disabled={saving} />
@@ -112,6 +147,61 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
             <textarea className={`${inputCls} resize-y min-h-[48px]`} value={equipment} onChange={(e) => setEquipment(e.target.value)} disabled={saving} />
           </label>
         </div>
+        <RepeatingRows
+          label={t("siteDiary.deliveries")}
+          addLabel={t("siteDiary.addDelivery")}
+          rows={deliveries}
+          onChange={setDeliveries}
+          emptyRow={EMPTY_DELIVERY}
+          renderRow={(row, update) => (
+            <div className="grid grid-cols-2 gap-2">
+              <input className={inputCls} placeholder={t("siteDiary.material")} value={row.material} onChange={(e) => update({ material: e.target.value })} disabled={saving} />
+              <div className="flex gap-2">
+                <input className={inputCls} placeholder={t("siteDiary.quantity")} value={row.quantity} onChange={(e) => update({ quantity: e.target.value })} disabled={saving} />
+                <input className={inputCls} placeholder={t("siteDiary.unit")} value={row.unit ?? ""} onChange={(e) => update({ unit: e.target.value || null })} disabled={saving} />
+              </div>
+              <input className={`${inputCls} col-span-2`} placeholder={t("siteDiary.supplier")} value={row.supplier ?? ""} onChange={(e) => update({ supplier: e.target.value || null })} disabled={saving} />
+            </div>
+          )}
+        />
+
+        <RepeatingRows
+          label={t("siteDiary.visitors")}
+          addLabel={t("siteDiary.addVisitor")}
+          rows={visitors}
+          onChange={setVisitors}
+          emptyRow={EMPTY_VISITOR}
+          renderRow={(row, update) => (
+            <div className="flex flex-col gap-2">
+              <FieldSelect value={row.kind} onChange={(v) => update({ kind: v })} disabled={saving}
+                options={VISITOR_KIND_OPTIONS.map((k) => ({ value: k, label: t(`siteDiary.visitorKind.${k}`) }))} />
+              <div className="grid grid-cols-2 gap-2">
+                <input className={inputCls} placeholder={t("siteDiary.visitorName")} value={row.name} onChange={(e) => update({ name: e.target.value })} disabled={saving} />
+                <input className={inputCls} placeholder={t("siteDiary.organization")} value={row.organization ?? ""} onChange={(e) => update({ organization: e.target.value || null })} disabled={saving} />
+              </div>
+              <textarea className={`${inputCls} resize-y min-h-[40px]`} placeholder={t("siteDiary.note")} value={row.note} onChange={(e) => update({ note: e.target.value })} disabled={saving} />
+            </div>
+          )}
+        />
+
+        <RepeatingRows
+          label={t("siteDiary.delays")}
+          addLabel={t("siteDiary.addDelay")}
+          rows={delays}
+          onChange={setDelays}
+          emptyRow={EMPTY_DELAY}
+          renderRow={(row, update) => (
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <FieldSelect value={row.cause} onChange={(v) => update({ cause: v })} disabled={saving}
+                  options={DELAY_CAUSE_OPTIONS.map((c) => ({ value: c, label: t(`siteDiary.delayCause.${c}`) }))} />
+                <input type="number" min={0} step="0.5" className={inputCls} placeholder={t("siteDiary.hoursLost")} value={row.hours_lost || ""} onChange={(e) => update({ hours_lost: Number(e.target.value) || 0 })} disabled={saving} />
+              </div>
+              <textarea className={`${inputCls} resize-y min-h-[40px]`} placeholder={t("siteDiary.description")} value={row.description} onChange={(e) => update({ description: e.target.value })} disabled={saving} />
+            </div>
+          )}
+        />
+
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("siteDiary.issues")}</span>
           <textarea className={`${inputCls} resize-y min-h-[48px]`} value={issues} onChange={(e) => setIssues(e.target.value)} placeholder={t("siteDiary.issuesPlaceholder")} disabled={saving} />
@@ -165,10 +255,22 @@ function LogCard({ log, onChanged, onOpenPhoto }: { log: CMDailyLog; onChanged: 
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
             {log.temperature_c != null && <Field label={t("siteDiary.temperature")} value={`${log.temperature_c}°C`} />}
-            {log.workforce_count != null && <Field label={t("siteDiary.workforceField")} value={String(log.workforce_count)} />}
+            {log.manpower.length > 0 && <Field label={t("siteDiary.workforceField")} value={String(totalManpower(log.manpower))} />}
           </div>
+          {log.manpower.length > 0 && (
+            <Field label={t("siteDiary.manpower")} value={log.manpower.map((m) => `${m.company ? `${m.company} — ` : ""}${m.trade}: ${m.count}`).join(", ")} />
+          )}
           {log.materials_used && <Field label={t("siteDiary.materialsUsed")} value={log.materials_used} />}
           {log.equipment_used && <Field label={t("siteDiary.equipmentUsed")} value={log.equipment_used} />}
+          {log.deliveries.length > 0 && (
+            <Field label={t("siteDiary.deliveries")} value={log.deliveries.map((d) => `${d.material} (${d.quantity}${d.unit ? ` ${d.unit}` : ""})${d.supplier ? ` — ${d.supplier}` : ""}`).join("; ")} />
+          )}
+          {log.visitors.length > 0 && (
+            <Field label={t("siteDiary.visitors")} value={log.visitors.map((v) => `[${t(`siteDiary.visitorKind.${v.kind}`)}] ${v.name}${v.organization ? ` (${v.organization})` : ""}${v.note ? `: ${v.note}` : ""}`).join("; ")} />
+          )}
+          {log.delays.length > 0 && (
+            <Field label={t("siteDiary.delays")} value={log.delays.map((d) => `${t(`siteDiary.delayCause.${d.cause}`)} — ${d.description} (${d.hours_lost}h)`).join("; ")} accent="#f43f5e" />
+          )}
           {log.issues && <Field label={t("siteDiary.issues")} value={log.issues} accent="#f43f5e" />}
           {log.notes && <Field label={t("siteDiary.notes")} value={log.notes} />}
           {log.photos.length > 0 && (
