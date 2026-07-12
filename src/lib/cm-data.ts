@@ -233,7 +233,9 @@ function loadExternalImage(url: string): Promise<HTMLImageElement | null> {
 }
 
 export interface StampPhotoOptions {
-  watermark: boolean;
+  showCompanyLogo: boolean;
+  showProjectInfo: boolean;
+  showConsultantLogos: boolean;
   timestamp: boolean;
   companyLogoUrl?: string | null;
   clientLogoUrl?: string | null;
@@ -243,30 +245,38 @@ export interface StampPhotoOptions {
   location?: string | null;
 }
 
-function chamferRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c: number) {
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  const rad = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
-  ctx.moveTo(x + c, y);
-  ctx.lineTo(x + w - c, y);
-  ctx.lineTo(x + w, y + c);
-  ctx.lineTo(x + w, y + h - c);
-  ctx.lineTo(x + w - c, y + h);
-  ctx.lineTo(x + c, y + h);
-  ctx.lineTo(x, y + h - c);
-  ctx.lineTo(x, y + c);
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
   ctx.closePath();
+}
+
+/** Draws a logo clipped to its own rounded-rect — softening its corners
+ *  directly instead of putting a backing chip or outline behind it. */
+function drawRoundedLogo(ctx: CanvasRenderingContext2D, logo: HTMLImageElement, x: number, y: number, w: number, h: number) {
+  ctx.save();
+  roundedRectPath(ctx, x, y, w, h, Math.min(w, h) * 0.16);
+  ctx.clip();
+  ctx.drawImage(logo, x, y, w, h);
+  ctx.restore();
 }
 
 /** Burns project identification onto a photo before it's uploaded, so the
  *  record stays legible even if it's later exported or shared outside the
- *  app. Layout: every logo (company, client/project, all consultants) sits
- *  together in one centered row at the top, each inside a chamfered chip
- *  with a translucent light backing and no outline. Bottom-left holds the
- *  project name/code/location as plain text; bottom-right holds the capture
- *  date/time. Text keeps a soft drop-shadow for legibility over any
+ *  app. Layout: company logo alone top-right; client/project logo beside
+ *  the project name/code/location bottom-left; every consultant logo in a
+ *  centered row bottom-middle; capture date/time bottom-right. Every logo
+ *  is clipped to its own rounded corners with nothing drawn behind or
+ *  around it. Text keeps a soft drop-shadow for legibility over any
  *  background. Keeps the original pixel dimensions — this is the
  *  full-quality photo that gets stored, not a thumbnail. */
 export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<File> {
-  if (!opts.watermark && !opts.timestamp) return file;
+  if (!opts.showCompanyLogo && !opts.showProjectInfo && !opts.showConsultantLogos && !opts.timestamp) return file;
   const img = await loadImage(file);
   const canvas = document.createElement("canvas");
   canvas.width = img.naturalWidth;
@@ -289,53 +299,65 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
     ctx.shadowOffsetY = 0;
   };
 
-  if (opts.watermark) {
-    // ── top-center: every logo together, each in a chamfered, translucent chip ──
-    const logoUrls = [opts.companyLogoUrl, opts.clientLogoUrl, ...(opts.consultantLogoUrls ?? [])].filter(
-      (u): u is string => !!u,
-    );
-    const logos = (await Promise.all(logoUrls.map(loadExternalImage))).filter((l): l is HTMLImageElement => !!l);
-    if (logos.length > 0) {
-      const maxRowWidth = canvas.width * 0.92;
-      const chipPad = 8 * scale;
-      const chamfer = 6 * scale;
-      const gap = 8 * scale;
-      let logoH = 36 * scale;
-      const chipWidthAt = (h: number, l: HTMLImageElement) => (l.naturalWidth / l.naturalHeight) * h + chipPad * 2;
-      const rowWidthAt = (h: number) => logos.reduce((sum, l) => sum + chipWidthAt(h, l), 0) + gap * (logos.length - 1);
-      while (rowWidthAt(logoH) > maxRowWidth && logoH > 16 * scale) logoH -= 2 * scale;
-
-      const chipH = logoH + chipPad * 2;
-      let x = (canvas.width - rowWidthAt(logoH)) / 2;
-      const y = pad;
-      for (const logo of logos) {
-        const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
-        const chipW = w + chipPad * 2;
-        chamferRectPath(ctx, x, y, chipW, chipH, chamfer);
-        ctx.fillStyle = "rgba(255,255,255,0.5)";
-        ctx.fill();
-        ctx.drawImage(logo, x + chipPad, y + chipPad, w, logoH);
-        x += chipW + gap;
-      }
+  if (opts.showCompanyLogo && opts.companyLogoUrl) {
+    // ── top-right: company logo, alone, rounded corners ──
+    const companyLogo = await loadExternalImage(opts.companyLogoUrl);
+    if (companyLogo) {
+      const h = 52 * scale;
+      const w = (companyLogo.naturalWidth / companyLogo.naturalHeight) * h;
+      drawRoundedLogo(ctx, companyLogo, canvas.width - pad - w, pad, w, h);
     }
+  }
 
-    // ── bottom-left: project name/code/location, plain text ──
+  if (opts.showProjectInfo) {
+    // ── bottom-left: client/project logo beside project name/code/location ──
+    const clientLogo = opts.clientLogoUrl ? await loadExternalImage(opts.clientLogoUrl) : null;
     const lines: { text: string; fontSize: number; weight: number }[] = [];
     if (opts.projectName) lines.push({ text: opts.projectName, fontSize: 21 * scale, weight: 700 });
     if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500 });
     if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500 });
 
+    const clientLogoH = 52 * scale;
+    const lineGap = 4 * scale;
+    const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
+    const bottomY = canvas.height - pad;
+
+    let leftX = pad;
+    if (clientLogo) {
+      const w = (clientLogo.naturalWidth / clientLogo.naturalHeight) * clientLogoH;
+      drawRoundedLogo(ctx, clientLogo, leftX, bottomY - clientLogoH, w, clientLogoH);
+      leftX += w + pad * 0.7;
+    }
     if (lines.length > 0) {
-      const lineGap = 4 * scale;
-      const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
       ctx.textAlign = "left";
       ctx.textBaseline = "top";
-      let ly = canvas.height - pad - textBlockH;
+      let ly = bottomY - textBlockH;
       for (const l of lines) {
         ctx.font = `${l.weight} ${l.fontSize}px sans-serif`;
         ctx.fillStyle = "#fff";
-        fillShadowedText(l.text, pad, ly);
+        fillShadowedText(l.text, leftX, ly);
         ly += l.fontSize + lineGap;
+      }
+    }
+  }
+
+  if (opts.showConsultantLogos) {
+    // ── bottom-middle: every consultant logo, centered row, rounded corners ──
+    const consultantLogos = (await Promise.all((opts.consultantLogoUrls ?? []).map(loadExternalImage))).filter(
+      (l): l is HTMLImageElement => !!l,
+    );
+    if (consultantLogos.length > 0) {
+      const maxRowWidth = canvas.width * 0.5;
+      const gap = 8 * scale;
+      let logoH = 36 * scale;
+      const widthAt = (h: number) => consultantLogos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (consultantLogos.length - 1);
+      while (widthAt(logoH) > maxRowWidth && logoH > 16 * scale) logoH -= 2 * scale;
+      let x = (canvas.width - widthAt(logoH)) / 2;
+      const y = canvas.height - pad - logoH;
+      for (const logo of consultantLogos) {
+        const w = (logo.naturalWidth / logo.naturalHeight) * logoH;
+        drawRoundedLogo(ctx, logo, x, y, w, logoH);
+        x += w + gap;
       }
     }
   }
@@ -932,7 +954,9 @@ export interface CMAccountSettings {
   company_name: string | null;
   company_logo_url: string | null;
   language: "en" | "km" | "zh";
-  photo_watermark: boolean;
+  photo_show_company_logo: boolean;
+  photo_show_project_info: boolean;
+  photo_show_consultant_logos: boolean;
   photo_timestamp: boolean;
   created_at: string;
   updated_at: string;

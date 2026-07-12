@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, MODULE_ROUTES, setPendingHighlight, useLongPress,
+  PhotoLightbox, MODULE_ROUTES, setPendingHighlight, useLongPress, sharePhotoFiles,
 } from "@/components/cm/shared";
 import {
   useAllCMPhotos,
@@ -116,14 +116,14 @@ function ToggleRow({ icon, label, hint, checked, disabled, onChange }: {
   );
 }
 
-function PhotoSettingsSheet({ ownerId, watermark, timestamp, onClose, onChanged }: {
-  ownerId: string; watermark: boolean; timestamp: boolean; onClose: () => void; onChanged: () => void;
+function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, showConsultantLogos, timestamp, onClose, onChanged }: {
+  ownerId: string; showCompanyLogo: boolean; showProjectInfo: boolean; showConsultantLogos: boolean; timestamp: boolean; onClose: () => void; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
 
-  const toggle = async (patch: { photo_watermark?: boolean; photo_timestamp?: boolean }) => {
+  const toggle = async (patch: { photo_show_company_logo?: boolean; photo_show_project_info?: boolean; photo_show_consultant_logos?: boolean; photo_timestamp?: boolean }) => {
     // Write straight into the cache first so the switch (and anything else
     // reading these settings, like the New Photo sheet) reflects the change
     // instantly instead of waiting on a refetch round-trip.
@@ -133,38 +133,64 @@ function PhotoSettingsSheet({ ownerId, watermark, timestamp, onClose, onChanged 
   };
 
   return (
-    <Sheet title={t("photos.settingsTitle")} onClose={onClose}>
-      <div className="px-6 pb-8 pt-2 flex flex-col gap-3">
-        <ToggleRow
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" /><path d="M8.5 12.5l2.2 2.2 4.8-4.8" strokeWidth="1.6" />
-            </svg>
-          }
-          label={t("photos.watermark")} hint={t("photos.watermarkHint")} checked={watermark} disabled={busy}
-          onChange={(v) => toggle({ photo_watermark: v })}
-        />
-        <ToggleRow
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.2 2" />
-            </svg>
-          }
-          label={t("photos.timestamp")} hint={t("photos.timestampHint")} checked={timestamp} disabled={busy}
-          onChange={(v) => toggle({ photo_timestamp: v })}
-        />
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="absolute right-0 top-11 z-50 w-[19rem] rounded-2xl border border-white/10 overflow-hidden shadow-xl backdrop-blur-xl"
+        style={{ backgroundColor: "rgba(13,13,14,0.8)" }}>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-white/40 px-4 pt-4 pb-1">{t("photos.settingsTitle")}</p>
+        <div className="p-3 flex flex-col gap-2">
+          <ToggleRow
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            }
+            label={t("photos.showCompanyLogo")} hint={t("photos.showCompanyLogoHint")} checked={showCompanyLogo} disabled={busy}
+            onChange={(v) => toggle({ photo_show_company_logo: v })}
+          />
+          <ToggleRow
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" />
+              </svg>
+            }
+            label={t("photos.showProjectInfo")} hint={t("photos.showProjectInfoHint")} checked={showProjectInfo} disabled={busy}
+            onChange={(v) => toggle({ photo_show_project_info: v })}
+          />
+          <ToggleRow
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.2" r="2.1" />
+                <path d="M3.3 20c0-3.3 2.5-5.6 5.7-5.6s5.7 2.3 5.7 5.6" /><path d="M14.8 14.9c2.5.4 4.4 2.5 4.4 5.1" />
+              </svg>
+            }
+            label={t("photos.showConsultantLogos")} hint={t("photos.showConsultantLogosHint")} checked={showConsultantLogos} disabled={busy}
+            onChange={(v) => toggle({ photo_show_consultant_logos: v })}
+          />
+          <ToggleRow
+            icon={
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.2 2" />
+              </svg>
+            }
+            label={t("photos.timestamp")} hint={t("photos.timestampHint")} checked={timestamp} disabled={busy}
+            onChange={(v) => toggle({ photo_timestamp: v })}
+          />
+        </div>
       </div>
-    </Sheet>
+    </>
   );
 }
 
-function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogoUrl, watermark, timestamp, onClose, onCreated }: {
+function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogoUrl, showCompanyLogo, showProjectInfo, showConsultantLogos, timestamp, onClose, onCreated }: {
   ownerId: string;
   projects: CMProject[];
   projectId: string;
   setProjectId: (id: string) => void;
   companyLogoUrl: string | null;
-  watermark: boolean;
+  showCompanyLogo: boolean;
+  showProjectInfo: boolean;
+  showConsultantLogos: boolean;
   timestamp: boolean;
   onClose: () => void;
   onCreated: () => void;
@@ -192,7 +218,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
     try {
       const project = projects.find((p) => p.id === projectId);
       const stampOpts = {
-        watermark, timestamp,
+        showCompanyLogo, showProjectInfo, showConsultantLogos, timestamp,
         companyLogoUrl,
         clientLogoUrl: project?.client_logo_url ?? null,
         consultantLogoUrls: (consultants ?? []).map((c) => c.logo_url).filter((u): u is string => !!u),
@@ -413,7 +439,8 @@ function CMPhotosPage() {
   const [lightbox, setLightbox] = useState<{ items: CMPhotoWithContext[]; index: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [actionItem, setActionItem] = useState<CMPhotoWithContext | null>(null);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const selectMode = selectedUrls.size > 0;
   const bindLongPress = useLongPress();
 
   const invalidate = () => {
@@ -422,20 +449,29 @@ function CMPhotosPage() {
   };
   const invalidateAccount = () => queryClient.invalidateQueries({ queryKey: ["cm_account_settings", user?.id] });
 
-  const handleSharePhoto = async (p: CMPhotoWithContext) => {
-    try {
-      if (navigator.share) { await navigator.share({ url: p.url }); return; }
-      await navigator.clipboard.writeText(p.url);
-    } catch { /* user cancelled the native share sheet, or clipboard was denied */ }
+  const toggleSelected = (url: string) => {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url); else next.add(url);
+      return next;
+    });
   };
 
-  const handleDeletePhoto = async (p: CMPhotoWithContext) => {
+  const handleShareSelected = async () => {
+    const urls = filtered.filter((p) => selectedUrls.has(p.url)).map((p) => p.url);
+    setSelectedUrls(new Set());
+    const result = await sharePhotoFiles(urls);
+    if (result === "failed") window.alert(t("photos.shareFailed"));
+  };
+
+  const handleDeleteSelected = async () => {
+    const targets = filtered.filter((p) => selectedUrls.has(p.url));
     if (!window.confirm(t("photos.deleteConfirm"))) return;
+    setSelectedUrls(new Set());
     try {
-      await deleteCMPhoto(p.module, p.recordId, p.url);
+      await Promise.all(targets.map((p) => deleteCMPhoto(p.module, p.recordId, p.url)));
+    } finally {
       queryClient.invalidateQueries({ queryKey: ["cm_all_photos", user?.id] });
-    } catch {
-      window.alert(t("photos.deleteFailed"));
     }
   };
 
@@ -479,13 +515,23 @@ function CMPhotosPage() {
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
           <h1 className="text-xl font-extrabold tracking-tight text-white flex-1">{t("photos.title")}</h1>
-          <button onClick={() => setShowSettings(true)} aria-label={t("photos.settingsTitle")}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0 text-white/60 hover:text-white">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
+          <div className="relative shrink-0">
+            <button onClick={() => setShowSettings((v) => !v)} aria-label={t("photos.settingsTitle")}
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" /></svg>
+            </button>
+            {showSettings && (
+              <PhotoSettingsDropdown
+                ownerId={user.id}
+                showCompanyLogo={account?.photo_show_company_logo ?? true}
+                showProjectInfo={account?.photo_show_project_info ?? true}
+                showConsultantLogos={account?.photo_show_consultant_logos ?? true}
+                timestamp={account?.photo_timestamp ?? true}
+                onClose={() => setShowSettings(false)}
+                onChanged={invalidateAccount}
+              />
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4">
@@ -563,15 +609,30 @@ function CMPhotosPage() {
               <div key={gi}>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
                 <div className="grid grid-cols-3 gap-2.5">
-                  {group.items.map((p, i) => (
-                    <button key={`${p.url}-${i}`} {...bindLongPress(`${p.url}-${i}`, () => setActionItem(p))}
-                      onClick={() => setLightbox({ items: filtered, index: filtered.indexOf(p) })} className="relative aspect-square group">
-                      <img src={p.thumbUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
-                      <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-black/60" style={{ color: MODULE_COLOR[p.module] }}>
-                        {MODULE_ICON[p.module]}
-                      </span>
-                    </button>
-                  ))}
+                  {group.items.map((p, i) => {
+                    const checked = selectedUrls.has(p.url);
+                    return (
+                      <button key={`${p.url}-${i}`} {...bindLongPress(`${p.url}-${i}`, () => toggleSelected(p.url))}
+                        onClick={() => selectMode ? toggleSelected(p.url) : setLightbox({ items: filtered, index: filtered.indexOf(p) })}
+                        className="relative aspect-square group">
+                        <img src={p.thumbUrl} alt="" className={`w-full h-full rounded-2xl object-cover transition-opacity ${checked ? "opacity-60" : ""}`} />
+                        {selectMode ? (
+                          <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2"
+                            style={{ backgroundColor: checked ? "#ff5100" : "rgba(0,0,0,0.4)", borderColor: checked ? "#ff5100" : "rgba(255,255,255,0.7)" }}>
+                            {checked && (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 12.5l5 5L20 6" />
+                              </svg>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-black/60" style={{ color: MODULE_COLOR[p.module] }}>
+                            {MODULE_ICON[p.module]}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -580,7 +641,7 @@ function CMPhotosPage() {
           <CalendarView photos={filtered} lang={lang} onOpenDay={(dayPhotos) => setLightbox({ items: dayPhotos, index: 0 })} />
         )}
 
-        <FAB label={t("photos.newBtn")} onClick={() => setShowNew(true)} />
+        {!selectMode && <FAB label={t("photos.newBtn")} onClick={() => setShowNew(true)} />}
       </main>
 
       {showNew && (
@@ -590,20 +651,12 @@ function CMPhotosPage() {
           projectId={projectId}
           setProjectId={setProjectId}
           companyLogoUrl={account?.company_logo_url ?? null}
-          watermark={account?.photo_watermark ?? true}
+          showCompanyLogo={account?.photo_show_company_logo ?? true}
+          showProjectInfo={account?.photo_show_project_info ?? true}
+          showConsultantLogos={account?.photo_show_consultant_logos ?? true}
           timestamp={account?.photo_timestamp ?? true}
           onClose={() => setShowNew(false)}
           onCreated={invalidate}
-        />
-      )}
-
-      {showSettings && (
-        <PhotoSettingsSheet
-          ownerId={user.id}
-          watermark={account?.photo_watermark ?? true}
-          timestamp={account?.photo_timestamp ?? true}
-          onClose={() => setShowSettings(false)}
-          onChanged={invalidateAccount}
         />
       )}
 
@@ -632,25 +685,23 @@ function CMPhotosPage() {
         />
       )}
 
-      {actionItem && (
-        <Sheet title={t("photos.actions")} onClose={() => setActionItem(null)}>
-          <div className="px-6 pb-8 pt-2 flex flex-col gap-2">
-            <button onClick={() => { const p = actionItem; setActionItem(null); handleSharePhoto(p); }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-white/5 hover:bg-white/10 text-[13px] text-white/85 text-left transition-colors">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="M16 6l-4-4-4 4" /><path d="M12 2v14" />
-              </svg>
-              {t("photos.share")}
-            </button>
-            <button onClick={() => { const p = actionItem; setActionItem(null); handleDeletePhoto(p); }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-[13px] text-red-400 text-left transition-colors">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
-              </svg>
-              {t("photos.delete")}
-            </button>
-          </div>
-        </Sheet>
+      {selectMode && (
+        <div className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-between gap-3 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#0d0d0e] border-t border-white/10">
+          <button onClick={() => setSelectedUrls(new Set())} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors shrink-0">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></svg>
+          </button>
+          <span className="text-[12px] text-white/60 flex-1 text-center">{t("photos.selectedCount", { count: String(selectedUrls.size) })}</span>
+          <button onClick={handleShareSelected} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/85 hover:text-white transition-colors shrink-0">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="M16 6l-4-4-4 4" /><path d="M12 2v14" />
+            </svg>
+          </button>
+          <button onClick={handleDeleteSelected} className="w-9 h-9 rounded-full flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
+            </svg>
+          </button>
+        </div>
       )}
     </div>
   );
