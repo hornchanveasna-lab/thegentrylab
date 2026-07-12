@@ -295,9 +295,9 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
     if (consultantLogos.length > 0) {
       const maxRowWidth = canvas.width * 0.6;
       const gap = 8 * scale;
-      let logoH = 26 * scale;
+      let logoH = 40 * scale;
       const widthAt = (h: number) => consultantLogos.reduce((sum, l) => sum + (l.naturalWidth / l.naturalHeight) * h, 0) + gap * (consultantLogos.length - 1);
-      while (widthAt(logoH) > maxRowWidth && logoH > 12 * scale) logoH -= 2 * scale;
+      while (widthAt(logoH) > maxRowWidth && logoH > 18 * scale) logoH -= 2 * scale;
       let x = pad;
       const y = leftCursorY - logoH;
       for (const logo of consultantLogos) {
@@ -314,7 +314,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
     if (opts.projectCode) lines.push({ text: opts.projectCode, fontSize: 14 * scale, weight: 500 });
     if (opts.location) lines.push({ text: opts.location, fontSize: 14 * scale, weight: 500 });
 
-    const projectLogoH = 52 * scale;
+    const projectLogoH = 64 * scale;
     const lineGap = 4 * scale;
     const textBlockH = lines.reduce((s, l) => s + l.fontSize, 0) + lineGap * Math.max(0, lines.length - 1);
 
