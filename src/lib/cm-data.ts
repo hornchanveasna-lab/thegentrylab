@@ -1213,11 +1213,32 @@ export async function removeCMManpowerRosterItem(id: string) {
  *  per their role, not just show up in a Team list. ──────────────────── */
 export type CMMemberRole = "admin" | "member" | "visitor";
 
+/** Job-function role — orthogonal to CMMemberRole. `role` stays the coarse
+ *  RLS access tier (unchanged); `job_role` additionally drives a per-module
+ *  permission matrix (cm_role_permissions) that can only narrow access, and
+ *  defaults to fully permissive while null — a member never assigned one
+ *  behaves exactly as they do today. */
+export type CMJobRole =
+  | "project_manager" | "site_engineer" | "site_supervisor" | "qa_qc_engineer"
+  | "safety_officer" | "architect" | "structural_engineer" | "mep_engineer"
+  | "surveyor" | "planning_engineer" | "document_controller" | "store_keeper"
+  | "procurement_officer" | "subcontractor" | "consultant"
+  | "client_representative" | "owners_representative" | "inspector_auditor";
+
+export const CM_JOB_ROLES: CMJobRole[] = [
+  "project_manager", "site_engineer", "site_supervisor", "qa_qc_engineer",
+  "safety_officer", "architect", "structural_engineer", "mep_engineer",
+  "surveyor", "planning_engineer", "document_controller", "store_keeper",
+  "procurement_officer", "subcontractor", "consultant",
+  "client_representative", "owners_representative", "inspector_auditor",
+];
+
 export interface CMProjectMember {
   id: string;
   project_id: string;
   user_id: string;
   role: CMMemberRole;
+  job_role: CMJobRole | null;
   position: string | null;
   email: string | null;
   display_name: string | null;
@@ -1249,6 +1270,11 @@ export function useCMProjectMembers(projectId: string | undefined) {
 
 export async function updateCMMemberRole(id: string, role: CMMemberRole) {
   const { error } = await db().from("cm_project_members").update({ role }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateCMMemberJobRole(id: string, jobRole: CMJobRole | null) {
+  const { error } = await db().from("cm_project_members").update({ job_role: jobRole }).eq("id", id);
   if (error) throw error;
 }
 
