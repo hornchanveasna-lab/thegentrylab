@@ -916,12 +916,25 @@ function CMSiteDiaryPage() {
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [flashPhotoUrl, setFlashPhotoUrl] = useState<string | null>(null);
+  // Which specific log (by id) to show full detail for. Only meaningful
+  // when a date has more than one entry — i.e. "All projects" and several
+  // projects reported the same day — where the date alone doesn't say
+  // which one to open. Left null when picking a date from the calendar
+  // (unknown which project yet); set together with dateFilter whenever a
+  // specific card is tapped, so that always jumps straight to its detail.
+  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
   const selectDay = (log: CMDailyLog | CMDailyLogWithProject, photoUrl?: string) => {
     setDateFilter(log.log_date);
+    setSelectedLogId(log.id);
     setFlashPhotoUrl(photoUrl ?? null);
   };
-  const clearDateFilter = () => { setDateFilter(null); setFlashPhotoUrl(null); };
+  const selectDate = (date: string | null) => {
+    setDateFilter(date);
+    setSelectedLogId(null);
+    setFlashPhotoUrl(null);
+  };
+  const clearDateFilter = () => { setDateFilter(null); setSelectedLogId(null); setFlashPhotoUrl(null); };
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
@@ -984,7 +997,7 @@ function CMSiteDiaryPage() {
 
         {(viewAll || projectId) && (
           <>
-            <CalendarStrip logs={logs ?? []} lang={lang} dateFilter={dateFilter} onSelectDate={setDateFilter}
+            <CalendarStrip logs={logs ?? []} lang={lang} dateFilter={dateFilter} onSelectDate={selectDate}
               expanded={calendarExpanded} onToggleExpand={setCalendarExpanded} />
 
             {dateFilter && (
@@ -1002,12 +1015,33 @@ function CMSiteDiaryPage() {
             )}
             {visibleLogs.length > 0 && (
               dateFilter ? (
-                <div className="flex flex-col gap-6">
-                  {visibleLogs.map((l) => (
-                    <DayDetailContent key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
-                      flashPhotoUrl={flashPhotoUrl} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
-                  ))}
-                </div>
+                visibleLogs.length === 1 || selectedLogId ? (
+                  (() => {
+                    const log = (selectedLogId && visibleLogs.find((l) => l.id === selectedLogId)) || visibleLogs[0];
+                    return (
+                      <div className="flex flex-col gap-3">
+                        {visibleLogs.length > 1 && (
+                          <button onClick={() => setSelectedLogId(null)}
+                            className="self-start flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+                            <svg width="10" height="10" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            {t("siteDiary.backToProjects")}
+                          </button>
+                        )}
+                        <DayDetailContent log={log} projectName={viewAll ? (log as CMDailyLogWithProject).projectName : undefined}
+                          flashPhotoUrl={flashPhotoUrl} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
+                      </div>
+                    );
+                  })()
+                ) : (
+                  // Several projects reported this same date ("All projects") —
+                  // show who has a report first, so it's easy to scan, then
+                  // drill into one to see its full content.
+                  <div className="flex flex-col gap-3">
+                    {visibleLogs.map((l) => (
+                      <LogCard key={l.id} log={l} projectName={(l as CMDailyLogWithProject).projectName} onSelect={selectDay} />
+                    ))}
+                  </div>
+                )
               ) : (
                 <div className="flex flex-col gap-3">
                   {visibleLogs.map((l) => (
