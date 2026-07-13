@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight,
+  PhotoLightbox, usePendingHighlight, MiniCalendar, type ModuleView,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -181,7 +181,7 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
 
 function CMSubmittalPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
@@ -189,15 +189,19 @@ function CMSubmittalPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [view, setView] = useState<ModuleView>("list");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const dateOf = (s: CMSubmittal) => s.submitted_date ?? s.created_at.slice(0, 10);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); setShowNew(false); };
 
   const visibleSubmittals = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = submittals ?? [];
+    if (dateFilter) list = list.filter((s) => dateOf(s) === dateFilter);
     if (q) list = list.filter((s) => [s.title, s.spec_section, s.notes, s.reviewer].some((f) => f?.toLowerCase().includes(q)));
     return sortAsc ? [...list].reverse() : list;
-  }, [submittals, search, sortAsc]);
+  }, [submittals, search, sortAsc, dateFilter]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -210,21 +214,36 @@ function CMSubmittalPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
+        <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc}
+          view={view} onViewChange={setView} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {dateFilter && (
+          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            {dateFilter} <span className="text-[13px] leading-none">×</span>
+          </button>
+        )}
 
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && visibleSubmittals.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("submittal.noneYet")}</p>
-              </div>
+            {view === "calendar" ? (
+              <MiniCalendar items={submittals ?? []} dateOf={dateOf} lang={lang}
+                onOpenDay={(dayItems) => { setDateFilter(dateOf(dayItems[0])); setView("list"); }} />
+            ) : (
+              <>
+                {!isLoading && visibleSubmittals.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                    <p className="text-white/40 text-sm">{t("submittal.noneYet")}</p>
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                </div>
+              </>
             )}
-            <div className="flex flex-col gap-3">
-              {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
-            </div>
             <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus } from "@/lib/cm-data";
-import { useCMLang } from "@/lib/cm-i18n";
+import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
@@ -202,17 +202,49 @@ export function BackButton({ onClick, to }: { onClick?: () => void; to?: string 
   return <button onClick={onClick} className={cls}>{content}</button>;
 }
 
+export type ModuleView = "list" | "calendar";
+
+/** The grid/calendar two-button toggle first built for the Photos gallery —
+ *  pulled out standalone so every module page can offer the same switch
+ *  between its flat list and a Calendar view, styled identically. */
+export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v: ModuleView) => void }) {
+  const { t } = useCMLang();
+  return (
+    <div className="flex gap-1 rounded-xl bg-white/5 border border-white/10 p-1 shrink-0">
+      <button type="button" onClick={() => onChange("list")} aria-label={t("common.viewList")}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "list" ? "" : "text-white/50"}`}
+        style={view === "list" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      </button>
+      <button type="button" onClick={() => onChange("calendar")} aria-label={t("common.viewCalendar")}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "calendar" ? "" : "text-white/50"}`}
+        style={view === "calendar" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 /** The one page-header pattern every module list page shares: a back
  *  button, a title that swaps for a search input, and a "⋮" menu — all
  *  pinned (`sticky`) so they stay visible while the list scrolls beneath
- *  them, matching the Telegram reference the design follows. */
-export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort }: {
+ *  them, matching the Telegram reference the design follows. `view`/
+ *  `onViewChange` are optional so pages that don't offer a Calendar view
+ *  are unaffected. */
+export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort, view, onViewChange }: {
   title: string;
   search: string;
   onSearchChange: (v: string) => void;
   searchPlaceholder?: string;
   sortAsc: boolean;
   onToggleSort: (v: boolean) => void;
+  view?: ModuleView;
+  onViewChange?: (v: ModuleView) => void;
 }) {
   const { t } = useCMLang();
   const [showSearch, setShowSearch] = useState(false);
@@ -265,6 +297,97 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
           </>
         )}
       </div>
+      {view && onViewChange && <ViewToggle view={view} onChange={onViewChange} />}
+    </div>
+  );
+}
+
+const CALENDAR_MONTH_LOCALE: Record<CMLang, string> = { en: "en-US", km: "km-KH", zh: "zh-CN" };
+
+/** A month-by-month calendar of marked days — generalized from the Photos
+ *  gallery's original calendar so every module can offer the same "track
+ *  back to a date" browsing mode instead of only a flat list. Pass
+ *  `renderCover` to show something inside a marked day's cell (Photos uses
+ *  it for a thumbnail); omit it for a plain highlighted dot, which is all
+ *  most record lists need. */
+export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }: {
+  items: T[];
+  dateOf: (item: T) => string;
+  lang: CMLang;
+  onOpenDay: (dayItems: T[]) => void;
+  renderCover?: (dayItems: T[]) => React.ReactNode;
+}) {
+  const locale = CALENDAR_MONTH_LOCALE[lang];
+
+  const weekdayLabels = useMemo(() => {
+    const base = new Date(2024, 0, 1); // a Monday
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      return d.toLocaleDateString(locale, { weekday: "narrow" });
+    });
+  }, [locale]);
+
+  const itemsByDate = useMemo(() => {
+    const map = new Map<string, T[]>();
+    for (const item of items) {
+      const date = dateOf(item);
+      if (!map.has(date)) map.set(date, []);
+      map.get(date)!.push(item);
+    }
+    return map;
+  }, [items, dateOf]);
+
+  const months = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) set.add(dateOf(item).slice(0, 7));
+    return Array.from(set).sort().reverse();
+  }, [items, dateOf]);
+
+  if (months.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-7 gap-1.5">
+        {weekdayLabels.map((w, i) => (
+          <div key={i} className="text-center font-mono text-[9px] uppercase tracking-widest text-white/30">{w}</div>
+        ))}
+      </div>
+      {months.map((ym) => {
+        const [yearStr, monthStr] = ym.split("-");
+        const year = Number(yearStr);
+        const monthIdx = Number(monthStr) - 1;
+        const daysCount = new Date(year, monthIdx + 1, 0).getDate();
+        const firstWeekday = (new Date(year, monthIdx, 1).getDay() + 6) % 7;
+        const monthLabel = new Date(year, monthIdx, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
+        const cells: Array<{ day: number; dateStr: string } | null> = [];
+        for (let i = 0; i < firstWeekday; i++) cells.push(null);
+        for (let d = 1; d <= daysCount; d++) cells.push({ day: d, dateStr: `${yearStr}-${monthStr}-${String(d).padStart(2, "0")}` });
+
+        return (
+          <div key={ym}>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{monthLabel}</p>
+            <div className="grid grid-cols-7 gap-1.5">
+              {cells.map((cell, i) => {
+                if (!cell) return <div key={i} />;
+                const dayItems = itemsByDate.get(cell.dateStr);
+                const marked = !!dayItems?.length;
+                return (
+                  <button key={i} disabled={!marked} onClick={() => dayItems && onOpenDay(dayItems)}
+                    className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-white/5">
+                    {marked && renderCover?.(dayItems!)}
+                    {marked && !renderCover && <span className="absolute inset-0 rounded-full" style={{ backgroundColor: "#ff5100" }} />}
+                    <span className={`relative text-[12px] font-bold ${marked ? (renderCover ? "text-white/[0.95]" : "text-black") : "text-white/25"}`}
+                      style={marked && renderCover ? { textShadow: "0 1px 3px rgba(0,0,0,0.85)" } : undefined}>
+                      {cell.day}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

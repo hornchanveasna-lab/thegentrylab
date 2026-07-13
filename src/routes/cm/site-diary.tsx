@@ -6,6 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, CMDailyActivityList,
+  MiniCalendar, type ModuleView,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -386,10 +387,12 @@ function Field({ label, value, accent }: { label: string; value: string; accent?
 
 function CMSiteDiaryPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const [viewAll, setViewAll] = useState(false);
+  const [view, setView] = useState<ModuleView>("list");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
   const { data: singleLogs, isLoading: singleLoading } = useCMDailyLogs(!viewAll ? (projectId || undefined) : undefined);
   const { data: allLogs, isLoading: allLoading } = useAllCMDailyLogs(viewAll ? user?.id : undefined);
   const logs: (CMDailyLog | CMDailyLogWithProject)[] | undefined = viewAll ? allLogs : singleLogs;
@@ -435,12 +438,13 @@ function CMSiteDiaryPage() {
   const visibleLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = logs ?? [];
+    if (dateFilter) list = list.filter((l) => l.log_date === dateFilter);
     if (q) {
       list = list.filter((l) =>
         [l.activities, l.notes, l.materials_used, l.equipment_used, l.issues].some((f) => f?.toLowerCase().includes(q)));
     }
     return sortAsc ? [...list].reverse() : list;
-  }, [logs, search, sortAsc]);
+  }, [logs, search, sortAsc, dateFilter]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -453,24 +457,39 @@ function CMSiteDiaryPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
+        <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc}
+          view={view} onViewChange={setView} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
+
+        {dateFilter && (
+          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            {dateFilter} <span className="text-[13px] leading-none">×</span>
+          </button>
+        )}
 
         {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && visibleLogs.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
-              </div>
+            {view === "calendar" ? (
+              <MiniCalendar items={logs ?? []} dateOf={(l) => l.log_date} lang={lang}
+                onOpenDay={(dayItems) => { setDateFilter(dayItems[0].log_date); setView("list"); }} />
+            ) : (
+              <>
+                {!isLoading && visibleLogs.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                    <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  {visibleLogs.map((l) => (
+                    <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
+                      onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
+                  ))}
+                </div>
+              </>
             )}
-            <div className="flex flex-col gap-3">
-              {visibleLogs.map((l) => (
-                <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
-                  onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
-              ))}
-            </div>
             {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}

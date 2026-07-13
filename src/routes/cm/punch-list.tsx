@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight,
+  PhotoLightbox, usePendingHighlight, MiniCalendar, type ModuleView,
 } from "@/components/cm/shared";
 import {
   useCMTasks,
@@ -176,7 +176,7 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
 
 function CMPunchListPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
@@ -185,15 +185,18 @@ function CMPunchListPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [view, setView] = useState<ModuleView>("list");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = items ?? [];
+    if (dateFilter) list = list.filter((it) => it.created_at.slice(0, 10) === dateFilter);
     if (q) list = list.filter((it) => [it.title, it.description].some((f) => f?.toLowerCase().includes(q)));
     return sortAsc ? [...list].reverse() : list;
-  }, [items, search, sortAsc]);
+  }, [items, search, sortAsc, dateFilter]);
 
   const open = visibleItems.filter((t) => t.status !== "Done");
   const done = visibleItems.filter((t) => t.status === "Done");
@@ -209,37 +212,52 @@ function CMPunchListPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
+        <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc}
+          view={view} onViewChange={setView} />
         <p className="text-[12px] text-white/35 mb-5">{t("punchList.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {dateFilter && (
+          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            {dateFilter} <span className="text-[13px] leading-none">×</span>
+          </button>
+        )}
 
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && open.length === 0 && done.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("punchList.nothingYet")}</p>
-              </div>
-            )}
-            {!isLoading && open.length === 0 && done.length > 0 && (
-              <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
-            </div>
-
-            {done.length > 0 && (
-              <div className="mt-6">
-                <button onClick={() => setShowCompleted((v) => !v)} className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/55 transition-colors">
-                  {showCompleted ? t("punchList.hideCompleted") : t("punchList.showCompleted")} {done.length} {t("punchList.completedSuffix")}
-                </button>
-                {showCompleted && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                    {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+            {view === "calendar" ? (
+              <MiniCalendar items={items ?? []} dateOf={(it) => it.created_at.slice(0, 10)} lang={lang}
+                onOpenDay={(dayItems) => { setDateFilter(dayItems[0].created_at.slice(0, 10)); setView("list"); }} />
+            ) : (
+              <>
+                {!isLoading && open.length === 0 && done.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                    <p className="text-white/40 text-sm">{t("punchList.nothingYet")}</p>
                   </div>
                 )}
-              </div>
+                {!isLoading && open.length === 0 && done.length > 0 && (
+                  <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                </div>
+
+                {done.length > 0 && (
+                  <div className="mt-6">
+                    <button onClick={() => setShowCompleted((v) => !v)} className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/55 transition-colors">
+                      {showCompleted ? t("punchList.hideCompleted") : t("punchList.showCompleted")} {done.length} {t("punchList.completedSuffix")}
+                    </button>
+                    {showCompleted && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                        {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             <FAB label={t("punchList.newBtn")} onClick={() => setShowNew(true)} />
