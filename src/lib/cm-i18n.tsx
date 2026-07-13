@@ -288,6 +288,7 @@ const EN: Dict = {
   "siteDiary.delayCause.Other": "Other",
   "siteDiary.hoursLost": "Hours lost",
   "siteDiary.description": "Description",
+  "siteDiary.previewReport": "Preview report",
 
   "weather.Sunny": "Sunny",
   "weather.Partly Cloudy": "Partly Cloudy",
@@ -779,6 +780,7 @@ const KM: Dict = {
   "siteDiary.delayCause.Other": "ផ្សេងទៀត",
   "siteDiary.hoursLost": "ម៉ោងបាត់បង់",
   "siteDiary.description": "ការពិពណ៌នា",
+  "siteDiary.previewReport": "មើលរបាយការណ៍ជាមុន",
 
   "weather.Sunny": "ថ្ងៃរះ",
   "weather.Partly Cloudy": "ពពកខ្លះ",
@@ -1270,6 +1272,7 @@ const ZH: Dict = {
   "siteDiary.delayCause.Other": "其他",
   "siteDiary.hoursLost": "损失工时",
   "siteDiary.description": "描述",
+  "siteDiary.previewReport": "预览报告",
 
   "weather.Sunny": "晴天",
   "weather.Partly Cloudy": "多云",

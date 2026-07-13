@@ -4,9 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, setPendingHighlight, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, CMDailyActivityList,
-  MiniCalendar, ViewToggle, type ModuleView,
+  ModuleHeader, BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
+  PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, CMDailyActivityList,
+  MiniCalendar, ViewToggle, CALENDAR_MONTH_LOCALE, type ModuleView,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -35,6 +35,45 @@ export const Route = createFileRoute("/cm/site-diary")({
 });
 
 const WEATHER_OPTIONS = ["Sunny", "Partly Cloudy", "Cloudy", "Light Rain", "Heavy Rain", "Storm"];
+
+const WEATHER_ICON: Record<string, React.ReactNode> = {
+  Sunny: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4.2" />
+      <path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7" />
+    </svg>
+  ),
+  "Partly Cloudy": (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8.5" cy="8.5" r="3.3" />
+      <path d="M8.5 2.8v1.7M3.6 5.9l1.3 1.3M2.2 10.9h1.7" />
+      <path d="M9.8 20.2h8.6a3.6 3.6 0 0 0 .5-7.16 4.6 4.6 0 0 0-8.83-1.5 3.9 3.9 0 0 0-3.17 3.86c0 .3.03.58.09.86A3.6 3.6 0 0 0 9.8 20.2z" />
+    </svg>
+  ),
+  Cloudy: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.8 19.2h11.4a3.9 3.9 0 0 0 .5-7.77 5 5 0 0 0-9.6-1.63 4.3 4.3 0 0 0-3.44 4.2c0 .33.03.64.1.95A3.9 3.9 0 0 0 6.8 19.2z" />
+    </svg>
+  ),
+  "Light Rain": (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.3 15.2h11.4a3.9 3.9 0 0 0 .5-7.77 5 5 0 0 0-9.6-1.63 4.3 4.3 0 0 0-3.44 4.2c0 .33.03.64.1.95a3.9 3.9 0 0 0 1.04 4.25z" />
+      <path d="M9 18.4l-1 2.2M13 18.4l-1 2.2" />
+    </svg>
+  ),
+  "Heavy Rain": (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.3 14.2h11.4a3.9 3.9 0 0 0 .5-7.77 5 5 0 0 0-9.6-1.63 4.3 4.3 0 0 0-3.44 4.2c0 .33.03.64.1.95a3.9 3.9 0 0 0 1.04 4.25z" />
+      <path d="M7.5 17.4l-1.2 2.7M12 17.4l-1.2 2.7M16.5 17.4l-1.2 2.7" />
+    </svg>
+  ),
+  Storm: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.3 12.7h11.4a3.9 3.9 0 0 0 .5-7.77 5 5 0 0 0-9.6-1.63 4.3 4.3 0 0 0-3.44 4.2c0 .33.03.64.1.95a3.9 3.9 0 0 0 1.04 4.25z" />
+      <path d="M13 14.5l-3 4.2h2.6l-2 4.3 4.6-5.4h-2.6l1.9-3.1z" strokeLinejoin="round" />
+    </svg>
+  ),
+};
 const VISITOR_KIND_OPTIONS: CMVisitorKind[] = ["visitor", "instruction"];
 const DELAY_CAUSE_OPTIONS: CMDelayCause[] = ["Weather", "Material", "Labor", "Other"];
 
@@ -273,105 +312,38 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function LogCard({ log, projectName, onChanged, onOpenPhoto }: {
-  log: CMDailyLog; projectName?: string; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+function LogCard({ log, projectName, onOpen }: {
+  log: CMDailyLog; projectName?: string; onOpen: (log: CMDailyLog, flashPhotoUrl?: string) => void;
 }) {
   const { t } = useCMLang();
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id, () => setOpen(true));
-  const { data: activity } = useCMDailyActivity(log.project_id, log.log_date, { enabled: open });
+  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id);
 
-  // "Today's pictures" combines the diary's own photos with every other
-  // module's photos from the same project+day, so this one gallery is the
-  // full picture of what was captured that day — not just the diary's own.
-  const allDayPhotos = useMemo(() => {
-    const own = log.photos.map((url, i) => ({ url, thumbUrl: log.photo_thumbs[i] || url, module: "siteDiary" as const, recordId: log.id }));
-    return [...own, ...flattenCMDailyActivityPhotos(activity)];
-  }, [log, activity]);
-
-  const handleDelete = async () => {
-    if (!confirm(t("siteDiary.confirmDelete"))) return;
-    setBusy(true);
-    try { await deleteCMDailyLog(log.id); onChanged(); } finally { setBusy(false); }
-  };
+  useEffect(() => {
+    if (flash) onOpen(log, matchedPhotoUrl ?? undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flash]);
 
   return (
     <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
+      <button onClick={() => onOpen(log)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
           {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-          {log.weather && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`weather.${log.weather}`)}</span>}
+          {log.weather && (
+            <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">
+              {WEATHER_ICON[log.weather]}
+              {t(`weather.${log.weather}`)}
+            </span>
+          )}
           {log.activities && <span className="text-[12px] text-white/45 truncate">{log.activities}</span>}
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {log.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{log.progress_pct}%</span>}
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="transition-transform text-white/25" style={{ transform: open ? "rotate(180deg)" : "none" }}>
-            <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25">
+            <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
       </button>
-      {open && (
-        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-[12px]">
-            {log.temperature_c != null && <Field label={t("siteDiary.temperature")} value={`${log.temperature_c}°C`} />}
-            {log.manpower.length > 0 && <Field label={t("siteDiary.workforceField")} value={String(totalManpower(log.manpower))} />}
-          </div>
-          {log.manpower.length > 0 && (
-            <Field label={t("siteDiary.manpower")} value={log.manpower.map((m) => `${m.company ? `${m.company} — ` : ""}${m.trade}: ${m.count}`).join(", ")} />
-          )}
-          {log.materials_used && <Field label={t("siteDiary.materialsUsed")} value={log.materials_used} />}
-          {log.equipment_used && <Field label={t("siteDiary.equipmentUsed")} value={log.equipment_used} />}
-          {log.deliveries.length > 0 && (
-            <Field label={t("siteDiary.deliveries")} value={log.deliveries.map((d) => `${d.material} (${d.quantity}${d.unit ? ` ${d.unit}` : ""})${d.supplier ? ` — ${d.supplier}` : ""}`).join("; ")} />
-          )}
-          {log.visitors.length > 0 && (
-            <Field label={t("siteDiary.visitors")} value={log.visitors.map((v) => `[${t(`siteDiary.visitorKind.${v.kind}`)}] ${v.name}${v.organization ? ` (${v.organization})` : ""}${v.note ? `: ${v.note}` : ""}`).join("; ")} />
-          )}
-          {log.delays.length > 0 && (
-            <Field label={t("siteDiary.delays")} value={log.delays.map((d) => `${t(`siteDiary.delayCause.${d.cause}`)} — ${d.description} (${d.hours_lost}h)`).join("; ")} accent="#f43f5e" />
-          )}
-          {log.issues && <Field label={t("siteDiary.issues")} value={log.issues} accent="#f43f5e" />}
-          {log.notes && <Field label={t("siteDiary.notes")} value={log.notes} />}
-          <CMDailyActivityList activity={activity} projectId={log.project_id}
-            onOpenItem={(module, recordId, projectId) => {
-              setPendingHighlight(module, recordId, projectId, "");
-              navigate({ to: MODULE_ROUTES[module] });
-            }} />
-          {allDayPhotos.length > 0 && (
-            <div>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
-              <div className="flex flex-wrap gap-2">
-                {allDayPhotos.map((p, i) => (
-                  <button key={`${p.module}-${p.recordId}-${p.url}`} type="button" data-photo-url={p.url}
-                    onClick={() => onOpenPhoto(allDayPhotos.map((d) => ({ url: d.url, thumbUrl: d.thumbUrl })), i)}
-                    className={`relative rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === p.url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                    <img src={p.thumbUrl} alt="" className="w-20 h-20 rounded-xl object-cover" />
-                    <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-black/60" style={{ color: MODULE_COLOR[p.module] }}>
-                      {MODULE_ICON[p.module]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="flex items-center gap-4">
-            <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
-              {t("siteDiary.editEntry")}
-            </button>
-            <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
-              {t("siteDiary.deleteEntry")}
-            </button>
-          </div>
-        </div>
-      )}
-      {editing && (
-        <NewLogSheet ownerId={log.owner_id} projectId={log.project_id} existing={log}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
-      )}
     </div>
   );
 }
@@ -385,6 +357,206 @@ function Field({ label, value, accent }: { label: string; value: string; accent?
   );
 }
 
+function CategoryRow({ icon, label, count, onClick }: {
+  icon: React.ReactNode; label: string; count?: number; onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick}
+      className="w-full flex items-center gap-3 rounded-2xl bg-[#0d0d0e] hover:bg-white/[0.04] px-4 py-3 transition-colors text-left">
+      <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white/70 bg-white/5">{icon}</span>
+      <span className="flex-1 min-w-0 text-[13px] text-white/80">{label}</span>
+      {count != null && <span className="font-mono text-[12px] text-white/40 shrink-0">{count}</span>}
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25 shrink-0">
+        <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </button>
+  );
+}
+
+const MANPOWER_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" /><path d="M12 3v3" />
+  </svg>
+);
+
+const PHOTOS_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+    <circle cx="12" cy="13" r="3.4" /><circle cx="17.6" cy="10.4" r="0.6" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const REPORT_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 3h7l5 5v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /><path d="M14 3v5h5" /><path d="M9 13h6M9 17h6" />
+  </svg>
+);
+
+/** The per-day screen: week strip to hop between days, icon-led weather +
+ *  manpower + attachments (the latter two navigate to their real modules
+ *  instead of expanding inline), the rest of the log's fields, and a
+ *  Preview report link into the existing print-ready report for this day. */
+function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpen, onChanged, onOpenPhoto }: {
+  log: CMDailyLog | CMDailyLogWithProject;
+  projectName?: string;
+  allLogs: (CMDailyLog | CMDailyLogWithProject)[];
+  flashPhotoUrl: string | null;
+  onBack: () => void;
+  onOpen: (log: CMDailyLog | CMDailyLogWithProject, flashPhotoUrl?: string) => void;
+  onChanged: () => void;
+  onOpenPhoto: (items: LightboxItem[], index: number) => void;
+}) {
+  const { t, lang } = useCMLang();
+  const navigate = useNavigate();
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const { data: activity } = useCMDailyActivity(log.project_id, log.log_date, { enabled: true });
+
+  const allDayPhotos = useMemo(() => {
+    const own = log.photos.map((url, i) => ({ url, thumbUrl: log.photo_thumbs[i] || url, module: "siteDiary" as const, recordId: log.id }));
+    return [...own, ...flattenCMDailyActivityPhotos(activity)];
+  }, [log, activity]);
+
+  const weekDates = useMemo(() => {
+    const base = new Date(`${log.log_date}T00:00:00`);
+    const monOffset = (base.getDay() + 6) % 7;
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() - monOffset + i);
+      return d.toISOString().slice(0, 10);
+    });
+  }, [log.log_date]);
+
+  const logByDate = useMemo(() => {
+    const map = new Map<string, CMDailyLog | CMDailyLogWithProject>();
+    for (const l of allLogs) if (l.project_id === log.project_id) map.set(l.log_date, l);
+    return map;
+  }, [allLogs, log.project_id]);
+
+  const handleDelete = async () => {
+    if (!confirm(t("siteDiary.confirmDelete"))) return;
+    setBusy(true);
+    try { await deleteCMDailyLog(log.id); onChanged(); onBack(); } finally { setBusy(false); }
+  };
+
+  const goTo = (to: "/cm/manpower" | "/cm/photos") => { setLastProject(log.project_id); navigate({ to }); };
+  const goToReport = () => {
+    setLastProject(log.project_id);
+    navigate({ to: "/cm/reports", search: { project: log.project_id, from: log.log_date, to: log.log_date } });
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <BackButton onClick={onBack} />
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-bold text-white truncate">{log.log_date}</h2>
+          {projectName && <p className="text-[11px] text-white/40 truncate">{projectName}</p>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1.5">
+        {weekDates.map((d) => {
+          const entry = logByDate.get(d);
+          const isSelected = d === log.log_date;
+          const dateObj = new Date(`${d}T00:00:00`);
+          return (
+            <button key={d} type="button" disabled={!entry} onClick={() => entry && onOpen(entry)}
+              className={`flex flex-col items-center gap-1 rounded-xl py-2 transition-colors ${isSelected ? "text-black" : entry ? "text-white/70 hover:bg-white/5" : "text-white/15"}`}
+              style={isSelected ? { backgroundColor: "#ff5100" } : undefined}>
+              <span className="font-mono text-[9px] uppercase tracking-widest">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
+              <span className="text-[13px] font-bold">{dateObj.getDate()}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="flex items-center gap-3 rounded-2xl bg-[#0d0d0e] px-4 py-3">
+        <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+          {log.weather ? WEATHER_ICON[log.weather] : WEATHER_ICON.Sunny}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[13px] text-white/80">{log.weather ? t(`weather.${log.weather}`) : "—"}</p>
+          <p className="font-mono text-[10px] text-white/35">{log.temperature_c != null ? `${log.temperature_c}°C` : t("siteDiary.temperature")}</p>
+        </div>
+      </div>
+
+      {log.progress_pct != null && (
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className={labelCls}>{t("siteDiary.progressPct")}</span>
+            <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{log.progress_pct}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full rounded-full" style={{ width: `${log.progress_pct}%`, backgroundColor: "#ff5100" }} />
+          </div>
+        </div>
+      )}
+
+      {log.activities && <Field label={t("siteDiary.activities")} value={log.activities} />}
+
+      <CategoryRow icon={MANPOWER_ICON} label={t("siteDiary.manpower")} count={totalManpower(log.manpower)} onClick={() => goTo("/cm/manpower")} />
+      <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotos.length} onClick={() => goTo("/cm/photos")} />
+
+      <div className="grid grid-cols-2 gap-3 text-[12px]">
+        {log.materials_used && <Field label={t("siteDiary.materialsUsed")} value={log.materials_used} />}
+        {log.equipment_used && <Field label={t("siteDiary.equipmentUsed")} value={log.equipment_used} />}
+      </div>
+      {log.deliveries.length > 0 && (
+        <Field label={t("siteDiary.deliveries")} value={log.deliveries.map((d) => `${d.material} (${d.quantity}${d.unit ? ` ${d.unit}` : ""})${d.supplier ? ` — ${d.supplier}` : ""}`).join("; ")} />
+      )}
+      {log.visitors.length > 0 && (
+        <Field label={t("siteDiary.visitors")} value={log.visitors.map((v) => `[${t(`siteDiary.visitorKind.${v.kind}`)}] ${v.name}${v.organization ? ` (${v.organization})` : ""}${v.note ? `: ${v.note}` : ""}`).join("; ")} />
+      )}
+      {log.delays.length > 0 && (
+        <Field label={t("siteDiary.delays")} value={log.delays.map((d) => `${t(`siteDiary.delayCause.${d.cause}`)} — ${d.description} (${d.hours_lost}h)`).join("; ")} accent="#f43f5e" />
+      )}
+      {log.issues && <Field label={t("siteDiary.issues")} value={log.issues} accent="#f43f5e" />}
+      {log.notes && <Field label={t("siteDiary.notes")} value={log.notes} />}
+
+      <CMDailyActivityList activity={activity} projectId={log.project_id}
+        onOpenItem={(module, recordId, projectId) => {
+          setPendingHighlight(module, recordId, projectId, "");
+          navigate({ to: MODULE_ROUTES[module] });
+        }} />
+
+      {allDayPhotos.length > 0 && (
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
+          <div className="flex flex-wrap gap-2">
+            {allDayPhotos.map((p, i) => (
+              <button key={`${p.module}-${p.recordId}-${p.url}`} type="button" data-photo-url={p.url}
+                onClick={() => onOpenPhoto(allDayPhotos.map((d) => ({ url: d.url, thumbUrl: d.thumbUrl })), i)}
+                className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === p.url ? "ring-2 ring-[#ff5100]" : ""}`}>
+                <img src={p.thumbUrl} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-black/60" style={{ color: MODULE_COLOR[p.module] }}>
+                  {MODULE_ICON[p.module]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <CategoryRow icon={REPORT_ICON} label={t("siteDiary.previewReport")} onClick={goToReport} />
+
+      <div className="flex items-center gap-4 pt-1">
+        <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+          {t("siteDiary.editEntry")}
+        </button>
+        <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
+          {t("siteDiary.deleteEntry")}
+        </button>
+      </div>
+
+      {editing && (
+        <NewLogSheet ownerId={log.owner_id} projectId={log.project_id} existing={log}
+          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
+      )}
+    </div>
+  );
+}
+
 function CMSiteDiaryPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -392,7 +564,6 @@ function CMSiteDiaryPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const [viewAll, setViewAll] = useState(false);
   const [view, setView] = useState<ModuleView>("list");
-  const [dateFilter, setDateFilter] = useState<string | null>(null);
   const { data: singleLogs, isLoading: singleLoading } = useCMDailyLogs(!viewAll ? (projectId || undefined) : undefined);
   const { data: allLogs, isLoading: allLoading } = useAllCMDailyLogs(viewAll ? user?.id : undefined);
   const logs: (CMDailyLog | CMDailyLogWithProject)[] | undefined = viewAll ? allLogs : singleLogs;
@@ -401,6 +572,16 @@ function CMSiteDiaryPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [openLogId, setOpenLogId] = useState<string | null>(null);
+  const [openFlashPhotoUrl, setOpenFlashPhotoUrl] = useState<string | null>(null);
+  // Derived from the live `logs` query (rather than a stashed object) so
+  // edits made from inside DayDetailView show up immediately on refetch.
+  const openLog = useMemo(() => (logs ?? []).find((l) => l.id === openLogId) ?? null, [logs, openLogId]);
+
+  const openDay = (log: CMDailyLog | CMDailyLogWithProject, flashPhotoUrl?: string) => {
+    setOpenLogId(log.id);
+    setOpenFlashPhotoUrl(flashPhotoUrl ?? null);
+  };
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
@@ -438,13 +619,12 @@ function CMSiteDiaryPage() {
   const visibleLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = logs ?? [];
-    if (dateFilter) list = list.filter((l) => l.log_date === dateFilter);
     if (q) {
       list = list.filter((l) =>
         [l.activities, l.notes, l.materials_used, l.equipment_used, l.issues].some((f) => f?.toLowerCase().includes(q)));
     }
     return sortAsc ? [...list].reverse() : list;
-  }, [logs, search, sortAsc, dateFilter]);
+  }, [logs, search, sortAsc]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -458,42 +638,44 @@ function CMSiteDiaryPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
-        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
-
-        <div className="flex justify-end mb-3">
-          <ViewToggle view={view} onChange={setView} />
-        </div>
-
-        {dateFilter && (
-          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
-            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
-            {dateFilter} <span className="text-[13px] leading-none">×</span>
-          </button>
-        )}
-
-        {(viewAll || projectId) && (
+        {openLog ? (
+          <DayDetailView log={openLog} projectName={viewAll ? (openLog as CMDailyLogWithProject).projectName : undefined}
+            allLogs={logs ?? []} flashPhotoUrl={openFlashPhotoUrl}
+            onBack={() => { setOpenLogId(null); setOpenFlashPhotoUrl(null); }}
+            onOpen={openDay} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
+        ) : (
           <>
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {view === "calendar" ? (
-              <MiniCalendar items={logs ?? []} dateOf={(l) => l.log_date} lang={lang}
-                onOpenDay={(dayItems) => { setDateFilter(dayItems[0].log_date); setView("list"); }} />
-            ) : (
+            <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+            <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
+
+            <div className="flex justify-end mb-3">
+              <ViewToggle view={view} onChange={setView} />
+            </div>
+
+            {(viewAll || projectId) && (
               <>
-                {!isLoading && visibleLogs.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                    <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
-                  </div>
+                {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+                {view === "calendar" ? (
+                  <MiniCalendar items={logs ?? []} dateOf={(l) => l.log_date} lang={lang}
+                    onOpenDay={(dayItems) => openDay(dayItems[0])} />
+                ) : (
+                  <>
+                    {!isLoading && visibleLogs.length === 0 && (
+                      <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                        <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-3">
+                      {visibleLogs.map((l) => (
+                        <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
+                          onOpen={openDay} />
+                      ))}
+                    </div>
+                  </>
                 )}
-                <div className="flex flex-col gap-3">
-                  {visibleLogs.map((l) => (
-                    <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
-                      onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
-                  ))}
-                </div>
+                {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
               </>
             )}
-            {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>

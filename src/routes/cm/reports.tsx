@@ -5,8 +5,19 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { useCMProjects, useCMDailyLogs, useCMDailyActivityRange } from "@/lib/cm-data";
 import { FieldSelect, CMDailyActivityList, MODULE_ROUTES, setPendingHighlight } from "@/components/cm/shared";
 
+interface CMReportsSearch {
+  project?: string;
+  from?: string;
+  to?: string;
+}
+
 export const Route = createFileRoute("/cm/reports")({
   head: () => ({ meta: [{ title: "Reports — Construction Management App" }] }),
+  validateSearch: (search: Record<string, unknown>): CMReportsSearch => ({
+    project: typeof search.project === "string" ? search.project : undefined,
+    from: typeof search.from === "string" ? search.from : undefined,
+    to: typeof search.to === "string" ? search.to : undefined,
+  }),
   component: CMReportsPage,
 });
 
@@ -24,9 +35,10 @@ function CMReportsPage() {
   const { t } = useCMLang();
   const navigate = useNavigate();
   const { data: projects } = useCMProjects(user?.id);
-  const [projectId, setProjectId] = useState<string>("");
-  const [fromDate, setFromDate] = useState(() => isoDaysAgo(7));
-  const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const searchParams = Route.useSearch();
+  const [projectId, setProjectId] = useState<string>(() => searchParams.project ?? "");
+  const [fromDate, setFromDate] = useState(() => searchParams.from ?? isoDaysAgo(7));
+  const [toDate, setToDate] = useState(() => searchParams.to ?? new Date().toISOString().slice(0, 10));
   const { data: logs, isLoading: logsLoading } = useCMDailyLogs(projectId || undefined);
   const { data: activityByDate } = useCMDailyActivityRange(projectId || undefined, fromDate, toDate);
 
