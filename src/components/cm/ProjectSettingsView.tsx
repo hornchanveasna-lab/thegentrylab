@@ -23,9 +23,11 @@ import {
   removeCMConsultantPerson,
   useCMProjectMembers,
   updateCMMemberRole,
+  updateCMMemberJobRole,
   updateCMMemberPosition,
   updateCMMemberCompany,
   removeCMProjectMember,
+  CM_JOB_ROLES,
   distinctCMCompanyNames,
   useCMProjectInvites,
   createCMProjectInvite,
@@ -595,6 +597,12 @@ function MemberEditRow({ member, companyOptions, onChanged }: { member: CMProjec
         <FieldSelect value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
           options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
       </div>
+      <FieldSelect
+        value={member.job_role ?? ""}
+        onChange={(v) => updateCMMemberJobRole(member.id, (v || null) as CMProjectMember["job_role"]).then(onChanged)}
+        placeholder={t("team.jobRolePlaceholder")}
+        options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...CM_JOB_ROLES.map((r) => ({ value: r, label: t(`team.jobRole.${r}`) }))]}
+      />
     </div>
   );
 }
