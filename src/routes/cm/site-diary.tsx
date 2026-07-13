@@ -2,16 +2,19 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
-import { useCMLang } from "@/lib/cm-i18n";
+import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, CMDailyActivityList,
-  MiniCalendar, ViewToggle, CALENDAR_MONTH_LOCALE, type ModuleView,
+  PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
+  MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
   useAllCMDailyLogs,
   useCMDailyActivity,
+  useCMEquipment,
+  useCMScheduleItems,
+  projectPlanPercent,
   findOrCreateCMDailyLog,
   mergeDuplicateCMDailyLogs,
   flattenCMDailyActivityPhotos,
@@ -27,6 +30,7 @@ import {
   type CMVisitorKind,
   type CMDelayRow,
   type CMDelayCause,
+  type CMPhotoModule,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/site-diary")({
@@ -76,14 +80,64 @@ const WEATHER_ICON: Record<string, React.ReactNode> = {
 };
 const VISITOR_KIND_OPTIONS: CMVisitorKind[] = ["visitor", "instruction"];
 const DELAY_CAUSE_OPTIONS: CMDelayCause[] = ["Weather", "Material", "Labor", "Other"];
+const RAIN_WEATHER = new Set(["Light Rain", "Heavy Rain", "Storm"]);
 
 const EMPTY_MANPOWER: CMManpowerRow = { trade: "", company: null, count: 0 };
-const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null };
-const EMPTY_VISITOR: CMVisitorRow = { name: "", organization: null, kind: "visitor", note: "" };
+const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null, photos: [], photo_thumbs: [] };
+const EMPTY_VISITOR: CMVisitorRow = { name: "", organization: null, kind: "visitor", note: "", photos: [], photo_thumbs: [] };
 const EMPTY_DELAY: CMDelayRow = { cause: "Weather", description: "", hours_lost: 0 };
 
 function totalManpower(rows: CMManpowerRow[]) {
   return rows.reduce((sum, r) => sum + (r.count || 0), 0);
+}
+
+function rainHours(start: string | null, end: string | null): number | null {
+  if (!start || !end) return null;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  const minutes = (eh * 60 + em) - (sh * 60 + sm);
+  if (!Number.isFinite(minutes) || minutes <= 0) return null;
+  return Math.round((minutes / 60) * 10) / 10;
+}
+
+/** Small tap-to-add photo strip reused wherever a sub-row (Visitor,
+ *  Delivery) needs its own attachments — same upload-then-thumbnail
+ *  pattern as the top-level PhotoPicker, just inline and immediate
+ *  since these rows don't have a separate "save" step of their own. */
+function RowPhotoPicker({ ownerId, projectId, photos, photoThumbs, onChange, disabled }: {
+  ownerId: string; projectId: string; photos: string[]; photoThumbs: string[];
+  onChange: (photos: string[], photoThumbs: string[]) => void; disabled?: boolean;
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded = await Promise.all(Array.from(files).map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      onChange([...photos, ...uploaded.map((u) => u.url)], [...photoThumbs, ...uploaded.map((u) => u.thumbUrl)]);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAt = (i: number) => onChange(photos.filter((_, idx) => idx !== i), photoThumbs.filter((_, idx) => idx !== i));
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {photoThumbs.map((thumb, i) => (
+        <div key={i} className="relative">
+          <img src={thumb} alt="" className="w-12 h-12 rounded-lg object-cover" />
+          <button type="button" onClick={() => removeAt(i)} disabled={disabled}
+            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-black/70 text-white/70 text-[10px] leading-none flex items-center justify-center">×</button>
+        </div>
+      ))}
+      <label className={`w-12 h-12 rounded-lg border border-dashed border-white/15 flex items-center justify-center text-white/30 text-[16px] cursor-pointer ${disabled || uploading ? "opacity-50 pointer-events-none" : ""}`}>
+        {uploading ? "…" : "+"}
+        <input type="file" accept="image/*" multiple className="hidden" disabled={disabled || uploading} onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
+      </label>
+    </div>
+  );
 }
 
 function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
@@ -94,6 +148,8 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
   const [logDate, setLogDate] = useState(() => existing?.log_date ?? new Date().toISOString().slice(0, 10));
   const [weather, setWeather] = useState(existing?.weather ?? WEATHER_OPTIONS[0]);
   const [temperature, setTemperature] = useState(existing?.temperature_c != null ? String(existing.temperature_c) : "");
+  const [rainStart, setRainStart] = useState(existing?.rain_start_time ?? "");
+  const [rainEnd, setRainEnd] = useState(existing?.rain_end_time ?? "");
   const [progressPct, setProgressPct] = useState(existing?.progress_pct != null ? String(existing.progress_pct) : "");
   const [activities, setActivities] = useState(existing?.activities ?? "");
   const [materials, setMaterials] = useState(existing?.materials_used ?? "");
@@ -124,6 +180,8 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
         await updateCMDailyLog(existing.id, {
           weather: weather || null,
           temperature_c: temperature ? Number(temperature) : null,
+          rain_start_time: RAIN_WEATHER.has(weather) ? rainStart || null : null,
+          rain_end_time: RAIN_WEATHER.has(weather) ? rainEnd || null : null,
           progress_pct: progressPct ? Number(progressPct) : null,
           activities: activities.trim() || null,
           materials_used: materials.trim() || null,
@@ -147,6 +205,8 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
         await updateCMDailyLog(log.id, {
           weather: weather || log.weather,
           temperature_c: temperature ? Number(temperature) : log.temperature_c,
+          rain_start_time: RAIN_WEATHER.has(weather) ? rainStart || log.rain_start_time : null,
+          rain_end_time: RAIN_WEATHER.has(weather) ? rainEnd || log.rain_end_time : null,
           progress_pct: progressPct ? Number(progressPct) : log.progress_pct,
           activities: activities.trim() || log.activities,
           materials_used: materials.trim() || log.materials_used,
@@ -192,6 +252,21 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
             <input type="number" className={inputCls} value={temperature} onChange={(e) => setTemperature(e.target.value)} disabled={saving} />
           </label>
         </div>
+        {RAIN_WEATHER.has(weather) && (
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("siteDiary.rainStart")}</span>
+              <input type="time" className={inputCls} value={rainStart} onChange={(e) => setRainStart(e.target.value)} disabled={saving} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("siteDiary.rainEnd")}</span>
+              <input type="time" className={inputCls} value={rainEnd} onChange={(e) => setRainEnd(e.target.value)} disabled={saving} />
+            </label>
+            {rainHours(rainStart, rainEnd) != null && (
+              <p className="col-span-2 font-mono text-[10px] text-white/35">{t("siteDiary.rainHours", { hours: String(rainHours(rainStart, rainEnd)) })}</p>
+            )}
+          </div>
+        )}
 
         <RepeatingRows
           label={`${t("siteDiary.manpower")} (${t("siteDiary.total")}: ${totalManpower(manpower)})`}
@@ -249,6 +324,8 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
                 <input className={inputCls} placeholder={t("siteDiary.unit")} value={row.unit ?? ""} onChange={(e) => update({ unit: e.target.value || null })} disabled={saving} />
               </div>
               <input className={inputCls} placeholder={t("siteDiary.supplier")} value={row.supplier ?? ""} onChange={(e) => update({ supplier: e.target.value || null })} disabled={saving} />
+              <RowPhotoPicker ownerId={ownerId} projectId={projectId} photos={row.photos ?? []} photoThumbs={row.photo_thumbs ?? []}
+                onChange={(photos, photo_thumbs) => update({ photos, photo_thumbs })} disabled={saving} />
             </div>
           )}
         />
@@ -268,6 +345,8 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
                 <input className={inputCls} placeholder={t("siteDiary.organization")} value={row.organization ?? ""} onChange={(e) => update({ organization: e.target.value || null })} disabled={saving} />
               </div>
               <textarea className={`${inputCls} resize-y min-h-[40px]`} placeholder={t("siteDiary.note")} value={row.note} onChange={(e) => update({ note: e.target.value })} disabled={saving} />
+              <RowPhotoPicker ownerId={ownerId} projectId={projectId} photos={row.photos ?? []} photoThumbs={row.photo_thumbs ?? []}
+                onChange={(photos, photo_thumbs) => update({ photos, photo_thumbs })} disabled={saving} />
             </div>
           )}
         />
@@ -392,6 +471,117 @@ const REPORT_ICON = (
   </svg>
 );
 
+const EQUIPMENT_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" />
+  </svg>
+);
+
+const BOQ_ICON = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" />
+  </svg>
+);
+
+const VISITOR_ICON = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="8" r="3.4" /><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5" />
+  </svg>
+);
+
+const DELIVERY_ICON = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 8.5 12 4l9 4.5-9 4.5-9-4.5z" /><path d="M3 8.5v7L12 20l9-4.5v-7" /><path d="M12 13v7" />
+  </svg>
+);
+
+interface ActivityRow {
+  module: CMPhotoModule;
+  recordId: string;
+  title: string;
+  status: string;
+  photos: string[];
+  photo_thumbs: string[];
+}
+
+function toActivityRows<T extends { id: string; title: string; status: string; photos: string[]; photo_thumbs: string[] }>(
+  rows: T[], module: CMPhotoModule,
+): ActivityRow[] {
+  return rows.map((r) => ({ module, recordId: r.id, title: r.title, status: r.status, photos: r.photos, photo_thumbs: r.photo_thumbs }));
+}
+
+/** One row inside Today's Activities / HSE: tap navigates into the real
+ *  module (deep-linked via the same setPendingHighlight/MODULE_ROUTES
+ *  pattern as CMDailyActivityList), with that record's own photos shown
+ *  directly beneath it instead of everything pooled into one gallery. */
+function ModuleActivityRow({ row, onOpenItem, onOpenPhoto, flashPhotoUrl }: {
+  row: ActivityRow;
+  onOpenItem: (module: CMPhotoModule, recordId: string) => void;
+  onOpenPhoto: (items: LightboxItem[], index: number) => void;
+  flashPhotoUrl: string | null;
+}) {
+  const thumbs = row.photo_thumbs ?? [];
+  const urls = row.photos ?? [];
+  return (
+    <div className="flex flex-col gap-2">
+      <button type="button" onClick={() => onOpenItem(row.module, row.recordId)}
+        className="w-full flex items-center gap-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2 text-left transition-colors">
+        <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[row.module], backgroundColor: `${MODULE_COLOR[row.module]}22` }}>
+          {MODULE_ICON[row.module]}
+        </span>
+        <span className="flex-1 min-w-0 text-[12px] text-white/70 truncate">{row.title}</span>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{row.status}</span>
+      </button>
+      {thumbs.length > 0 && (
+        <div className="flex flex-wrap gap-2 pl-3">
+          {thumbs.map((thumb, i) => (
+            <button key={i} type="button" data-photo-url={urls[i]}
+              onClick={() => onOpenPhoto(thumbs.map((th, j) => ({ url: urls[j] || th, thumbUrl: th })), i)}
+              className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === urls[i] ? "ring-2 ring-[#ff5100]" : ""}`}>
+              <img src={thumb} alt="" className="w-16 h-16 rounded-xl object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Site Diary's own Visitor/Delivery sub-rows: same shape as
+ *  ModuleActivityRow but non-navigating (there's no dedicated module page
+ *  for these — they live only inside the diary entry itself). */
+function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenPhoto, flashPhotoUrl }: {
+  icon: React.ReactNode; title: string; subtitle?: string;
+  photos: string[]; photoThumbs: string[];
+  onOpenPhoto: (items: LightboxItem[], index: number) => void;
+  flashPhotoUrl: string | null;
+}) {
+  const thumbs = photoThumbs ?? [];
+  const urls = photos ?? [];
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="w-full flex items-center gap-2.5 rounded-xl bg-white/[0.03] px-3 py-2">
+        <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-white/50 bg-white/5">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] text-white/70 truncate">{title}</p>
+          {subtitle && <p className="text-[10px] text-white/35 truncate">{subtitle}</p>}
+        </div>
+      </div>
+      {thumbs.length > 0 && (
+        <div className="flex flex-wrap gap-2 pl-3">
+          {thumbs.map((thumb, i) => (
+            <button key={i} type="button" data-photo-url={urls[i]}
+              onClick={() => onOpenPhoto(thumbs.map((th, j) => ({ url: urls[j] || th, thumbUrl: th })), i)}
+              className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === urls[i] ? "ring-2 ring-[#ff5100]" : ""}`}>
+              <img src={thumb} alt="" className="w-16 h-16 rounded-xl object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** The per-day screen: week strip to hop between days, icon-led weather +
  *  manpower + attachments (the latter two navigate to their real modules
  *  instead of expanding inline), the rest of the log's fields, and a
@@ -410,12 +600,27 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [resourceTab, setResourceTab] = useState<"manpower" | "equipment">("manpower");
+  const [workTab, setWorkTab] = useState<"progress" | "boq">("progress");
   const { data: activity } = useCMDailyActivity(log.project_id, log.log_date, { enabled: true });
+  const { data: equipment } = useCMEquipment(log.project_id);
+  const { data: scheduleItems } = useCMScheduleItems(log.project_id);
 
-  const allDayPhotos = useMemo(() => {
-    const own = log.photos.map((url, i) => ({ url, thumbUrl: log.photo_thumbs[i] || url, module: "siteDiary" as const, recordId: log.id }));
-    return [...own, ...flattenCMDailyActivityPhotos(activity)];
-  }, [log, activity]);
+  const allDayPhotosCount = useMemo(() => log.photos.length + flattenCMDailyActivityPhotos(activity).length, [log, activity]);
+
+  const planPct = useMemo(() => {
+    if (!scheduleItems || scheduleItems.length === 0) return null;
+    return Math.round(projectPlanPercent(scheduleItems, log.log_date));
+  }, [scheduleItems, log.log_date]);
+
+  const boqDeliveryCount = useMemo(() => log.deliveries.filter((d) => d.boq_item_id).length, [log.deliveries]);
+
+  const activityRows = useMemo(() => activity ? [
+    ...toActivityRows(activity.inspections, "inspection"),
+    ...toActivityRows(activity.tasks, "punchList"),
+    ...toActivityRows(activity.submittals, "submittal"),
+  ] : [], [activity]);
+  const hseRows = useMemo(() => (activity ? toActivityRows(activity.safetyRecords, "safety") : []), [activity]);
 
   const weekDates = useMemo(() => {
     const base = new Date(`${log.log_date}T00:00:00`);
@@ -439,11 +644,16 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
     try { await deleteCMDailyLog(log.id); onChanged(); onBack(); } finally { setBusy(false); }
   };
 
-  const goTo = (to: "/cm/manpower" | "/cm/photos") => { setLastProject(log.project_id); navigate({ to }); };
+  const goTo = (to: "/cm/manpower" | "/cm/equipment" | "/cm/boq" | "/cm/photos") => { setLastProject(log.project_id); navigate({ to }); };
   const goToReport = () => {
     setLastProject(log.project_id);
     navigate({ to: "/cm/reports", search: { project: log.project_id, from: log.log_date, to: log.log_date } });
   };
+  const openModuleItem = (module: CMPhotoModule, recordId: string) => {
+    setPendingHighlight(module, recordId, log.project_id, "");
+    navigate({ to: MODULE_ROUTES[module] });
+  };
+  const rainH = rainHours(log.rain_start_time, log.rain_end_time);
 
   return (
     <div className="flex flex-col gap-4">
@@ -477,64 +687,106 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
         </span>
         <div className="min-w-0">
           <p className="text-[13px] text-white/80">{log.weather ? t(`weather.${log.weather}`) : "—"}</p>
-          <p className="font-mono text-[10px] text-white/35">{log.temperature_c != null ? `${log.temperature_c}°C` : t("siteDiary.temperature")}</p>
+          <p className="font-mono text-[10px] text-white/35">
+            {log.temperature_c != null ? `${log.temperature_c}°C` : t("siteDiary.temperature")}
+            {rainH != null && ` · ${t("siteDiary.rainHours", { hours: String(rainH) })}`}
+          </p>
         </div>
       </div>
 
-      {log.progress_pct != null && (
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className={labelCls}>{t("siteDiary.progressPct")}</span>
-            <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{log.progress_pct}%</span>
-          </div>
-          <div className="h-1.5 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full rounded-full" style={{ width: `${log.progress_pct}%`, backgroundColor: "#ff5100" }} />
-          </div>
-        </div>
-      )}
-
       {log.activities && <Field label={t("siteDiary.activities")} value={log.activities} />}
 
-      <CategoryRow icon={MANPOWER_ICON} label={t("siteDiary.manpower")} count={totalManpower(log.manpower)} onClick={() => goTo("/cm/manpower")} />
-      <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotos.length} onClick={() => goTo("/cm/photos")} />
+      <div className="flex flex-col gap-3 rounded-2xl bg-[#0d0d0e] p-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className={labelCls}>{t("siteDiary.resources")}</span>
+          <SegmentedField
+            options={[{ value: "manpower", label: t("siteDiary.manpowerTab") }, { value: "equipment", label: t("siteDiary.equipmentTab") }]}
+            value={resourceTab} onChange={setResourceTab} />
+        </div>
+        {resourceTab === "manpower" ? (
+          <CategoryRow icon={MANPOWER_ICON} label={t("siteDiary.manpower")} count={totalManpower(log.manpower)} onClick={() => goTo("/cm/manpower")} />
+        ) : (
+          <CategoryRow icon={EQUIPMENT_ICON} label={t("siteDiary.equipmentTab")} count={(equipment ?? []).length} onClick={() => goTo("/cm/equipment")} />
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3 rounded-2xl bg-[#0d0d0e] p-4">
+        <div className="flex items-center justify-between gap-2">
+          <span className={labelCls}>{t("siteDiary.workDone")}</span>
+          <SegmentedField
+            options={[{ value: "progress", label: t("siteDiary.progressTab") }, { value: "boq", label: t("siteDiary.boqTab") }]}
+            value={workTab} onChange={setWorkTab} />
+        </div>
+        {workTab === "progress" ? (
+          log.progress_pct != null ? (
+            <div>
+              <div className="flex items-center justify-between mb-1.5 font-mono text-[11px]">
+                {planPct != null && <span className="text-emerald-400/70">{t("siteDiary.plan")} {planPct}%</span>}
+                <span style={{ color: "#ff5100" }}>{t("siteDiary.actual")} {log.progress_pct}%</span>
+              </div>
+              <div className="relative h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${log.progress_pct}%`, backgroundColor: "#ff5100" }} />
+                {planPct != null && <div className="absolute top-0 bottom-0 w-0.5 bg-emerald-300" style={{ left: `${Math.min(planPct, 100)}%` }} />}
+              </div>
+            </div>
+          ) : <p className="text-[12px] text-white/30">—</p>
+        ) : (
+          <CategoryRow icon={BOQ_ICON} label={t("siteDiary.boqDeliveredToday", { count: String(boqDeliveryCount) })} onClick={() => goTo("/cm/boq")} />
+        )}
+        {log.photos.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {log.photos.map((url, i) => {
+              const thumb = log.photo_thumbs[i] || url;
+              return (
+                <button key={url} type="button" data-photo-url={url}
+                  onClick={() => onOpenPhoto(log.photos.map((u, j) => ({ url: u, thumbUrl: log.photo_thumbs[j] || u })), i)}
+                  className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === url ? "ring-2 ring-[#ff5100]" : ""}`}>
+                  <img src={thumb} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-3 text-[12px]">
         {log.materials_used && <Field label={t("siteDiary.materialsUsed")} value={log.materials_used} />}
         {log.equipment_used && <Field label={t("siteDiary.equipmentUsed")} value={log.equipment_used} />}
       </div>
-      {log.deliveries.length > 0 && (
-        <Field label={t("siteDiary.deliveries")} value={log.deliveries.map((d) => `${d.material} (${d.quantity}${d.unit ? ` ${d.unit}` : ""})${d.supplier ? ` — ${d.supplier}` : ""}`).join("; ")} />
-      )}
-      {log.visitors.length > 0 && (
-        <Field label={t("siteDiary.visitors")} value={log.visitors.map((v) => `[${t(`siteDiary.visitorKind.${v.kind}`)}] ${v.name}${v.organization ? ` (${v.organization})` : ""}${v.note ? `: ${v.note}` : ""}`).join("; ")} />
-      )}
       {log.delays.length > 0 && (
         <Field label={t("siteDiary.delays")} value={log.delays.map((d) => `${t(`siteDiary.delayCause.${d.cause}`)} — ${d.description} (${d.hours_lost}h)`).join("; ")} accent="#f43f5e" />
       )}
       {log.issues && <Field label={t("siteDiary.issues")} value={log.issues} accent="#f43f5e" />}
       {log.notes && <Field label={t("siteDiary.notes")} value={log.notes} />}
 
-      <CMDailyActivityList activity={activity} projectId={log.project_id}
-        onOpenItem={(module, recordId, projectId) => {
-          setPendingHighlight(module, recordId, projectId, "");
-          navigate({ to: MODULE_ROUTES[module] });
-        }} />
+      <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotosCount} onClick={() => goTo("/cm/photos")} />
 
-      {allDayPhotos.length > 0 && (
-        <div>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1.5">{t("common.photos")}</p>
-          <div className="flex flex-wrap gap-2">
-            {allDayPhotos.map((p, i) => (
-              <button key={`${p.module}-${p.recordId}-${p.url}`} type="button" data-photo-url={p.url}
-                onClick={() => onOpenPhoto(allDayPhotos.map((d) => ({ url: d.url, thumbUrl: d.thumbUrl })), i)}
-                className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === p.url ? "ring-2 ring-[#ff5100]" : ""}`}>
-                <img src={p.thumbUrl} alt="" className="w-20 h-20 rounded-xl object-cover" />
-                <span className="absolute bottom-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center bg-black/60" style={{ color: MODULE_COLOR[p.module] }}>
-                  {MODULE_ICON[p.module]}
-                </span>
-              </button>
-            ))}
-          </div>
+      {(activityRows.length > 0 || log.visitors.length > 0 || log.deliveries.length > 0) && (
+        <div className="flex flex-col gap-2">
+          <span className={labelCls}>{t("siteDiary.activitiesSection")}</span>
+          {activityRows.map((row) => (
+            <ModuleActivityRow key={`${row.module}-${row.recordId}`} row={row} onOpenItem={openModuleItem} onOpenPhoto={onOpenPhoto} flashPhotoUrl={flashPhotoUrl} />
+          ))}
+          {log.visitors.map((v, i) => (
+            <InlineActivityRow key={`visitor-${i}`} icon={VISITOR_ICON}
+              title={`[${t(`siteDiary.visitorKind.${v.kind}`)}] ${v.name}`}
+              subtitle={[v.organization, v.note].filter(Boolean).join(" — ") || undefined}
+              photos={v.photos ?? []} photoThumbs={v.photo_thumbs ?? []} onOpenPhoto={onOpenPhoto} flashPhotoUrl={flashPhotoUrl} />
+          ))}
+          {log.deliveries.map((d, i) => (
+            <InlineActivityRow key={`delivery-${i}`} icon={DELIVERY_ICON}
+              title={d.material} subtitle={`${d.quantity}${d.unit ? ` ${d.unit}` : ""}${d.supplier ? ` — ${d.supplier}` : ""}`}
+              photos={d.photos ?? []} photoThumbs={d.photo_thumbs ?? []} onOpenPhoto={onOpenPhoto} flashPhotoUrl={flashPhotoUrl} />
+          ))}
+        </div>
+      )}
+
+      {hseRows.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className={labelCls}>{t("siteDiary.hse")}</span>
+          {hseRows.map((row) => (
+            <ModuleActivityRow key={`${row.module}-${row.recordId}`} row={row} onOpenItem={openModuleItem} onOpenPhoto={onOpenPhoto} flashPhotoUrl={flashPhotoUrl} />
+          ))}
         </div>
       )}
 
@@ -557,13 +809,105 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
   );
 }
 
+/** Replaces the old List/Calendar mode toggle with one always-visible
+ *  screen: a horizontally-scrollable day strip pinned above the list so a
+ *  date is always one tap away, plus a chevron/swipe-down handle that
+ *  expands it into the full MiniCalendar month grid for browsing further
+ *  back. Tapping a day (in either form) filters the list below instead of
+ *  navigating away, so the day's content is visible immediately. */
+function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggleExpand }: {
+  logs: (CMDailyLog | CMDailyLogWithProject)[];
+  lang: CMLang;
+  dateFilter: string | null;
+  onSelectDate: (date: string | null) => void;
+  expanded: boolean;
+  onToggleExpand: (v: boolean) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number | null>(null);
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const logByDate = useMemo(() => {
+    const map = new Map<string, CMDailyLog | CMDailyLogWithProject>();
+    for (const l of logs) map.set(l.log_date, l);
+    return map;
+  }, [logs]);
+
+  const dates = useMemo(() => {
+    const base = new Date();
+    return Array.from({ length: 35 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(base.getDate() - 21 + i);
+      return d.toISOString().slice(0, 10);
+    });
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const todayIndex = dates.indexOf(today);
+    if (todayIndex >= 0) el.scrollLeft = Math.max(0, todayIndex * 44 - el.clientWidth / 2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY.current == null) return;
+    const delta = e.changedTouches[0].clientY - touchStartY.current;
+    if (delta > 40) onToggleExpand(true);
+    else if (delta < -40) onToggleExpand(false);
+    touchStartY.current = null;
+  };
+
+  if (expanded) {
+    return (
+      <div className="flex flex-col gap-2 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <MiniCalendar items={logs} dateOf={(l) => l.log_date} lang={lang}
+          onOpenDay={(dayItems) => { onSelectDate(dayItems[0].log_date); onToggleExpand(false); }} />
+        <button type="button" onClick={() => onToggleExpand(false)}
+          className="self-center text-white/25 hover:text-white/50 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div ref={scrollRef} className="flex gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+        {dates.map((d) => {
+          const entry = logByDate.get(d);
+          const isSelected = d === dateFilter;
+          const isToday = d === today;
+          const dateObj = new Date(`${d}T00:00:00`);
+          return (
+            <button key={d} type="button" onClick={() => onSelectDate(isSelected ? null : d)}
+              className={`flex flex-col items-center gap-1 rounded-xl py-2 px-2.5 shrink-0 transition-colors ${
+                isSelected ? "text-black" : entry ? "text-white/70 hover:bg-white/5" : "text-white/15"
+              } ${isToday && !isSelected ? "ring-1 ring-[#ff5100]/50" : ""}`}
+              style={isSelected ? { backgroundColor: "#ff5100" } : undefined}>
+              <span className="font-mono text-[8px] uppercase tracking-widest">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
+              <span className="text-[12px] font-bold">{dateObj.getDate()}</span>
+              <span className="w-1 h-1 rounded-full" style={{ backgroundColor: entry ? (isSelected ? "#000" : "#ff5100") : "transparent" }} />
+            </button>
+          );
+        })}
+      </div>
+      <button type="button" onClick={() => onToggleExpand(true)} className="self-center text-white/20 hover:text-white/40 transition-colors">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
+      </button>
+    </div>
+  );
+}
+
 function CMSiteDiaryPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const [viewAll, setViewAll] = useState(false);
-  const [view, setView] = useState<ModuleView>("list");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
   const { data: singleLogs, isLoading: singleLoading } = useCMDailyLogs(!viewAll ? (projectId || undefined) : undefined);
   const { data: allLogs, isLoading: allLoading } = useAllCMDailyLogs(viewAll ? user?.id : undefined);
   const logs: (CMDailyLog | CMDailyLogWithProject)[] | undefined = viewAll ? allLogs : singleLogs;
@@ -619,12 +963,13 @@ function CMSiteDiaryPage() {
   const visibleLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = logs ?? [];
+    if (dateFilter) list = list.filter((l) => l.log_date === dateFilter);
     if (q) {
       list = list.filter((l) =>
         [l.activities, l.notes, l.materials_used, l.equipment_used, l.issues].some((f) => f?.toLowerCase().includes(q)));
     }
     return sortAsc ? [...list].reverse() : list;
-  }, [logs, search, sortAsc]);
+  }, [logs, search, sortAsc, dateFilter]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -648,31 +993,30 @@ function CMSiteDiaryPage() {
             <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
             <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-            <div className="flex justify-end mb-3">
-              <ViewToggle view={view} onChange={setView} />
-            </div>
-
             {(viewAll || projectId) && (
               <>
-                {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-                {view === "calendar" ? (
-                  <MiniCalendar items={logs ?? []} dateOf={(l) => l.log_date} lang={lang}
-                    onOpenDay={(dayItems) => openDay(dayItems[0])} />
-                ) : (
-                  <>
-                    {!isLoading && visibleLogs.length === 0 && (
-                      <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                        <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-3">
-                      {visibleLogs.map((l) => (
-                        <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
-                          onOpen={openDay} />
-                      ))}
-                    </div>
-                  </>
+                <CalendarStrip logs={logs ?? []} lang={lang} dateFilter={dateFilter} onSelectDate={setDateFilter}
+                  expanded={calendarExpanded} onToggleExpand={setCalendarExpanded} />
+
+                {dateFilter && (
+                  <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+                    className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+                    {dateFilter} <span className="text-[13px] leading-none">×</span>
+                  </button>
                 )}
+
+                {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+                {!isLoading && visibleLogs.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                    <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  {visibleLogs.map((l) => (
+                    <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
+                      onOpen={openDay} />
+                  ))}
+                </div>
                 {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
               </>
             )}
