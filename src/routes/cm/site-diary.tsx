@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
-  ModuleHeader, BackButton, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
   MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField,
 } from "@/components/cm/shared";
@@ -391,20 +391,20 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function LogCard({ log, projectName, onOpen }: {
-  log: CMDailyLog; projectName?: string; onOpen: (log: CMDailyLog, flashPhotoUrl?: string) => void;
+function LogCard({ log, projectName, onSelect }: {
+  log: CMDailyLog; projectName?: string; onSelect: (log: CMDailyLog, flashPhotoUrl?: string) => void;
 }) {
   const { t } = useCMLang();
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id);
 
   useEffect(() => {
-    if (flash) onOpen(log, matchedPhotoUrl ?? undefined);
+    if (flash) onSelect(log, matchedPhotoUrl ?? undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flash]);
 
   return (
     <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-      <button onClick={() => onOpen(log)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
+      <button onClick={() => onSelect(log)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
           {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
@@ -586,17 +586,20 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
  *  manpower + attachments (the latter two navigate to their real modules
  *  instead of expanding inline), the rest of the log's fields, and a
  *  Preview report link into the existing print-ready report for this day. */
-function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpen, onChanged, onOpenPhoto }: {
+/** The full detail content for one day — rendered directly inline on the
+ *  list page (below the calendar strip + date chip) once a date is
+ *  selected, rather than as a separate screen. No header/back-button/
+ *  week-strip of its own since the page already provides those via
+ *  CalendarStrip; a project name label is shown only in "all projects"
+ *  mode, where more than one project can share the same selected date. */
+function DayDetailContent({ log, projectName, flashPhotoUrl, onChanged, onOpenPhoto }: {
   log: CMDailyLog | CMDailyLogWithProject;
   projectName?: string;
-  allLogs: (CMDailyLog | CMDailyLogWithProject)[];
   flashPhotoUrl: string | null;
-  onBack: () => void;
-  onOpen: (log: CMDailyLog | CMDailyLogWithProject, flashPhotoUrl?: string) => void;
   onChanged: () => void;
   onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
-  const { t, lang } = useCMLang();
+  const { t } = useCMLang();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -622,26 +625,10 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
   ] : [], [activity]);
   const hseRows = useMemo(() => (activity ? toActivityRows(activity.safetyRecords, "safety") : []), [activity]);
 
-  const weekDates = useMemo(() => {
-    const base = new Date(`${log.log_date}T00:00:00`);
-    const monOffset = (base.getDay() + 6) % 7;
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() - monOffset + i);
-      return d.toISOString().slice(0, 10);
-    });
-  }, [log.log_date]);
-
-  const logByDate = useMemo(() => {
-    const map = new Map<string, CMDailyLog | CMDailyLogWithProject>();
-    for (const l of allLogs) if (l.project_id === log.project_id) map.set(l.log_date, l);
-    return map;
-  }, [allLogs, log.project_id]);
-
   const handleDelete = async () => {
     if (!confirm(t("siteDiary.confirmDelete"))) return;
     setBusy(true);
-    try { await deleteCMDailyLog(log.id); onChanged(); onBack(); } finally { setBusy(false); }
+    try { await deleteCMDailyLog(log.id); onChanged(); } finally { setBusy(false); }
   };
 
   const goTo = (to: "/cm/manpower" | "/cm/equipment" | "/cm/boq" | "/cm/photos") => { setLastProject(log.project_id); navigate({ to }); };
@@ -656,30 +643,8 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
   const rainH = rainHours(log.rain_start_time, log.rain_end_time);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <BackButton onClick={onBack} />
-        <div className="min-w-0">
-          <h2 className="text-[15px] font-bold text-white truncate">{log.log_date}</h2>
-          {projectName && <p className="text-[11px] text-white/40 truncate">{projectName}</p>}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-7 gap-1.5">
-        {weekDates.map((d) => {
-          const entry = logByDate.get(d);
-          const isSelected = d === log.log_date;
-          const dateObj = new Date(`${d}T00:00:00`);
-          return (
-            <button key={d} type="button" disabled={!entry} onClick={() => entry && onOpen(entry)}
-              className={`flex flex-col items-center gap-1 rounded-xl py-2 transition-colors ${isSelected ? "text-black" : entry ? "text-white/70 hover:bg-white/5" : "text-white/15"}`}
-              style={isSelected ? { backgroundColor: "#ff5100" } : undefined}>
-              <span className="font-mono text-[9px] uppercase tracking-widest">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
-              <span className="text-[13px] font-bold">{dateObj.getDate()}</span>
-            </button>
-          );
-        })}
-      </div>
+    <div className="flex flex-col gap-4 rounded-2xl bg-[#0d0d0e]/40 p-4">
+      {projectName && <p className="text-[12px] font-medium text-white/50">{projectName}</p>}
 
       <div className="flex items-center gap-3 rounded-2xl bg-[#0d0d0e] px-4 py-3">
         <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
@@ -759,8 +724,6 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
       {log.issues && <Field label={t("siteDiary.issues")} value={log.issues} accent="#f43f5e" />}
       {log.notes && <Field label={t("siteDiary.notes")} value={log.notes} />}
 
-      <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotosCount} onClick={() => goTo("/cm/photos")} />
-
       {(activityRows.length > 0 || log.visitors.length > 0 || log.deliveries.length > 0) && (
         <div className="flex flex-col gap-2">
           <span className={labelCls}>{t("siteDiary.activitiesSection")}</span>
@@ -792,6 +755,8 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
 
       <CategoryRow icon={REPORT_ICON} label={t("siteDiary.previewReport")} onClick={goToReport} />
 
+      <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotosCount} onClick={() => goTo("/cm/photos")} />
+
       <div className="flex items-center gap-4 pt-1">
         <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
           {t("siteDiary.editEntry")}
@@ -810,10 +775,10 @@ function DayDetailView({ log, projectName, allLogs, flashPhotoUrl, onBack, onOpe
 }
 
 /** Replaces the old List/Calendar mode toggle with one always-visible
- *  screen: a horizontally-scrollable day strip pinned above the list so a
- *  date is always one tap away, plus a chevron/swipe-down handle that
- *  expands it into the full MiniCalendar month grid for browsing further
- *  back. Tapping a day (in either form) filters the list below instead of
+ *  screen: a 7-day week strip pinned above the list, swipeable left/right
+ *  to page through weeks, plus a chevron/swipe-down handle that expands it
+ *  into the full MiniCalendar month grid for browsing further back.
+ *  Tapping a day (in either form) filters the list below instead of
  *  navigating away, so the day's content is visible immediately. */
 function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggleExpand }: {
   logs: (CMDailyLog | CMDailyLogWithProject)[];
@@ -833,21 +798,30 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
     return map;
   }, [logs]);
 
-  const dates = useMemo(() => {
+  // Seven Monday-start weeks (three back, today's, three ahead) so each
+  // page is exactly 7 days — the same shape as the old day-detail week
+  // strip — and swiping left/right pages a full week at a time via
+  // native scroll-snap instead of one long 35-day overflow row.
+  const weeks = useMemo(() => {
     const base = new Date();
-    return Array.from({ length: 35 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() - 21 + i);
-      return d.toISOString().slice(0, 10);
+    const monOffset = (base.getDay() + 6) % 7;
+    const thisMonday = new Date(base);
+    thisMonday.setDate(base.getDate() - monOffset);
+    return Array.from({ length: 7 }, (_, w) => {
+      const weekStart = new Date(thisMonday);
+      weekStart.setDate(thisMonday.getDate() + (w - 3) * 7);
+      return Array.from({ length: 7 }, (_, d) => {
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + d);
+        return day.toISOString().slice(0, 10);
+      });
     });
   }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const todayIndex = dates.indexOf(today);
-    if (todayIndex >= 0) el.scrollLeft = Math.max(0, todayIndex * 44 - el.clientWidth / 2);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    el.scrollLeft = 3 * el.clientWidth;
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
@@ -874,24 +848,28 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
 
   return (
     <div className="flex flex-col gap-1 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-      <div ref={scrollRef} className="flex gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-        {dates.map((d) => {
-          const entry = logByDate.get(d);
-          const isSelected = d === dateFilter;
-          const isToday = d === today;
-          const dateObj = new Date(`${d}T00:00:00`);
-          return (
-            <button key={d} type="button" onClick={() => onSelectDate(isSelected ? null : d)}
-              className={`flex flex-col items-center gap-1 rounded-xl py-2 px-2.5 shrink-0 transition-colors ${
-                isSelected ? "text-black" : entry ? "text-white/70 hover:bg-white/5" : "text-white/15"
-              } ${isToday && !isSelected ? "ring-1 ring-[#ff5100]/50" : ""}`}
-              style={isSelected ? { backgroundColor: "#ff5100" } : undefined}>
-              <span className="font-mono text-[8px] uppercase tracking-widest">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
-              <span className="text-[12px] font-bold">{dateObj.getDate()}</span>
-              <span className="w-1 h-1 rounded-full" style={{ backgroundColor: entry ? (isSelected ? "#000" : "#ff5100") : "transparent" }} />
-            </button>
-          );
-        })}
+      <div ref={scrollRef} className="flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1.5 w-full shrink-0 snap-center">
+            {week.map((d) => {
+              const entry = logByDate.get(d);
+              const isSelected = d === dateFilter;
+              const isToday = d === today;
+              const dateObj = new Date(`${d}T00:00:00`);
+              return (
+                <button key={d} type="button" onClick={() => onSelectDate(isSelected ? null : d)}
+                  className={`flex flex-col items-center gap-1 rounded-xl py-2 transition-colors ${
+                    isSelected ? "text-black" : entry ? "text-white/70 hover:bg-white/5" : "text-white/15"
+                  } ${isToday && !isSelected ? "ring-1 ring-[#ff5100]/50" : ""}`}
+                  style={isSelected ? { backgroundColor: "#ff5100" } : undefined}>
+                  <span className="font-mono text-[9px] uppercase tracking-widest">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
+                  <span className="text-[13px] font-bold">{dateObj.getDate()}</span>
+                  <span className="w-1 h-1 rounded-full" style={{ backgroundColor: entry ? (isSelected ? "#000" : "#ff5100") : "transparent" }} />
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
       <button type="button" onClick={() => onToggleExpand(true)} className="self-center text-white/20 hover:text-white/40 transition-colors">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
@@ -916,16 +894,13 @@ function CMSiteDiaryPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
-  const [openLogId, setOpenLogId] = useState<string | null>(null);
-  const [openFlashPhotoUrl, setOpenFlashPhotoUrl] = useState<string | null>(null);
-  // Derived from the live `logs` query (rather than a stashed object) so
-  // edits made from inside DayDetailView show up immediately on refetch.
-  const openLog = useMemo(() => (logs ?? []).find((l) => l.id === openLogId) ?? null, [logs, openLogId]);
+  const [flashPhotoUrl, setFlashPhotoUrl] = useState<string | null>(null);
 
-  const openDay = (log: CMDailyLog | CMDailyLogWithProject, flashPhotoUrl?: string) => {
-    setOpenLogId(log.id);
-    setOpenFlashPhotoUrl(flashPhotoUrl ?? null);
+  const selectDay = (log: CMDailyLog | CMDailyLogWithProject, photoUrl?: string) => {
+    setDateFilter(log.log_date);
+    setFlashPhotoUrl(photoUrl ?? null);
   };
+  const clearDateFilter = () => { setDateFilter(null); setFlashPhotoUrl(null); };
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
@@ -983,43 +958,45 @@ function CMSiteDiaryPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        {openLog ? (
-          <DayDetailView log={openLog} projectName={viewAll ? (openLog as CMDailyLogWithProject).projectName : undefined}
-            allLogs={logs ?? []} flashPhotoUrl={openFlashPhotoUrl}
-            onBack={() => { setOpenLogId(null); setOpenFlashPhotoUrl(null); }}
-            onOpen={openDay} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
-        ) : (
+        <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
+
+        {(viewAll || projectId) && (
           <>
-            <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
-            <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
+            <CalendarStrip logs={logs ?? []} lang={lang} dateFilter={dateFilter} onSelectDate={setDateFilter}
+              expanded={calendarExpanded} onToggleExpand={setCalendarExpanded} />
 
-            {(viewAll || projectId) && (
-              <>
-                <CalendarStrip logs={logs ?? []} lang={lang} dateFilter={dateFilter} onSelectDate={setDateFilter}
-                  expanded={calendarExpanded} onToggleExpand={setCalendarExpanded} />
+            {dateFilter && (
+              <button onClick={clearDateFilter} aria-label={t("common.clearFilter")}
+                className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+                {dateFilter} <span className="text-[13px] leading-none">×</span>
+              </button>
+            )}
 
-                {dateFilter && (
-                  <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
-                    className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
-                    {dateFilter} <span className="text-[13px] leading-none">×</span>
-                  </button>
-                )}
-
-                {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-                {!isLoading && visibleLogs.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                    <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
-                  </div>
-                )}
+            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {!isLoading && visibleLogs.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
+              </div>
+            )}
+            {visibleLogs.length > 0 && (
+              dateFilter ? (
+                <div className="flex flex-col gap-6">
+                  {visibleLogs.map((l) => (
+                    <DayDetailContent key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
+                      flashPhotoUrl={flashPhotoUrl} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
+                  ))}
+                </div>
+              ) : (
                 <div className="flex flex-col gap-3">
                   {visibleLogs.map((l) => (
                     <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
-                      onOpen={openDay} />
+                      onSelect={selectDay} />
                   ))}
                 </div>
-                {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
-              </>
+              )
             )}
+            {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
