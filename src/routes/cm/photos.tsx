@@ -25,6 +25,8 @@ import {
   updateCMSafetyRecord,
   createCMSubmittal,
   updateCMSubmittal,
+  useCMBOQItems,
+  createCMPhotoBoqTag,
   type CMPhotoModule,
   type CMPhotoWithContext,
   type CMProject,
@@ -167,7 +169,10 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
 }) {
   const { t } = useCMLang();
   const { data: consultants } = useCMProjectConsultants(projectId);
+  const { data: boqItems } = useCMBOQItems(projectId);
   const [files, setFiles] = useState<File[]>([]);
+  const [boqTags, setBoqTags] = useState<Map<File, string>>(new Map());
+  const [pickerOpen, setPickerOpen] = useState(true);
   const [moduleSel, setModuleSel] = useState<CMPhotoModule>(MODULE_OPTIONS[0]);
   const [photoDate, setPhotoDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [caption, setCaption] = useState("");
@@ -177,6 +182,11 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   const addFiles = (list: FileList | null) => {
     if (!list) return;
     setFiles((prev) => [...prev, ...Array.from(list)]);
+    setPickerOpen(false);
+  };
+  const removeFile = (f: File) => {
+    setFiles((prev) => prev.filter((x) => x !== f));
+    setBoqTags((prev) => { const next = new Map(prev); next.delete(f); return next; });
   };
 
   const canSave = files.length > 0 && !!projectId && !saving;
@@ -221,6 +231,10 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
         const item = await createCMSubmittal(ownerId, projectId, { title, status: "Draft", submitted_date: photoDate });
         await updateCMSubmittal(item.id, { photos: urls, photo_thumbs: thumbs });
       }
+      const tagged = files.map((f, i) => ({ url: urls[i], boqItemId: boqTags.get(f) })).filter((t): t is { url: string; boqItemId: string } => !!t.boqItemId);
+      if (tagged.length > 0) {
+        await Promise.all(tagged.map((t) => createCMPhotoBoqTag(ownerId, projectId, t.boqItemId, t.url)));
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save photo");
@@ -228,10 +242,16 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
     }
   };
 
-  if (files.length === 0) {
+  if (files.length === 0 || pickerOpen) {
     return (
       <Sheet title={t("photos.capture")} onClose={onClose}>
         <div className="px-6 pb-8 pt-4 flex flex-col gap-3">
+          {files.length > 0 && (
+            <button type="button" onClick={() => setPickerOpen(false)}
+              className="self-start font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors mb-1">
+              ← {t("photos.backToReview", { count: String(files.length) })}
+            </button>
+          )}
           <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]"
             style={{ backgroundColor: "#ff5100" }}>
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -260,19 +280,32 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   return (
     <Sheet title={t("photos.capture")} onClose={onClose}>
       <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           {files.map((f, i) => (
-            <div key={i} className="relative w-16 h-16">
-              <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 rounded-xl object-cover" />
-              <button type="button" onClick={() => setFiles((p) => p.filter((_, idx) => idx !== i))}
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
+            <div key={i} className="flex flex-col gap-1 w-20">
+              <div className="relative w-20 h-20">
+                <img src={URL.createObjectURL(f)} alt="" className="w-20 h-20 rounded-xl object-cover" />
+                <button type="button" onClick={() => removeFile(f)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
+              </div>
+              {!!projectId && (boqItems ?? []).length > 0 && (
+                <FieldSelect
+                  value={boqTags.get(f) ?? ""}
+                  onChange={(id) => setBoqTags((prev) => { const next = new Map(prev); if (id) next.set(f, id); else next.delete(f); return next; })}
+                  placeholder={t("photos.tagBoq")}
+                  searchable
+                  searchPlaceholder={t("photos.searchBoq")}
+                  disabled={saving}
+                  triggerClassName="w-20 flex items-center justify-between gap-1 bg-white/5 rounded-lg border border-white/10 px-1.5 py-1 text-[9px] text-white/60 disabled:opacity-40"
+                  options={[{ value: "", label: t("photos.tagBoq") }, ...(boqItems ?? []).map((b) => ({ value: b.id, label: b.description }))]}
+                />
+              )}
             </div>
           ))}
-          <label className={`relative w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 transition-colors ${saving ? "opacity-40" : "cursor-pointer hover:border-white/40 hover:text-white/60"}`}>
+          <button type="button" disabled={saving} onClick={() => setPickerOpen(true)}
+            className="w-20 h-20 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 hover:border-white/40 hover:text-white/60 transition-colors disabled:opacity-40">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-            <input type="file" accept="image/*" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={saving}
-              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          </label>
+          </button>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -301,7 +334,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
         <button type="button" onClick={handleSubmit} disabled={!canSave}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? t("photos.savingPhoto") : t("photos.savePhoto")}
+          {saving ? t("photos.savingPhoto") : t("photos.savePhoto", { count: String(files.length) })}
         </button>
       </div>
     </Sheet>
