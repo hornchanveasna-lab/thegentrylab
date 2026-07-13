@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
-  useCMProjectLocations, locationBreadcrumb,
+  useCMProjectLocations, locationBreadcrumb, useCMCompanies, createCMCompany,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
@@ -261,6 +262,42 @@ export function LocationSelect({ projectId, value, onChange, disabled }: {
       searchable
       placeholder={t("common.selectLocation")}
       options={[{ value: "", label: t("common.none") }, ...options]}
+    />
+  );
+}
+
+/** Company picker — owner-scoped (like LocationSelect is project-scoped),
+ *  with an inline "+ Create" for a name that doesn't exist yet. onChange
+ *  returns both the id (to store as company_id) and the resolved name (to
+ *  mirror into the existing free-text `company` field), so callers don't
+ *  need their own company lookup. */
+export function CompanySelect({ ownerId, value, onChange, disabled }: {
+  ownerId: string; value: string | null; onChange: (companyId: string | null, companyName: string) => void; disabled?: boolean;
+}) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: companies } = useCMCompanies(ownerId);
+
+  const handleChange = (v: string) => {
+    const match = companies?.find((c) => c.id === v);
+    onChange(v || null, match?.name ?? "");
+  };
+  const handleCreate = async (name: string) => {
+    const created = await createCMCompany(ownerId, name);
+    qc.invalidateQueries({ queryKey: ["cm_companies", ownerId] });
+    onChange(created.id, created.name);
+  };
+
+  return (
+    <FieldSelect
+      value={value ?? ""}
+      onChange={handleChange}
+      onCreateCustom={handleCreate}
+      disabled={disabled}
+      searchable
+      allowCustom
+      placeholder={t("directory.company")}
+      options={(companies ?? []).map((c) => ({ value: c.id, label: c.name }))}
     />
   );
 }
