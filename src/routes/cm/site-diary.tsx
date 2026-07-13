@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, CMDailyActivityList,
-  MiniCalendar, type ModuleView,
+  MiniCalendar, ViewToggle, type ModuleView,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -458,9 +458,12 @@ function CMSiteDiaryPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc}
-          view={view} onViewChange={setView} />
+        <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
+
+        <div className="flex justify-end mb-3">
+          <ViewToggle view={view} onChange={setView} />
+        </div>
 
         {dateFilter && (
           <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
