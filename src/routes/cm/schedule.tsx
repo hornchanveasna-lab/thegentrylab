@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
 } from "@/components/cm/shared";
@@ -113,7 +114,7 @@ function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions
   );
 }
 
-function ActivityRow({ item, onChanged }: { item: CMScheduleItem; onChanged: () => void }) {
+function ActivityRow({ item, canEdit, canDelete, onChanged }: { item: CMScheduleItem; canEdit: boolean; canDelete: boolean; onChanged: () => void }) {
   const { t } = useCMLang();
   const [actual, setActual] = useState(String(item.actual_percent));
   const [busy, setBusy] = useState(false);
@@ -141,18 +142,26 @@ function ActivityRow({ item, onChanged }: { item: CMScheduleItem; onChanged: () 
       <div className="text-right shrink-0">
         <p className="font-mono text-[10px] text-white/35">{t("schedule.planPct")} {plan.toFixed(0)}%</p>
         <div className="flex items-center gap-1 mt-0.5">
-          <input type="number" min={0} max={100} value={actual} disabled={busy}
-            onChange={(e) => setActual(e.target.value)} onBlur={commitActual}
-            className="w-14 text-right bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[11px] text-white focus:outline-none focus:border-[#ff5100]/60" />
+          {canEdit ? (
+            <input type="number" min={0} max={100} value={actual} disabled={busy}
+              onChange={(e) => setActual(e.target.value)} onBlur={commitActual}
+              className="w-14 text-right bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[11px] text-white focus:outline-none focus:border-[#ff5100]/60" />
+          ) : (
+            <span className="font-mono text-[11px] text-white">{item.actual_percent}</span>
+          )}
           <span className="font-mono text-[11px]" style={{ color: varianceColor(Number(actual) || 0, plan) }}>%</span>
         </div>
       </div>
-      <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+      {canDelete && (
+        <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+      )}
     </div>
   );
 }
 
-function GroupSection({ groupLabel, items, onChanged }: { groupLabel: string; items: CMScheduleItem[]; onChanged: () => void }) {
+function GroupSection({ groupLabel, items, canEdit, canDelete, onChanged }: {
+  groupLabel: string; items: CMScheduleItem[]; canEdit: boolean; canDelete: boolean; onChanged: () => void;
+}) {
   const totalWeight = items.reduce((s, i) => s + i.weight, 0) || 1;
   const groupPlan = items.reduce((s, i) => s + i.weight * scheduleItemPlanPercent(i, today()), 0) / totalWeight;
   const groupActual = items.reduce((s, i) => s + i.weight * i.actual_percent, 0) / totalWeight;
@@ -164,7 +173,7 @@ function GroupSection({ groupLabel, items, onChanged }: { groupLabel: string; it
       </span>
     }>
       <div className="flex flex-col gap-2">
-        {items.map((item) => <ActivityRow key={item.id} item={item} onChanged={onChanged} />)}
+        {items.map((item) => <ActivityRow key={item.id} item={item} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} />)}
       </div>
     </Card>
   );
@@ -177,6 +186,9 @@ function CMSchedulePage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMScheduleItems(projectId || undefined);
   const { data: boqItems } = useCMBOQItems(projectId || undefined);
+  const canCreate = usePermission(projectId || undefined, user?.id, "schedule", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "schedule", "edit");
+  const canDelete = usePermission(projectId || undefined, user?.id, "schedule", "delete");
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
@@ -228,15 +240,15 @@ function CMSchedulePage() {
             )}
             <div className="flex flex-col gap-3">
               {groups.map(([groupLabel, groupItems]) => (
-                <GroupSection key={groupLabel} groupLabel={groupLabel} items={groupItems} onChanged={invalidate} />
+                <GroupSection key={groupLabel} groupLabel={groupLabel} items={groupItems} canEdit={canEdit} canDelete={canDelete} onChanged={invalidate} />
               ))}
             </div>
-            <FAB label={t("schedule.newBtn")} onClick={() => setShowNew(true)} />
+            {canCreate && <FAB label={t("schedule.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && (
+      {showNew && projectId && canCreate && (
         <NewActivitySheet ownerId={user.id} projectId={projectId} groupOptions={groupOptions} boqCategoryOptions={boqCategoryOptions}
           onClose={() => setShowNew(false)} onCreated={invalidate} />
       )}

@@ -3,9 +3,10 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
-  EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR, EmptyState, ErrorState,
+  EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR, EmptyState, ErrorState, StatusBadge,
 } from "@/components/cm/shared";
 import {
   useCMEquipment,
@@ -72,7 +73,7 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function EquipmentRow({ eq, onChanged }: { eq: CMEquipment; onChanged: () => void }) {
+function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; canEdit: boolean; canDelete: boolean; onChanged: () => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
 
@@ -89,15 +90,19 @@ function EquipmentRow({ eq, onChanged }: { eq: CMEquipment; onChanged: () => voi
         <p className="font-mono text-[10px] text-white/30">{t("equipment.qty")} {eq.quantity}</p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <FieldSelect
-          value={eq.status}
-          onChange={(v) => updateCMEquipment(eq.id, { status: v }).then(onChanged)}
-          disabled={busy}
-          options={EQUIPMENT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`equipmentStatus.${s}`) }))}
-          triggerClassName="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5"
-          triggerStyle={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}
-        />
-        <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        {canEdit ? (
+          <FieldSelect
+            value={eq.status}
+            onChange={(v) => updateCMEquipment(eq.id, { status: v }).then(onChanged)}
+            disabled={busy}
+            options={EQUIPMENT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`equipmentStatus.${s}`) }))}
+            triggerClassName="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5"
+            triggerStyle={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}
+          />
+        ) : (
+          <StatusBadge label={t(`equipmentStatus.${eq.status}`)} color={EQUIPMENT_STATUS_COLOR[eq.status]} />
+        )}
+        {canDelete && <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>}
       </div>
     </div>
   );
@@ -109,6 +114,9 @@ function CMEquipmentPage() {
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading, isError, refetch } = useCMEquipment(projectId || undefined);
+  const canCreate = usePermission(projectId || undefined, user?.id, "equipment", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "equipment", "edit");
+  const canDelete = usePermission(projectId || undefined, user?.id, "equipment", "delete");
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -146,16 +154,16 @@ function CMEquipmentPage() {
               <>
                 {!isLoading && visibleItems.length === 0 && <EmptyState message={t("equipment.nothingYet")} />}
                 <div className="flex flex-col gap-2">
-                  {visibleItems.map((eq) => <EquipmentRow key={eq.id} eq={eq} onChanged={invalidate} />)}
+                  {visibleItems.map((eq) => <EquipmentRow key={eq.id} eq={eq} canEdit={canEdit} canDelete={canDelete} onChanged={invalidate} />)}
                 </div>
               </>
             )}
-            <FAB label={t("equipment.newBtn")} onClick={() => setShowNew(true)} />
+            {canCreate && <FAB label={t("equipment.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && <NewEquipmentSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && projectId && canCreate && <NewEquipmentSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
     </div>
   );
 }

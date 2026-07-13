@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
@@ -31,10 +32,11 @@ const STATUS_COLOR: Record<InspectionStatus, string> = {
 };
 const STATUS_OPTIONS: InspectionStatus[] = ["Scheduled", "Passed", "Failed", "Not Applicable"];
 
-function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMInspection; onClose: () => void; onCreated: () => void;
+function NewInspectionSheet({ ownerId, projectId, existing, canApprove, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMInspection; canApprove: boolean; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Passed" && s !== "Failed") || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [status, setStatus] = useState<InspectionStatus>(existing?.status ?? "Scheduled");
   const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
@@ -81,7 +83,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("inspection.status")}</span>
-            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`) }))} />
+            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("inspection.date")}</span>
@@ -120,7 +122,10 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
+function InspectionCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
+  item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+  onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+}) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -130,6 +135,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
   const { data: locations } = useCMProjectLocations(item.project_id);
   const location = locations?.find((l) => l.id === item.location_id);
   const sc = STATUS_COLOR[item.status];
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Passed" && s !== "Failed") || s === item.status);
 
   const handleStatusChange = async (status: InspectionStatus) => {
     setBusy(true);
@@ -152,10 +158,14 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
       </button>
       {open && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
-          <SegmentedField
-            options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`), color: STATUS_COLOR[s] }))}
-            value={item.status} disabled={busy} onChange={handleStatusChange}
-          />
+          {canEdit ? (
+            <SegmentedField
+              options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`), color: STATUS_COLOR[s] }))}
+              value={item.status} disabled={busy} onChange={handleStatusChange}
+            />
+          ) : (
+            <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
+          )}
           {item.discipline && <p className="text-[12px] text-white/60">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
           {location && <p className="text-[12px] text-white/60">{t("common.location")}: {locationBreadcrumb(location, locations ?? [])}</p>}
           {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
@@ -172,13 +182,13 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
             </div>
           )}
           <div className="flex items-center gap-4">
-            <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</button>
-            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>
+            {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</button>}
+            {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>}
           </div>
         </div>
       )}
       {editing && (
-        <NewInspectionSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
+        <NewInspectionSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
@@ -195,6 +205,10 @@ function CMInspectionPage() {
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: inspections, isLoading, isError, refetch } = useCMInspections(projectId || undefined);
+  const canCreate = usePermission(projectId || undefined, user?.id, "inspection", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "inspection", "edit");
+  const canApprove = usePermission(projectId || undefined, user?.id, "inspection", "approve");
+  const canDelete = usePermission(projectId || undefined, user?.id, "inspection", "delete");
   const [showNew, setShowNew] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -249,16 +263,16 @@ function CMInspectionPage() {
               <>
                 {!isLoading && visibleInspections.length === 0 && <EmptyState message={t("inspection.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             ))}
-            <FAB label={t("inspection.newBtn")} onClick={() => setShowNew(true)} />
+            {canCreate && <FAB label={t("inspection.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && <NewInspectionSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && projectId && <NewInspectionSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
         <PhotoLightbox

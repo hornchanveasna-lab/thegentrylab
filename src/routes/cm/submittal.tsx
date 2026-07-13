@@ -3,9 +3,10 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect,
+  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect, StatusBadge,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -28,11 +29,13 @@ const STATUS_COLOR: Record<SubmittalStatus, string> = {
   "Approved as Noted": "#34d399", "Revise & Resubmit": "#f97316", Rejected: "#f43f5e",
 };
 const STATUS_OPTIONS: SubmittalStatus[] = ["Draft", "Submitted", "Under Review", "Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
+const APPROVAL_STATUSES: SubmittalStatus[] = ["Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
 
-function NewSubmittalSheet({ ownerId, projectId, existing, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMSubmittal; onClose: () => void; onCreated: () => void;
+function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [specSection, setSpecSection] = useState(existing?.spec_section ?? "");
   const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
@@ -85,7 +88,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, onClose, onCreated }:
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("submittal.status")}</span>
-            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`submittalStatus.${s}`) }))} />
+            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`) }))} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
@@ -120,12 +123,16 @@ function NewSubmittalSheet({ ownerId, projectId, existing, onClose, onCreated }:
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
+function SubmittalCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
+  item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+  onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+}) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id);
   const sc = STATUS_COLOR[item.status];
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === item.status);
 
   const handleStatusChange = async (status: SubmittalStatus) => {
     setBusy(true);
@@ -152,18 +159,26 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </button>
-          <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+          {canEdit && (
+            <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+          )}
+          {canDelete && (
+            <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+          )}
         </div>
       </div>
-      <SegmentedField
-        options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
-        value={item.status} disabled={busy} onChange={handleStatusChange}
-      />
+      {canEdit ? (
+        <SegmentedField
+          options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
+          value={item.status} disabled={busy} onChange={handleStatusChange}
+        />
+      ) : (
+        <StatusBadge label={t(`submittalStatus.${item.status}`)} color={sc} />
+      )}
       <div className="flex flex-wrap items-center gap-2 mt-1">
         {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
@@ -180,7 +195,7 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
         </div>
       )}
       {editing && (
-        <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
+        <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
     </div>
@@ -193,6 +208,10 @@ function CMSubmittalPage() {
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
+  const canCreate = usePermission(projectId || undefined, user?.id, "submittal", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "submittal", "edit");
+  const canApprove = usePermission(projectId || undefined, user?.id, "submittal", "approve");
+  const canDelete = usePermission(projectId || undefined, user?.id, "submittal", "delete");
   const [showNew, setShowNew] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -251,16 +270,16 @@ function CMSubmittalPage() {
                   </div>
                 )}
                 <div className="flex flex-col gap-3">
-                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             )}
-            <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />
+            {canCreate && <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
         <PhotoLightbox
