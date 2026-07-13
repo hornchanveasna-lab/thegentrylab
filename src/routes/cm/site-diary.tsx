@@ -774,17 +774,12 @@ function DayDetailContent({ log, projectName, flashPhotoUrl, onChanged, onOpenPh
   );
 }
 
-const CALENDAR_CELL_WIDTH = 44;
-const CALENDAR_SPAN_DAYS = 30;
-
 /** Replaces the old List/Calendar mode toggle with one always-visible
- *  screen: a 7-day-wide window pinned above the list, centered on
- *  whichever date is selected (or today, if none is). Tapping any visible
- *  day re-centers the strip on it — smoothly sliding it back to the
- *  middle — and a tappable Month/Year label (or swipe-down) expands into
- *  the full MiniCalendar month grid for browsing further back. Tapping a
- *  day (in either form) filters the list below instead of navigating
- *  away, so the day's content is visible immediately. */
+ *  screen: a 7-day week strip pinned above the list, swipeable left/right
+ *  to page through weeks, plus a chevron/swipe-down handle that expands it
+ *  into the full MiniCalendar month grid for browsing further back.
+ *  Tapping a day (in either form) filters the list below instead of
+ *  navigating away, so the day's content is visible immediately. */
 function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggleExpand }: {
   logs: (CMDailyLog | CMDailyLogWithProject)[];
   lang: CMLang;
@@ -795,11 +790,8 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
-  const hasMounted = useRef(false);
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
-  // The selected date always anchors the middle of the strip; with nothing
-  // selected it falls back to today, same as the initial view.
-  const centerDate = dateFilter ?? today;
+  const [visibleWeek, setVisibleWeek] = useState(3);
 
   const logByDate = useMemo(() => {
     const map = new Map<string, CMDailyLog | CMDailyLogWithProject>();
@@ -807,34 +799,42 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
     return map;
   }, [logs]);
 
-  // A wide continuous strip (not calendar-week-aligned) so the center
-  // date is always exactly in the middle regardless of weekday, with
-  // plenty of days on either side to freely scroll through.
-  const days = useMemo(() => {
-    const base = new Date(`${centerDate}T00:00:00`);
-    return Array.from({ length: CALENDAR_SPAN_DAYS * 2 + 1 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() - CALENDAR_SPAN_DAYS + i);
-      return d.toISOString().slice(0, 10);
+  // Seven Monday-start weeks (three back, today's, three ahead) so each
+  // page is exactly 7 days — the same shape as the old day-detail week
+  // strip — and swiping left/right pages a full week at a time via
+  // native scroll-snap instead of one long 35-day overflow row.
+  const weeks = useMemo(() => {
+    const base = new Date();
+    const monOffset = (base.getDay() + 6) % 7;
+    const thisMonday = new Date(base);
+    thisMonday.setDate(base.getDate() - monOffset);
+    return Array.from({ length: 7 }, (_, w) => {
+      const weekStart = new Date(thisMonday);
+      weekStart.setDate(thisMonday.getDate() + (w - 3) * 7);
+      return Array.from({ length: 7 }, (_, d) => {
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + d);
+        return day.toISOString().slice(0, 10);
+      });
     });
-  }, [centerDate]);
+  }, []);
 
-  const monthYearLabel = useMemo(
-    () => new Date(`${centerDate}T00:00:00`).toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { month: "long", year: "numeric" }),
-    [centerDate, lang],
-  );
+  const monthYearLabel = useMemo(() => {
+    const midWeek = weeks[visibleWeek] ?? weeks[3];
+    return new Date(`${midWeek[3]}T00:00:00`).toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { month: "long", year: "numeric" });
+  }, [weeks, visibleWeek, lang]);
 
-  // Re-centers the strip on `centerDate` every time it changes (a tap, a
-  // deep-link auto-select, or picking a day in the expanded month view) —
-  // animated after the first mount so selecting a day visibly slides back
-  // to the middle instead of just jumping there.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const left = CALENDAR_SPAN_DAYS * CALENDAR_CELL_WIDTH - el.clientWidth / 2 + CALENDAR_CELL_WIDTH / 2;
-    el.scrollTo({ left, behavior: hasMounted.current ? "smooth" : "auto" });
-    hasMounted.current = true;
-  }, [centerDate]);
+    el.scrollLeft = 3 * el.clientWidth;
+  }, []);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    setVisibleWeek(Math.round(el.scrollLeft / el.clientWidth));
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -867,29 +867,33 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-      <div ref={scrollRef} className="flex overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-        {days.map((d) => {
-          const entry = logByDate.get(d);
-          const isSelected = d === dateFilter;
-          const isToday = d === today;
-          const dateObj = new Date(`${d}T00:00:00`);
-          return (
-            <button key={d} type="button" onClick={() => onSelectDate(isSelected ? null : d)}
-              className="flex flex-col items-center gap-1 shrink-0" style={{ width: CALENDAR_CELL_WIDTH }}>
-              <span className="font-mono text-[9px] uppercase tracking-widest text-white/35">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
-              <span
-                className={`relative aspect-square w-9 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${
-                  isSelected ? "text-black" : entry ? "text-white/80 bg-white/5" : "text-white/25"
-                }`}
-                style={{
-                  backgroundColor: isSelected ? "#ff5100" : undefined,
-                  boxShadow: isToday && !isSelected ? "inset 0 0 0 1.5px #ff5100" : undefined,
-                }}>
-                {dateObj.getDate()}
-              </span>
-            </button>
-          );
-        })}
+      <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1.5 w-full shrink-0 snap-center">
+            {week.map((d) => {
+              const entry = logByDate.get(d);
+              const isSelected = d === dateFilter;
+              const isToday = d === today;
+              const dateObj = new Date(`${d}T00:00:00`);
+              return (
+                <button key={d} type="button" onClick={() => onSelectDate(isSelected ? null : d)}
+                  className="flex flex-col items-center gap-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-white/35">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
+                  <span
+                    className={`relative aspect-square w-9 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${
+                      isSelected ? "text-black" : entry ? "text-white/80 bg-white/5" : "text-white/25"
+                    }`}
+                    style={{
+                      backgroundColor: isSelected ? "#ff5100" : undefined,
+                      boxShadow: isToday && !isSelected ? "inset 0 0 0 1.5px #ff5100" : undefined,
+                    }}>
+                    {dateObj.getDate()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
