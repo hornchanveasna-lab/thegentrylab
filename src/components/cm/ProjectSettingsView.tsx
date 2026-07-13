@@ -18,8 +18,16 @@ import {
   createCMProjectConsultant,
   updateCMProjectConsultant,
   deleteCMProjectConsultant,
+  useCMProjectMembers,
+  updateCMMemberRole,
+  updateCMMemberPosition,
+  removeCMProjectMember,
+  useCMProjectInvites,
+  createCMProjectInvite,
+  revokeCMProjectInvite,
   type CMProject,
   type CMProjectConsultant,
+  type CMMemberRole,
   type ProjectStatus,
 } from "@/lib/cm-data";
 
@@ -504,6 +512,103 @@ function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projec
   );
 }
 
+/* ── Team (Phase 1: schema + invite-link mechanics only — members can
+ *  accept an invite and show up here, but every other project-scoped
+ *  table still gates strictly on owner_id, so they can't see project
+ *  content yet; that RLS rewrite is a separate follow-up) ──────── */
+const MEMBER_ROLE_OPTIONS: CMMemberRole[] = ["admin", "member", "visitor"];
+const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeholder-white/20 focus:outline-none focus:text-white/70 transition-colors";
+
+function TeamSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: members } = useCMProjectMembers(projectId);
+  const { data: invites } = useCMProjectInvites(projectId);
+  const [inviteRole, setInviteRole] = useState<CMMemberRole>("member");
+  const [creating, setCreating] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const invalidateMembers = () => qc.invalidateQueries({ queryKey: ["cm_project_members", projectId] });
+  const invalidateInvites = () => qc.invalidateQueries({ queryKey: ["cm_project_invites", projectId] });
+
+  const copyInviteLink = async (token: string, id: string) => {
+    await navigator.clipboard.writeText(`${window.location.origin}/cm/join/${token}`);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((cur) => (cur === id ? null : cur)), 2000);
+  };
+
+  const handleCreateInvite = async () => {
+    setCreating(true);
+    try {
+      const invite = await createCMProjectInvite(ownerId, projectId, inviteRole);
+      invalidateInvites();
+      await copyInviteLink(invite.token, invite.id);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const activeInvites = (invites ?? []).filter((i) => !i.revoked_at);
+
+  return (
+    <Card title={t("team.title")}>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <span className={labelCls}>{t("team.members")}</span>
+          {(members ?? []).map((m) => (
+            <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
+              <div className="min-w-0 flex items-center gap-2.5">
+                {m.avatar_url ? (
+                  <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-[11px] text-white/50">
+                    {(m.display_name || m.email || "?").charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-[12px] text-white/80 truncate">{m.display_name || m.email || t("team.unknownMember")}</p>
+                  <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={m.position ?? ""}
+                    onBlur={(e) => { if (e.target.value !== (m.position ?? "")) updateCMMemberPosition(m.id, e.target.value.trim() || null).then(invalidateMembers); }} />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <FieldSelect value={m.role} onChange={(role) => updateCMMemberRole(m.id, role).then(invalidateMembers)}
+                  options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
+                <button onClick={() => removeCMProjectMember(m.id).then(invalidateMembers)}
+                  className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+              </div>
+            </div>
+          ))}
+          {(members?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("team.noMembers")}</p>}
+        </div>
+
+        <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
+          <span className={labelCls}>{t("team.inviteLink")}</span>
+          <div className="flex gap-2">
+            <FieldSelect value={inviteRole} onChange={setInviteRole}
+              options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
+            <button onClick={handleCreateInvite} disabled={creating} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+              {t("team.generateLink")}
+            </button>
+          </div>
+          {activeInvites.map((inv) => (
+            <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+              <span className="font-mono text-[10px] text-white/50 truncate">{t(`team.role.${inv.role}`)} — {inv.token.slice(0, 8)}…</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => copyInviteLink(inv.token, inv.id)} className={smallBtn} style={{ color: "#ff5100" }}>
+                  {copiedId === inv.id ? t("team.copied") : t("team.copyLink")}
+                </button>
+                <button onClick={() => revokeCMProjectInvite(inv.id).then(invalidateInvites)}
+                  className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 /* ── Main settings view ──────────────────────────────── */
 export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged }: {
   project: CMProject; ownerId: string; onBack: () => void; onProjectChanged: () => void;
@@ -524,6 +629,7 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
         <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone} />
         <ChecklistSection ownerId={ownerId} projectId={project.id} />
         <SubcontractorsSection ownerId={ownerId} projectId={project.id} />
+        <TeamSection ownerId={ownerId} projectId={project.id} />
       </div>
     </>
   );

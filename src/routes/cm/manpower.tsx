@@ -1,18 +1,75 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { ModuleHeader, ProjectPicker, useSelectedProject } from "@/components/cm/shared";
-import { useCMDailyLogs, type CMDailyLog } from "@/lib/cm-data";
+import { ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls } from "@/components/cm/shared";
+import {
+  useCMDailyLogs, useCMManpowerRoster, addCMManpowerRosterItem, removeCMManpowerRosterItem,
+  type CMDailyLog,
+} from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/manpower")({
   head: () => ({ meta: [{ title: "Manpower Record — Construction Management App" }] }),
   component: CMManpowerPage,
 });
 
+const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
+
 function dailyHeadcount(log: CMDailyLog) {
   return log.manpower.reduce((s, m) => s + m.count, 0);
+}
+
+/** A predefined per-project list of trade/company pairs Site Diary picks
+ *  from instead of retyping every day — the roster itself carries no
+ *  headcount; that's still entered fresh per day in Site Diary and
+ *  aggregated live above, same as before. */
+function ManpowerRosterSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: roster } = useCMManpowerRoster(projectId);
+  const [adding, setAdding] = useState(false);
+  const [trade, setTrade] = useState("");
+  const [company, setCompany] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_manpower_roster", projectId] });
+
+  const handleAdd = async () => {
+    if (!trade.trim()) return;
+    await addCMManpowerRosterItem(ownerId, projectId, trade.trim(), company.trim() || null);
+    setTrade(""); setCompany(""); setAdding(false);
+    invalidate();
+  };
+
+  return (
+    <Card title={t("manpower.roster")}>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(roster ?? []).map((r) => (
+            <span key={r.id} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[10px] bg-white/[0.05] text-white/60">
+              {r.company ? `${r.company} — ` : ""}{r.trade}
+              <button onClick={() => removeCMManpowerRosterItem(r.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-4 h-4 rounded-full flex items-center justify-center">×</button>
+            </span>
+          ))}
+        </div>
+        {(roster?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("manpower.noRoster")}</p>}
+        {adding ? (
+          <div className="flex flex-col gap-2 mt-1">
+            <div className="grid grid-cols-2 gap-2">
+              <input className={inputCls} placeholder={t("siteDiary.trade")} value={trade} onChange={(e) => setTrade(e.target.value)} />
+              <input className={inputCls} placeholder={t("siteDiary.company")} value={company} onChange={(e) => setCompany(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("manpower.addRosterItem")}</button>
+        )}
+      </div>
+    </Card>
+  );
 }
 
 function CMManpowerPage() {
@@ -54,6 +111,9 @@ function CMManpowerPage() {
 
         {projectId && (
           <>
+            <div className="mb-4">
+              <ManpowerRosterSection ownerId={user.id} projectId={projectId} />
+            </div>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {!isLoading && chartData.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">

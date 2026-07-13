@@ -440,6 +440,11 @@ export function PhotoPicker({ photos, setPhotos, disabled }: { photos: File[]; s
 
 const LAST_PROJECT_KEY = "cm_last_project_id";
 
+/** Set by /cm/join/$token before sending an unauthenticated visitor
+ *  through Google sign-in, so the OAuth callback knows to route them
+ *  back to finish accepting the invite instead of landing on /cm. */
+export const PENDING_INVITE_KEY = "cm_pending_invite_token";
+
 /** Remembers the last project picked across all modules, so returning to any
  *  module (Site Diary, Punch List, Inspection, Safety, Submittal) defaults to
  *  wherever the user was last working — the point is speed, not reselecting. */
