@@ -54,6 +54,8 @@ export interface CMDeliveryRow {
   /** Links this delivery to a cm_boq_items row so quantities can be tallied
    *  against the BOQ's planned quantity; null for free-text "Custom" rows. */
   boq_item_id: string | null;
+  photos: string[];
+  photo_thumbs: string[];
 }
 
 export type CMVisitorKind = "visitor" | "instruction";
@@ -63,6 +65,8 @@ export interface CMVisitorRow {
   organization: string | null;
   kind: CMVisitorKind;
   note: string;
+  photos: string[];
+  photo_thumbs: string[];
 }
 
 export type CMDelayCause = "Weather" | "Material" | "Labor" | "Other";
@@ -80,6 +84,8 @@ export interface CMDailyLog {
   log_date: string;
   weather: string | null;
   temperature_c: number | null;
+  rain_start_time: string | null;
+  rain_end_time: string | null;
   progress_pct: number | null;
   activities: string | null;
   materials_used: string | null;
