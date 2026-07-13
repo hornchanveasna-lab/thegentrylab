@@ -643,7 +643,7 @@ function DayDetailContent({ log, projectName, flashPhotoUrl, onChanged, onOpenPh
   const rainH = rainHours(log.rain_start_time, log.rain_end_time);
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-[#0d0d0e]/40 p-4">
+    <div className="flex flex-col gap-4">
       {projectName && <p className="text-[12px] font-medium text-white/50">{projectName}</p>}
 
       <div className="flex items-center gap-3 rounded-2xl bg-[#0d0d0e] px-4 py-3">
@@ -791,6 +791,7 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
   const scrollRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const [visibleWeek, setVisibleWeek] = useState(3);
 
   const logByDate = useMemo(() => {
     const map = new Map<string, CMDailyLog | CMDailyLogWithProject>();
@@ -818,11 +819,22 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
     });
   }, []);
 
+  const monthYearLabel = useMemo(() => {
+    const midWeek = weeks[visibleWeek] ?? weeks[3];
+    return new Date(`${midWeek[3]}T00:00:00`).toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { month: "long", year: "numeric" });
+  }, [weeks, visibleWeek, lang]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollLeft = 3 * el.clientWidth;
   }, []);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    setVisibleWeek(Math.round(el.scrollLeft / el.clientWidth));
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -847,8 +859,15 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
   }
 
   return (
-    <div className="flex flex-col gap-1 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-      <div ref={scrollRef} className="flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+    <div className="flex flex-col gap-2 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <button type="button" onClick={() => onToggleExpand(true)}
+        className="self-start flex items-center gap-1.5 text-[13px] font-bold text-white/80 hover:text-white transition-colors">
+        {monthYearLabel}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/30">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 gap-1.5 w-full shrink-0 snap-center">
             {week.map((d) => {
@@ -858,22 +877,24 @@ function CalendarStrip({ logs, lang, dateFilter, onSelectDate, expanded, onToggl
               const dateObj = new Date(`${d}T00:00:00`);
               return (
                 <button key={d} type="button" onClick={() => onSelectDate(isSelected ? null : d)}
-                  className={`flex flex-col items-center gap-1 rounded-xl py-2 transition-colors ${
-                    isSelected ? "text-black" : entry ? "text-white/70 hover:bg-white/5" : "text-white/15"
-                  } ${isToday && !isSelected ? "ring-1 ring-[#ff5100]/50" : ""}`}
-                  style={isSelected ? { backgroundColor: "#ff5100" } : undefined}>
-                  <span className="font-mono text-[9px] uppercase tracking-widest">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
-                  <span className="text-[13px] font-bold">{dateObj.getDate()}</span>
-                  <span className="w-1 h-1 rounded-full" style={{ backgroundColor: entry ? (isSelected ? "#000" : "#ff5100") : "transparent" }} />
+                  className="flex flex-col items-center gap-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-white/35">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
+                  <span
+                    className={`relative aspect-square w-9 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${
+                      isSelected ? "text-black" : entry ? "text-white/80 bg-white/5" : "text-white/25"
+                    }`}
+                    style={{
+                      backgroundColor: isSelected ? "#ff5100" : undefined,
+                      boxShadow: isToday && !isSelected ? "inset 0 0 0 1.5px #ff5100" : undefined,
+                    }}>
+                    {dateObj.getDate()}
+                  </span>
                 </button>
               );
             })}
           </div>
         ))}
       </div>
-      <button type="button" onClick={() => onToggleExpand(true)} className="self-center text-white/20 hover:text-white/40 transition-colors">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9l6 6 6-6" /></svg>
-      </button>
     </div>
   );
 }
