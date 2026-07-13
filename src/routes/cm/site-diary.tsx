@@ -22,6 +22,7 @@ import {
   deleteCMDailyLog,
   uploadCMPhotoWithThumb,
   useCMBOQItems,
+  useCMManpowerRoster,
   type CMDailyLog,
   type CMDailyLogWithProject,
   type CMManpowerRow,
@@ -82,7 +83,7 @@ const VISITOR_KIND_OPTIONS: CMVisitorKind[] = ["visitor", "instruction"];
 const DELAY_CAUSE_OPTIONS: CMDelayCause[] = ["Weather", "Material", "Labor", "Other"];
 const RAIN_WEATHER = new Set(["Light Rain", "Heavy Rain", "Storm"]);
 
-const EMPTY_MANPOWER: CMManpowerRow = { trade: "", company: null, count: 0 };
+const EMPTY_MANPOWER: CMManpowerRow = { trade: "", company: null, count: 0, roster_item_id: null };
 const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null, photos: [], photo_thumbs: [] };
 const EMPTY_VISITOR: CMVisitorRow = { name: "", organization: null, kind: "visitor", note: "", photos: [], photo_thumbs: [] };
 const EMPTY_DELAY: CMDelayRow = { cause: "Weather", description: "", hours_lost: 0 };
@@ -145,6 +146,7 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
 }) {
   const { t } = useCMLang();
   const { data: boqItems } = useCMBOQItems(projectId);
+  const { data: roster } = useCMManpowerRoster(projectId);
   const [logDate, setLogDate] = useState(() => existing?.log_date ?? new Date().toISOString().slice(0, 10));
   const [weather, setWeather] = useState(existing?.weather ?? WEATHER_OPTIONS[0]);
   const [temperature, setTemperature] = useState(existing?.temperature_c != null ? String(existing.temperature_c) : "");
@@ -275,9 +277,24 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
           onChange={setManpower}
           emptyRow={EMPTY_MANPOWER}
           renderRow={(row, update) => (
-            <div className="grid grid-cols-3 gap-2">
-              <input className={inputCls} placeholder={t("siteDiary.trade")} value={row.trade} onChange={(e) => update({ trade: e.target.value })} disabled={saving} />
-              <input className={inputCls} placeholder={t("siteDiary.company")} value={row.company ?? ""} onChange={(e) => update({ company: e.target.value || null })} disabled={saving} />
+            <div className="flex flex-col gap-2">
+              <FieldSelect
+                value={row.roster_item_id ?? ""}
+                onChange={(id) => {
+                  if (!id) { update({ roster_item_id: null }); return; }
+                  const item = (roster ?? []).find((r) => r.id === id);
+                  update({ roster_item_id: id, trade: item?.trade ?? row.trade, company: item?.company ?? row.company });
+                }}
+                placeholder={t("siteDiary.customManpower")}
+                options={[{ value: "", label: t("siteDiary.customManpower") }, ...(roster ?? []).map((r) => ({ value: r.id, label: r.company ? `${r.trade} — ${r.company}` : r.trade }))]}
+                disabled={saving}
+              />
+              {!row.roster_item_id && (
+                <div className="grid grid-cols-2 gap-2">
+                  <input className={inputCls} placeholder={t("siteDiary.trade")} value={row.trade} onChange={(e) => update({ trade: e.target.value })} disabled={saving} />
+                  <input className={inputCls} placeholder={t("siteDiary.company")} value={row.company ?? ""} onChange={(e) => update({ company: e.target.value || null })} disabled={saving} />
+                </div>
+              )}
               <input type="number" min={0} className={inputCls} placeholder={t("siteDiary.headcount")} value={row.count || ""} onChange={(e) => update({ count: Number(e.target.value) || 0 })} disabled={saving} />
             </div>
           )}

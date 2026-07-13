@@ -2,26 +2,33 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabaseCM } from "@/lib/supabase-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { PENDING_INVITE_KEY } from "@/components/cm/shared";
 
 export const Route = createFileRoute("/cm/auth/callback")({
   component: CMAuthCallback,
 });
+
+function postSignInRedirect() {
+  let pendingInvite: string | null = null;
+  try { pendingInvite = localStorage.getItem(PENDING_INVITE_KEY); } catch { /* */ }
+  window.location.href = pendingInvite ? `/cm/join/${pendingInvite}` : "/cm";
+}
 
 function CMAuthCallback() {
   const { t } = useCMLang();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabaseCM) { window.location.href = "/cm"; return; }
+    if (!supabaseCM) { postSignInRedirect(); return; }
 
     const code = new URLSearchParams(window.location.search).get("code");
-    if (!code) { window.location.href = "/cm"; return; }
+    if (!code) { postSignInRedirect(); return; }
 
     supabaseCM.auth.exchangeCodeForSession(code).then(({ error }) => {
       if (error) {
         setError(error.message);
       } else {
-        window.location.href = "/cm";
+        postSignInRedirect();
       }
     }).catch((err) => {
       setError(err?.message ?? "Unexpected error");

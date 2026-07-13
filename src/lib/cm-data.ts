@@ -44,6 +44,9 @@ export interface CMManpowerRow {
   trade: string;
   company: string | null;
   count: number;
+  /** Links this row to a cm_manpower_roster entry so trade/company can be
+   *  picked instead of retyped; null for free-text "Custom" rows. */
+  roster_item_id: string | null;
 }
 
 export interface CMDeliveryRow {
@@ -976,6 +979,167 @@ export async function addCMProjectSubcontractor(ownerId: string, projectId: stri
 export async function removeCMProjectSubcontractor(id: string) {
   const { error } = await db().from("cm_project_subcontractors").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ── Manpower roster (predefined trade/company pairs per project) ─
+ *  Site Diary's daily manpower rows pick from this list via
+ *  `roster_item_id` instead of retyping trade/company every day —
+ *  same "predefined + custom fallback" shape as Deliveries' boq_item_id,
+ *  not a duplicate of the headcount data itself (that still lives only
+ *  on `cm_daily_logs.manpower`). */
+export interface CMManpowerRosterItem {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  trade: string;
+  company: string | null;
+  created_at: string;
+}
+
+export function useCMManpowerRoster(projectId: string | undefined) {
+  return useQuery<CMManpowerRosterItem[]>({
+    queryKey: ["cm_manpower_roster", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_manpower_roster").select("*").eq("project_id", projectId).order("trade");
+      if (error) throw error;
+      return data as CMManpowerRosterItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function addCMManpowerRosterItem(ownerId: string, projectId: string, trade: string, company: string | null) {
+  const { error } = await db().from("cm_manpower_roster").insert({ owner_id: ownerId, project_id: projectId, trade, company });
+  if (error) throw error;
+}
+
+export async function removeCMManpowerRosterItem(id: string) {
+  const { error } = await db().from("cm_manpower_roster").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Project members & invites (Phase 1: schema + invite-link mechanics
+ *  only — every OTHER project-scoped table still gates strictly on
+ *  owner_id, so a member who accepts an invite can appear in the Team
+ *  list but cannot yet see Site Diary/Photos/etc. That RLS rewrite is a
+ *  separate follow-up.) ──────────────────────────────────── */
+export type CMMemberRole = "admin" | "member" | "visitor";
+
+export interface CMProjectMember {
+  id: string;
+  project_id: string;
+  user_id: string;
+  role: CMMemberRole;
+  position: string | null;
+  email: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  invited_by: string | null;
+  created_at: string;
+}
+
+export function useCMProjectMembers(projectId: string | undefined) {
+  return useQuery<CMProjectMember[]>({
+    queryKey: ["cm_project_members", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_members").select("*").eq("project_id", projectId).order("created_at");
+      if (error) throw error;
+      return data as CMProjectMember[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function updateCMMemberRole(id: string, role: CMMemberRole) {
+  const { error } = await db().from("cm_project_members").update({ role }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function updateCMMemberPosition(id: string, position: string | null) {
+  const { error } = await db().from("cm_project_members").update({ position }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function removeCMProjectMember(id: string) {
+  const { error } = await db().from("cm_project_members").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export interface CMProjectInvite {
+  id: string;
+  project_id: string;
+  token: string;
+  role: CMMemberRole;
+  created_by: string;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+export function useCMProjectInvites(projectId: string | undefined) {
+  return useQuery<CMProjectInvite[]>({
+    queryKey: ["cm_project_invites", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_invites").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as CMProjectInvite[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMProjectInvite(createdBy: string, projectId: string, role: CMMemberRole) {
+  const token = crypto.randomUUID();
+  const { data, error } = await db().from("cm_project_invites").insert({ project_id: projectId, token, role, created_by: createdBy }).select().single();
+  if (error) throw error;
+  return data as CMProjectInvite;
+}
+
+export async function revokeCMProjectInvite(id: string) {
+  const { error } = await db().from("cm_project_invites").update({ revoked_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+/** Single-row lookup by token — no project filter needed since the token
+ *  itself is globally unique; this is what the /cm/join/$token route and
+ *  the "sign in to join" flow read before the invitee is a member of
+ *  anything yet. */
+export function useCMInviteByToken(token: string | undefined) {
+  return useQuery<CMProjectInvite | null>({
+    queryKey: ["cm_project_invite", token],
+    enabled: !!token && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_invites").select("*").eq("token", token).is("revoked_at", null).maybeSingle();
+      if (error) throw error;
+      return data as CMProjectInvite | null;
+    },
+    staleTime: 0,
+  });
+}
+
+/** Creates (or, on repeat visits to the same link, reuses) the invitee's
+ *  own cm_project_members row from the invite + their own signed-in
+ *  Supabase user — satisfies the `insert ... with check (user_id =
+ *  auth.uid())` policy since this always runs as the invitee. */
+export async function acceptCMProjectInvite(invite: CMProjectInvite, user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
+  const { data: existing, error: findError } = await db()
+    .from("cm_project_members").select("*").eq("project_id", invite.project_id).eq("user_id", user.id).maybeSingle();
+  if (findError) throw findError;
+  if (existing) return existing as CMProjectMember;
+
+  const { data, error } = await db().from("cm_project_members").insert({
+    project_id: invite.project_id,
+    user_id: user.id,
+    role: invite.role,
+    email: user.email ?? null,
+    display_name: (user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? null,
+    avatar_url: (user.user_metadata?.avatar_url as string) ?? null,
+    invited_by: invite.created_by,
+  }).select().single();
+  if (error) throw error;
+  return data as CMProjectMember;
 }
 
 /* ── BOQ items (per project) ───────────────────────────── */

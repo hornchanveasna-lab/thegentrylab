@@ -47,6 +47,7 @@ import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminStagesRouteImport } from './routes/admin.stages'
 import { Route as CmProjectsIndexRouteImport } from './routes/cm/projects/index'
+import { Route as CmJoinTokenRouteImport } from './routes/cm/join/$token'
 import { Route as CmAuthCallbackRouteImport } from './routes/cm/auth/callback'
 
 const TrackerRoute = TrackerRouteImport.update({
@@ -240,6 +241,11 @@ const CmProjectsIndexRoute = CmProjectsIndexRouteImport.update({
   path: '/cm/projects/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmJoinTokenRoute = CmJoinTokenRouteImport.update({
+  id: '/cm/join/$token',
+  path: '/cm/join/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmAuthCallbackRoute = CmAuthCallbackRouteImport.update({
   id: '/cm/auth/callback',
   path: '/cm/auth/callback',
@@ -285,6 +291,7 @@ export interface FileRoutesByFullPath {
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
+  '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/projects/': typeof CmProjectsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -325,6 +332,7 @@ export interface FileRoutesByTo {
   '/cm': typeof CmIndexRoute
   '/research': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
+  '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/projects': typeof CmProjectsIndexRoute
 }
 export interface FileRoutesById {
@@ -367,6 +375,7 @@ export interface FileRoutesById {
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
+  '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/projects/': typeof CmProjectsIndexRoute
 }
 export interface FileRouteTypes {
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
     | '/cm/'
     | '/research/'
     | '/cm/auth/callback'
+    | '/cm/join/$token'
     | '/cm/projects/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -450,6 +460,7 @@ export interface FileRouteTypes {
     | '/cm'
     | '/research'
     | '/cm/auth/callback'
+    | '/cm/join/$token'
     | '/cm/projects'
   id:
     | '__root__'
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/cm/'
     | '/research/'
     | '/cm/auth/callback'
+    | '/cm/join/$token'
     | '/cm/projects/'
   fileRoutesById: FileRoutesById
 }
@@ -530,6 +542,7 @@ export interface RootRouteChildren {
   ToolsAdvisorRoute: typeof ToolsAdvisorRoute
   CmIndexRoute: typeof CmIndexRoute
   CmAuthCallbackRoute: typeof CmAuthCallbackRoute
+  CmJoinTokenRoute: typeof CmJoinTokenRoute
   CmProjectsIndexRoute: typeof CmProjectsIndexRoute
 }
 
@@ -801,6 +814,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmProjectsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/join/$token': {
+      id: '/cm/join/$token'
+      path: '/cm/join/$token'
+      fullPath: '/cm/join/$token'
+      preLoaderRoute: typeof CmJoinTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cm/auth/callback': {
       id: '/cm/auth/callback'
       path: '/cm/auth/callback'
@@ -871,6 +891,7 @@ const rootRouteChildren: RootRouteChildren = {
   ToolsAdvisorRoute: ToolsAdvisorRoute,
   CmIndexRoute: CmIndexRoute,
   CmAuthCallbackRoute: CmAuthCallbackRoute,
+  CmJoinTokenRoute: CmJoinTokenRoute,
   CmProjectsIndexRoute: CmProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport
