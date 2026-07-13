@@ -1233,6 +1233,38 @@ export const CM_JOB_ROLES: CMJobRole[] = [
   "client_representative", "owners_representative", "inspector_auditor",
 ];
 
+/** Per-module action matrix, keyed by job_role — the enforcement layer that
+ *  job_role exists to drive. A missing row (or job_role === null) means
+ *  "not opted in yet" and every action is permitted, mirroring the RLS
+ *  fallback in cm_role_permission() so client and server never disagree. */
+export type CMModuleKey =
+  | "site_diary" | "punch_list" | "inspection" | "safety" | "submittal"
+  | "equipment" | "boq" | "schedule" | "manpower" | "people" | "settings";
+export type CMPermissionAction = "view" | "create" | "edit" | "approve" | "delete";
+
+export interface CMRolePermission {
+  job_role: CMJobRole;
+  module_key: CMModuleKey;
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_approve: boolean;
+  can_delete: boolean;
+}
+
+export function useCMRolePermissions() {
+  return useQuery<CMRolePermission[]>({
+    queryKey: ["cm_role_permissions"],
+    enabled: !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_role_permissions").select("*");
+      if (error) throw error;
+      return data as CMRolePermission[];
+    },
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 export interface CMProjectMember {
   id: string;
   project_id: string;

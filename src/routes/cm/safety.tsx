@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
@@ -113,7 +114,10 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
+function SafetyCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
+  item: CMSafetyRecord; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+  onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+}) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -158,12 +162,18 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
             </div>
           )}
           <div className="flex items-center gap-3">
-            <button onClick={handleResolve} disabled={busy} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest"
-              style={{ backgroundColor: item.status === "Open" ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", color: item.status === "Open" ? "#34d399" : "rgba(255,255,255,0.5)" }}>
-              {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
-            </button>
-            <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</button>
-            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
+            {canApprove && (
+              <button onClick={handleResolve} disabled={busy} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest"
+                style={{ backgroundColor: item.status === "Open" ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", color: item.status === "Open" ? "#34d399" : "rgba(255,255,255,0.5)" }}>
+                {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
+              </button>
+            )}
+            {canEdit && (
+              <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</button>
+            )}
+            {canDelete && (
+              <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
+            )}
           </div>
         </div>
       )}
@@ -185,6 +195,10 @@ function CMSafetyPage() {
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: records, isLoading, isError, refetch } = useCMSafetyRecords(projectId || undefined);
+  const canCreate = usePermission(projectId || undefined, user?.id, "safety", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "safety", "edit");
+  const canApprove = usePermission(projectId || undefined, user?.id, "safety", "approve");
+  const canDelete = usePermission(projectId || undefined, user?.id, "safety", "delete");
   const [showNew, setShowNew] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -239,11 +253,11 @@ function CMSafetyPage() {
               <>
                 {!isLoading && visibleRecords.length === 0 && <EmptyState message={t("safety.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             ))}
-            <FAB label={t("safety.newBtn")} onClick={() => setShowNew(true)} />
+            {canCreate && <FAB label={t("safety.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>

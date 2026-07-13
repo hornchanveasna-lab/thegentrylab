@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
@@ -33,10 +34,11 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "
 const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 
-function NewPunchItemSheet({ ownerId, projectId, existing, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMTask; onClose: () => void; onCreated: () => void;
+function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMTask; canApprove: boolean; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || s !== "Done" || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(existing?.status ?? "To Do");
@@ -88,7 +90,7 @@ function NewPunchItemSheet({ ownerId, projectId, existing, onClose, onCreated }:
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("punchList.status")}</span>
-            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`taskStatus.${s}`) }))} />
+            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("punchList.priority")}</span>
@@ -123,7 +125,10 @@ function NewPunchItemSheet({ ownerId, projectId, existing, onClose, onCreated }:
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
+function PunchItemCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
+  item: CMTask; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+  onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+}) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -131,6 +136,7 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { data: locations } = useCMProjectLocations(item.project_id);
   const location = locations?.find((l) => l.id === item.location_id);
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || s !== "Done" || s === item.status);
   const handleStatusChange = async (status: TaskStatus) => {
     setBusy(true);
     try { await updateCMTask(item.id, { status }); onChanged(); } finally { setBusy(false); }
@@ -148,19 +154,27 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
       <div className="flex items-start justify-between gap-3">
         <h3 className={`text-[13px] font-bold leading-tight ${item.status === "Done" ? "text-white/40 line-through" : "text-white"}`}>{item.title}</h3>
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-          </button>
-          <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+          {canEdit && (
+            <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </button>
+          )}
+          {canDelete && (
+            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+          )}
         </div>
       </div>
       {item.description && <p className="text-[12px] text-white/45">{item.description}</p>}
-      <SegmentedField
-        options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`taskStatus.${s}`), color: STATUS_COLOR[s] }))}
-        value={item.status} disabled={busy} onChange={handleStatusChange}
-      />
+      {canEdit ? (
+        <SegmentedField
+          options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`), color: STATUS_COLOR[s] }))}
+          value={item.status} disabled={busy} onChange={handleStatusChange}
+        />
+      ) : (
+        <PriorityBadge size="sm" label={t(`taskStatus.${item.status}`)} color={STATUS_COLOR[item.status]} />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <PriorityBadge size="sm" label={t(`taskPriority.${item.priority}`)} color={pc} />
         {location && <span className="text-[11px] text-white/40">{locationBreadcrumb(location, locations ?? [])}</span>}
@@ -179,7 +193,7 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
         </div>
       )}
       {editing && (
-        <NewPunchItemSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
+        <NewPunchItemSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
@@ -196,6 +210,10 @@ function CMPunchListPage() {
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
+  const canCreate = usePermission(projectId || undefined, user?.id, "punch_list", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "punch_list", "edit");
+  const canApprove = usePermission(projectId || undefined, user?.id, "punch_list", "approve");
+  const canDelete = usePermission(projectId || undefined, user?.id, "punch_list", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
@@ -261,7 +279,7 @@ function CMPunchListPage() {
                   <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {open.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {open.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
 
                 {done.length > 0 && (
@@ -271,7 +289,7 @@ function CMPunchListPage() {
                     </button>
                     {showCompleted && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-                        {done.map((t) => <PunchItemCard key={t.id} item={t} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                        {done.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                       </div>
                     )}
                   </div>
@@ -279,12 +297,12 @@ function CMPunchListPage() {
               </>
             )}
 
-            <FAB label={t("punchList.newBtn")} onClick={() => setShowNew(true)} />
+            {canCreate && <FAB label={t("punchList.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && <NewPunchItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && projectId && <NewPunchItemSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
         <PhotoLightbox
