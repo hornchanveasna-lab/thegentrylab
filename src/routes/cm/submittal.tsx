@@ -28,16 +28,16 @@ const STATUS_COLOR: Record<SubmittalStatus, string> = {
 };
 const STATUS_OPTIONS: SubmittalStatus[] = ["Draft", "Submitted", "Under Review", "Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
 
-function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
-  ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
+function NewSubmittalSheet({ ownerId, projectId, existing, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSubmittal; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [title, setTitle] = useState("");
-  const [specSection, setSpecSection] = useState("");
-  const [status, setStatus] = useState<SubmittalStatus>("Draft");
-  const [dueDate, setDueDate] = useState("");
-  const [reviewer, setReviewer] = useState("");
-  const [notes, setNotes] = useState("");
+  const [title, setTitle] = useState(existing?.title ?? "");
+  const [specSection, setSpecSection] = useState(existing?.spec_section ?? "");
+  const [status, setStatus] = useState<SubmittalStatus>(existing?.status ?? "Draft");
+  const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
+  const [reviewer, setReviewer] = useState(existing?.reviewer ?? "");
+  const [notes, setNotes] = useState(existing?.notes ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -48,24 +48,29 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const item = await createCMSubmittal(ownerId, projectId, {
+      const patch = {
         title: title.trim(), spec_section: specSection.trim() || null, status,
         due_date: dueDate || null, reviewer: reviewer.trim() || null, notes: notes.trim() || null,
-        submitted_date: status !== "Draft" ? new Date().toISOString().slice(0, 10) : null,
-      });
+        submitted_date: existing ? existing.submitted_date : (status !== "Draft" ? new Date().toISOString().slice(0, 10) : null),
+      };
+      const item = existing ?? await createCMSubmittal(ownerId, projectId, patch);
+      if (existing) await updateCMSubmittal(existing.id, patch);
       if (photos.length > 0) {
         const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
-        await updateCMSubmittal(item.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
+        await updateCMSubmittal(item.id, {
+          photos: [...item.photos, ...uploaded.map((u) => u.url)],
+          photo_thumbs: [...item.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+        });
       }
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create submittal");
+      setError(err instanceof Error ? err.message : `Failed to ${existing ? "update" : "create"} submittal`);
       setSaving(false);
     }
   };
 
   return (
-    <Sheet title={t("submittal.new")} onClose={onClose}>
+    <Sheet title={t(existing ? "submittal.edit" : "submittal.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("submittal.titleField")}</span>
@@ -100,7 +105,7 @@ function NewSubmittalSheet({ ownerId, projectId, onClose, onCreated }: {
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? t("submittal.creating") : t("submittal.create")}
+          {existing ? (saving ? t("submittal.saving") : t("submittal.saveChanges")) : (saving ? t("submittal.creating") : t("submittal.create"))}
         </button>
       </form>
     </Sheet>
@@ -112,6 +117,7 @@ type LightboxItem = { url: string; thumbUrl: string };
 function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id);
   const sc = STATUS_COLOR[item.status];
 
@@ -137,7 +143,14 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
           <h3 className="text-[13px] font-bold text-white leading-tight truncate">{item.title}</h3>
           {item.spec_section && <p className="font-mono text-[10px] text-white/30 mt-0.5">{item.spec_section} · Rev {item.revision}</p>}
         </div>
-        <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </button>
+          <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        </div>
       </div>
       <SegmentedField
         options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
@@ -157,6 +170,10 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
             </button>
           ))}
         </div>
+      )}
+      {editing && (
+        <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
+          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
     </div>
   );

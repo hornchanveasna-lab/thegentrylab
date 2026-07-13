@@ -27,15 +27,15 @@ const STATUS_COLOR: Record<InspectionStatus, string> = {
 };
 const STATUS_OPTIONS: InspectionStatus[] = ["Scheduled", "Passed", "Failed", "Not Applicable"];
 
-function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
-  ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
+function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMInspection; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [title, setTitle] = useState("");
-  const [status, setStatus] = useState<InspectionStatus>("Scheduled");
-  const [inspector, setInspector] = useState("");
-  const [inspectionDate, setInspectionDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [notes, setNotes] = useState("");
+  const [title, setTitle] = useState(existing?.title ?? "");
+  const [status, setStatus] = useState<InspectionStatus>(existing?.status ?? "Scheduled");
+  const [inspector, setInspector] = useState(existing?.inspector ?? "");
+  const [inspectionDate, setInspectionDate] = useState(() => existing?.inspection_date ?? new Date().toISOString().slice(0, 10));
+  const [notes, setNotes] = useState(existing?.notes ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -46,22 +46,27 @@ function NewInspectionSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const inspection = await createCMInspection(ownerId, projectId, {
+      const patch = {
         title: title.trim(), status, inspector: inspector.trim() || null, inspection_date: inspectionDate, notes: notes.trim() || null,
-      });
+      };
+      const inspection = existing ?? await createCMInspection(ownerId, projectId, patch);
+      if (existing) await updateCMInspection(existing.id, patch);
       if (photos.length > 0) {
         const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
-        await updateCMInspection(inspection.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
+        await updateCMInspection(inspection.id, {
+          photos: [...inspection.photos, ...uploaded.map((u) => u.url)],
+          photo_thumbs: [...inspection.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+        });
       }
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create inspection");
+      setError(err instanceof Error ? err.message : `Failed to ${existing ? "update" : "create"} inspection`);
       setSaving(false);
     }
   };
 
   return (
-    <Sheet title={t("inspection.new")} onClose={onClose}>
+    <Sheet title={t(existing ? "inspection.edit" : "inspection.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("inspection.titleField")}</span>
@@ -102,6 +107,7 @@ type LightboxItem = { url: string; thumbUrl: string };
 function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("inspection", item.id, () => setOpen(true));
   const sc = STATUS_COLOR[item.status];
@@ -144,8 +150,15 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
               ))}
             </div>
           )}
-          <button onClick={handleDelete} disabled={busy} className="self-start font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</button>
+            <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>
+          </div>
         </div>
+      )}
+      {editing && (
+        <NewInspectionSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
+          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
     </div>
   );
