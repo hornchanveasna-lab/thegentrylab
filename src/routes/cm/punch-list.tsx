@@ -30,16 +30,16 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "
 const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 
-function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
-  ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
+function NewPunchItemSheet({ ownerId, projectId, existing, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMTask; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<TaskStatus>("To Do");
-  const [priority, setPriority] = useState<TaskPriority>("Medium");
-  const [assignee, setAssignee] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [title, setTitle] = useState(existing?.title ?? "");
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [status, setStatus] = useState<TaskStatus>(existing?.status ?? "To Do");
+  const [priority, setPriority] = useState<TaskPriority>(existing?.priority ?? "Medium");
+  const [assignee, setAssignee] = useState(existing?.assignee ?? "");
+  const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -50,23 +50,28 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const item = await createCMTask(ownerId, projectId, {
+      const patch = {
         title: title.trim(), description: description.trim() || null, status, priority,
         assignee: assignee.trim() || null, due_date: dueDate || null,
-      });
+      };
+      const item = existing ?? await createCMTask(ownerId, projectId, patch);
+      if (existing) await updateCMTask(existing.id, patch);
       if (photos.length > 0) {
         const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
-        await updateCMTask(item.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
+        await updateCMTask(item.id, {
+          photos: [...item.photos, ...uploaded.map((u) => u.url)],
+          photo_thumbs: [...item.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+        });
       }
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add work item");
+      setError(err instanceof Error ? err.message : `Failed to ${existing ? "update" : "add"} work item`);
       setSaving(false);
     }
   };
 
   return (
-    <Sheet title={t("punchList.new")} onClose={onClose}>
+    <Sheet title={t(existing ? "punchList.edit" : "punchList.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("punchList.whatNeedsDone")}</span>
@@ -101,7 +106,7 @@ function NewPunchItemSheet({ ownerId, projectId, onClose, onCreated }: {
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
           style={{ backgroundColor: "#ff5100" }}>
-          {saving ? t("punchList.adding") : t("punchList.addToPunchList")}
+          {existing ? (saving ? t("punchList.saving") : t("punchList.saveChanges")) : (saving ? t("punchList.adding") : t("punchList.addToPunchList"))}
         </button>
       </form>
     </Sheet>
@@ -113,6 +118,7 @@ type LightboxItem = { url: string; thumbUrl: string };
 function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("punchList", item.id);
   const handleStatusChange = async (status: TaskStatus) => {
     setBusy(true);
@@ -130,7 +136,14 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
     <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2 transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className={`text-[13px] font-bold leading-tight ${item.status === "Done" ? "text-white/40 line-through" : "text-white"}`}>{item.title}</h3>
-        <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+            </svg>
+          </button>
+          <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        </div>
       </div>
       {item.description && <p className="text-[12px] text-white/45">{item.description}</p>}
       <SegmentedField
@@ -152,6 +165,10 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
             </button>
           ))}
         </div>
+      )}
+      {editing && (
+        <NewPunchItemSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
+          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
     </div>
   );

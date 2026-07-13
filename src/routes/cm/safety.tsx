@@ -27,16 +27,16 @@ const SEVERITY_COLOR: Record<SafetySeverity, string> = { Low: "#94a3b8", Medium:
 const TYPE_OPTIONS: SafetyRecordType[] = ["Incident", "Toolbox Talk", "Hazard Observation"];
 const SEVERITY_OPTIONS: SafetySeverity[] = ["Low", "Medium", "High", "Critical"];
 
-function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
-  ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
+function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSafetyRecord; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [recordType, setRecordType] = useState<SafetyRecordType>("Toolbox Talk");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [severity, setSeverity] = useState<SafetySeverity>("Low");
-  const [recordDate, setRecordDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [involved, setInvolved] = useState("");
+  const [recordType, setRecordType] = useState<SafetyRecordType>(existing?.record_type ?? "Toolbox Talk");
+  const [title, setTitle] = useState(existing?.title ?? "");
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [severity, setSeverity] = useState<SafetySeverity>(existing?.severity ?? "Low");
+  const [recordDate, setRecordDate] = useState(() => existing?.record_date ?? new Date().toISOString().slice(0, 10));
+  const [involved, setInvolved] = useState(existing?.involved ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -47,23 +47,28 @@ function NewSafetySheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const record = await createCMSafetyRecord(ownerId, projectId, {
+      const patch = {
         title: title.trim(), record_type: recordType, description: description.trim() || null,
         severity, record_date: recordDate, involved: involved.trim() || null,
-      });
+      };
+      const record = existing ?? await createCMSafetyRecord(ownerId, projectId, patch);
+      if (existing) await updateCMSafetyRecord(existing.id, patch);
       if (photos.length > 0) {
         const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
-        await updateCMSafetyRecord(record.id, { photos: uploaded.map((u) => u.url), photo_thumbs: uploaded.map((u) => u.thumbUrl) });
+        await updateCMSafetyRecord(record.id, {
+          photos: [...record.photos, ...uploaded.map((u) => u.url)],
+          photo_thumbs: [...record.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+        });
       }
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create safety record");
+      setError(err instanceof Error ? err.message : `Failed to ${existing ? "update" : "create"} safety record`);
       setSaving(false);
     }
   };
 
   return (
-    <Sheet title={t("safety.new")} onClose={onClose}>
+    <Sheet title={t(existing ? "safety.edit" : "safety.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
@@ -110,6 +115,7 @@ type LightboxItem = { url: string; thumbUrl: string };
 function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("safety", item.id, () => setOpen(true));
   const sc = SEVERITY_COLOR[item.severity];
@@ -154,9 +160,14 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
               style={{ backgroundColor: item.status === "Open" ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", color: item.status === "Open" ? "#34d399" : "rgba(255,255,255,0.5)" }}>
               {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
             </button>
+            <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</button>
             <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
           </div>
         </div>
+      )}
+      {editing && (
+        <NewSafetySheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
+          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
     </div>
   );

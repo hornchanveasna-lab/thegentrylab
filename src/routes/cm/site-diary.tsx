@@ -46,24 +46,24 @@ function totalManpower(rows: CMManpowerRow[]) {
   return rows.reduce((sum, r) => sum + (r.count || 0), 0);
 }
 
-function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
-  ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
+function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMDailyLog; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const { data: boqItems } = useCMBOQItems(projectId);
-  const [logDate, setLogDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [weather, setWeather] = useState(WEATHER_OPTIONS[0]);
-  const [temperature, setTemperature] = useState("");
-  const [progressPct, setProgressPct] = useState("");
-  const [activities, setActivities] = useState("");
-  const [materials, setMaterials] = useState("");
-  const [equipment, setEquipment] = useState("");
-  const [issues, setIssues] = useState("");
-  const [notes, setNotes] = useState("");
-  const [manpower, setManpower] = useState<CMManpowerRow[]>([]);
-  const [deliveries, setDeliveries] = useState<CMDeliveryRow[]>([]);
-  const [visitors, setVisitors] = useState<CMVisitorRow[]>([]);
-  const [delays, setDelays] = useState<CMDelayRow[]>([]);
+  const [logDate, setLogDate] = useState(() => existing?.log_date ?? new Date().toISOString().slice(0, 10));
+  const [weather, setWeather] = useState(existing?.weather ?? WEATHER_OPTIONS[0]);
+  const [temperature, setTemperature] = useState(existing?.temperature_c != null ? String(existing.temperature_c) : "");
+  const [progressPct, setProgressPct] = useState(existing?.progress_pct != null ? String(existing.progress_pct) : "");
+  const [activities, setActivities] = useState(existing?.activities ?? "");
+  const [materials, setMaterials] = useState(existing?.materials_used ?? "");
+  const [equipment, setEquipment] = useState(existing?.equipment_used ?? "");
+  const [issues, setIssues] = useState(existing?.issues ?? "");
+  const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [manpower, setManpower] = useState<CMManpowerRow[]>(existing?.manpower ?? []);
+  const [deliveries, setDeliveries] = useState<CMDeliveryRow[]>(existing?.deliveries ?? []);
+  const [visitors, setVisitors] = useState<CMVisitorRow[]>(existing?.visitors ?? []);
+  const [delays, setDelays] = useState<CMDelayRow[]>(existing?.delays ?? []);
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -74,29 +74,53 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      // Find-or-create that day's single entry, then merge this submission's
-      // fields into it (append rows/photos, keep new scalar values where the
-      // form provided one) — this is the fix for the "one report per day"
-      // duplicate-entry bug: re-opening "New Entry" for a day that already
-      // has data adds to it instead of inserting a second row.
-      const log = await findOrCreateCMDailyLog(ownerId, projectId, logDate, {});
       const uploaded = photos.length > 0 ? await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : [];
-      await updateCMDailyLog(log.id, {
-        weather: weather || log.weather,
-        temperature_c: temperature ? Number(temperature) : log.temperature_c,
-        progress_pct: progressPct ? Number(progressPct) : log.progress_pct,
-        activities: activities.trim() || log.activities,
-        materials_used: materials.trim() || log.materials_used,
-        equipment_used: equipment.trim() || log.equipment_used,
-        issues: issues.trim() || log.issues,
-        notes: notes.trim() || log.notes,
-        manpower: [...log.manpower, ...manpower.filter((r) => r.trade.trim())],
-        deliveries: [...log.deliveries, ...deliveries.filter((r) => r.material.trim())],
-        visitors: [...log.visitors, ...visitors.filter((r) => r.name.trim())],
-        delays: [...log.delays, ...delays.filter((r) => r.description.trim())],
-        photos: [...log.photos, ...uploaded.map((u) => u.url)],
-        photo_thumbs: [...log.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
-      });
+      if (existing) {
+        // Editing replaces the field values outright — the form was
+        // preloaded with the entry's current contents, so what's on screen
+        // now IS the full desired state (unlike create, there's no separate
+        // "old" copy to merge against). Photos still only append, since
+        // there's no per-photo remove control on this sheet.
+        await updateCMDailyLog(existing.id, {
+          weather: weather || null,
+          temperature_c: temperature ? Number(temperature) : null,
+          progress_pct: progressPct ? Number(progressPct) : null,
+          activities: activities.trim() || null,
+          materials_used: materials.trim() || null,
+          equipment_used: equipment.trim() || null,
+          issues: issues.trim() || null,
+          notes: notes.trim() || null,
+          manpower: manpower.filter((r) => r.trade.trim()),
+          deliveries: deliveries.filter((r) => r.material.trim()),
+          visitors: visitors.filter((r) => r.name.trim()),
+          delays: delays.filter((r) => r.description.trim()),
+          photos: [...existing.photos, ...uploaded.map((u) => u.url)],
+          photo_thumbs: [...existing.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+        });
+      } else {
+        // Find-or-create that day's single entry, then merge this submission's
+        // fields into it (append rows/photos, keep new scalar values where the
+        // form provided one) — this is the fix for the "one report per day"
+        // duplicate-entry bug: re-opening "New Entry" for a day that already
+        // has data adds to it instead of inserting a second row.
+        const log = await findOrCreateCMDailyLog(ownerId, projectId, logDate, {});
+        await updateCMDailyLog(log.id, {
+          weather: weather || log.weather,
+          temperature_c: temperature ? Number(temperature) : log.temperature_c,
+          progress_pct: progressPct ? Number(progressPct) : log.progress_pct,
+          activities: activities.trim() || log.activities,
+          materials_used: materials.trim() || log.materials_used,
+          equipment_used: equipment.trim() || log.equipment_used,
+          issues: issues.trim() || log.issues,
+          notes: notes.trim() || log.notes,
+          manpower: [...log.manpower, ...manpower.filter((r) => r.trade.trim())],
+          deliveries: [...log.deliveries, ...deliveries.filter((r) => r.material.trim())],
+          visitors: [...log.visitors, ...visitors.filter((r) => r.name.trim())],
+          delays: [...log.delays, ...delays.filter((r) => r.description.trim())],
+          photos: [...log.photos, ...uploaded.map((u) => u.url)],
+          photo_thumbs: [...log.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+        });
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save diary entry");
@@ -106,12 +130,12 @@ function NewLogSheet({ ownerId, projectId, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title={t("siteDiary.newEntry")} onClose={onClose}>
+    <Sheet title={t(existing ? "siteDiary.editEntry" : "siteDiary.newEntry")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("siteDiary.date")}</span>
-            <input type="date" className={inputCls} value={logDate} onChange={(e) => setLogDate(e.target.value)} required disabled={saving} />
+            <input type="date" className={inputCls} value={logDate} onChange={(e) => setLogDate(e.target.value)} required disabled={saving || !!existing} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("siteDiary.progressPct")}</span>
@@ -254,6 +278,7 @@ function LogCard({ log, projectName, onChanged, onOpenPhoto }: {
   const { t } = useCMLang();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id, () => setOpen(true));
   const { data: activity } = useCMDailyActivity(log.project_id, log.log_date, { enabled: open });
@@ -332,10 +357,19 @@ function LogCard({ log, projectName, onChanged, onOpenPhoto }: {
               </div>
             </div>
           )}
-          <button onClick={handleDelete} disabled={busy} className="self-start font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
-            {t("siteDiary.deleteEntry")}
-          </button>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+              {t("siteDiary.editEntry")}
+            </button>
+            <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
+              {t("siteDiary.deleteEntry")}
+            </button>
+          </div>
         </div>
+      )}
+      {editing && (
+        <NewLogSheet ownerId={log.owner_id} projectId={log.project_id} existing={log}
+          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
     </div>
   );

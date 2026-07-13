@@ -235,6 +235,7 @@ const EN: Dict = {
 
   "siteDiary.title": "Site Diary",
   "siteDiary.newEntry": "New Diary Entry",
+  "siteDiary.editEntry": "Edit Diary Entry",
   "siteDiary.newEntryBtn": "New diary entry",
   "siteDiary.noneYet": "No diary entries yet. Log your first day on site.",
   "siteDiary.date": "Date",
@@ -295,6 +296,7 @@ const EN: Dict = {
   "punchList.title": "Punch List",
   "punchList.subtitle": "The work that isn't finished yet.",
   "punchList.new": "New Work Item",
+  "punchList.edit": "Edit Work Item",
   "punchList.whatNeedsDone": "What needs to be done ★",
   "punchList.whatNeedsDonePlaceholder": "e.g. Install door hardware — Unit 4",
   "punchList.details": "Details",
@@ -304,6 +306,8 @@ const EN: Dict = {
   "punchList.dueDate": "Due date",
   "punchList.addToPunchList": "Add to punch list",
   "punchList.adding": "Adding…",
+  "punchList.saveChanges": "Save changes",
+  "punchList.saving": "Saving…",
   "punchList.nothingYet": "Nothing on the punch list yet.",
   "punchList.allDone": "Everything on this project is done. 🎉",
   "punchList.showCompleted": "Show",
@@ -322,6 +326,7 @@ const EN: Dict = {
 
   "inspection.title": "Inspection",
   "inspection.new": "New Inspection",
+  "inspection.edit": "Edit inspection",
   "inspection.newBtn": "New inspection",
   "inspection.titleField": "Title ★",
   "inspection.titlePlaceholder": "e.g. Rebar inspection — footing F3",
@@ -342,6 +347,7 @@ const EN: Dict = {
 
   "safety.title": "Safety",
   "safety.new": "New Safety Record",
+  "safety.edit": "Edit",
   "safety.newBtn": "New safety record",
   "safety.type": "Type",
   "safety.severity": "Severity",
@@ -369,6 +375,7 @@ const EN: Dict = {
 
   "submittal.title": "Submittal",
   "submittal.new": "New Submittal",
+  "submittal.edit": "Edit Submittal",
   "submittal.newBtn": "New submittal",
   "submittal.titleField": "Title ★",
   "submittal.titlePlaceholder": "e.g. Structural steel shop drawings",
@@ -380,6 +387,8 @@ const EN: Dict = {
   "submittal.notes": "Notes",
   "submittal.create": "Create submittal",
   "submittal.creating": "Creating…",
+  "submittal.saveChanges": "Save changes",
+  "submittal.saving": "Saving…",
   "submittal.noneYet": "No submittals yet.",
 
   "submittalStatus.Draft": "Draft",
@@ -711,6 +720,7 @@ const KM: Dict = {
 
   "siteDiary.title": "កំណត់ហេតុការដ្ឋាន",
   "siteDiary.newEntry": "កំណត់ត្រាថ្មី",
+  "siteDiary.editEntry": "កែសម្រួលកំណត់ត្រា",
   "siteDiary.newEntryBtn": "កំណត់ត្រាថ្មី",
   "siteDiary.noneYet": "មិនទាន់មានកំណត់ត្រាទេ។ កត់ត្រាថ្ងៃដំបូងរបស់អ្នកនៅការដ្ឋាន។",
   "siteDiary.date": "កាលបរិច្ឆេទ",
@@ -771,6 +781,7 @@ const KM: Dict = {
   "punchList.title": "បញ្ជីការងារនៅសល់",
   "punchList.subtitle": "ការងារដែលនៅមិនទាន់ចប់។",
   "punchList.new": "ធាតុការងារថ្មី",
+  "punchList.edit": "កែសម្រួលធាតុការងារ",
   "punchList.whatNeedsDone": "តើអ្វីខ្លះត្រូវធ្វើ ★",
   "punchList.whatNeedsDonePlaceholder": "ឧ. ដំឡើងគ្រឿងបរិក្ខារទ្វារ — យូនីត ៤",
   "punchList.details": "ព័ត៌មានលម្អិត",
@@ -779,6 +790,8 @@ const KM: Dict = {
   "punchList.assignedTo": "ចាត់តាំងទៅ",
   "punchList.dueDate": "កាលបរិច្ឆេទកំណត់",
   "punchList.addToPunchList": "បន្ថែមទៅបញ្ជីការងារនៅសល់",
+  "punchList.saveChanges": "រក្សាទុកការផ្លាស់ប្តូរ",
+  "punchList.saving": "កំពុងរក្សាទុក…",
   "punchList.adding": "កំពុងបន្ថែម…",
   "punchList.nothingYet": "មិនទាន់មានអ្វីនៅក្នុងបញ្ជីការងារនៅសល់ទេ។",
   "punchList.allDone": "អ្វីៗទាំងអស់នៅលើគម្រោងនេះបានចប់ហើយ។ 🎉",
@@ -798,6 +811,7 @@ const KM: Dict = {
 
   "inspection.title": "ការត្រួតពិនិត្យ",
   "inspection.new": "ការត្រួតពិនិត្យថ្មី",
+  "inspection.edit": "កែសម្រួលការត្រួតពិនិត្យ",
   "inspection.newBtn": "ការត្រួតពិនិត្យថ្មី",
   "inspection.titleField": "ចំណងជើង ★",
   "inspection.titlePlaceholder": "ឧ. ត្រួតពិនិត្យដែក — គ្រឹះ F3",
@@ -818,6 +832,7 @@ const KM: Dict = {
 
   "safety.title": "សុវត្ថិភាព",
   "safety.new": "កំណត់ត្រាសុវត្ថិភាពថ្មី",
+  "safety.edit": "កែសម្រួល",
   "safety.newBtn": "កំណត់ត្រាសុវត្ថិភាពថ្មី",
   "safety.type": "ប្រភេទ",
   "safety.severity": "កម្រិតធ្ងន់ធ្ងរ",
@@ -845,6 +860,7 @@ const KM: Dict = {
 
   "submittal.title": "ឯកសារដាក់ស្នើ",
   "submittal.new": "ឯកសារដាក់ស្នើថ្មី",
+  "submittal.edit": "កែសម្រួលឯកសារដាក់ស្នើ",
   "submittal.newBtn": "ឯកសារដាក់ស្នើថ្មី",
   "submittal.titleField": "ចំណងជើង ★",
   "submittal.titlePlaceholder": "ឧ. គំនូរហាងដែកសំណង់",
@@ -856,6 +872,8 @@ const KM: Dict = {
   "submittal.notes": "កំណត់ចំណាំ",
   "submittal.create": "បង្កើតឯកសារដាក់ស្នើ",
   "submittal.creating": "កំពុងបង្កើត…",
+  "submittal.saveChanges": "រក្សាទុកការផ្លាស់ប្តូរ",
+  "submittal.saving": "កំពុងរក្សាទុក…",
   "submittal.noneYet": "មិនទាន់មានឯកសារដាក់ស្នើទេ។",
 
   "submittalStatus.Draft": "សេចក្តីព្រាង",
@@ -1187,6 +1205,7 @@ const ZH: Dict = {
 
   "siteDiary.title": "施工日志",
   "siteDiary.newEntry": "新建日志条目",
+  "siteDiary.editEntry": "编辑日志条目",
   "siteDiary.newEntryBtn": "新建日志条目",
   "siteDiary.noneYet": "暂无日志条目。记录您在工地的第一天。",
   "siteDiary.date": "日期",
@@ -1247,6 +1266,7 @@ const ZH: Dict = {
   "punchList.title": "问题清单",
   "punchList.subtitle": "尚未完成的工作。",
   "punchList.new": "新建工作项",
+  "punchList.edit": "编辑工作项",
   "punchList.whatNeedsDone": "需要完成的工作 ★",
   "punchList.whatNeedsDonePlaceholder": "例如：安装门五金件 — 4号单元",
   "punchList.details": "详情",
@@ -1255,6 +1275,8 @@ const ZH: Dict = {
   "punchList.assignedTo": "指派给",
   "punchList.dueDate": "截止日期",
   "punchList.addToPunchList": "添加到问题清单",
+  "punchList.saveChanges": "保存更改",
+  "punchList.saving": "保存中…",
   "punchList.adding": "添加中…",
   "punchList.nothingYet": "问题清单中暂无内容。",
   "punchList.allDone": "此项目的所有工作都已完成。🎉",
@@ -1274,6 +1296,7 @@ const ZH: Dict = {
 
   "inspection.title": "检查",
   "inspection.new": "新建检查",
+  "inspection.edit": "编辑检查",
   "inspection.newBtn": "新建检查",
   "inspection.titleField": "标题 ★",
   "inspection.titlePlaceholder": "例如：钢筋检查 — F3 基础",
@@ -1294,6 +1317,7 @@ const ZH: Dict = {
 
   "safety.title": "安全",
   "safety.new": "新建安全记录",
+  "safety.edit": "编辑",
   "safety.newBtn": "新建安全记录",
   "safety.type": "类型",
   "safety.severity": "严重程度",
@@ -1321,6 +1345,7 @@ const ZH: Dict = {
 
   "submittal.title": "报审",
   "submittal.new": "新建报审",
+  "submittal.edit": "编辑报审",
   "submittal.newBtn": "新建报审",
   "submittal.titleField": "标题 ★",
   "submittal.titlePlaceholder": "例如：钢结构加工图",
@@ -1331,6 +1356,8 @@ const ZH: Dict = {
   "submittal.reviewer": "审核人",
   "submittal.notes": "备注",
   "submittal.create": "创建报审",
+  "submittal.saveChanges": "保存更改",
+  "submittal.saving": "保存中…",
   "submittal.creating": "创建中…",
   "submittal.noneYet": "暂无报审。",
 
