@@ -85,6 +85,10 @@ export interface CMDailyLog {
   project_id: string;
   owner_id: string;
   log_date: string;
+  /** Auto-generated document number, e.g. "ZIN-SD-2026-0001" — null for
+   *  entries created before this feature shipped, or if numbering failed
+   *  (best-effort; never blocks log creation). */
+  doc_number: string | null;
   weather: string | null;
   temperature_c: number | null;
   rain_start_time: string | null;
@@ -188,12 +192,25 @@ export function useCMDailyLogs(projectId: string | undefined) {
   });
 }
 
+/** Numbering uses the log's own date, not wall-clock "today" — Site Diary
+ *  entries are routinely backdated (findOrCreateCMDailyLog below), so
+ *  numbering by log_date keeps the year segment correct near a year
+ *  boundary. Best-effort: a numbering failure never blocks log creation. */
 export async function createCMDailyLog(
   ownerId: string,
   projectId: string,
   input: Partial<Omit<CMDailyLog, "id" | "project_id" | "owner_id" | "created_at" | "updated_at">>,
 ) {
-  const { data, error } = await db().from("cm_daily_logs").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  const year = new Date(input.log_date ?? new Date().toISOString().slice(0, 10)).getFullYear();
+  let docNumber: string | null = null;
+  try {
+    const { data } = await db().rpc("cm_next_doc_number", {
+      p_project_id: projectId, p_module_key: "site_diary", p_module_code: "SD", p_year: year,
+    });
+    docNumber = data ?? null;
+  } catch { /* numbering is best-effort; never block log creation on it */ }
+  const { data, error } = await db().from("cm_daily_logs")
+    .insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   return data as CMDailyLog;
 }
@@ -839,6 +856,16 @@ export function useAllCMPhotos(userId: string | undefined) {
     staleTime: STALE_TIME,
   });
 }
+
+/* ── Shared master data ───────────────────────────────── */
+/** Common discipline classification, shared across modules (Inspection,
+ *  Submittal, and future ones) instead of each hand-rolling its own list. */
+export const DISCIPLINES = [
+  "architecture", "structural", "civil", "steel_structure", "mechanical",
+  "electrical", "plumbing", "fire_protection", "infrastructure", "roofing",
+  "cladding", "landscape", "safety", "quality", "general",
+] as const;
+export type Discipline = typeof DISCIPLINES[number];
 
 /* ── Equipment (per project) ───────────────────────────── */
 export type EquipmentStatus = "Operational" | "Maintenance" | "Out of Service";
@@ -1510,6 +1537,7 @@ export interface CMInspection {
   owner_id: string;
   title: string;
   status: InspectionStatus;
+  discipline: Discipline | null;
   inspector: string | null;
   inspection_date: string;
   notes: string | null;
@@ -1535,7 +1563,7 @@ export function useCMInspections(projectId: string | undefined) {
 export async function createCMInspection(
   ownerId: string,
   projectId: string,
-  input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "inspector" | "inspection_date" | "notes">>,
+  input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "discipline" | "inspector" | "inspection_date" | "notes">>,
 ) {
   const { data, error } = await db().from("cm_inspections").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -1616,6 +1644,7 @@ export interface CMSubmittal {
   owner_id: string;
   title: string;
   spec_section: string | null;
+  discipline: Discipline | null;
   status: SubmittalStatus;
   submitted_date: string | null;
   due_date: string | null;
@@ -1646,7 +1675,7 @@ export function useCMSubmittals(projectId: string | undefined) {
 export async function createCMSubmittal(
   ownerId: string,
   projectId: string,
-  input: Pick<CMSubmittal, "title"> & Partial<Pick<CMSubmittal, "spec_section" | "status" | "submitted_date" | "due_date" | "reviewer" | "notes">>,
+  input: Pick<CMSubmittal, "title"> & Partial<Pick<CMSubmittal, "spec_section" | "discipline" | "status" | "submitted_date" | "due_date" | "reviewer" | "notes">>,
 ) {
   const { data, error } = await db().from("cm_submittals").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;

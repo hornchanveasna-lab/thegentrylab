@@ -6,6 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
+  StatusBadge, EmptyState, ErrorState, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
   useCMSafetyRecords,
@@ -118,6 +119,7 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("safety", item.id, () => setOpen(true));
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const sc = SEVERITY_COLOR[item.severity];
 
   const handleResolve = async () => {
@@ -125,7 +127,7 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
     try { await updateCMSafetyRecord(item.id, { status: item.status === "Open" ? "Resolved" : "Open" }); onChanged(); } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm(t("safety.confirmDelete"))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMSafetyRecord(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -138,7 +140,7 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`safetyType.${item.record_type}`)}</span>
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest shrink-0" style={{ backgroundColor: `${sc}15`, color: sc }}>{t(`safetySeverity.${item.severity}`)}</span>
+        <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />
       </button>
       {open && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
@@ -161,13 +163,17 @@ function SafetyCard({ item, onChanged, onOpenPhoto }: { item: CMSafetyRecord; on
               {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
             </button>
             <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</button>
-            <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
+            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
           </div>
         </div>
       )}
       {editing && (
         <NewSafetySheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
+      )}
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("safety.confirmDelete")} confirmLabel={t("safety.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
       )}
     </div>
   );
@@ -178,7 +184,7 @@ function CMSafetyPage() {
   const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: records, isLoading } = useCMSafetyRecords(projectId || undefined);
+  const { data: records, isLoading, isError, refetch } = useCMSafetyRecords(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -225,21 +231,18 @@ function CMSafetyPage() {
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {view === "calendar" ? (
+            {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
+            {!isError && (view === "calendar" ? (
               <MiniCalendar items={records ?? []} dateOf={(r) => r.record_date} lang={lang}
                 onOpenDay={(dayItems) => { setDateFilter(dayItems[0].record_date); setView("list"); }} />
             ) : (
               <>
-                {!isLoading && visibleRecords.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                    <p className="text-white/40 text-sm">{t("safety.noneYet")}</p>
-                  </div>
-                )}
+                {!isLoading && visibleRecords.length === 0 && <EmptyState message={t("safety.noneYet")} />}
                 <div className="flex flex-col gap-3">
                   {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
-            )}
+            ))}
             <FAB label={t("safety.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}

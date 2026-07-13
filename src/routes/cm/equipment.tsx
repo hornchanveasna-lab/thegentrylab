@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
-  EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR,
+  EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR, EmptyState, ErrorState,
 } from "@/components/cm/shared";
 import {
   useCMEquipment,
@@ -108,7 +108,7 @@ function CMEquipmentPage() {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: items, isLoading } = useCMEquipment(projectId || undefined);
+  const { data: items, isLoading, isError, refetch } = useCMEquipment(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -141,14 +141,15 @@ function CMEquipmentPage() {
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && visibleItems.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("equipment.nothingYet")}</p>
-              </div>
+            {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
+            {!isError && (
+              <>
+                {!isLoading && visibleItems.length === 0 && <EmptyState message={t("equipment.nothingYet")} />}
+                <div className="flex flex-col gap-2">
+                  {visibleItems.map((eq) => <EquipmentRow key={eq.id} eq={eq} onChanged={invalidate} />)}
+                </div>
+              </>
             )}
-            <div className="flex flex-col gap-2">
-              {visibleItems.map((eq) => <EquipmentRow key={eq.id} eq={eq} onChanged={invalidate} />)}
-            </div>
             <FAB label={t("equipment.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}

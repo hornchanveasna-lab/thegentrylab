@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
+  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -15,6 +15,7 @@ import {
   uploadCMPhotoWithThumb,
   type CMSubmittal,
   type SubmittalStatus,
+  type Discipline,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/submittal")({
@@ -34,6 +35,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, onClose, onCreated }:
   const { t } = useCMLang();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [specSection, setSpecSection] = useState(existing?.spec_section ?? "");
+  const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
   const [status, setStatus] = useState<SubmittalStatus>(existing?.status ?? "Draft");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
   const [reviewer, setReviewer] = useState(existing?.reviewer ?? "");
@@ -49,7 +51,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, onClose, onCreated }:
     setError("");
     try {
       const patch = {
-        title: title.trim(), spec_section: specSection.trim() || null, status,
+        title: title.trim(), spec_section: specSection.trim() || null, discipline, status,
         due_date: dueDate || null, reviewer: reviewer.trim() || null, notes: notes.trim() || null,
         submitted_date: existing ? existing.submitted_date : (status !== "Draft" ? new Date().toISOString().slice(0, 10) : null),
       };
@@ -86,6 +88,10 @@ function NewSubmittalSheet({ ownerId, projectId, existing, onClose, onCreated }:
             <FieldSelect value={status} onChange={setStatus} disabled={saving} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`submittalStatus.${s}`) }))} />
           </label>
         </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("common.discipline")}</span>
+          <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} />
+        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("submittal.dueDate")}</span>
@@ -131,7 +137,7 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
     } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm("Delete this submittal?")) return;
+    if (!confirm(t("submittal.confirmDelete"))) return;
     setBusy(true);
     try { await deleteCMSubmittal(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -141,7 +147,9 @@ function SubmittalCard({ item, onChanged, onOpenPhoto }: { item: CMSubmittal; on
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-[13px] font-bold text-white leading-tight truncate">{item.title}</h3>
-          {item.spec_section && <p className="font-mono text-[10px] text-white/30 mt-0.5">{item.spec_section} · Rev {item.revision}</p>}
+          <p className="font-mono text-[10px] text-white/30 mt-0.5">
+            {[item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
+          </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
