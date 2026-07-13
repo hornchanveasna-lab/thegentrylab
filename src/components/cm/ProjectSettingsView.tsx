@@ -24,13 +24,16 @@ import {
   useCMProjectMembers,
   updateCMMemberRole,
   updateCMMemberPosition,
+  updateCMMemberCompany,
   removeCMProjectMember,
+  distinctCMCompanyNames,
   useCMProjectInvites,
   createCMProjectInvite,
   revokeCMProjectInvite,
   type CMProject,
   type CMProjectConsultant,
   type CMProjectSubcontractor,
+  type CMProjectMember,
   type CMMemberRole,
   type ProjectStatus,
 } from "@/lib/cm-data";
@@ -328,63 +331,6 @@ function ConsultantRow({ c, editing, editValue, onEditValueChange, onStartEdit, 
   );
 }
 
-/** Named people attached to a consultant company, shown as face-thumbnail
- *  + role chips beneath its logo row — separate from the consultant's own
- *  name/logo, which stays untouched (still feeds photo-stamp branding). */
-function ConsultantPeopleSection({ ownerId, consultantId }: { ownerId: string; consultantId: string }) {
-  const { t } = useCMLang();
-  const qc = useQueryClient();
-  const { data: contacts } = useCMDirectoryContacts(ownerId);
-  const { data: people } = useCMConsultantPeople(consultantId);
-  const [adding, setAdding] = useState(false);
-  const [contactId, setContactId] = useState("");
-  const [role, setRole] = useState("");
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_consultant_people", consultantId] });
-
-  const handleAdd = async () => {
-    if (!contactId) return;
-    await addCMConsultantPerson(consultantId, contactId, role.trim() || null);
-    setContactId(""); setRole(""); setAdding(false);
-    invalidate();
-  };
-
-  return (
-    <div className="pl-3 flex flex-col gap-2">
-      {(people?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap gap-3">
-          {(people ?? []).map((p) => (
-            <div key={p.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
-              <Avatar name={p.contact.name} photoUrl={p.contact.photo_url} size={32} />
-              <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={p.contact.name}>
-                {p.role || p.contact.trade || p.contact.name}
-              </p>
-              <button onClick={() => removeCMConsultantPerson(p.id).then(invalidate)}
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
-            </div>
-          ))}
-        </div>
-      )}
-      {adding ? (
-        <div className="flex flex-col gap-2">
-          <FieldSelect
-            value={contactId}
-            onChange={setContactId}
-            placeholder={t("projectSettings.selectContact")}
-            options={(contacts ?? []).map((c) => ({ value: c.id, label: `${c.name}${c.trade ? ` (${c.trade})` : ""}` }))}
-          />
-          <input className={inputCls} placeholder={t("projectSettings.personRole")} value={role} onChange={(e) => setRole(e.target.value)} />
-          <div className="flex gap-2">
-            <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-            <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
-          </div>
-        </div>
-      ) : (
-        (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start`} style={{ color: "#ff5100" }}>{t("projectSettings.addPerson")}</button>
-      )}
-    </div>
-  );
-}
-
 /* ── Consultants (structural, MEP, etc. — a project can have several) ── */
 function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: string; projectId: string; previewMonotone: boolean }) {
   const { t } = useCMLang();
@@ -433,22 +379,20 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: 
     <Card title={t("projectSettings.consultants")}>
       <div className="flex flex-col gap-2">
         {(consultants ?? []).map((c) => (
-          <div key={c.id} className="flex flex-col gap-2">
-            <ConsultantRow
-              c={c}
-              editing={editingId === c.id}
-              editValue={editValue}
-              onEditValueChange={setEditValue}
-              onStartEdit={() => startEditing(c)}
-              onCommitEdit={() => commitEdit(c.id)}
-              onCancelEdit={() => setEditingId(null)}
-              uploading={uploadingId === c.id}
-              onUploadLogo={(f) => handleUploadLogo(c.id, f)}
-              onDelete={() => deleteCMProjectConsultant(c.id).then(invalidate)}
-              previewMonotone={previewMonotone}
-            />
-            <ConsultantPeopleSection ownerId={ownerId} consultantId={c.id} />
-          </div>
+          <ConsultantRow
+            key={c.id}
+            c={c}
+            editing={editingId === c.id}
+            editValue={editValue}
+            onEditValueChange={setEditValue}
+            onStartEdit={() => startEditing(c)}
+            onCommitEdit={() => commitEdit(c.id)}
+            onCancelEdit={() => setEditingId(null)}
+            uploading={uploadingId === c.id}
+            onUploadLogo={(f) => handleUploadLogo(c.id, f)}
+            onDelete={() => deleteCMProjectConsultant(c.id).then(invalidate)}
+            previewMonotone={previewMonotone}
+          />
         ))}
         {(consultants?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noConsultants")}</p>}
         {adding ? (
@@ -517,106 +461,144 @@ function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: 
   );
 }
 
-/* ── Subcontractors ───────────────────────────────────── */
-function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+/* ── People: unified Team + Subcontractor + Consultant-people view, grouped
+ *  by company, so there's one place to see and reassign everyone regardless
+ *  of how they joined (invited login vs. a Directory-only contact with no
+ *  login). RLS is project-role-aware (see cm-data.ts), so an invited member
+ *  can actually use the project per their role, not just show up here. ── */
+const MEMBER_ROLE_OPTIONS: CMMemberRole[] = ["admin", "member", "visitor"];
+const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeholder-white/20 focus:outline-none focus:text-white/70 transition-colors";
+
+/** Inline edit row for one member, shown below their chip in the grouped
+ *  view when tapped — position/company (per-project attributes) are kept
+ *  visually separate from the permission-role dropdown (system access) so
+ *  "job title" and "system permission" aren't confused. */
+function MemberEditRow({ member, companyOptions, onChanged }: { member: CMProjectMember; companyOptions: string[]; onChanged: () => void }) {
+  const { t } = useCMLang();
+  return (
+    <div className="rounded-lg bg-white/[0.04] px-3 py-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+      <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={member.position ?? ""}
+        onBlur={(e) => { if (e.target.value !== (member.position ?? "")) updateCMMemberPosition(member.id, e.target.value.trim() || null).then(onChanged); }} />
+      <div className="flex items-center gap-2">
+        <FieldSelect
+          className="flex-1"
+          value={member.company ?? ""}
+          onChange={(v) => updateCMMemberCompany(member.id, v.trim() || null).then(onChanged)}
+          onCreateCustom={(v) => updateCMMemberCompany(member.id, v || null).then(onChanged)}
+          placeholder={t("people.companyPlaceholder")}
+          searchable
+          allowCustom
+          options={companyOptions.map((c) => ({ value: c, label: c }))}
+        />
+        <FieldSelect value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
+          options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
+      </div>
+    </div>
+  );
+}
+
+/** Named people attached to a consultant company, shown as its own
+ *  company-style group card — separate from the consultant's own
+ *  name/logo (rendered by ConsultantRow above), which stays untouched
+ *  (still feeds photo-stamp branding). */
+function ConsultantPeopleGroup({ ownerId, consultantId, consultantName }: { ownerId: string; consultantId: string; consultantName: string }) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: contacts } = useCMDirectoryContacts(ownerId);
-  const { data: assigned } = useCMProjectSubcontractors(projectId);
+  const { data: people } = useCMConsultantPeople(consultantId);
   const [adding, setAdding] = useState(false);
   const [contactId, setContactId] = useState("");
   const [role, setRole] = useState("");
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_project_subcontractors", projectId] });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_consultant_people", consultantId] });
 
   const handleAdd = async () => {
     if (!contactId) return;
-    await addCMProjectSubcontractor(ownerId, projectId, contactId, role.trim() || null);
+    await addCMConsultantPerson(consultantId, contactId, role.trim() || null);
     setContactId(""); setRole(""); setAdding(false);
     invalidate();
   };
 
-  // Grouped by company so several people from the same subcontractor show
-  // together as one row of face thumbnails with a "×N" count, instead of
-  // one flat list entry per person.
-  const grouped = useMemo(() => {
-    const map = new Map<string, CMProjectSubcontractor[]>();
-    for (const a of assigned ?? []) {
-      const key = a.contact.company || t("projectSettings.independent");
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(a);
-    }
-    return Array.from(map.entries());
-  }, [assigned, t]);
-
   return (
-    <Card title={t("projectSettings.subcontractors")}>
-      <div className="flex flex-col gap-3">
-        {grouped.map(([company, group]) => (
-          <div key={company} className="rounded-xl bg-white/[0.03] px-3 py-2.5 flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[12px] text-white/80 font-medium truncate">{company}</p>
-              <span className="font-mono text-[10px] text-white/30 shrink-0">×{group.length}</span>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {group.map((a) => (
-                <div key={a.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
-                  <Avatar name={a.contact.name} photoUrl={a.contact.photo_url} size={36} />
-                  <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={a.contact.name}>
-                    {a.role_on_project || a.contact.trade || a.contact.name}
-                  </p>
-                  <button onClick={() => removeCMProjectSubcontractor(a.id).then(invalidate)}
-                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-        {(assigned?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noSubcontractors")}</p>}
-        {(contacts?.length ?? 0) === 0 && (
-          <p className="text-[11px] text-white/30">
-            {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
-          </p>
-        )}
-        {adding ? (
-          <div className="flex flex-col gap-2 mt-1">
-            <FieldSelect
-              value={contactId}
-              onChange={setContactId}
-              placeholder={t("projectSettings.selectContact")}
-              options={(contacts ?? []).map((c) => ({ value: c.id, label: `${c.name}${c.trade ? ` (${c.trade})` : ""}` }))}
-            />
-            <input className={inputCls} placeholder={t("projectSettings.roleOnProject")} value={role} onChange={(e) => setRole(e.target.value)} />
-            <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
-            </div>
-          </div>
-        ) : (
-          (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.assign")}</button>
-        )}
+    <div className="rounded-xl bg-white/[0.03] px-3 py-2.5 flex flex-col gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[12px] text-white/80 font-medium truncate">{consultantName}</p>
+        {(people?.length ?? 0) > 0 && <span className="font-mono text-[10px] text-white/30 shrink-0">×{people!.length}</span>}
       </div>
-    </Card>
+      {(people?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {(people ?? []).map((p) => (
+            <div key={p.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
+              <Avatar name={p.contact.name} photoUrl={p.contact.photo_url} size={36} />
+              <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={p.contact.name}>
+                {p.role || p.contact.trade || p.contact.name}
+              </p>
+              <button onClick={() => removeCMConsultantPerson(p.id).then(invalidate)}
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {adding ? (
+        <div className="flex flex-col gap-2">
+          <FieldSelect
+            value={contactId}
+            onChange={setContactId}
+            placeholder={t("projectSettings.selectContact")}
+            options={(contacts ?? []).map((c) => ({ value: c.id, label: `${c.name}${c.trade ? ` (${c.trade})` : ""}` }))}
+          />
+          <input className={inputCls} placeholder={t("projectSettings.personRole")} value={role} onChange={(e) => setRole(e.target.value)} />
+          <div className="flex gap-2">
+            <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+            <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+          </div>
+        </div>
+      ) : (
+        (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start`} style={{ color: "#ff5100" }}>{t("projectSettings.addPerson")}</button>
+      )}
+    </div>
   );
 }
 
-/* ── Team (Phase 1: schema + invite-link mechanics only — members can
- *  accept an invite and show up here, but every other project-scoped
- *  table still gates strictly on owner_id, so they can't see project
- *  content yet; that RLS rewrite is a separate follow-up) ──────── */
-const MEMBER_ROLE_OPTIONS: CMMemberRole[] = ["admin", "member", "visitor"];
-const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeholder-white/20 focus:outline-none focus:text-white/70 transition-colors";
-
-function TeamSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+function PeopleSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: members } = useCMProjectMembers(projectId);
   const { data: invites } = useCMProjectInvites(projectId);
+  const { data: subcontractors } = useCMProjectSubcontractors(projectId);
+  const { data: consultants } = useCMProjectConsultants(projectId);
+  const { data: contacts } = useCMDirectoryContacts(ownerId);
+
   const [inviteRole, setInviteRole] = useState<CMMemberRole>("member");
-  const [creating, setCreating] = useState(false);
+  const [creatingInvite, setCreatingInvite] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const [addingContact, setAddingContact] = useState(false);
+  const [contactId, setContactId] = useState("");
+  const [role, setRole] = useState("");
 
   const invalidateMembers = () => qc.invalidateQueries({ queryKey: ["cm_project_members", projectId] });
   const invalidateInvites = () => qc.invalidateQueries({ queryKey: ["cm_project_invites", projectId] });
+  const invalidateSubs = () => qc.invalidateQueries({ queryKey: ["cm_project_subcontractors", projectId] });
+
+  const companyOptions = useMemo(
+    () => distinctCMCompanyNames(members ?? [], subcontractors ?? [], consultants ?? []),
+    [members, subcontractors, consultants],
+  );
+
+  // Members and Subcontractors merge into one company-grouped view;
+  // Consultant people stay grouped under their own consultant (below),
+  // since a consultant's company name is a fixed identity, not free text.
+  const grouped = useMemo(() => {
+    const map = new Map<string, { members: CMProjectMember[]; subs: CMProjectSubcontractor[] }>();
+    const keyOf = (name: string | null) => name || t("projectSettings.independent");
+    const ensure = (k: string) => {
+      if (!map.has(k)) map.set(k, { members: [], subs: [] });
+      return map.get(k)!;
+    };
+    for (const m of members ?? []) ensure(keyOf(m.company)).members.push(m);
+    for (const s of subcontractors ?? []) ensure(keyOf(s.contact.company)).subs.push(s);
+    return Array.from(map.entries());
+  }, [members, subcontractors, t]);
 
   const copyInviteLink = async (token: string, id: string) => {
     await navigator.clipboard.writeText(`${window.location.origin}/cm/join/${token}`);
@@ -625,48 +607,90 @@ function TeamSection({ ownerId, projectId }: { ownerId: string; projectId: strin
   };
 
   const handleCreateInvite = async () => {
-    setCreating(true);
+    setCreatingInvite(true);
     try {
       const invite = await createCMProjectInvite(ownerId, projectId, inviteRole);
       invalidateInvites();
       await copyInviteLink(invite.token, invite.id);
     } finally {
-      setCreating(false);
+      setCreatingInvite(false);
     }
   };
 
+  const handleAddContact = async () => {
+    if (!contactId) return;
+    await addCMProjectSubcontractor(ownerId, projectId, contactId, role.trim() || null);
+    setContactId(""); setRole(""); setAddingContact(false);
+    invalidateSubs();
+  };
+
   const activeInvites = (invites ?? []).filter((i) => !i.revoked_at);
+  const isEmpty = (members?.length ?? 0) === 0 && (subcontractors?.length ?? 0) === 0;
 
   return (
-    <Card title={t("team.title")}>
+    <Card title={t("people.title")}>
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <span className={labelCls}>{t("team.members")}</span>
-          {(members ?? []).map((m) => (
-            <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
-              <div className="min-w-0 flex items-center gap-2.5">
-                {m.avatar_url ? (
-                  <img src={m.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 text-[11px] text-white/50">
-                    {(m.display_name || m.email || "?").charAt(0).toUpperCase()}
+        <div className="flex flex-col gap-3">
+          {grouped.map(([company, group]) => (
+            <div key={company} className="rounded-xl bg-white/[0.03] px-3 py-2.5 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[12px] text-white/80 font-medium truncate">{company}</p>
+                <span className="font-mono text-[10px] text-white/30 shrink-0">×{group.members.length + group.subs.length}</span>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {group.members.map((m) => (
+                  <div key={m.id} className="relative flex flex-col items-center gap-1 cursor-pointer" style={{ width: 56 }}
+                    onClick={() => setExpandedMemberId((cur) => (cur === m.id ? null : m.id))}>
+                    <Avatar name={m.display_name || m.email || "?"} photoUrl={m.avatar_url} size={36} />
+                    <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={m.display_name || m.email || ""}>
+                      {m.position || t(`team.role.${m.role}`)}
+                    </p>
+                    <button onClick={(e) => { e.stopPropagation(); removeCMProjectMember(m.id).then(invalidateMembers); }}
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
                   </div>
-                )}
-                <div className="min-w-0">
-                  <p className="text-[12px] text-white/80 truncate">{m.display_name || m.email || t("team.unknownMember")}</p>
-                  <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={m.position ?? ""}
-                    onBlur={(e) => { if (e.target.value !== (m.position ?? "")) updateCMMemberPosition(m.id, e.target.value.trim() || null).then(invalidateMembers); }} />
-                </div>
+                ))}
+                {group.subs.map((s) => (
+                  <div key={s.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
+                    <Avatar name={s.contact.name} photoUrl={s.contact.photo_url} size={36} />
+                    <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={s.contact.name}>
+                      {s.role_on_project || s.contact.trade || s.contact.name}
+                    </p>
+                    <button onClick={() => removeCMProjectSubcontractor(s.id).then(invalidateSubs)}
+                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <FieldSelect value={m.role} onChange={(role) => updateCMMemberRole(m.id, role).then(invalidateMembers)}
-                  options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
-                <button onClick={() => removeCMProjectMember(m.id).then(invalidateMembers)}
-                  className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
-              </div>
+              {group.members.filter((m) => m.id === expandedMemberId).map((m) => (
+                <MemberEditRow key={m.id} member={m} companyOptions={companyOptions} onChanged={invalidateMembers} />
+              ))}
             </div>
           ))}
-          {(members?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("team.noMembers")}</p>}
+          {(consultants ?? []).map((c) => (
+            <ConsultantPeopleGroup key={c.id} ownerId={ownerId} consultantId={c.id} consultantName={c.name} />
+          ))}
+          {isEmpty && <p className="text-white/30 text-[12px]">{t("people.noPeople")}</p>}
+          {(contacts?.length ?? 0) === 0 && (
+            <p className="text-[11px] text-white/30">
+              {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
+            </p>
+          )}
+          {addingContact ? (
+            <div className="flex flex-col gap-2 mt-1">
+              <FieldSelect
+                value={contactId}
+                onChange={setContactId}
+                placeholder={t("projectSettings.selectContact")}
+                options={(contacts ?? []).map((c) => ({ value: c.id, label: `${c.name}${c.trade ? ` (${c.trade})` : ""}` }))}
+              />
+              <input className={inputCls} placeholder={t("projectSettings.roleOnProject")} value={role} onChange={(e) => setRole(e.target.value)} />
+              <div className="flex gap-2">
+                <button onClick={handleAddContact} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+                <button onClick={() => setAddingContact(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+              </div>
+            </div>
+          ) : (
+            (contacts?.length ?? 0) > 0 && <button onClick={() => setAddingContact(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.assign")}</button>
+          )}
         </div>
 
         <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
@@ -674,7 +698,7 @@ function TeamSection({ ownerId, projectId }: { ownerId: string; projectId: strin
           <div className="flex gap-2">
             <FieldSelect value={inviteRole} onChange={setInviteRole}
               options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
-            <button onClick={handleCreateInvite} disabled={creating} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+            <button onClick={handleCreateInvite} disabled={creatingInvite} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
               {t("team.generateLink")}
             </button>
           </div>
@@ -715,8 +739,7 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
         <LogoSection project={project} ownerId={ownerId} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
         <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone} />
         <ChecklistSection ownerId={ownerId} projectId={project.id} />
-        <SubcontractorsSection ownerId={ownerId} projectId={project.id} />
-        <TeamSection ownerId={ownerId} projectId={project.id} />
+        <PeopleSection ownerId={ownerId} projectId={project.id} />
       </div>
     </>
   );
