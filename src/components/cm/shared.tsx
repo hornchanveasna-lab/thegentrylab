@@ -65,7 +65,7 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
  *  the app's one dropdown pattern, replacing every native `<select>` so
  *  option lists always look and behave the same regardless of platform
  *  (native pickers render wildly differently per OS/browser). */
-export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, disabled, placeholder }: {
+export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, disabled, placeholder, searchable, searchPlaceholder }: {
   value: T;
   options: FieldSelectOption<T>[];
   onChange: (v: T) => void;
@@ -74,9 +74,14 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
   triggerStyle?: React.CSSProperties;
   disabled?: boolean;
   placeholder?: string;
+  searchable?: boolean;
+  searchPlaceholder?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   const selected = options.find((o) => o.value === value);
+  const q = search.trim().toLowerCase();
+  const visibleOptions = searchable && q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
 
   return (
     <div className={`relative ${className ?? ""}`}>
@@ -89,11 +94,20 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
           <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+            {searchable && (
+              <div className="p-2 border-b border-white/6">
+                <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder}
+                  className="w-full bg-white/5 rounded-lg border border-white/10 px-3 py-2 text-[12px] text-white placeholder-white/25 focus:outline-none focus:border-[#ff5100]/60" />
+              </div>
+            )}
             <div className="max-h-72 overflow-y-auto">
-              {options.map((opt) => (
-                <button key={opt.value} type="button" onClick={() => { onChange(opt.value); setOpen(false); }}
+              {visibleOptions.length === 0 && (
+                <p className="px-4 py-3 text-[12px] text-white/30">—</p>
+              )}
+              {visibleOptions.map((opt) => (
+                <button key={opt.value} type="button" onClick={() => { onChange(opt.value); setOpen(false); setSearch(""); }}
                   className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
                   <span className="text-[13px] text-white/85 truncate">{opt.label}</span>
                   {opt.value === value && (

@@ -1020,6 +1020,37 @@ export async function deleteCMBOQItem(id: string) {
   if (error) throw error;
 }
 
+/** Tags a captured photo (from the general Photos capture flow, whichever
+ *  module it ends up attached to) with a BOQ line item it documents progress
+ *  for — independent of the photo's parent record, since one capture session
+ *  can spread photos across five different tables depending on module. */
+export interface CMPhotoBoqTag {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  boq_item_id: string;
+  photo_url: string;
+  created_at: string;
+}
+
+export function useCMPhotoBoqTags(projectId: string | undefined) {
+  return useQuery<CMPhotoBoqTag[]>({
+    queryKey: ["cm_photo_boq_tags", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_photo_boq_tags").select("*").eq("project_id", projectId);
+      if (error) throw error;
+      return data as CMPhotoBoqTag[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMPhotoBoqTag(ownerId: string, projectId: string, boqItemId: string, photoUrl: string) {
+  const { error } = await db().from("cm_photo_boq_tags").insert({ owner_id: ownerId, project_id: projectId, boq_item_id: boqItemId, photo_url: photoUrl });
+  if (error) throw error;
+}
+
 /* ── Schedule items (WBS plan-vs-actual, per project) ──── */
 export interface CMScheduleItem {
   id: string;
