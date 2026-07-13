@@ -10,7 +10,9 @@ import {
   updateCMDirectoryContact,
   deleteCMDirectoryContact,
   uploadCMContactPhoto,
+  useCMLinkedMembersByContact,
   type CMDirectoryContact,
+  type CMLinkedMember,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/directory")({
@@ -102,7 +104,7 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
   );
 }
 
-function ContactCard({ contact, ownerId, onChanged }: { contact: CMDirectoryContact; ownerId: string; onChanged: () => void }) {
+function ContactCard({ contact, ownerId, onChanged, linked }: { contact: CMDirectoryContact; ownerId: string; onChanged: () => void; linked?: CMLinkedMember }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -129,13 +131,20 @@ function ContactCard({ contact, ownerId, onChanged }: { contact: CMDirectoryCont
     <div className="rounded-2xl bg-[#0d0d0e] px-5 py-4 flex items-start justify-between gap-3">
       <div className="min-w-0 flex items-center gap-3">
         <label className="relative shrink-0 cursor-pointer">
-          <Avatar name={contact.name} photoUrl={contact.photo_url} size={40} />
+          <Avatar name={contact.name} photoUrl={contact.photo_url ?? linked?.avatar_url} size={40} />
           <input type="file" accept="image/*" className="hidden" disabled={uploading}
             onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }} />
           {uploading && <span className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center text-white/70 text-[9px]">…</span>}
         </label>
         <div className="min-w-0">
-          <h3 className="text-[13px] font-bold text-white leading-tight">{contact.name}</h3>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-[13px] font-bold text-white leading-tight">{contact.name}</h3>
+            {linked && (
+              <span className="font-mono text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.15)", color: "#ff5100" }}>
+                {t("directory.linkedBadge")}
+              </span>
+            )}
+          </div>
           <p className="text-[12px] text-white/45 mt-0.5">
             {[contact.trade, contact.company].filter(Boolean).join(" · ") || "—"}
           </p>
@@ -155,6 +164,8 @@ function CMDirectoryPage() {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { data: contacts, isLoading } = useCMDirectoryContacts(user?.id);
+  const { data: linkedMembers } = useCMLinkedMembersByContact(user?.id);
+  const linkedByContact = new Map((linkedMembers ?? []).map((m) => [m.contact_id, m]));
   const [showNew, setShowNew] = useState(false);
 
   const invalidate = () => {
@@ -198,7 +209,7 @@ function CMDirectoryPage() {
           </div>
         )}
         <div className="flex flex-col gap-3">
-          {(contacts ?? []).map((c) => <ContactCard key={c.id} contact={c} ownerId={user.id} onChanged={invalidate} />)}
+          {(contacts ?? []).map((c) => <ContactCard key={c.id} contact={c} ownerId={user.id} onChanged={invalidate} linked={linkedByContact.get(c.id)} />)}
         </div>
       </main>
 

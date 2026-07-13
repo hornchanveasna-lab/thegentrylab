@@ -80,7 +80,7 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
  *  the app's one dropdown pattern, replacing every native `<select>` so
  *  option lists always look and behave the same regardless of platform
  *  (native pickers render wildly differently per OS/browser). */
-export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, disabled, placeholder, searchable, searchPlaceholder }: {
+export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, disabled, placeholder, searchable, searchPlaceholder, allowCustom, onCreateCustom }: {
   value: T;
   options: FieldSelectOption<T>[];
   onChange: (v: T) => void;
@@ -91,12 +91,28 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
   placeholder?: string;
   searchable?: boolean;
   searchPlaceholder?: string;
+  /** When paired with `searchable`, offers a "+ Create '{search}'" row for
+   *  typed text that doesn't match any existing option — used for free-text
+   *  fields (like a company name) where the option list is just "everything
+   *  already used" rather than a fixed enum. */
+  allowCustom?: boolean;
+  onCreateCustom?: (value: string) => void;
 }) {
+  const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const selected = options.find((o) => o.value === value);
   const q = search.trim().toLowerCase();
   const visibleOptions = searchable && q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+  const trimmedSearch = search.trim();
+  const showCreateRow = searchable && allowCustom && trimmedSearch.length > 0
+    && !options.some((o) => o.label.toLowerCase() === trimmedSearch.toLowerCase());
+  const handleCreate = () => {
+    if (onCreateCustom) onCreateCustom(trimmedSearch);
+    else onChange(trimmedSearch as T);
+    setOpen(false);
+    setSearch("");
+  };
 
   return (
     <div className={`relative ${className ?? ""}`}>
@@ -118,8 +134,15 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
               </div>
             )}
             <div className="max-h-72 overflow-y-auto">
-              {visibleOptions.length === 0 && (
+              {visibleOptions.length === 0 && !showCreateRow && (
                 <p className="px-4 py-3 text-[12px] text-white/30">—</p>
+              )}
+              {showCreateRow && (
+                <button type="button" onClick={handleCreate}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6"
+                  style={{ color: "#ff5100" }}>
+                  <span className="text-[13px] truncate">{t("people.createCompany", { name: trimmedSearch })}</span>
+                </button>
               )}
               {visibleOptions.map((opt) => (
                 <button key={opt.value} type="button" onClick={() => { onChange(opt.value); setOpen(false); setSearch(""); }}

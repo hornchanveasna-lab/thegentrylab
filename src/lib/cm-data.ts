@@ -1123,6 +1123,11 @@ export async function updateCMMemberPosition(id: string, position: string | null
   if (error) throw error;
 }
 
+export async function updateCMMemberCompany(id: string, company: string | null) {
+  const { error } = await db().from("cm_project_members").update({ company }).eq("id", id);
+  if (error) throw error;
+}
+
 export async function removeCMProjectMember(id: string) {
   const { error } = await db().from("cm_project_members").delete().eq("id", id);
   if (error) throw error;
@@ -1205,20 +1210,25 @@ export async function upsertCMDirectoryContactByEmail(ownerId: string, email: st
 /** Creates (or, on repeat visits to the same link, reuses) the invitee's
  *  own cm_project_members row from the invite + their own signed-in
  *  Supabase user — satisfies the `insert ... with check (user_id =
- *  auth.uid())` policy since this always runs as the invitee. Also
- *  upserts a matching Directory contact by email (creating one under the
- *  project owner's address book on first join, or reusing it on repeat
- *  visits) and links it via contact_id/company, so the invitee shows up
- *  in the owner's Contacts as soon as they join. */
-export async function acceptCMProjectInvite(invite: CMInviteWithProject, user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
+ *  auth.uid())` policy since this always runs as the invitee. `intake` is
+ *  whatever the join-flow's one-time form captured (name editable from the
+ *  Google default, position typed in fresh). Also upserts a matching
+ *  Directory contact by email (creating one under the project owner's
+ *  address book on first join, or reusing it on repeat visits) and links
+ *  it via contact_id/company, so the invitee shows up in the owner's
+ *  Contacts as soon as they join. */
+export async function acceptCMProjectInvite(
+  invite: CMInviteWithProject,
+  user: { id: string; email?: string; user_metadata?: Record<string, unknown> },
+  intake: { displayName: string; position: string | null },
+) {
   const { data: existing, error: findError } = await db()
     .from("cm_project_members").select("*").eq("project_id", invite.project_id).eq("user_id", user.id).maybeSingle();
   if (findError) throw findError;
   if (existing) return existing as CMProjectMember;
 
-  const displayName = (user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? null;
-  const contact = user.email && displayName
-    ? await upsertCMDirectoryContactByEmail(invite.project_owner_id, user.email, displayName)
+  const contact = user.email && intake.displayName
+    ? await upsertCMDirectoryContactByEmail(invite.project_owner_id, user.email, intake.displayName)
     : null;
 
   const { data, error } = await db().from("cm_project_members").insert({
@@ -1226,14 +1236,59 @@ export async function acceptCMProjectInvite(invite: CMInviteWithProject, user: {
     user_id: user.id,
     role: invite.role,
     email: user.email ?? null,
-    display_name: displayName,
+    display_name: intake.displayName || null,
     avatar_url: (user.user_metadata?.avatar_url as string) ?? null,
+    position: intake.position,
     contact_id: contact?.id ?? null,
     company: contact?.company ?? null,
     invited_by: invite.created_by,
   }).select().single();
   if (error) throw error;
   return data as CMProjectMember;
+}
+
+/** Union of every company name already in use for a project's People list —
+ *  feeds the company FieldSelect's searchable/creatable autocomplete so an
+ *  owner/admin doesn't have to retype a name that's already used elsewhere
+ *  in the same project. */
+export function distinctCMCompanyNames(
+  members: CMProjectMember[],
+  subcontractors: CMProjectSubcontractor[],
+  consultants: CMProjectConsultant[],
+): string[] {
+  const set = new Set<string>();
+  for (const m of members) if (m.company) set.add(m.company);
+  for (const s of subcontractors) if (s.contact.company) set.add(s.contact.company);
+  for (const c of consultants) set.add(c.name);
+  return Array.from(set).sort();
+}
+
+export interface CMLinkedMember {
+  contact_id: string;
+  avatar_url: string | null;
+  display_name: string | null;
+  role: CMMemberRole;
+}
+
+/** Every project member (across all of this owner's projects) that's linked
+ *  to a Directory contact — keyed by contact_id, feeds Contacts' "this
+ *  person is also on the platform" badge, Telegram-style. */
+export function useCMLinkedMembersByContact(ownerId: string | undefined) {
+  return useQuery<CMLinkedMember[]>({
+    queryKey: ["cm_linked_members", ownerId],
+    enabled: !!ownerId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db()
+        .from("cm_project_members")
+        .select("contact_id, avatar_url, display_name, role, project:cm_projects!inner(owner_id)")
+        .eq("project.owner_id", ownerId)
+        .not("contact_id", "is", null);
+      if (error) throw error;
+      return (data as unknown as (CMLinkedMember & { project: { owner_id: string } })[])
+        .map(({ project: _project, ...m }) => m);
+    },
+    staleTime: STALE_TIME,
+  });
 }
 
 /* ── BOQ items (per project) ───────────────────────────── */
