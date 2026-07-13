@@ -30,11 +30,18 @@ import {
   useCMProjectInvites,
   createCMProjectInvite,
   revokeCMProjectInvite,
+  useCMProjectLocations,
+  createCMProjectLocation,
+  updateCMProjectLocation,
+  deleteCMProjectLocation,
+  locationBreadcrumb,
   type CMProject,
   type CMProjectConsultant,
   type CMProjectSubcontractor,
   type CMProjectMember,
   type CMMemberRole,
+  type CMProjectLocation,
+  type CMLocationLevel,
   type ProjectStatus,
 } from "@/lib/cm-data";
 
@@ -411,6 +418,101 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: 
   );
 }
 
+/* ── Locations (Building → Floor → Zone → Area, per project) ── */
+const LOCATION_LEVELS: CMLocationLevel[] = ["building", "floor", "zone", "area"];
+
+function locationDepth(location: CMProjectLocation, all: CMProjectLocation[]): number {
+  let depth = 0;
+  let current = location;
+  while (current.parent_id) {
+    const parent = all.find((l) => l.id === current.parent_id);
+    if (!parent) break;
+    depth += 1;
+    current = parent;
+  }
+  return depth;
+}
+
+function LocationsSection({ projectId }: { projectId: string }) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: locations } = useCMProjectLocations(projectId);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [level, setLevel] = useState<CMLocationLevel>("building");
+  const [parentId, setParentId] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_project_locations", projectId] });
+
+  const handleAdd = async () => {
+    if (!name.trim()) return;
+    await createCMProjectLocation(projectId, parentId || null, name.trim(), level);
+    setName(""); setParentId(""); setAdding(false);
+    invalidate();
+  };
+
+  const startEditing = (l: CMProjectLocation) => {
+    setEditingId(l.id);
+    setEditValue(l.name);
+  };
+
+  const commitEdit = async (id: string) => {
+    const trimmed = editValue.trim();
+    setEditingId(null);
+    if (trimmed) {
+      await updateCMProjectLocation(id, { name: trimmed });
+      invalidate();
+    }
+  };
+
+  return (
+    <Card title={t("locations.title")}>
+      <div className="flex flex-col gap-2">
+        {(locations ?? []).map((l) => (
+          <div key={l.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5" style={{ marginLeft: locationDepth(l, locations ?? []) * 16 }}>
+            {editingId === l.id ? (
+              <input
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
+                value={editValue}
+                autoFocus
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => commitEdit(l.id)}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditingId(null); }}
+              />
+            ) : (
+              <p onClick={() => startEditing(l)} className="text-[12px] text-white/80 flex-1 truncate cursor-text">{l.name}</p>
+            )}
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{t(`locationLevel.${l.level}`)}</span>
+            <button onClick={() => deleteCMProjectLocation(l.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+          </div>
+        ))}
+        {(locations?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("locations.noneYet")}</p>}
+        {adding ? (
+          <div className="flex flex-col gap-2 mt-1">
+            <input className={inputCls} placeholder={t("locations.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <div className="grid grid-cols-2 gap-3">
+              <FieldSelect value={level} onChange={setLevel} options={LOCATION_LEVELS.map((lv) => ({ value: lv, label: t(`locationLevel.${lv}`) }))} />
+              <FieldSelect
+                value={parentId}
+                onChange={setParentId}
+                placeholder={t("locations.parent")}
+                options={[{ value: "", label: t("locations.parent") }, ...(locations ?? []).map((l) => ({ value: l.id, label: locationBreadcrumb(l, locations ?? []) }))]}
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("locations.add")}</button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
 /* ── Checklist ────────────────────────────────────────── */
 function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
   const { t } = useCMLang();
@@ -738,6 +840,7 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
         <InfoSection project={project} onChanged={onProjectChanged} />
         <LogoSection project={project} ownerId={ownerId} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
         <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone} />
+        <LocationsSection projectId={project.id} />
         <ChecklistSection ownerId={ownerId} projectId={project.id} />
         <PeopleSection ownerId={ownerId} projectId={project.id} />
       </div>
