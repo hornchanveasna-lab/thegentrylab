@@ -233,18 +233,14 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
 /** The one page-header pattern every module list page shares: a back
  *  button, a title that swaps for a search input, and a "⋮" menu — all
  *  pinned (`sticky`) so they stay visible while the list scrolls beneath
- *  them, matching the Telegram reference the design follows. `view`/
- *  `onViewChange` are optional so pages that don't offer a Calendar view
- *  are unaffected. */
-export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort, view, onViewChange }: {
+ *  them, matching the Telegram reference the design follows. */
+export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort }: {
   title: string;
   search: string;
   onSearchChange: (v: string) => void;
   searchPlaceholder?: string;
   sortAsc: boolean;
   onToggleSort: (v: boolean) => void;
-  view?: ModuleView;
-  onViewChange?: (v: ModuleView) => void;
 }) {
   const { t } = useCMLang();
   const [showSearch, setShowSearch] = useState(false);
@@ -297,7 +293,6 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
           </>
         )}
       </div>
-      {view && onViewChange && <ViewToggle view={view} onChange={onViewChange} />}
     </div>
   );
 }
