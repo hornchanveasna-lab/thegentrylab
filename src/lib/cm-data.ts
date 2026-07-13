@@ -117,6 +117,7 @@ export interface CMTask {
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
+  location_id: string | null;
   assignee: string | null;
   due_date: string | null;
   sort_order: number;
@@ -331,7 +332,7 @@ export function useCMTasks(projectId: string | undefined) {
 export async function createCMTask(
   ownerId: string,
   projectId: string,
-  input: Pick<CMTask, "title"> & Partial<Pick<CMTask, "description" | "status" | "priority" | "assignee" | "due_date">>,
+  input: Pick<CMTask, "title"> & Partial<Pick<CMTask, "description" | "status" | "priority" | "location_id" | "assignee" | "due_date">>,
 ) {
   const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -866,6 +867,66 @@ export const DISCIPLINES = [
   "cladding", "landscape", "safety", "quality", "general",
 ] as const;
 export type Discipline = typeof DISCIPLINES[number];
+
+/** Per-project location hierarchy (Building → Floor → Zone → Area), unlike
+ *  DISCIPLINES which is a fixed global list — every project defines its own
+ *  buildings/floors/zones, so this is owner-managed data, not a constant. */
+export type CMLocationLevel = "building" | "floor" | "zone" | "area";
+
+export interface CMProjectLocation {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  name: string;
+  level: CMLocationLevel;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMProjectLocations(projectId: string | undefined) {
+  return useQuery<CMProjectLocation[]>({
+    queryKey: ["cm_project_locations", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_locations").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as CMProjectLocation[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMProjectLocation(projectId: string, parentId: string | null, name: string, level: CMLocationLevel) {
+  const { data, error } = await db().from("cm_project_locations").insert({ project_id: projectId, parent_id: parentId, name, level }).select().single();
+  if (error) throw error;
+  return data as CMProjectLocation;
+}
+
+export async function updateCMProjectLocation(id: string, patch: Partial<Pick<CMProjectLocation, "name" | "level" | "sort_order">>) {
+  const { error } = await db().from("cm_project_locations").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMProjectLocation(id: string) {
+  const { error } = await db().from("cm_project_locations").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** "Building B1 › Ground Floor › Production Zone" — walks the parent_id
+ *  chain client-side so FieldSelect (whose options are plain label strings)
+ *  needs no structural changes to show a breadcrumb instead of a flat list. */
+export function locationBreadcrumb(location: CMProjectLocation, all: CMProjectLocation[]): string {
+  const chain: string[] = [location.name];
+  let current = location;
+  while (current.parent_id) {
+    const parent = all.find((l) => l.id === current.parent_id);
+    if (!parent) break;
+    chain.unshift(parent.name);
+    current = parent;
+  }
+  return chain.join(" › ");
+}
 
 /* ── Equipment (per project) ───────────────────────────── */
 export type EquipmentStatus = "Operational" | "Maintenance" | "Out of Service";
@@ -1538,6 +1599,7 @@ export interface CMInspection {
   title: string;
   status: InspectionStatus;
   discipline: Discipline | null;
+  location_id: string | null;
   inspector: string | null;
   inspection_date: string;
   notes: string | null;
@@ -1563,7 +1625,7 @@ export function useCMInspections(projectId: string | undefined) {
 export async function createCMInspection(
   ownerId: string,
   projectId: string,
-  input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "discipline" | "inspector" | "inspection_date" | "notes">>,
+  input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "discipline" | "location_id" | "inspector" | "inspection_date" | "notes">>,
 ) {
   const { data, error } = await db().from("cm_inspections").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;

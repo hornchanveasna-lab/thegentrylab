@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
-  StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect,
+  StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect,
 } from "@/components/cm/shared";
 import {
   useCMInspections,
@@ -14,6 +14,8 @@ import {
   updateCMInspection,
   deleteCMInspection,
   uploadCMPhotoWithThumb,
+  useCMProjectLocations,
+  locationBreadcrumb,
   type CMInspection,
   type InspectionStatus,
   type Discipline,
@@ -36,6 +38,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
   const [title, setTitle] = useState(existing?.title ?? "");
   const [status, setStatus] = useState<InspectionStatus>(existing?.status ?? "Scheduled");
   const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
+  const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
   const [inspector, setInspector] = useState(existing?.inspector ?? "");
   const [inspectionDate, setInspectionDate] = useState(() => existing?.inspection_date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState(existing?.notes ?? "");
@@ -50,7 +53,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
     setError("");
     try {
       const patch = {
-        title: title.trim(), status, discipline, inspector: inspector.trim() || null, inspection_date: inspectionDate, notes: notes.trim() || null,
+        title: title.trim(), status, discipline, location_id: locationId, inspector: inspector.trim() || null, inspection_date: inspectionDate, notes: notes.trim() || null,
       };
       const inspection = existing ?? await createCMInspection(ownerId, projectId, patch);
       if (existing) await updateCMInspection(existing.id, patch);
@@ -96,6 +99,10 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("common.location")}</span>
+          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
+        </label>
+        <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("inspection.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
@@ -120,6 +127,8 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("inspection", item.id, () => setOpen(true));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { data: locations } = useCMProjectLocations(item.project_id);
+  const location = locations?.find((l) => l.id === item.location_id);
   const sc = STATUS_COLOR[item.status];
 
   const handleStatusChange = async (status: InspectionStatus) => {
@@ -148,6 +157,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
             value={item.status} disabled={busy} onChange={handleStatusChange}
           />
           {item.discipline && <p className="text-[12px] text-white/60">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
+          {location && <p className="text-[12px] text-white/60">{t("common.location")}: {locationBreadcrumb(location, locations ?? [])}</p>}
           {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
           {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
           {item.photos.length > 0 && (

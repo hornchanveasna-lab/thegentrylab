@@ -1,6 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline } from "@/lib/cm-data";
+import {
+  useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
+  useCMProjectLocations, locationBreadcrumb,
+} from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
@@ -234,6 +237,30 @@ export function DisciplineSelect({ value, onChange, disabled }: {
       disabled={disabled}
       placeholder={t("common.selectDiscipline")}
       options={[{ value: "", label: t("common.none") }, ...DISCIPLINES.map((d) => ({ value: d, label: t(`discipline.${d}`) }))]}
+    />
+  );
+}
+
+/** Location picker — per-project (unlike DisciplineSelect's fixed global
+ *  list), so it fetches this project's hierarchy and flattens it into
+ *  breadcrumb-labeled options ("Building B1 › Ground Floor › Zone A"). */
+export function LocationSelect({ projectId, value, onChange, disabled }: {
+  projectId: string; value: string | null; onChange: (v: string | null) => void; disabled?: boolean;
+}) {
+  const { t } = useCMLang();
+  const { data: locations } = useCMProjectLocations(projectId);
+  const options = useMemo(
+    () => (locations ?? []).map((l) => ({ value: l.id, label: locationBreadcrumb(l, locations ?? []) })),
+    [locations],
+  );
+  return (
+    <FieldSelect
+      value={value ?? ""}
+      onChange={(v) => onChange(v || null)}
+      disabled={disabled}
+      searchable
+      placeholder={t("common.selectLocation")}
+      options={[{ value: "", label: t("common.none") }, ...options]}
     />
   );
 }

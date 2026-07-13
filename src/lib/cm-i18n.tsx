@@ -28,6 +28,20 @@ const EN: Dict = {
   "common.none": "None",
   "common.discipline": "Discipline",
   "common.selectDiscipline": "Select discipline…",
+  "common.location": "Location",
+  "common.selectLocation": "Select location…",
+
+  "locations.title": "Locations",
+  "locations.add": "+ Add location",
+  "locations.name": "Location name",
+  "locations.level": "Level",
+  "locations.parent": "Parent location",
+  "locations.noneYet": "No locations defined yet.",
+
+  "locationLevel.building": "Building",
+  "locationLevel.floor": "Floor",
+  "locationLevel.zone": "Zone",
+  "locationLevel.area": "Area",
 
   "discipline.architecture": "Architecture",
   "discipline.structural": "Structural",
@@ -596,6 +610,20 @@ const KM: Dict = {
   "common.none": "គ្មាន",
   "common.discipline": "មុខជំនាញ",
   "common.selectDiscipline": "ជ្រើសរើសមុខជំនាញ…",
+  "common.location": "ទីតាំង",
+  "common.selectLocation": "ជ្រើសរើសទីតាំង…",
+
+  "locations.title": "ទីតាំង",
+  "locations.add": "+ បន្ថែមទីតាំង",
+  "locations.name": "ឈ្មោះទីតាំង",
+  "locations.level": "កម្រិត",
+  "locations.parent": "ទីតាំងមេ",
+  "locations.noneYet": "មិនទាន់មានទីតាំងកំណត់ទេ។",
+
+  "locationLevel.building": "អាគារ",
+  "locationLevel.floor": "ជាន់",
+  "locationLevel.zone": "តំបន់",
+  "locationLevel.area": "ផ្ទៃ",
 
   "discipline.architecture": "ស្ថាបត្យកម្ម",
   "discipline.structural": "រចនាសម្ព័ន្ធ",
@@ -1164,6 +1192,20 @@ const ZH: Dict = {
   "common.none": "无",
   "common.discipline": "专业",
   "common.selectDiscipline": "选择专业…",
+  "common.location": "位置",
+  "common.selectLocation": "选择位置…",
+
+  "locations.title": "位置",
+  "locations.add": "+ 添加位置",
+  "locations.name": "位置名称",
+  "locations.level": "级别",
+  "locations.parent": "上级位置",
+  "locations.noneYet": "尚未定义位置。",
+
+  "locationLevel.building": "楼栋",
+  "locationLevel.floor": "楼层",
+  "locationLevel.zone": "区域",
+  "locationLevel.area": "地点",
 
   "discipline.architecture": "建筑",
   "discipline.structural": "结构",

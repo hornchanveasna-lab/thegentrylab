@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
-  PriorityBadge, ConfirmationDialog,
+  PriorityBadge, ConfirmationDialog, LocationSelect,
 } from "@/components/cm/shared";
 import {
   useCMTasks,
@@ -14,6 +14,8 @@ import {
   updateCMTask,
   deleteCMTask,
   uploadCMPhotoWithThumb,
+  useCMProjectLocations,
+  locationBreadcrumb,
   type CMTask,
   type TaskStatus,
   type TaskPriority,
@@ -39,6 +41,7 @@ function NewPunchItemSheet({ ownerId, projectId, existing, onClose, onCreated }:
   const [description, setDescription] = useState(existing?.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(existing?.status ?? "To Do");
   const [priority, setPriority] = useState<TaskPriority>(existing?.priority ?? "Medium");
+  const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
   const [assignee, setAssignee] = useState(existing?.assignee ?? "");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
@@ -52,7 +55,7 @@ function NewPunchItemSheet({ ownerId, projectId, existing, onClose, onCreated }:
     setError("");
     try {
       const patch = {
-        title: title.trim(), description: description.trim() || null, status, priority,
+        title: title.trim(), description: description.trim() || null, status, priority, location_id: locationId,
         assignee: assignee.trim() || null, due_date: dueDate || null,
       };
       const item = existing ?? await createCMTask(ownerId, projectId, patch);
@@ -92,6 +95,10 @@ function NewPunchItemSheet({ ownerId, projectId, existing, onClose, onCreated }:
             <FieldSelect value={priority} onChange={setPriority} disabled={saving} options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))} />
           </label>
         </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("common.location")}</span>
+          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
+        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("punchList.assignedTo")}</span>
@@ -122,6 +129,8 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
   const [editing, setEditing] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("punchList", item.id);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { data: locations } = useCMProjectLocations(item.project_id);
+  const location = locations?.find((l) => l.id === item.location_id);
   const handleStatusChange = async (status: TaskStatus) => {
     setBusy(true);
     try { await updateCMTask(item.id, { status }); onChanged(); } finally { setBusy(false); }
@@ -154,6 +163,7 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
       />
       <div className="flex flex-wrap items-center gap-2">
         <PriorityBadge size="sm" label={t(`taskPriority.${item.priority}`)} color={pc} />
+        {location && <span className="text-[11px] text-white/40">{locationBreadcrumb(location, locations ?? [])}</span>}
         {item.assignee && <span className="text-[11px] text-white/40">{item.assignee}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>
