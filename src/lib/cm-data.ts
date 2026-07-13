@@ -1073,11 +1073,10 @@ export async function removeCMManpowerRosterItem(id: string) {
   if (error) throw error;
 }
 
-/* ── Project members & invites (Phase 1: schema + invite-link mechanics
- *  only — every OTHER project-scoped table still gates strictly on
- *  owner_id, so a member who accepts an invite can appear in the Team
- *  list but cannot yet see Site Diary/Photos/etc. That RLS rewrite is a
- *  separate follow-up.) ──────────────────────────────────── */
+/* ── Project members & invites. RLS is now project-role-aware across every
+ *  project-scoped table (cm_project_role() Postgres function), so a member
+ *  who accepts an invite can actually read/write Site Diary/Photos/BOQ/etc.
+ *  per their role, not just show up in a Team list. ──────────────────── */
 export type CMMemberRole = "admin" | "member" | "visitor";
 
 export interface CMProjectMember {
@@ -1089,6 +1088,14 @@ export interface CMProjectMember {
   email: string | null;
   display_name: string | null;
   avatar_url: string | null;
+  /** Links this member to their Directory contact — set automatically at
+   *  accept-time by matching (or creating) a contact with the same email
+   *  under the project owner's address book. */
+  contact_id: string | null;
+  /** Which company this person belongs to on this project (grouping label
+   *  for the unified People view) — prefilled from the matched contact's
+   *  company at accept-time, editable afterward independent of it. */
+  company: string | null;
   invited_by: string | null;
   created_at: string;
 }
@@ -1131,6 +1138,16 @@ export interface CMProjectInvite {
   created_at: string;
 }
 
+/** Result of the cm_get_invite_by_token RPC — an invite plus its parent
+ *  project's owner/name, so the join route can show which project this is
+ *  and upsert the invitee's Directory contact under the right owner,
+ *  before the invitee is a project member (and so can't read cm_projects
+ *  directly yet). */
+export interface CMInviteWithProject extends CMProjectInvite {
+  project_owner_id: string;
+  project_name: string;
+}
+
 export function useCMProjectInvites(projectId: string | undefined) {
   return useQuery<CMProjectInvite[]>({
     queryKey: ["cm_project_invites", projectId],
@@ -1156,40 +1173,63 @@ export async function revokeCMProjectInvite(id: string) {
   if (error) throw error;
 }
 
-/** Single-row lookup by token — no project filter needed since the token
- *  itself is globally unique; this is what the /cm/join/$token route and
- *  the "sign in to join" flow read before the invitee is a member of
- *  anything yet. */
+/** Looks up an invite by token via a SECURITY DEFINER RPC rather than a
+ *  direct table select — the invitee has no role on the project yet, so a
+ *  plain RLS-gated select on cm_project_invites would be unreadable to
+ *  them (and a permissive `using (true)` policy would leak every project's
+ *  invite tokens to any signed-in user). The RPC also joins in the parent
+ *  project's owner_id/name, which the join route needs before the invitee
+ *  is a member of anything. */
 export function useCMInviteByToken(token: string | undefined) {
-  return useQuery<CMProjectInvite | null>({
+  return useQuery<CMInviteWithProject | null>({
     queryKey: ["cm_project_invite", token],
     enabled: !!token && !!supabaseCM,
     queryFn: async () => {
-      const { data, error } = await db().from("cm_project_invites").select("*").eq("token", token).is("revoked_at", null).maybeSingle();
+      const { data, error } = await db().rpc("cm_get_invite_by_token", { p_token: token }).maybeSingle();
       if (error) throw error;
-      return data as CMProjectInvite | null;
+      return (data as CMInviteWithProject | null) ?? null;
     },
     staleTime: 0,
   });
 }
 
+/** Finds an existing Directory contact by (owner, email) and refreshes its
+ *  name, or creates one — via a SECURITY DEFINER RPC since this runs as the
+ *  invitee, who has no write access to the project owner's contacts. */
+export async function upsertCMDirectoryContactByEmail(ownerId: string, email: string, name: string): Promise<CMDirectoryContact> {
+  const { data, error } = await db().rpc("cm_upsert_contact_from_invite", { p_owner_id: ownerId, p_email: email, p_name: name }).single();
+  if (error) throw error;
+  return data as CMDirectoryContact;
+}
+
 /** Creates (or, on repeat visits to the same link, reuses) the invitee's
  *  own cm_project_members row from the invite + their own signed-in
  *  Supabase user — satisfies the `insert ... with check (user_id =
- *  auth.uid())` policy since this always runs as the invitee. */
-export async function acceptCMProjectInvite(invite: CMProjectInvite, user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
+ *  auth.uid())` policy since this always runs as the invitee. Also
+ *  upserts a matching Directory contact by email (creating one under the
+ *  project owner's address book on first join, or reusing it on repeat
+ *  visits) and links it via contact_id/company, so the invitee shows up
+ *  in the owner's Contacts as soon as they join. */
+export async function acceptCMProjectInvite(invite: CMInviteWithProject, user: { id: string; email?: string; user_metadata?: Record<string, unknown> }) {
   const { data: existing, error: findError } = await db()
     .from("cm_project_members").select("*").eq("project_id", invite.project_id).eq("user_id", user.id).maybeSingle();
   if (findError) throw findError;
   if (existing) return existing as CMProjectMember;
+
+  const displayName = (user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? null;
+  const contact = user.email && displayName
+    ? await upsertCMDirectoryContactByEmail(invite.project_owner_id, user.email, displayName)
+    : null;
 
   const { data, error } = await db().from("cm_project_members").insert({
     project_id: invite.project_id,
     user_id: user.id,
     role: invite.role,
     email: user.email ?? null,
-    display_name: (user.user_metadata?.full_name as string) ?? (user.user_metadata?.name as string) ?? null,
+    display_name: displayName,
     avatar_url: (user.user_metadata?.avatar_url as string) ?? null,
+    contact_id: contact?.id ?? null,
+    company: contact?.company ?? null,
     invited_by: invite.created_by,
   }).select().single();
   if (error) throw error;
