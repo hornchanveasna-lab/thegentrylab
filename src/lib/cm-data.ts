@@ -734,6 +734,46 @@ export async function deleteCMProjectConsultant(id: string) {
   if (error) throw error;
 }
 
+/** Named people (Directory contacts) attached to a consultant company —
+ *  separate from the consultant's own name/logo_url (used for photo-stamp
+ *  branding), same "contact + free-text role" shape as
+ *  CMProjectSubcontractor. */
+export interface CMConsultantPerson {
+  id: string;
+  consultant_id: string;
+  contact_id: string;
+  role: string | null;
+  created_at: string;
+  contact: CMDirectoryContact;
+}
+
+export function useCMConsultantPeople(consultantId: string | undefined) {
+  return useQuery<CMConsultantPerson[]>({
+    queryKey: ["cm_consultant_people", consultantId],
+    enabled: !!consultantId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db()
+        .from("cm_consultant_people")
+        .select("*, contact:cm_directory_contacts(*)")
+        .eq("consultant_id", consultantId)
+        .order("created_at");
+      if (error) throw error;
+      return data as unknown as CMConsultantPerson[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function addCMConsultantPerson(consultantId: string, contactId: string, role: string | null) {
+  const { error } = await db().from("cm_consultant_people").insert({ consultant_id: consultantId, contact_id: contactId, role });
+  if (error) throw error;
+}
+
+export async function removeCMConsultantPerson(id: string) {
+  const { error } = await db().from("cm_consultant_people").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /* ── Photos across all of a user's projects (global gallery) ─ */
 export type CMPhotoModule = "siteDiary" | "inspection" | "punchList" | "safety" | "submittal";
 
@@ -905,6 +945,7 @@ export interface CMDirectoryContact {
   phone: string | null;
   email: string | null;
   notes: string | null;
+  photo_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -939,6 +980,19 @@ export async function updateCMDirectoryContact(id: string, patch: Partial<CMDire
 export async function deleteCMDirectoryContact(id: string) {
   const { error } = await db().from("cm_directory_contacts").delete().eq("id", id);
   if (error) throw error;
+}
+
+/** Face photo for a Directory contact — same storage bucket as
+ *  uploadCMLogo, but path-scoped by contactId since contacts are global
+ *  (not project-scoped) rather than per-project. */
+export async function uploadCMContactPhoto(ownerId: string, contactId: string, file: File): Promise<string> {
+  const client = db();
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${ownerId}/contacts/${contactId}-${Date.now()}.${ext}`;
+  const { error } = await client.storage.from("site-media").upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = await client.storage.from("site-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+  return data?.signedUrl ?? path;
 }
 
 /* ── Project subcontractors (directory contact ↔ project) ─ */

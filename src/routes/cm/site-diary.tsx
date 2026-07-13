@@ -23,6 +23,7 @@ import {
   uploadCMPhotoWithThumb,
   useCMBOQItems,
   useCMManpowerRoster,
+  useCMProjectSubcontractors,
   type CMDailyLog,
   type CMDailyLogWithProject,
   type CMManpowerRow,
@@ -147,6 +148,35 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
   const { t } = useCMLang();
   const { data: boqItems } = useCMBOQItems(projectId);
   const { data: roster } = useCMManpowerRoster(projectId);
+  const { data: subcontractors } = useCMProjectSubcontractors(projectId);
+
+  // Manpower picker options merge two sources: the manually-maintained
+  // roster and the distinct trade/company pairs already assigned as
+  // Subcontractors — deduped by trade+company text so the same pairing
+  // maintained in both places doesn't show twice.
+  const manpowerOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: { value: string; label: string; trade: string; company: string | null }[] = [];
+    for (const r of roster ?? []) {
+      const key = `${r.trade}|${r.company ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      options.push({ value: `roster:${r.id}`, label: r.company ? `${r.trade} — ${r.company}` : r.trade, trade: r.trade, company: r.company });
+    }
+    for (const s of subcontractors ?? []) {
+      if (!s.contact.trade) continue;
+      const key = `${s.contact.trade}|${s.contact.company ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      options.push({
+        value: `sub:${s.id}`,
+        label: s.contact.company ? `${s.contact.trade} — ${s.contact.company}` : s.contact.trade,
+        trade: s.contact.trade,
+        company: s.contact.company,
+      });
+    }
+    return options;
+  }, [roster, subcontractors]);
   const [logDate, setLogDate] = useState(() => existing?.log_date ?? new Date().toISOString().slice(0, 10));
   const [weather, setWeather] = useState(existing?.weather ?? WEATHER_OPTIONS[0]);
   const [temperature, setTemperature] = useState(existing?.temperature_c != null ? String(existing.temperature_c) : "");
@@ -282,11 +312,11 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
                 value={row.roster_item_id ?? ""}
                 onChange={(id) => {
                   if (!id) { update({ roster_item_id: null }); return; }
-                  const item = (roster ?? []).find((r) => r.id === id);
+                  const item = manpowerOptions.find((o) => o.value === id);
                   update({ roster_item_id: id, trade: item?.trade ?? row.trade, company: item?.company ?? row.company });
                 }}
                 placeholder={t("siteDiary.customManpower")}
-                options={[{ value: "", label: t("siteDiary.customManpower") }, ...(roster ?? []).map((r) => ({ value: r.id, label: r.company ? `${r.trade} — ${r.company}` : r.trade }))]}
+                options={[{ value: "", label: t("siteDiary.customManpower") }, ...manpowerOptions.map((o) => ({ value: o.value, label: o.label }))]}
                 disabled={saving}
               />
               {!row.roster_item_id && (
