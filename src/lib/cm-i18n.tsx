@@ -17,6 +17,9 @@ const EN: Dict = {
   "common.first": "first.",
   "common.search": "Search",
   "common.sort": "Sort",
+  "common.viewList": "List view",
+  "common.viewCalendar": "Calendar view",
+  "common.clearFilter": "Clear filter",
   "common.newestFirst": "Newest first",
   "common.oldestFirst": "Oldest first",
 
@@ -505,6 +508,9 @@ const KM: Dict = {
   "common.first": "សិន។",
   "common.search": "ស្វែងរក",
   "common.sort": "តម្រៀប",
+  "common.viewList": "ទិដ្ឋភាពបញ្ជី",
+  "common.viewCalendar": "ទិដ្ឋភាពប្រតិទិន",
+  "common.clearFilter": "សម្អាតតម្រង",
   "common.newestFirst": "ថ្មីបំផុតមុន",
   "common.oldestFirst": "ចាស់បំផុតមុន",
 
@@ -993,6 +999,9 @@ const ZH: Dict = {
   "common.first": "。",
   "common.search": "搜索",
   "common.sort": "排序",
+  "common.viewList": "列表视图",
+  "common.viewCalendar": "日历视图",
+  "common.clearFilter": "清除筛选",
   "common.newestFirst": "最新优先",
   "common.oldestFirst": "最早优先",
 

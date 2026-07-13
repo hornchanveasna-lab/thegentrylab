@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles,
+  PhotoLightbox, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, MiniCalendar,
 } from "@/components/cm/shared";
 import {
   useAllCMPhotos,
@@ -349,84 +349,22 @@ function dateLabel(date: string, t: (k: string) => string) {
   return date;
 }
 
-const MONTH_LOCALE: Record<CMLang, string> = { en: "en-US", km: "km-KH", zh: "zh-CN" };
-
 /** A month-by-month calendar of thumbnails — one representative photo per day
  *  — so a site engineer can "track back" to a date instead of scrolling a
- *  long grid, then jump into whichever report that day's photo belongs to. */
+ *  long grid, then jump into whichever report that day's photo belongs to.
+ *  Thin wrapper around the shared `MiniCalendar` grid, passing a photo
+ *  thumbnail as each marked day's cover. */
 function CalendarView({ photos, lang, onOpenDay }: {
   photos: CMPhotoWithContext[]; lang: CMLang; onOpenDay: (dayPhotos: CMPhotoWithContext[]) => void;
 }) {
-  const locale = MONTH_LOCALE[lang];
-
-  const weekdayLabels = useMemo(() => {
-    const base = new Date(2024, 0, 1); // a Monday
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(base);
-      d.setDate(base.getDate() + i);
-      return d.toLocaleDateString(locale, { weekday: "narrow" });
-    });
-  }, [locale]);
-
-  const photosByDate = useMemo(() => {
-    const map = new Map<string, CMPhotoWithContext[]>();
-    for (const p of photos) {
-      if (!map.has(p.date)) map.set(p.date, []);
-      map.get(p.date)!.push(p);
-    }
-    return map;
-  }, [photos]);
-
-  const months = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of photos) set.add(p.date.slice(0, 7));
-    return Array.from(set).sort().reverse();
-  }, [photos]);
-
-  if (months.length === 0) return null;
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-7 gap-1.5">
-        {weekdayLabels.map((w, i) => (
-          <div key={i} className="text-center font-mono text-[9px] uppercase tracking-widest text-white/30">{w}</div>
-        ))}
-      </div>
-      {months.map((ym) => {
-        const [yearStr, monthStr] = ym.split("-");
-        const year = Number(yearStr);
-        const monthIdx = Number(monthStr) - 1;
-        const daysCount = new Date(year, monthIdx + 1, 0).getDate();
-        const firstWeekday = (new Date(year, monthIdx, 1).getDay() + 6) % 7;
-        const monthLabel = new Date(year, monthIdx, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
-        const cells: Array<{ day: number; dateStr: string } | null> = [];
-        for (let i = 0; i < firstWeekday; i++) cells.push(null);
-        for (let d = 1; d <= daysCount; d++) cells.push({ day: d, dateStr: `${yearStr}-${monthStr}-${String(d).padStart(2, "0")}` });
-
-        return (
-          <div key={ym}>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{monthLabel}</p>
-            <div className="grid grid-cols-7 gap-1.5">
-              {cells.map((cell, i) => {
-                if (!cell) return <div key={i} />;
-                const dayPhotos = photosByDate.get(cell.dateStr);
-                const cover = dayPhotos?.[0];
-                return (
-                  <button key={i} disabled={!cover} onClick={() => dayPhotos && onOpenDay(dayPhotos)}
-                    className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-white/5">
-                    {cover && <img src={cover.thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-                    <span className={`relative text-[12px] font-bold ${cover ? "text-white/[0.95]" : "text-white/25"}`}
-                      style={cover ? { textShadow: "0 1px 3px rgba(0,0,0,0.85)" } : undefined}>
-                      {cell.day}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <MiniCalendar
+      items={photos}
+      dateOf={(p) => p.date}
+      lang={lang}
+      onOpenDay={onOpenDay}
+      renderCover={(dayPhotos) => <img src={dayPhotos[0].thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+    />
   );
 }
 
@@ -537,7 +475,7 @@ function CMPhotosPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pb-28">
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
           <BackButton to="/cm" />
           {showSearch ? (
@@ -661,7 +599,7 @@ function CMPhotosPage() {
             {groups.map((group, gi) => (
               <div key={gi}>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
-                <div className="grid grid-cols-3 gap-0.5 rounded-t-2xl overflow-hidden">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-0.5 rounded-t-2xl overflow-hidden">
                   {group.items.map((p, i) => {
                     const checked = selectedUrls.has(p.url);
                     return (

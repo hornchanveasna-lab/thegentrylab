@@ -84,13 +84,13 @@ export function CMIndexPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pt-8 pb-28">
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-8 pb-28">
         <div className="flex items-center justify-between mb-10">
           <CompanyMark userId={user.id} />
           <AvatarButton />
         </div>
 
-        <div className="grid grid-cols-3 border-t border-l border-white/[0.07] rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 border-t border-l border-white/[0.07] rounded-2xl overflow-hidden">
           <AppTile
             label={t("tile.dashboard")}
             to="/cm/dashboard"

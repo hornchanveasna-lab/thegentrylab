@@ -52,7 +52,7 @@ function CMProjectPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pt-6 pb-16">
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-16">
         <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-6">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex items-center gap-3">

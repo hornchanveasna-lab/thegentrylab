@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight,
+  PhotoLightbox, usePendingHighlight, MiniCalendar, type ModuleView,
 } from "@/components/cm/shared";
 import {
   useCMInspections,
@@ -166,7 +166,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
 
 function CMInspectionPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: inspections, isLoading } = useCMInspections(projectId || undefined);
@@ -174,15 +174,18 @@ function CMInspectionPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [view, setView] = useState<ModuleView>("list");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_inspections", projectId] }); setShowNew(false); };
 
   const visibleInspections = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = inspections ?? [];
+    if (dateFilter) list = list.filter((i) => i.inspection_date === dateFilter);
     if (q) list = list.filter((i) => [i.title, i.notes, i.inspector].some((f) => f?.toLowerCase().includes(q)));
     return sortAsc ? [...list].reverse() : list;
-  }, [inspections, search, sortAsc]);
+  }, [inspections, search, sortAsc, dateFilter]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -195,21 +198,36 @@ function CMInspectionPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
+        <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc}
+          view={view} onViewChange={setView} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {dateFilter && (
+          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            {dateFilter} <span className="text-[13px] leading-none">×</span>
+          </button>
+        )}
 
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && visibleInspections.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("inspection.noneYet")}</p>
-              </div>
+            {view === "calendar" ? (
+              <MiniCalendar items={inspections ?? []} dateOf={(i) => i.inspection_date} lang={lang}
+                onOpenDay={(dayItems) => { setDateFilter(dayItems[0].inspection_date); setView("list"); }} />
+            ) : (
+              <>
+                {!isLoading && visibleInspections.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                    <p className="text-white/40 text-sm">{t("inspection.noneYet")}</p>
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                </div>
+              </>
             )}
-            <div className="flex flex-col gap-3">
-              {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
-            </div>
             <FAB label={t("inspection.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}

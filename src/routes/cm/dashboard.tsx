@@ -102,7 +102,7 @@ function CMDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <main className="max-w-md mx-auto w-full px-4 pt-6 pb-16">
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-16">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
           <h1 className="text-xl font-extrabold tracking-tight text-white">{t("dashboard.title")}</h1>
