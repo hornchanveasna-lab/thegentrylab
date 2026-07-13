@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
@@ -169,11 +169,10 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
   const { data: consultants } = useCMProjectConsultants(projectId);
   const [files, setFiles] = useState<File[]>([]);
   const [moduleSel, setModuleSel] = useState<CMPhotoModule>(MODULE_OPTIONS[0]);
-  const [siteDiaryDate, setSiteDiaryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [photoDate, setPhotoDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [caption, setCaption] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const addMoreInputRef = useRef<HTMLInputElement>(null);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -201,26 +200,25 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
       const uploaded = await Promise.all(stamped.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
       const urls = uploaded.map((u) => u.url);
       const thumbs = uploaded.map((u) => u.thumbUrl);
-      const today = new Date().toISOString().slice(0, 10);
-      const title = caption.trim() || `${t(`tile.${moduleSel}`)} — ${today}`;
+      const title = caption.trim() || `${t(`tile.${moduleSel}`)} — ${photoDate}`;
 
       if (moduleSel === "siteDiary") {
-        const log = await findOrCreateCMDailyLog(ownerId, projectId, siteDiaryDate, { notes: caption.trim() || null });
+        const log = await findOrCreateCMDailyLog(ownerId, projectId, photoDate, { notes: caption.trim() || null });
         await updateCMDailyLog(log.id, {
           photos: [...log.photos, ...urls],
           photo_thumbs: [...log.photo_thumbs, ...thumbs],
         });
       } else if (moduleSel === "inspection") {
-        const item = await createCMInspection(ownerId, projectId, { title, status: "Scheduled", inspection_date: today });
+        const item = await createCMInspection(ownerId, projectId, { title, status: "Scheduled", inspection_date: photoDate });
         await updateCMInspection(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "punchList") {
-        const item = await createCMTask(ownerId, projectId, { title, status: "To Do", priority: "Medium" });
+        const item = await createCMTask(ownerId, projectId, { title, status: "To Do", priority: "Medium", due_date: photoDate });
         await updateCMTask(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "safety") {
-        const item = await createCMSafetyRecord(ownerId, projectId, { title, record_type: "Hazard Observation", severity: "Low", record_date: today });
+        const item = await createCMSafetyRecord(ownerId, projectId, { title, record_type: "Hazard Observation", severity: "Low", record_date: photoDate });
         await updateCMSafetyRecord(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "submittal") {
-        const item = await createCMSubmittal(ownerId, projectId, { title, status: "Draft" });
+        const item = await createCMSubmittal(ownerId, projectId, { title, status: "Draft", submitted_date: photoDate });
         await updateCMSubmittal(item.id, { photos: urls, photo_thumbs: thumbs });
       }
       onCreated();
@@ -241,7 +239,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
               <circle cx="12" cy="13.5" r="3.5" />
             </svg>
             <span className="text-[13px] font-bold uppercase tracking-widest">{t("photos.takePhoto")}</span>
-            <input type="file" accept="image/*" capture="environment" className="hidden"
+            <input type="file" accept="image/*" capture="environment" className="sr-only"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </label>
           <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-white/70 bg-white/5 hover:bg-white/10 cursor-pointer text-center transition-colors">
@@ -251,7 +249,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
               <path d="M21 16l-5.2-5.2a1.5 1.5 0 0 0-2.1 0L4 20" />
             </svg>
             <span className="text-[13px] font-bold uppercase tracking-widest">{t("photos.chooseLibrary")}</span>
-            <input type="file" accept="image/*" multiple className="hidden"
+            <input type="file" accept="image/*" multiple className="sr-only"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </label>
         </div>
@@ -270,12 +268,11 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
                 className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
             </div>
           ))}
-          <button type="button" disabled={saving} onClick={() => addMoreInputRef.current?.click()}
-            className="w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 hover:border-white/40 hover:text-white/60 transition-colors disabled:opacity-40">
+          <label className={`w-16 h-16 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 transition-colors ${saving ? "opacity-40" : "cursor-pointer hover:border-white/40 hover:text-white/60"}`}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
-          </button>
-          <input ref={addMoreInputRef} type="file" accept="image/*" multiple className="hidden" disabled={saving}
-            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+            <input type="file" accept="image/*" multiple className="sr-only" disabled={saving}
+              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+          </label>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -290,12 +287,10 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
 
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
-        {moduleSel === "siteDiary" && (
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("siteDiary.date")}</span>
-            <input type="date" className={inputCls} value={siteDiaryDate} onChange={(e) => setSiteDiaryDate(e.target.value)} disabled={saving} />
-          </label>
-        )}
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("siteDiary.date")}</span>
+          <input type="date" className={inputCls} value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} disabled={saving} />
+        </label>
 
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("photos.note")}</span>
