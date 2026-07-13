@@ -12,16 +12,16 @@ function CMAuthCallback() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!supabaseCM) { window.location.href = "/"; return; }
+    if (!supabaseCM) { window.location.href = "/cm"; return; }
 
     const code = new URLSearchParams(window.location.search).get("code");
-    if (!code) { window.location.href = "/"; return; }
+    if (!code) { window.location.href = "/cm"; return; }
 
     supabaseCM.auth.exchangeCodeForSession(code).then(({ error }) => {
       if (error) {
         setError(error.message);
       } else {
-        window.location.href = "/";
+        window.location.href = "/cm";
       }
     }).catch((err) => {
       setError(err?.message ?? "Unexpected error");
@@ -34,7 +34,7 @@ function CMAuthCallback() {
         <div className="text-center max-w-sm">
           <p className="font-mono text-[11px] uppercase tracking-widest text-red-400 mb-3">{t("auth.signInFailed")}</p>
           <p className="font-mono text-[10px] text-white/40 mb-6">{error}</p>
-          <a href="/" className="font-mono text-[10px] uppercase tracking-widest text-white/60 hover:text-white border border-white/20 hover:border-white/40 px-4 py-2 transition">
+          <a href="/cm" className="font-mono text-[10px] uppercase tracking-widest text-white/60 hover:text-white border border-white/20 hover:border-white/40 px-4 py-2 transition">
             {t("auth.tryAgain")}
           </a>
         </div>
