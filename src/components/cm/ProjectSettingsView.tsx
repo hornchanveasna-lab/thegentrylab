@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import { FieldSelect, Card, Avatar } from "@/components/cm/shared";
 import {
   updateCMProject,
@@ -90,8 +91,35 @@ function MonotonePreviewToggle({ enabled, onChange }: { enabled: boolean; onChan
 }
 
 /* ── Project info ─────────────────────────────────────── */
-function InfoSection({ project, onChanged }: { project: CMProject; onChanged: () => void }) {
+function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canEdit: boolean; onChanged: () => void }) {
   const { t } = useCMLang();
+
+  if (!canEdit) {
+    const rows: [string, string | null][] = [
+      [t("projectSettings.name"), project.name],
+      [t("projectSettings.code"), project.project_code],
+      [t("projectSettings.client"), project.client],
+      [t("projectSettings.address"), project.address],
+      [t("projectSettings.location"), project.location],
+      [t("projectSettings.status"), t(`status.${project.status}`)],
+      [t("projectSettings.start"), project.start_date],
+      [t("projectSettings.finish"), project.target_end_date],
+      [t("projectSettings.description"), project.description],
+    ];
+    return (
+      <Card title={t("projectSettings.information")}>
+        <div className="flex flex-col gap-2">
+          {rows.filter(([, v]) => v).map(([label, value]) => (
+            <div key={label} className="flex items-baseline gap-2">
+              <span className={labelCls}>{label}</span>
+              <span className="text-[12px] text-white/70">{value}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
   const [name, setName] = useState(project.name);
   const [projectCode, setProjectCode] = useState(project.project_code ?? "");
   const [client, setClient] = useState(project.client ?? "");
@@ -259,8 +287,8 @@ function InfoSection({ project, onChanged }: { project: CMProject; onChanged: ()
 }
 
 /* ── Client logo ──────────────────────────────────────── */
-function LogoSection({ project, ownerId, onChanged, previewMonotone, onTogglePreview }: {
-  project: CMProject; ownerId: string; onChanged: () => void; previewMonotone: boolean; onTogglePreview: (v: boolean) => void;
+function LogoSection({ project, ownerId, canEdit, onChanged, previewMonotone, onTogglePreview }: {
+  project: CMProject; ownerId: string; canEdit: boolean; onChanged: () => void; previewMonotone: boolean; onTogglePreview: (v: boolean) => void;
 }) {
   const { t } = useCMLang();
   const [uploading, setUploading] = useState(false);
@@ -277,26 +305,34 @@ function LogoSection({ project, ownerId, onChanged, previewMonotone, onTogglePre
     }
   };
 
+  const preview = (
+    <div className="h-16 max-w-[220px] rounded-2xl overflow-hidden flex items-center justify-center"
+      style={previewSrc ? { backgroundColor: "#111318" } : undefined}>
+      {project.client_logo_url ? (
+        <img src={previewSrc ?? project.client_logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-3" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
+      ) : (
+        <span className="text-white/20 text-[10px] font-mono uppercase bg-white/5 rounded-2xl px-4 py-5">{t("projectSettings.none")}</span>
+      )}
+    </div>
+  );
+
   return (
     <Card title={t("projectSettings.clientLogo")} action={<MonotonePreviewToggle enabled={previewMonotone} onChange={onTogglePreview} />}>
-      <label className="inline-block cursor-pointer">
-        <div className="h-16 max-w-[220px] rounded-2xl overflow-hidden flex items-center justify-center"
-          style={previewSrc ? { backgroundColor: "#111318" } : undefined}>
-          {project.client_logo_url ? (
-            <img src={previewSrc ?? project.client_logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-3" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
-          ) : (
-            <span className="text-white/20 text-[10px] font-mono uppercase bg-white/5 rounded-2xl px-4 py-5">{t("projectSettings.none")}</span>
-          )}
-        </div>
-        <input type="file" accept="image/*" className="hidden" disabled={uploading}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
-      </label>
+      {canEdit ? (
+        <label className="inline-block cursor-pointer">
+          {preview}
+          <input type="file" accept="image/*" className="hidden" disabled={uploading}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }} />
+        </label>
+      ) : preview}
     </Card>
   );
 }
 
-function ConsultantRow({ c, editing, editValue, onEditValueChange, onStartEdit, onCommitEdit, onCancelEdit, uploading, onUploadLogo, onDelete, previewMonotone }: {
+function ConsultantRow({ c, canEdit, canDelete, editing, editValue, onEditValueChange, onStartEdit, onCommitEdit, onCancelEdit, uploading, onUploadLogo, onDelete, previewMonotone }: {
   c: CMProjectConsultant;
+  canEdit: boolean;
+  canDelete: boolean;
   editing: boolean;
   editValue: string;
   onEditValueChange: (v: string) => void;
@@ -310,10 +346,15 @@ function ConsultantRow({ c, editing, editValue, onEditValueChange, onStartEdit, 
 }) {
   const { t } = useCMLang();
   const previewSrc = useMonotonePreview(c.logo_url, previewMonotone);
+  const logoPreview = c.logo_url ? (
+    <img src={previewSrc ?? c.logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-2" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
+  ) : (
+    <span className="text-white/20 text-[8px] font-mono uppercase bg-white/5 rounded-lg px-2 py-3">{uploading ? "…" : t("projectSettings.none")}</span>
+  );
 
   return (
     <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
-      {editing ? (
+      {editing && canEdit ? (
         <input
           className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
           value={editValue}
@@ -323,25 +364,29 @@ function ConsultantRow({ c, editing, editValue, onEditValueChange, onStartEdit, 
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") onCancelEdit(); }}
         />
       ) : (
-        <p onClick={onStartEdit} className="text-[12px] text-white/80 flex-1 truncate cursor-text">{c.name}</p>
+        <p onClick={canEdit ? onStartEdit : undefined} className={`text-[12px] text-white/80 flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>{c.name}</p>
       )}
-      <label className="h-10 max-w-[110px] rounded-lg overflow-hidden flex items-center justify-center shrink-0 cursor-pointer"
-        style={previewSrc ? { backgroundColor: "#111318" } : undefined}>
-        {c.logo_url ? (
-          <img src={previewSrc ?? c.logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-2" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
-        ) : (
-          <span className="text-white/20 text-[8px] font-mono uppercase bg-white/5 rounded-lg px-2 py-3">{uploading ? "…" : t("projectSettings.none")}</span>
-        )}
-        <input type="file" accept="image/*" className="hidden" disabled={uploading}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadLogo(f); }} />
-      </label>
-      <button onClick={onDelete} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+      {canEdit ? (
+        <label className="h-10 max-w-[110px] rounded-lg overflow-hidden flex items-center justify-center shrink-0 cursor-pointer"
+          style={previewSrc ? { backgroundColor: "#111318" } : undefined}>
+          {logoPreview}
+          <input type="file" accept="image/*" className="hidden" disabled={uploading}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadLogo(f); }} />
+        </label>
+      ) : (
+        <div className="h-10 max-w-[110px] rounded-lg overflow-hidden flex items-center justify-center shrink-0" style={previewSrc ? { backgroundColor: "#111318" } : undefined}>
+          {logoPreview}
+        </div>
+      )}
+      {canDelete && <button onClick={onDelete} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>}
     </div>
   );
 }
 
 /* ── Consultants (structural, MEP, etc. — a project can have several) ── */
-function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: string; projectId: string; previewMonotone: boolean }) {
+function ConsultantsSection({ ownerId, projectId, previewMonotone, canCreate, canEdit, canDelete }: {
+  ownerId: string; projectId: string; previewMonotone: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+}) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: consultants } = useCMProjectConsultants(projectId);
@@ -391,6 +436,8 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: 
           <ConsultantRow
             key={c.id}
             c={c}
+            canEdit={canEdit}
+            canDelete={canDelete}
             editing={editingId === c.id}
             editValue={editValue}
             onEditValueChange={setEditValue}
@@ -404,7 +451,7 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: 
           />
         ))}
         {(consultants?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noConsultants")}</p>}
-        {adding ? (
+        {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("projectSettings.consultantName")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             <div className="flex gap-2">
@@ -414,7 +461,7 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: 
           </div>
         ) : (
           <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addConsultant")}</button>
-        )}
+        ))}
       </div>
     </Card>
   );
@@ -435,7 +482,9 @@ function locationDepth(location: CMProjectLocation, all: CMProjectLocation[]): n
   return depth;
 }
 
-function LocationsSection({ projectId }: { projectId: string }) {
+function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
+  projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+}) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: locations } = useCMProjectLocations(projectId);
@@ -473,7 +522,7 @@ function LocationsSection({ projectId }: { projectId: string }) {
       <div className="flex flex-col gap-2">
         {(locations ?? []).map((l) => (
           <div key={l.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5" style={{ marginLeft: locationDepth(l, locations ?? []) * 16 }}>
-            {editingId === l.id ? (
+            {editingId === l.id && canEdit ? (
               <input
                 className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
                 value={editValue}
@@ -483,14 +532,14 @@ function LocationsSection({ projectId }: { projectId: string }) {
                 onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditingId(null); }}
               />
             ) : (
-              <p onClick={() => startEditing(l)} className="text-[12px] text-white/80 flex-1 truncate cursor-text">{l.name}</p>
+              <p onClick={canEdit ? () => startEditing(l) : undefined} className={`text-[12px] text-white/80 flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>{l.name}</p>
             )}
             <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{t(`locationLevel.${l.level}`)}</span>
-            <button onClick={() => deleteCMProjectLocation(l.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+            {canDelete && <button onClick={() => deleteCMProjectLocation(l.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>}
           </div>
         ))}
         {(locations?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("locations.noneYet")}</p>}
-        {adding ? (
+        {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("locations.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             <div className="grid grid-cols-2 gap-3">
@@ -509,14 +558,16 @@ function LocationsSection({ projectId }: { projectId: string }) {
           </div>
         ) : (
           <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("locations.add")}</button>
-        )}
+        ))}
       </div>
     </Card>
   );
 }
 
 /* ── Checklist ────────────────────────────────────────── */
-function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+function ChecklistSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
+  ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+}) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: items } = useCMChecklistItems(projectId);
@@ -537,18 +588,18 @@ function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: 
       <div className="flex flex-col gap-2">
         {(items ?? []).map((item) => (
           <div key={item.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
-            <button onClick={() => updateCMChecklistItem(item.id, { is_done: !item.is_done }).then(invalidate)}
+            <button onClick={canEdit ? () => updateCMChecklistItem(item.id, { is_done: !item.is_done }).then(invalidate) : undefined}
               className="w-5 h-5 rounded-md border flex items-center justify-center shrink-0"
               style={{ borderColor: item.is_done ? "#34d399" : "rgba(255,255,255,0.2)", backgroundColor: item.is_done ? "#34d399" : "transparent" }}>
               {item.is_done && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#000" strokeWidth="2"><path d="M2 6l3 3 5-6" /></svg>}
             </button>
             <p className={`text-[12px] flex-1 ${item.is_done ? "text-white/30 line-through" : "text-white/80"}`}>{item.title}</p>
             {item.category && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25 shrink-0">{item.category}</span>}
-            <button onClick={() => deleteCMChecklistItem(item.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+            {canDelete && <button onClick={() => deleteCMChecklistItem(item.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>}
           </div>
         ))}
         {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noChecklist")}</p>}
-        {adding ? (
+        {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("projectSettings.itemTitle")} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
             <input className={inputCls} placeholder={t("projectSettings.category")} value={category} onChange={(e) => setCategory(e.target.value)} />
@@ -559,7 +610,7 @@ function ChecklistSection({ ownerId, projectId }: { ownerId: string; projectId: 
           </div>
         ) : (
           <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addItem")}</button>
-        )}
+        ))}
       </div>
     </Card>
   );
@@ -577,8 +628,23 @@ const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeh
  *  view when tapped — position/company (per-project attributes) are kept
  *  visually separate from the permission-role dropdown (system access) so
  *  "job title" and "system permission" aren't confused. */
-function MemberEditRow({ member, companyOptions, onChanged }: { member: CMProjectMember; companyOptions: string[]; onChanged: () => void }) {
+function MemberEditRow({ member, companyOptions, canEdit, onChanged }: {
+  member: CMProjectMember; companyOptions: string[]; canEdit: boolean; onChanged: () => void;
+}) {
   const { t } = useCMLang();
+
+  if (!canEdit) {
+    return (
+      <div className="rounded-lg bg-white/[0.04] px-3 py-2.5 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+        {member.position && <p className="text-[10px] text-white/40">{member.position}</p>}
+        <p className="text-[11px] text-white/60">
+          {member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
+          {member.job_role && ` · ${t(`team.jobRole.${member.job_role}`)}`}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg bg-white/[0.04] px-3 py-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
       <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={member.position ?? ""}
@@ -611,7 +677,9 @@ function MemberEditRow({ member, companyOptions, onChanged }: { member: CMProjec
  *  company-style group card — separate from the consultant's own
  *  name/logo (rendered by ConsultantRow above), which stays untouched
  *  (still feeds photo-stamp branding). */
-function ConsultantPeopleGroup({ ownerId, consultantId, consultantName }: { ownerId: string; consultantId: string; consultantName: string }) {
+function ConsultantPeopleGroup({ ownerId, consultantId, consultantName, canCreate, canDelete }: {
+  ownerId: string; consultantId: string; consultantName: string; canCreate: boolean; canDelete: boolean;
+}) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: contacts } = useCMDirectoryContacts(ownerId);
@@ -642,13 +710,15 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName }: { owne
               <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={p.contact.name}>
                 {p.role || p.contact.trade || p.contact.name}
               </p>
-              <button onClick={() => removeCMConsultantPerson(p.id).then(invalidate)}
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+              {canDelete && (
+                <button onClick={() => removeCMConsultantPerson(p.id).then(invalidate)}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+              )}
             </div>
           ))}
         </div>
       )}
-      {adding ? (
+      {canCreate && (adding ? (
         <div className="flex flex-col gap-2">
           <FieldSelect
             value={contactId}
@@ -664,12 +734,14 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName }: { owne
         </div>
       ) : (
         (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start`} style={{ color: "#ff5100" }}>{t("projectSettings.addPerson")}</button>
-      )}
+      ))}
     </div>
   );
 }
 
-function PeopleSection({ ownerId, projectId }: { ownerId: string; projectId: string }) {
+function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
+  ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+}) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: members } = useCMProjectMembers(projectId);
@@ -755,8 +827,10 @@ function PeopleSection({ ownerId, projectId }: { ownerId: string; projectId: str
                     <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={m.display_name || m.email || ""}>
                       {m.position || t(`team.role.${m.role}`)}
                     </p>
-                    <button onClick={(e) => { e.stopPropagation(); removeCMProjectMember(m.id).then(invalidateMembers); }}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                    {canDelete && (
+                      <button onClick={(e) => { e.stopPropagation(); removeCMProjectMember(m.id).then(invalidateMembers); }}
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                    )}
                   </div>
                 ))}
                 {group.subs.map((s) => (
@@ -765,18 +839,20 @@ function PeopleSection({ ownerId, projectId }: { ownerId: string; projectId: str
                     <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={s.contact.name}>
                       {s.role_on_project || s.contact.trade || s.contact.name}
                     </p>
-                    <button onClick={() => removeCMProjectSubcontractor(s.id).then(invalidateSubs)}
-                      className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                    {canDelete && (
+                      <button onClick={() => removeCMProjectSubcontractor(s.id).then(invalidateSubs)}
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                    )}
                   </div>
                 ))}
               </div>
               {group.members.filter((m) => m.id === expandedMemberId).map((m) => (
-                <MemberEditRow key={m.id} member={m} companyOptions={companyOptions} onChanged={invalidateMembers} />
+                <MemberEditRow key={m.id} member={m} companyOptions={companyOptions} canEdit={canEdit} onChanged={invalidateMembers} />
               ))}
             </div>
           ))}
           {(consultants ?? []).map((c) => (
-            <ConsultantPeopleGroup key={c.id} ownerId={ownerId} consultantId={c.id} consultantName={c.name} />
+            <ConsultantPeopleGroup key={c.id} ownerId={ownerId} consultantId={c.id} consultantName={c.name} canCreate={canCreate} canDelete={canDelete} />
           ))}
           {isEmpty && <p className="text-white/30 text-[12px]">{t("people.noPeople")}</p>}
           {(contacts?.length ?? 0) === 0 && (
@@ -784,7 +860,7 @@ function PeopleSection({ ownerId, projectId }: { ownerId: string; projectId: str
               {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
             </p>
           )}
-          {addingContact ? (
+          {canCreate && (addingContact ? (
             <div className="flex flex-col gap-2 mt-1">
               <FieldSelect
                 value={contactId}
@@ -800,31 +876,35 @@ function PeopleSection({ ownerId, projectId }: { ownerId: string; projectId: str
             </div>
           ) : (
             (contacts?.length ?? 0) > 0 && <button onClick={() => setAddingContact(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.assign")}</button>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
-          <span className={labelCls}>{t("team.inviteLink")}</span>
-          <div className="flex gap-2">
-            <FieldSelect value={inviteRole} onChange={setInviteRole}
-              options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
-            <button onClick={handleCreateInvite} disabled={creatingInvite} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
-              {t("team.generateLink")}
-            </button>
-          </div>
-          {activeInvites.map((inv) => (
-            <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
-              <span className="font-mono text-[10px] text-white/50 truncate">{t(`team.role.${inv.role}`)} — {inv.token.slice(0, 8)}…</span>
-              <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => copyInviteLink(inv.token, inv.id)} className={smallBtn} style={{ color: "#ff5100" }}>
-                  {copiedId === inv.id ? t("team.copied") : t("team.copyLink")}
-                </button>
-                <button onClick={() => revokeCMProjectInvite(inv.id).then(invalidateInvites)}
-                  className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
-              </div>
-            </div>
           ))}
         </div>
+
+        {canCreate && (
+          <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
+            <span className={labelCls}>{t("team.inviteLink")}</span>
+            <div className="flex gap-2">
+              <FieldSelect value={inviteRole} onChange={setInviteRole}
+                options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
+              <button onClick={handleCreateInvite} disabled={creatingInvite} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+                {t("team.generateLink")}
+              </button>
+            </div>
+            {activeInvites.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+                <span className="font-mono text-[10px] text-white/50 truncate">{t(`team.role.${inv.role}`)} — {inv.token.slice(0, 8)}…</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => copyInviteLink(inv.token, inv.id)} className={smallBtn} style={{ color: "#ff5100" }}>
+                    {copiedId === inv.id ? t("team.copied") : t("team.copyLink")}
+                  </button>
+                  {canDelete && (
+                    <button onClick={() => revokeCMProjectInvite(inv.id).then(invalidateInvites)}
+                      className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -836,6 +916,12 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
 }) {
   const { t } = useCMLang();
   const [previewMonotone, setPreviewMonotone] = useState(false);
+  const settingsCanCreate = usePermission(project.id, ownerId, "settings", "create");
+  const settingsCanEdit = usePermission(project.id, ownerId, "settings", "edit");
+  const settingsCanDelete = usePermission(project.id, ownerId, "settings", "delete");
+  const peopleCanCreate = usePermission(project.id, ownerId, "people", "create");
+  const peopleCanEdit = usePermission(project.id, ownerId, "people", "edit");
+  const peopleCanDelete = usePermission(project.id, ownerId, "people", "delete");
   return (
     <>
       <div className="flex items-center gap-3 mb-6">
@@ -845,12 +931,13 @@ export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged
         <h1 className="text-xl font-extrabold tracking-tight text-white">{t("projectSettings.title")}</h1>
       </div>
       <div className="flex flex-col gap-4">
-        <InfoSection project={project} onChanged={onProjectChanged} />
-        <LogoSection project={project} ownerId={ownerId} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
-        <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone} />
-        <LocationsSection projectId={project.id} />
-        <ChecklistSection ownerId={ownerId} projectId={project.id} />
-        <PeopleSection ownerId={ownerId} projectId={project.id} />
+        <InfoSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />
+        <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
+        <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
+          canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+        <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+        <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+        <PeopleSection ownerId={ownerId} projectId={project.id} canCreate={peopleCanCreate} canEdit={peopleCanEdit} canDelete={peopleCanDelete} />
       </div>
     </>
   );

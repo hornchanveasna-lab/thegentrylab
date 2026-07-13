@@ -22,6 +22,7 @@ export function hasPermission(
 ): boolean {
   if (!tierRole) return false;
   if (tierRole === "owner") return true;
+  if ((moduleKey === "people" || moduleKey === "settings") && tierRole === "admin") return true;
   if (tierRole === "visitor" && action !== "view") return false;
   if (!jobRole) return true;
   const row = matrix?.find((p) => p.job_role === jobRole && p.module_key === moduleKey);
