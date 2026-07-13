@@ -6,6 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
+  PriorityBadge, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
   useCMTasks,
@@ -120,12 +121,13 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("punchList", item.id);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const handleStatusChange = async (status: TaskStatus) => {
     setBusy(true);
     try { await updateCMTask(item.id, { status }); onChanged(); } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm(t("punchList.confirmRemove"))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMTask(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -142,7 +144,7 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
               <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
             </svg>
           </button>
-          <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+          <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
         </div>
       </div>
       {item.description && <p className="text-[12px] text-white/45">{item.description}</p>}
@@ -151,7 +153,7 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
         value={item.status} disabled={busy} onChange={handleStatusChange}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <span className="px-2.5 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: `${pc}15`, color: pc }}>{t(`taskPriority.${item.priority}`)}</span>
+        <PriorityBadge size="sm" label={t(`taskPriority.${item.priority}`)} color={pc} />
         {item.assignee && <span className="text-[11px] text-white/40">{item.assignee}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>
@@ -169,6 +171,10 @@ function PunchItemCard({ item, onChanged, onOpenPhoto }: { item: CMTask; onChang
       {editing && (
         <NewPunchItemSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
+      )}
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("punchList.confirmRemove")} confirmLabel={t("common.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
       )}
     </div>
   );

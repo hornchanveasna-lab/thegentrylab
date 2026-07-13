@@ -6,6 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
+  StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect,
 } from "@/components/cm/shared";
 import {
   useCMInspections,
@@ -15,6 +16,7 @@ import {
   uploadCMPhotoWithThumb,
   type CMInspection,
   type InspectionStatus,
+  type Discipline,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/inspection")({
@@ -33,6 +35,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
   const { t } = useCMLang();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [status, setStatus] = useState<InspectionStatus>(existing?.status ?? "Scheduled");
+  const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
   const [inspector, setInspector] = useState(existing?.inspector ?? "");
   const [inspectionDate, setInspectionDate] = useState(() => existing?.inspection_date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState(existing?.notes ?? "");
@@ -47,7 +50,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
     setError("");
     try {
       const patch = {
-        title: title.trim(), status, inspector: inspector.trim() || null, inspection_date: inspectionDate, notes: notes.trim() || null,
+        title: title.trim(), status, discipline, inspector: inspector.trim() || null, inspection_date: inspectionDate, notes: notes.trim() || null,
       };
       const inspection = existing ?? await createCMInspection(ownerId, projectId, patch);
       if (existing) await updateCMInspection(existing.id, patch);
@@ -82,10 +85,16 @@ function NewInspectionSheet({ ownerId, projectId, existing, onClose, onCreated }
             <input type="date" className={inputCls} value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} disabled={saving} />
           </label>
         </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("inspection.inspector")}</span>
-          <input className={inputCls} value={inspector} onChange={(e) => setInspector(e.target.value)} disabled={saving} />
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("common.discipline")}</span>
+            <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("inspection.inspector")}</span>
+            <input className={inputCls} value={inspector} onChange={(e) => setInspector(e.target.value)} disabled={saving} />
+          </label>
+        </div>
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("inspection.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
@@ -110,6 +119,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("inspection", item.id, () => setOpen(true));
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const sc = STATUS_COLOR[item.status];
 
   const handleStatusChange = async (status: InspectionStatus) => {
@@ -117,7 +127,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
     try { await updateCMInspection(item.id, { status }); onChanged(); } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm(t("inspection.confirmDelete"))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMInspection(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -129,7 +139,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest shrink-0" style={{ backgroundColor: `${sc}15`, color: sc }}>{t(`inspectionStatus.${item.status}`)}</span>
+        <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
       </button>
       {open && (
         <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
@@ -137,6 +147,7 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
             options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`), color: STATUS_COLOR[s] }))}
             value={item.status} disabled={busy} onChange={handleStatusChange}
           />
+          {item.discipline && <p className="text-[12px] text-white/60">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
           {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
           {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
           {item.photos.length > 0 && (
@@ -152,13 +163,17 @@ function InspectionCard({ item, onChanged, onOpenPhoto }: { item: CMInspection; 
           )}
           <div className="flex items-center gap-4">
             <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</button>
-            <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>
+            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>
           </div>
         </div>
       )}
       {editing && (
         <NewInspectionSheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
+      )}
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("inspection.confirmDelete")} confirmLabel={t("inspection.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
       )}
     </div>
   );
@@ -169,7 +184,7 @@ function CMInspectionPage() {
   const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: inspections, isLoading } = useCMInspections(projectId || undefined);
+  const { data: inspections, isLoading, isError, refetch } = useCMInspections(projectId || undefined);
   const [showNew, setShowNew] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -216,21 +231,18 @@ function CMInspectionPage() {
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {view === "calendar" ? (
+            {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
+            {!isError && (view === "calendar" ? (
               <MiniCalendar items={inspections ?? []} dateOf={(i) => i.inspection_date} lang={lang}
                 onOpenDay={(dayItems) => { setDateFilter(dayItems[0].inspection_date); setView("list"); }} />
             ) : (
               <>
-                {!isLoading && visibleInspections.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                    <p className="text-white/40 text-sm">{t("inspection.noneYet")}</p>
-                  </div>
-                )}
+                {!isLoading && visibleInspections.length === 0 && <EmptyState message={t("inspection.noneYet")} />}
                 <div className="flex flex-col gap-3">
                   {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
-            )}
+            ))}
             <FAB label={t("inspection.newBtn")} onClick={() => setShowNew(true)} />
           </>
         )}

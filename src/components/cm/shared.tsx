@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus } from "@/lib/cm-data";
+import { useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
@@ -14,6 +14,64 @@ export interface FieldSelectOption<T extends string> {
 
 export const EQUIPMENT_STATUS_OPTIONS: EquipmentStatus[] = ["Operational", "Maintenance", "Out of Service"];
 export const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = { Operational: "#34d399", Maintenance: "#fbbf24", "Out of Service": "#f43f5e" };
+
+/** A read-only colored pill, extracted from what every module was hand-
+ *  rolling inline for its status/priority chips. `PriorityBadge` is the
+ *  same shape under a clearer call-site name. */
+export function StatusBadge({ label, color, size = "xs" }: { label: string; color: string; size?: "xs" | "sm" }) {
+  return (
+    <span className={`px-2.5 py-1 rounded-full font-mono uppercase tracking-widest shrink-0 ${size === "xs" ? "text-[9px]" : "text-[10px]"}`}
+      style={{ backgroundColor: `${color}15`, color }}>
+      {label}
+    </span>
+  );
+}
+export const PriorityBadge = StatusBadge;
+
+/** Dashed-border placeholder for an empty list, reused across modules
+ *  instead of each one duplicating the same markup. */
+export function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+      <p className="text-white/40 text-sm">{message}</p>
+    </div>
+  );
+}
+
+/** Shown when a module's query fails — every module today only handled
+ *  isLoading, so a failed fetch silently rendered nothing. */
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const { t } = useCMLang();
+  return (
+    <div className="rounded-2xl border border-dashed border-red-400/20 py-16 flex flex-col items-center justify-center gap-3 text-center px-4">
+      <p className="text-red-400/70 text-sm">{message}</p>
+      {onRetry && <button onClick={onRetry} className="font-mono text-[10px] uppercase tracking-widest text-white/50 hover:text-white/80">{t("common.retry")}</button>}
+    </div>
+  );
+}
+
+/** Replaces native window.confirm() with an in-app modal that matches the
+ *  rest of the design system. */
+export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel, destructive = true }: {
+  message: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void; destructive?: boolean;
+}) {
+  const { t } = useCMLang();
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm px-6" onClick={onCancel}>
+      <div className="w-full max-w-xs bg-[#141415] rounded-3xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+        <p className="text-[13px] text-white/80 text-center">{message}</p>
+        <div className="flex gap-2">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10">{t("common.cancel")}</button>
+          <button onClick={onConfirm}
+            className={`flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest ${destructive ? "text-red-400 bg-red-500/10 hover:bg-red-500/15" : "text-black"}`}
+            style={destructive ? undefined : { backgroundColor: "#ff5100" }}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** A titled card shell used by Project Settings and the new dedicated
  *  BOQ/Schedule/Manpower/Equipment/Dashboard pages, so every module-level
@@ -160,6 +218,23 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
         </>
       )}
     </div>
+  );
+}
+
+/** Discipline picker shared across modules — thin wrapper over FieldSelect
+ *  so every module presents the same discipline list the same way. */
+export function DisciplineSelect({ value, onChange, disabled }: {
+  value: Discipline | null; onChange: (v: Discipline | null) => void; disabled?: boolean;
+}) {
+  const { t } = useCMLang();
+  return (
+    <FieldSelect
+      value={value ?? ""}
+      onChange={(v) => onChange((v || null) as Discipline | null)}
+      disabled={disabled}
+      placeholder={t("common.selectDiscipline")}
+      options={[{ value: "", label: t("common.none") }, ...DISCIPLINES.map((d) => ({ value: d, label: t(`discipline.${d}`) }))]}
+    />
   );
 }
 

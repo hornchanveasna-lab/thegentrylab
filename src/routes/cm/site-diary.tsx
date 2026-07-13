@@ -454,6 +454,7 @@ function LogCard({ log, projectName, onSelect }: {
       <button onClick={() => onSelect(log)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
+          {log.doc_number && <span className="font-mono text-[10px] text-white/30 shrink-0">{log.doc_number}</span>}
           {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
           {log.weather && (
             <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">
@@ -691,7 +692,12 @@ function DayDetailContent({ log, projectName, flashPhotoUrl, onChanged, onOpenPh
 
   return (
     <div className="flex flex-col gap-4">
-      {projectName && <p className="text-[12px] font-medium text-white/50">{projectName}</p>}
+      {(projectName || log.doc_number) && (
+        <div className="flex items-center gap-2">
+          {projectName && <p className="text-[12px] font-medium text-white/50">{projectName}</p>}
+          {log.doc_number && <span className="font-mono text-[10px] text-white/30">{log.doc_number}</span>}
+        </div>
+      )}
 
       <div className="flex items-center gap-3 rounded-2xl bg-[#0d0d0e] px-4 py-3">
         <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
