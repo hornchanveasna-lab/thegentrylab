@@ -297,7 +297,7 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
   );
 }
 
-const CALENDAR_MONTH_LOCALE: Record<CMLang, string> = { en: "en-US", km: "km-KH", zh: "zh-CN" };
+export const CALENDAR_MONTH_LOCALE: Record<CMLang, string> = { en: "en-US", km: "km-KH", zh: "zh-CN" };
 
 /** A month-by-month calendar of marked days — generalized from the Photos
  *  gallery's original calendar so every module can offer the same "track
@@ -461,6 +461,14 @@ export function useSelectedProject(userId: string | undefined) {
   };
 
   return { projects: projects ?? [], projectId, setProjectId };
+}
+
+/** Points the "last selected project" at a specific project before navigating
+ *  to a module page that has no per-record deep-link of its own (e.g.
+ *  Manpower, Photos) — so the destination opens scoped to the right project
+ *  even when the jump happened from an "All projects" view. */
+export function setLastProject(projectId: string) {
+  try { localStorage.setItem(LAST_PROJECT_KEY, projectId); } catch { /* */ }
 }
 
 export interface SegmentedOption<T extends string> { value: T; label: string; color?: string }
