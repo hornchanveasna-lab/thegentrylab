@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { Avatar } from "@/components/cm/shared";
+import { Avatar, CompanySelect } from "@/components/cm/shared";
 import {
   useCMDirectoryContacts,
   createCMDirectoryContact,
@@ -27,6 +27,7 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
   const { t } = useCMLang();
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
+  const [companyId, setCompanyId] = useState<string | null>(null);
   const [trade, setTrade] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -43,6 +44,7 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
       await createCMDirectoryContact(ownerId, {
         name: name.trim(),
         company: company.trim() || null,
+        company_id: companyId,
         trade: trade.trim() || null,
         phone: phone.trim() || null,
         email: email.trim() || null,
@@ -71,7 +73,8 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("directory.company")}</span>
-              <input className={inputCls} value={company} onChange={(e) => setCompany(e.target.value)} disabled={saving} />
+              <CompanySelect ownerId={ownerId} value={companyId} disabled={saving}
+                onChange={(id, resolvedName) => { setCompanyId(id); setCompany(resolvedName); }} />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("directory.trade")}</span>

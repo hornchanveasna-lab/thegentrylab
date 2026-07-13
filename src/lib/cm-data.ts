@@ -1023,12 +1023,58 @@ export async function deleteCMChecklistItem(id: string) {
   if (error) throw error;
 }
 
+/** Owner-scoped company entity (global, cross-project — like Directory
+ *  contacts, a company is reused across every project the owner runs).
+ *  Linked from Directory contacts via company_id; the plain `company` text
+ *  field on CMDirectoryContact stays mirrored so existing string-based
+ *  consumers (distinctCMCompanyNames, Subcontractor/People grouping) keep
+ *  working unchanged. Not yet linked from Manpower/Project Members/
+ *  Consultants — a later round once this pilot is validated. */
+export interface CMCompany {
+  id: string;
+  owner_id: string;
+  name: string;
+  logo_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMCompanies(ownerId: string | undefined) {
+  return useQuery<CMCompany[]>({
+    queryKey: ["cm_companies", ownerId],
+    enabled: !!ownerId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_companies").select("*").order("name");
+      if (error) throw error;
+      return data as CMCompany[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMCompany(ownerId: string, name: string): Promise<CMCompany> {
+  const { data, error } = await db().from("cm_companies").insert({ owner_id: ownerId, name }).select().single();
+  if (error) throw error;
+  return data as CMCompany;
+}
+
+export async function updateCMCompany(id: string, patch: Partial<Pick<CMCompany, "name" | "logo_url">>) {
+  const { error } = await db().from("cm_companies").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMCompany(id: string) {
+  const { error } = await db().from("cm_companies").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /* ── Directory contacts (global, cross-project) ────────── */
 export interface CMDirectoryContact {
   id: string;
   owner_id: string;
   name: string;
   company: string | null;
+  company_id: string | null;
   trade: string | null;
   phone: string | null;
   email: string | null;
@@ -1053,7 +1099,7 @@ export function useCMDirectoryContacts(userId: string | undefined) {
 
 export async function createCMDirectoryContact(
   ownerId: string,
-  input: Pick<CMDirectoryContact, "name"> & Partial<Pick<CMDirectoryContact, "company" | "trade" | "phone" | "email" | "notes">>,
+  input: Pick<CMDirectoryContact, "name"> & Partial<Pick<CMDirectoryContact, "company" | "company_id" | "trade" | "phone" | "email" | "notes">>,
 ) {
   const { data, error } = await db().from("cm_directory_contacts").insert({ owner_id: ownerId, ...input }).select().single();
   if (error) throw error;
