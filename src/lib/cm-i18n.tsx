@@ -123,6 +123,9 @@ const EN: Dict = {
   "projectSettings.selectContact": "Select a contact…",
   "projectSettings.roleOnProject": "Role on this project (optional)",
   "projectSettings.assign": "+ Assign subcontractor",
+  "projectSettings.independent": "Independent",
+  "projectSettings.addPerson": "+ Add person",
+  "projectSettings.personRole": "Role (optional)",
 
   "team.title": "Team",
   "team.members": "Members",
@@ -651,6 +654,9 @@ const KM: Dict = {
   "projectSettings.selectContact": "ជ្រើសរើសទំនាក់ទំនង…",
   "projectSettings.roleOnProject": "តួនាទីលើគម្រោងនេះ (ស្រេចចិត្ត)",
   "projectSettings.assign": "+ ចាត់តាំងអ្នកម៉ៅការបន្ត",
+  "projectSettings.independent": "ឯករាជ្យ",
+  "projectSettings.addPerson": "+ បន្ថែមមនុស្ស",
+  "projectSettings.personRole": "តួនាទី (ស្រេចចិត្ត)",
 
   "team.title": "ក្រុមការងារ",
   "team.members": "សមាជិក",
@@ -1179,6 +1185,9 @@ const ZH: Dict = {
   "projectSettings.selectContact": "选择联系人…",
   "projectSettings.roleOnProject": "在此项目中的角色（可选）",
   "projectSettings.assign": "+ 指定分包商",
+  "projectSettings.independent": "独立",
+  "projectSettings.addPerson": "+ 添加人员",
+  "projectSettings.personRole": "角色（可选）",
 
   "team.title": "团队",
   "team.members": "成员",

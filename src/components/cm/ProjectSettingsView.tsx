@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
-import { FieldSelect, Card } from "@/components/cm/shared";
+import { FieldSelect, Card, Avatar } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
@@ -18,6 +18,9 @@ import {
   createCMProjectConsultant,
   updateCMProjectConsultant,
   deleteCMProjectConsultant,
+  useCMConsultantPeople,
+  addCMConsultantPerson,
+  removeCMConsultantPerson,
   useCMProjectMembers,
   updateCMMemberRole,
   updateCMMemberPosition,
@@ -27,6 +30,7 @@ import {
   revokeCMProjectInvite,
   type CMProject,
   type CMProjectConsultant,
+  type CMProjectSubcontractor,
   type CMMemberRole,
   type ProjectStatus,
 } from "@/lib/cm-data";
@@ -324,6 +328,63 @@ function ConsultantRow({ c, editing, editValue, onEditValueChange, onStartEdit, 
   );
 }
 
+/** Named people attached to a consultant company, shown as face-thumbnail
+ *  + role chips beneath its logo row — separate from the consultant's own
+ *  name/logo, which stays untouched (still feeds photo-stamp branding). */
+function ConsultantPeopleSection({ ownerId, consultantId }: { ownerId: string; consultantId: string }) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: contacts } = useCMDirectoryContacts(ownerId);
+  const { data: people } = useCMConsultantPeople(consultantId);
+  const [adding, setAdding] = useState(false);
+  const [contactId, setContactId] = useState("");
+  const [role, setRole] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_consultant_people", consultantId] });
+
+  const handleAdd = async () => {
+    if (!contactId) return;
+    await addCMConsultantPerson(consultantId, contactId, role.trim() || null);
+    setContactId(""); setRole(""); setAdding(false);
+    invalidate();
+  };
+
+  return (
+    <div className="pl-3 flex flex-col gap-2">
+      {(people?.length ?? 0) > 0 && (
+        <div className="flex flex-wrap gap-3">
+          {(people ?? []).map((p) => (
+            <div key={p.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
+              <Avatar name={p.contact.name} photoUrl={p.contact.photo_url} size={32} />
+              <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={p.contact.name}>
+                {p.role || p.contact.trade || p.contact.name}
+              </p>
+              <button onClick={() => removeCMConsultantPerson(p.id).then(invalidate)}
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {adding ? (
+        <div className="flex flex-col gap-2">
+          <FieldSelect
+            value={contactId}
+            onChange={setContactId}
+            placeholder={t("projectSettings.selectContact")}
+            options={(contacts ?? []).map((c) => ({ value: c.id, label: `${c.name}${c.trade ? ` (${c.trade})` : ""}` }))}
+          />
+          <input className={inputCls} placeholder={t("projectSettings.personRole")} value={role} onChange={(e) => setRole(e.target.value)} />
+          <div className="flex gap-2">
+            <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+            <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+          </div>
+        </div>
+      ) : (
+        (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start`} style={{ color: "#ff5100" }}>{t("projectSettings.addPerson")}</button>
+      )}
+    </div>
+  );
+}
+
 /* ── Consultants (structural, MEP, etc. — a project can have several) ── */
 function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: string; projectId: string; previewMonotone: boolean }) {
   const { t } = useCMLang();
@@ -372,20 +433,22 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone }: { ownerId: 
     <Card title={t("projectSettings.consultants")}>
       <div className="flex flex-col gap-2">
         {(consultants ?? []).map((c) => (
-          <ConsultantRow
-            key={c.id}
-            c={c}
-            editing={editingId === c.id}
-            editValue={editValue}
-            onEditValueChange={setEditValue}
-            onStartEdit={() => startEditing(c)}
-            onCommitEdit={() => commitEdit(c.id)}
-            onCancelEdit={() => setEditingId(null)}
-            uploading={uploadingId === c.id}
-            onUploadLogo={(f) => handleUploadLogo(c.id, f)}
-            onDelete={() => deleteCMProjectConsultant(c.id).then(invalidate)}
-            previewMonotone={previewMonotone}
-          />
+          <div key={c.id} className="flex flex-col gap-2">
+            <ConsultantRow
+              c={c}
+              editing={editingId === c.id}
+              editValue={editValue}
+              onEditValueChange={setEditValue}
+              onStartEdit={() => startEditing(c)}
+              onCommitEdit={() => commitEdit(c.id)}
+              onCancelEdit={() => setEditingId(null)}
+              uploading={uploadingId === c.id}
+              onUploadLogo={(f) => handleUploadLogo(c.id, f)}
+              onDelete={() => deleteCMProjectConsultant(c.id).then(invalidate)}
+              previewMonotone={previewMonotone}
+            />
+            <ConsultantPeopleSection ownerId={ownerId} consultantId={c.id} />
+          </div>
         ))}
         {(consultants?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noConsultants")}</p>}
         {adding ? (
@@ -472,16 +535,40 @@ function SubcontractorsSection({ ownerId, projectId }: { ownerId: string; projec
     invalidate();
   };
 
+  // Grouped by company so several people from the same subcontractor show
+  // together as one row of face thumbnails with a "×N" count, instead of
+  // one flat list entry per person.
+  const grouped = useMemo(() => {
+    const map = new Map<string, CMProjectSubcontractor[]>();
+    for (const a of assigned ?? []) {
+      const key = a.contact.company || t("projectSettings.independent");
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
+    }
+    return Array.from(map.entries());
+  }, [assigned, t]);
+
   return (
     <Card title={t("projectSettings.subcontractors")}>
-      <div className="flex flex-col gap-2">
-        {(assigned ?? []).map((a) => (
-          <div key={a.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-[12px] text-white/80 truncate">{a.contact.name}{a.contact.trade ? ` — ${a.contact.trade}` : ""}</p>
-              <p className="font-mono text-[10px] text-white/30 truncate">{a.role_on_project ?? a.contact.company ?? ""}</p>
+      <div className="flex flex-col gap-3">
+        {grouped.map(([company, group]) => (
+          <div key={company} className="rounded-xl bg-white/[0.03] px-3 py-2.5 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[12px] text-white/80 font-medium truncate">{company}</p>
+              <span className="font-mono text-[10px] text-white/30 shrink-0">×{group.length}</span>
             </div>
-            <button onClick={() => removeCMProjectSubcontractor(a.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+            <div className="flex flex-wrap gap-3">
+              {group.map((a) => (
+                <div key={a.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
+                  <Avatar name={a.contact.name} photoUrl={a.contact.photo_url} size={36} />
+                  <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={a.contact.name}>
+                    {a.role_on_project || a.contact.trade || a.contact.name}
+                  </p>
+                  <button onClick={() => removeCMProjectSubcontractor(a.id).then(invalidate)}
+                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
         {(assigned?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noSubcontractors")}</p>}

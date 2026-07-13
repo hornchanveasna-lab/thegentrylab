@@ -30,6 +30,21 @@ export function Card({ title, action, children }: { title: string; action?: Reac
   );
 }
 
+/** A person's face photo, or an initials circle when none is set —
+ *  reused everywhere a Directory contact appears (Directory itself,
+ *  Subcontractors, Consultant people, project Team members). */
+export function Avatar({ name, photoUrl, size = 32 }: { name: string; photoUrl?: string | null; size?: number }) {
+  if (photoUrl) {
+    return <img src={photoUrl} alt="" className="rounded-full object-cover shrink-0" style={{ width: size, height: size }} />;
+  }
+  return (
+    <div className="rounded-full bg-white/10 flex items-center justify-center shrink-0 text-white/50"
+      style={{ width: size, height: size, fontSize: size * 0.34 }}>
+      {(name || "?").charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 /** A generic add/remove row-list editor — one row card per item with a
  *  remove "×" and an "+ Add" button, used for any small repeatable
  *  sub-section inside a form (manpower, deliveries, visitors, delays,

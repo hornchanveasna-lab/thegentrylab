@@ -3,10 +3,13 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { Avatar } from "@/components/cm/shared";
 import {
   useCMDirectoryContacts,
   createCMDirectoryContact,
+  updateCMDirectoryContact,
   deleteCMDirectoryContact,
+  uploadCMContactPhoto,
   type CMDirectoryContact,
 } from "@/lib/cm-data";
 
@@ -99,26 +102,48 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
   );
 }
 
-function ContactCard({ contact, onDeleted }: { contact: CMDirectoryContact; onDeleted: () => void }) {
+function ContactCard({ contact, ownerId, onChanged }: { contact: CMDirectoryContact; ownerId: string; onChanged: () => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
   const handleDelete = async () => {
     if (!confirm(t("directory.confirmRemove", { name: contact.name }))) return;
     setBusy(true);
-    try { await deleteCMDirectoryContact(contact.id); onDeleted(); } finally { setBusy(false); }
+    try { await deleteCMDirectoryContact(contact.id); onChanged(); } finally { setBusy(false); }
+  };
+
+  const handlePhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      const url = await uploadCMContactPhoto(ownerId, contact.id, file);
+      await updateCMDirectoryContact(contact.id, { photo_url: url });
+      onChanged();
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <div className="rounded-2xl bg-[#0d0d0e] px-5 py-4 flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <h3 className="text-[13px] font-bold text-white leading-tight">{contact.name}</h3>
-        <p className="text-[12px] text-white/45 mt-0.5">
-          {[contact.trade, contact.company].filter(Boolean).join(" · ") || "—"}
-        </p>
-        {(contact.phone || contact.email) && (
-          <p className="font-mono text-[10px] text-white/30 mt-1">{[contact.phone, contact.email].filter(Boolean).join(" · ")}</p>
-        )}
-        {contact.notes && <p className="text-[11px] text-white/35 mt-1.5">{contact.notes}</p>}
+      <div className="min-w-0 flex items-center gap-3">
+        <label className="relative shrink-0 cursor-pointer">
+          <Avatar name={contact.name} photoUrl={contact.photo_url} size={40} />
+          <input type="file" accept="image/*" className="hidden" disabled={uploading}
+            onChange={(e) => { handlePhoto(e.target.files?.[0]); e.target.value = ""; }} />
+          {uploading && <span className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center text-white/70 text-[9px]">…</span>}
+        </label>
+        <div className="min-w-0">
+          <h3 className="text-[13px] font-bold text-white leading-tight">{contact.name}</h3>
+          <p className="text-[12px] text-white/45 mt-0.5">
+            {[contact.trade, contact.company].filter(Boolean).join(" · ") || "—"}
+          </p>
+          {(contact.phone || contact.email) && (
+            <p className="font-mono text-[10px] text-white/30 mt-1">{[contact.phone, contact.email].filter(Boolean).join(" · ")}</p>
+          )}
+          {contact.notes && <p className="text-[11px] text-white/35 mt-1.5">{contact.notes}</p>}
+        </div>
       </div>
       <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
     </div>
@@ -173,7 +198,7 @@ function CMDirectoryPage() {
           </div>
         )}
         <div className="flex flex-col gap-3">
-          {(contacts ?? []).map((c) => <ContactCard key={c.id} contact={c} onDeleted={invalidate} />)}
+          {(contacts ?? []).map((c) => <ContactCard key={c.id} contact={c} ownerId={user.id} onChanged={invalidate} />)}
         </div>
       </main>
 
