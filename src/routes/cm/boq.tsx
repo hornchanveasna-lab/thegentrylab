@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import { ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
 import {
   useCMBOQItems,
@@ -94,7 +95,9 @@ function NewBoqItemSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function BoqItemRow({ item, delivered, onChanged }: { item: CMBOQItem; delivered: number | undefined; onChanged: () => void }) {
+function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged }: {
+  item: CMBOQItem; delivered: number | undefined; canEdit: boolean; canDelete: boolean; onChanged: () => void;
+}) {
   const { t } = useCMLang();
   const [quantity, setQuantity] = useState(String(item.quantity));
   const [unitCost, setUnitCost] = useState(String(item.unit_cost));
@@ -110,15 +113,23 @@ function BoqItemRow({ item, delivered, onChanged }: { item: CMBOQItem; delivered
       <div className="min-w-0 flex-1">
         <p className="text-[12px] text-white/80 truncate">{item.description}</p>
         <div className="flex items-center gap-1.5 mt-1">
-          <input type="number" min={0} value={quantity} disabled={busy}
-            onChange={(e) => setQuantity(e.target.value)}
-            onBlur={() => { const v = Number(quantity) || 0; if (v !== item.quantity) commit({ quantity: v }); }}
-            className="w-16 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
-          <span className="font-mono text-[10px] text-white/30">{item.unit ?? ""} ×</span>
-          <input type="number" min={0} value={unitCost} disabled={busy}
-            onChange={(e) => setUnitCost(e.target.value)}
-            onBlur={() => { const v = Number(unitCost) || 0; if (v !== item.unit_cost) commit({ unit_cost: v }); }}
-            className="w-20 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
+          {canEdit ? (
+            <>
+              <input type="number" min={0} value={quantity} disabled={busy}
+                onChange={(e) => setQuantity(e.target.value)}
+                onBlur={() => { const v = Number(quantity) || 0; if (v !== item.quantity) commit({ quantity: v }); }}
+                className="w-16 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
+              <span className="font-mono text-[10px] text-white/30">{item.unit ?? ""} ×</span>
+              <input type="number" min={0} value={unitCost} disabled={busy}
+                onChange={(e) => setUnitCost(e.target.value)}
+                onBlur={() => { const v = Number(unitCost) || 0; if (v !== item.unit_cost) commit({ unit_cost: v }); }}
+                className="w-20 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
+            </>
+          ) : (
+            <span className="font-mono text-[10px] text-white/50">
+              {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""} × {item.unit_cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </span>
+          )}
         </div>
         {delivered != null && (
           <p className="font-mono text-[9px] text-white/30 mt-1">
@@ -131,16 +142,18 @@ function BoqItemRow({ item, delivered, onChanged }: { item: CMBOQItem; delivered
         <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>
           {(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </span>
-        <button onClick={() => { if (confirm(t("boq.confirmDelete"))) deleteCMBOQItem(item.id).then(onChanged); }} disabled={busy}
-          className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        {canDelete && (
+          <button onClick={() => { if (confirm(t("boq.confirmDelete"))) deleteCMBOQItem(item.id).then(onChanged); }} disabled={busy}
+            className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        )}
       </div>
     </div>
   );
 }
 
-function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, onChanged }: {
+function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, canEdit, canDelete, onChanged }: {
   category: string; items: CMBOQItem[]; grandTotal: number; linkedCount: number; linkedAvgActual: number | null;
-  deliveredByBoqItem: Map<string, number>; onChanged: () => void;
+  deliveredByBoqItem: Map<string, number>; canEdit: boolean; canDelete: boolean; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
@@ -149,7 +162,7 @@ function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgAc
   return (
     <Card title={category} action={<span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{ratio.toFixed(1)}% {t("boq.ratioOfTotal")}</span>}>
       <div className="flex flex-col gap-2">
-        {items.map((item) => <BoqItemRow key={item.id} item={item} delivered={deliveredByBoqItem.get(item.id)} onChanged={onChanged} />)}
+        {items.map((item) => <BoqItemRow key={item.id} item={item} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} />)}
         <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
           <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
@@ -319,6 +332,9 @@ function CMBoqPage() {
   const { data: items, isLoading } = useCMBOQItems(projectId || undefined);
   const { data: scheduleItems } = useCMScheduleItems(projectId || undefined);
   const { data: dailyLogs } = useCMDailyLogs(projectId || undefined);
+  const canCreate = usePermission(projectId || undefined, user?.id, "boq", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "boq", "edit");
+  const canDelete = usePermission(projectId || undefined, user?.id, "boq", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [search, setSearch] = useState("");
@@ -405,23 +421,25 @@ function CMBoqPage() {
                 return (
                   <CategorySection key={category} category={category} items={categoryItems} grandTotal={grandTotal}
                     linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null}
-                    deliveredByBoqItem={deliveredByBoqItem} onChanged={invalidate} />
+                    deliveredByBoqItem={deliveredByBoqItem} canEdit={canEdit} canDelete={canDelete} onChanged={invalidate} />
                 );
               })}
             </div>
-            <button type="button" onClick={() => setShowImport(true)} aria-label={t("boq.import.title")}
-              className="fixed bottom-24 right-6 w-11 h-11 rounded-full flex items-center justify-center text-white/70 bg-white/10 hover:bg-white/15 active:scale-95 transition-all z-30">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-              </svg>
-            </button>
-            <FAB label={t("boq.newBtn")} onClick={() => setShowNew(true)} />
+            {canCreate && (
+              <button type="button" onClick={() => setShowImport(true)} aria-label={t("boq.import.title")}
+                className="fixed bottom-24 right-6 w-11 h-11 rounded-full flex items-center justify-center text-white/70 bg-white/10 hover:bg-white/15 active:scale-95 transition-all z-30">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+                </svg>
+              </button>
+            )}
+            {canCreate && <FAB label={t("boq.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && <NewBoqItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
-      {showImport && projectId && <ImportBoqSheet ownerId={user.id} projectId={projectId} onClose={() => setShowImport(false)} onImported={invalidate} />}
+      {showNew && projectId && canCreate && <NewBoqItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showImport && projectId && canCreate && <ImportBoqSheet ownerId={user.id} projectId={projectId} onClose={() => setShowImport(false)} onImported={invalidate} />}
     </div>
   );
 }

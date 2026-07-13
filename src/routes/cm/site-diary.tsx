@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
+import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
@@ -640,9 +641,11 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
  *  week-strip of its own since the page already provides those via
  *  CalendarStrip; a project name label is shown only in "all projects"
  *  mode, where more than one project can share the same selected date. */
-function DayDetailContent({ log, projectName, flashPhotoUrl, onChanged, onOpenPhoto }: {
+function DayDetailContent({ log, projectName, canEdit, canDelete, flashPhotoUrl, onChanged, onOpenPhoto }: {
   log: CMDailyLog | CMDailyLogWithProject;
   projectName?: string;
+  canEdit: boolean;
+  canDelete: boolean;
   flashPhotoUrl: string | null;
   onChanged: () => void;
   onOpenPhoto: (items: LightboxItem[], index: number) => void;
@@ -811,15 +814,19 @@ function DayDetailContent({ log, projectName, flashPhotoUrl, onChanged, onOpenPh
       <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotosCount} onClick={() => goTo("/cm/photos")} />
 
       <div className="flex items-center gap-4 pt-1">
-        <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
-          {t("siteDiary.editEntry")}
-        </button>
-        <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
-          {t("siteDiary.deleteEntry")}
-        </button>
+        {canEdit && (
+          <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+            {t("siteDiary.editEntry")}
+          </button>
+        )}
+        {canDelete && (
+          <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
+            {t("siteDiary.deleteEntry")}
+          </button>
+        )}
       </div>
 
-      {editing && (
+      {editing && canEdit && (
         <NewLogSheet ownerId={log.owner_id} projectId={log.project_id} existing={log}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
@@ -957,6 +964,9 @@ function CMSiteDiaryPage() {
   const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const canCreate = usePermission(projectId || undefined, user?.id, "site_diary", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "site_diary", "edit");
+  const canDelete = usePermission(projectId || undefined, user?.id, "site_diary", "delete");
   const [viewAll, setViewAll] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [calendarExpanded, setCalendarExpanded] = useState(false);
@@ -1081,6 +1091,7 @@ function CMSiteDiaryPage() {
                           </button>
                         )}
                         <DayDetailContent log={log} projectName={viewAll ? (log as CMDailyLogWithProject).projectName : undefined}
+                          canEdit={canEdit} canDelete={canDelete}
                           flashPhotoUrl={flashPhotoUrl} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
                       </div>
                     );
@@ -1104,12 +1115,12 @@ function CMSiteDiaryPage() {
                 </div>
               )
             )}
-            {!viewAll && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
+            {!viewAll && canCreate && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
       </main>
 
-      {showNew && !viewAll && projectId && <NewLogSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && !viewAll && projectId && canCreate && <NewLogSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
         <PhotoLightbox
