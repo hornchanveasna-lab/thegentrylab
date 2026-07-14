@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
-import { SegmentedField } from "@/components/cm/shared";
+import { SegmentedField, ProjectPicker, useSelectedProject } from "@/components/cm/shared";
+import { ProjectSettingsView, CompaniesSection } from "@/components/cm/ProjectSettingsView";
 import {
   useCMAccountSettings,
   upsertCMAccountSettings,
@@ -36,6 +37,16 @@ function Row({ children, onClick }: { children: React.ReactNode; onClick?: () =>
 
 const LANG_OPTIONS: CMLang[] = ["en", "km", "zh"];
 
+type SettingsTab = "app" | "project";
+
+/** App Settings categories with no backing feature yet — shown as an honest
+ *  placeholder (matching the same convention Project Settings already uses
+ *  for "integrations") rather than fabricated controls. */
+const APP_PLACEHOLDER_KEYS = [
+  "organizations", "masterData", "modules", "documentStandards",
+  "templates", "notifications", "integrations", "storage", "security", "auditLog", "subscription",
+] as const;
+
 function CMSettingsPage() {
   const { user, signOut } = useAuthCM();
   const { lang, setLang, t } = useCMLang();
@@ -47,6 +58,9 @@ function CMSettingsPage() {
   const [savingName, setSavingName] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const syncedLangOnce = useRef(false);
+  const [tab, setTab] = useState<SettingsTab>("app");
+  const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const activeProject = projects.find((p) => p.id === projectId);
 
   useEffect(() => { applyTheme(theme); }, [theme]);
 
@@ -63,6 +77,7 @@ function CMSettingsPage() {
   }, [account?.language, lang, setLang]);
 
   const invalidateAccount = () => queryClient.invalidateQueries({ queryKey: ["cm_account_settings", user?.id] });
+  const invalidateProjects = () => queryClient.invalidateQueries({ queryKey: ["cm_projects", user?.id] });
 
   const handleSaveName = async () => {
     if (!user) return;
@@ -125,77 +140,128 @@ function CMSettingsPage() {
           </div>
         )}
 
-        <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.companyBranding")}</p>
-          <div className="flex items-center gap-4 mb-4">
-            {account?.company_logo_url ? (
-              <img src={account.company_logo_url} alt="" className="h-16 max-w-[180px] w-auto object-contain shrink-0" />
-            ) : (
-              <div className="w-16 h-16 rounded-2xl border border-dashed border-white/10 flex items-center justify-center shrink-0">
-                <span className="text-white/20 text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>
-              </div>
-            )}
-            <div className="flex flex-col gap-1">
-              <span className="text-[11px] text-white/50">{t("settings.companyLogo")}</span>
-              <input type="file" accept="image/*" disabled={uploadingLogo}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(f); }}
-                className="text-[11px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
-            </div>
-          </div>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">{t("settings.companyLogoHint")}</p>
-          <div className="flex gap-2">
-            <input
-              className="flex-1 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder={t("settings.companyNamePlaceholder")}
-              disabled={savingName}
-            />
-            <button onClick={handleSaveName} disabled={savingName}
-              className="px-4 py-2 rounded-xl text-[11px] font-mono uppercase tracking-widest text-black font-bold disabled:opacity-40"
-              style={{ backgroundColor: "#ff5100" }}>
-              {savingName ? "…" : t("common.save")}
-            </button>
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.language")}</p>
+        <div className="mb-5">
           <SegmentedField
-            options={LANG_OPTIONS.map((l) => ({ value: l, label: t(`settings.lang.${l}`) }))}
-            value={lang}
-            onChange={handleLangChange}
+            options={[
+              { value: "app", label: t("settings.appTab") },
+              { value: "project", label: t("settings.projectTab") },
+            ]}
+            value={tab}
+            onChange={setTab}
           />
         </div>
 
-        <div className="rounded-2xl overflow-hidden mb-5">
-          <Row>
-            <Link to="/cm/role-permissions" className="text-[13px] text-white/85">
-              {t("rolePermissions.title")}
-            </Link>
-            <span className="text-white/25">›</span>
-          </Row>
-        </div>
+        {tab === "app" && (
+          <>
+            <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.companyBranding")}</p>
+              <div className="flex items-center gap-4 mb-4">
+                {account?.company_logo_url ? (
+                  <img src={account.company_logo_url} alt="" className="h-16 max-w-[180px] w-auto object-contain shrink-0" />
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl border border-dashed border-white/10 flex items-center justify-center shrink-0">
+                    <span className="text-white/20 text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] text-white/50">{t("settings.companyLogo")}</span>
+                  <input type="file" accept="image/*" disabled={uploadingLogo}
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(f); }}
+                    className="text-[11px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
+                </div>
+              </div>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">{t("settings.companyLogoHint")}</p>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder={t("settings.companyNamePlaceholder")}
+                  disabled={savingName}
+                />
+                <button onClick={handleSaveName} disabled={savingName}
+                  className="px-4 py-2 rounded-xl text-[11px] font-mono uppercase tracking-widest text-black font-bold disabled:opacity-40"
+                  style={{ backgroundColor: "#ff5100" }}>
+                  {savingName ? "…" : t("common.save")}
+                </button>
+              </div>
+            </div>
 
-        <div className="rounded-2xl overflow-hidden mb-5">
-          <Row onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
-            <span className="text-[13px] text-white/85">{t("settings.appearance")}</span>
-            <span className="text-[12px] text-white/40 font-mono uppercase tracking-widest">{theme === "dark" ? t("settings.dark") : t("settings.light")}</span>
-          </Row>
-        </div>
+            <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.language")}</p>
+              <SegmentedField
+                options={LANG_OPTIONS.map((l) => ({ value: l, label: t(`settings.lang.${l}`) }))}
+                value={lang}
+                onChange={handleLangChange}
+              />
+            </div>
 
-        <div className="rounded-2xl overflow-hidden mb-5">
-          <Row>
-            <a href="https://thegentrylab.com" className="text-[13px] text-white/85">
-              {t("settings.gentryLabHome")}
-            </a>
-            <span className="text-white/25">↗</span>
-          </Row>
-        </div>
+            {user && (
+              <div className="mb-5">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2 px-1">{t("appSettingsNav.companies")}</p>
+                <CompaniesSection ownerId={user.id} canCreate canEdit />
+              </div>
+            )}
+
+            <div className="rounded-2xl overflow-hidden mb-5">
+              <Row>
+                <Link to="/cm/directory" className="min-w-0">
+                  <p className="text-[13px] text-white/85">{t("appSettingsNav.users")}</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">{t("appSettingsNav.usersHint")}</p>
+                </Link>
+                <span className="text-white/25 shrink-0">›</span>
+              </Row>
+              <Row>
+                <Link to="/cm/role-permissions" className="min-w-0">
+                  <p className="text-[13px] text-white/85">{t("appSettingsNav.roles")}</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">{t("appSettingsNav.rolesHint")}</p>
+                </Link>
+                <span className="text-white/25 shrink-0">›</span>
+              </Row>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden mb-5">
+              {APP_PLACEHOLDER_KEYS.map((k) => (
+                <Row key={k}>
+                  <div className="min-w-0">
+                    <p className="text-[13px] text-white/85">{t(`appSettingsNav.${k}`)}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{t("settingsNav.notBuiltYet")}</p>
+                  </div>
+                </Row>
+              ))}
+            </div>
+
+            <div className="rounded-2xl overflow-hidden mb-5">
+              <Row onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
+                <span className="text-[13px] text-white/85">{t("settings.appearance")}</span>
+                <span className="text-[12px] text-white/40 font-mono uppercase tracking-widest">{theme === "dark" ? t("settings.dark") : t("settings.light")}</span>
+              </Row>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden mb-5">
+              <Row>
+                <a href="https://thegentrylab.com" className="text-[13px] text-white/85">
+                  {t("settings.gentryLabHome")}
+                </a>
+                <span className="text-white/25">↗</span>
+              </Row>
+            </div>
+          </>
+        )}
+
+        {tab === "project" && (
+          <>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2 px-1">{t("settings.currentProject")}</p>
+            <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+            {activeProject && (
+              <ProjectSettingsView project={activeProject} ownerId={activeProject.owner_id} onProjectChanged={invalidateProjects} />
+            )}
+          </>
+        )}
 
         <button
           onClick={() => handleSignOut()}
-          className="w-full px-5 py-3.5 rounded-2xl text-[13px] font-bold text-red-400 bg-red-500/10 hover:bg-red-500/15 transition-colors"
+          className="w-full mt-2 px-5 py-3.5 rounded-2xl text-[13px] font-bold text-red-400 bg-red-500/10 hover:bg-red-500/15 transition-colors"
         >
           {t("settings.signOut")}
         </button>
