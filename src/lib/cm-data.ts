@@ -1867,6 +1867,107 @@ export async function deleteCMManpowerPlan(id: string) {
   if (error) throw error;
 }
 
+/* ── Named worker attendance (spec §9 Level 2) — an optional layer on top
+ *  of headcount-only recording. The worker register is project-scoped;
+ *  attendance is one row per worker per date (upserted on toggle). It never
+ *  writes into cm_daily_logs.manpower by itself — the UI offers an explicit
+ *  "add to headcount" action instead, so nothing merges silently. ─────── */
+export interface CMWorker {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  name: string;
+  worker_code: string | null;
+  company: string | null;
+  trade: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CMAttendanceStatus = "Present" | "Absent" | "Leave";
+
+export interface CMWorkerAttendance {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  worker_id: string;
+  att_date: string;
+  status: CMAttendanceStatus;
+  check_in: string | null;
+  check_out: string | null;
+  normal_hours: number;
+  ot_hours: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMWorkers(projectId: string | undefined) {
+  return useQuery<CMWorker[]>({
+    queryKey: ["cm_workers", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_workers").select("*").eq("project_id", projectId).order("company").order("name");
+      if (error) throw error;
+      return data as CMWorker[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMWorker(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMWorker, "name" | "worker_code" | "company" | "trade">,
+) {
+  const { error } = await db().from("cm_workers").insert({ owner_id: ownerId, project_id: projectId, ...input });
+  if (error) throw error;
+}
+
+export async function deleteCMWorker(id: string) {
+  const { error } = await db().from("cm_workers").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export function useCMWorkerAttendance(projectId: string | undefined, date: string) {
+  return useQuery<CMWorkerAttendance[]>({
+    queryKey: ["cm_worker_attendance", projectId, date],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_worker_attendance").select("*").eq("project_id", projectId).eq("att_date", date);
+      if (error) throw error;
+      return data as CMWorkerAttendance[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+/** One row per worker per date — toggling a status upserts; clearing a
+ *  status deletes the row so an untouched worker stays genuinely unrecorded
+ *  rather than defaulting to Absent. */
+export async function setCMWorkerAttendance(
+  ownerId: string,
+  projectId: string,
+  workerId: string,
+  date: string,
+  status: CMAttendanceStatus | null,
+) {
+  if (status == null) {
+    const { error } = await db().from("cm_worker_attendance").delete().eq("worker_id", workerId).eq("att_date", date);
+    if (error) throw error;
+    return;
+  }
+  const { error } = await db().from("cm_worker_attendance").upsert(
+    {
+      owner_id: ownerId, project_id: projectId, worker_id: workerId, att_date: date,
+      status, normal_hours: status === "Present" ? 8 : 0, ot_hours: 0,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "worker_id,att_date" },
+  );
+  if (error) throw error;
+}
+
 /* ── Project members & invites. RLS is now project-role-aware across every
  *  project-scoped table (cm_project_role() Postgres function), so a member
  *  who accepts an invite can actually read/write Site Diary/Photos/BOQ/etc.

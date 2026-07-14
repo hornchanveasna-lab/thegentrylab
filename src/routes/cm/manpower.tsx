@@ -20,7 +20,8 @@ import {
   findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity, uploadCMPhotoWithThumb,
   cmLaborHours, CM_WORKER_CATEGORIES,
   useCMManpowerPlans, createCMManpowerPlan, updateCMManpowerPlan, deleteCMManpowerPlan,
-  type CMDailyLog, type CMManpowerRow, type CMManpowerPlan,
+  useCMWorkers, createCMWorker, deleteCMWorker, useCMWorkerAttendance, setCMWorkerAttendance,
+  type CMDailyLog, type CMManpowerRow, type CMManpowerPlan, type CMAttendanceStatus,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/manpower")({
@@ -454,6 +455,179 @@ function ImportManpowerSheet({ projectId, date, onImport, onClose }: {
         )}
       </div>
     </Sheet>
+  );
+}
+
+const ATTENDANCE_CYCLE: (CMAttendanceStatus | null)[] = [null, "Present", "Absent", "Leave"];
+const ATTENDANCE_COLOR: Record<CMAttendanceStatus, string> = {
+  Present: "#4ade80", Absent: "#f87171", Leave: "#fbbf24",
+};
+
+/** Named attendance (spec §9 Level 2) — an optional register of workers with
+ *  a per-day Present/Absent/Leave toggle. Deliberately separate from the
+ *  headcount rows: attendance never writes into the shared Site Diary record
+ *  by itself; "Add present crews to headcount" is an explicit action that
+ *  only adds company+trade pairs not already recorded, so nothing merges
+ *  silently and headcount-only projects never have to touch this. */
+function AttendanceSection({ userId, projectId, date, rows, canCreate, canDelete, companyOptions, tradeOptions, onAddToHeadcount }: {
+  userId: string; projectId: string; date: string; rows: CMManpowerRow[];
+  canCreate: boolean; canDelete: boolean;
+  companyOptions: string[]; tradeOptions: string[];
+  onAddToHeadcount: (crews: CMManpowerRow[]) => Promise<void>;
+}) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: workers } = useCMWorkers(projectId);
+  const { data: attendance } = useCMWorkerAttendance(projectId, date);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [company, setCompany] = useState("");
+  const [trade, setTrade] = useState("");
+  // Optimistic status overrides so toggles respond instantly; reverted on a
+  // failed write, cleared when the day changes.
+  const [overrides, setOverrides] = useState<Map<string, CMAttendanceStatus | null>>(new Map());
+  useEffect(() => { setOverrides(new Map()); }, [projectId, date]);
+
+  const activeWorkers = useMemo(() => (workers ?? []).filter((w) => w.active), [workers]);
+  const serverStatus = useMemo(() => {
+    const map = new Map<string, CMAttendanceStatus>();
+    for (const a of attendance ?? []) map.set(a.worker_id, a.status);
+    return map;
+  }, [attendance]);
+  const statusOf = (workerId: string) =>
+    overrides.has(workerId) ? overrides.get(workerId)! : serverStatus.get(workerId) ?? null;
+
+  const invalidateWorkers = () => qc.invalidateQueries({ queryKey: ["cm_workers", projectId] });
+  const invalidateAttendance = () => qc.invalidateQueries({ queryKey: ["cm_worker_attendance", projectId, date] });
+
+  const toggle = (workerId: string) => {
+    const current = statusOf(workerId);
+    const next = ATTENDANCE_CYCLE[(ATTENDANCE_CYCLE.indexOf(current) + 1) % ATTENDANCE_CYCLE.length];
+    setOverrides((m) => new Map(m).set(workerId, next));
+    setCMWorkerAttendance(userId, projectId, workerId, date, next)
+      .then(invalidateAttendance)
+      .catch(() => setOverrides((m) => { const c = new Map(m); c.delete(workerId); return c; }));
+  };
+
+  const handleAddWorker = async () => {
+    if (!name.trim()) return;
+    await createCMWorker(userId, projectId, {
+      name: name.trim(), worker_code: code.trim() || null,
+      company: company.trim() || null, trade: trade.trim() || null,
+    });
+    logCMActivity(projectId, userId, "worker_added", "manpower", null, { name: name.trim() });
+    setName(""); setCode(""); setAdding(false);
+    invalidateWorkers();
+  };
+
+  const grouped = useMemo(() => {
+    const groups = new Map<string, typeof activeWorkers>();
+    for (const w of activeWorkers) {
+      const key = w.company?.trim() || "";
+      groups.set(key, [...(groups.get(key) ?? []), w]);
+    }
+    return [...groups.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
+  }, [activeWorkers]);
+
+  const counts = useMemo(() => {
+    let present = 0, absent = 0;
+    for (const w of activeWorkers) {
+      const s = statusOf(w.id);
+      if (s === "Present") present++;
+      else if (s === "Absent") absent++;
+    }
+    return { present, absent, total: activeWorkers.length };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkers, serverStatus, overrides]);
+
+  // Present workers grouped into crews, minus company+trade pairs the day's
+  // headcount already has — the explicit bridge from Level 2 back to Level 1.
+  const pendingCrews = useMemo(() => {
+    const existing = new Set(rows.map((r) => `${(r.company ?? "").trim().toLowerCase()}|${r.trade.trim().toLowerCase()}`));
+    const crews = new Map<string, CMManpowerRow>();
+    for (const w of activeWorkers) {
+      if (statusOf(w.id) !== "Present") continue;
+      const companyKey = (w.company ?? "").trim();
+      const tradeKey = (w.trade ?? "").trim() || t("manpower.attendance.generalTrade");
+      const key = `${companyKey.toLowerCase()}|${tradeKey.toLowerCase()}`;
+      if (existing.has(key)) continue;
+      const crew = crews.get(key) ?? {
+        trade: tradeKey, company: companyKey || null, count: 0, roster_item_id: null,
+        category: null, location_id: null, activity: null, normal_hours: 8, ot_hours: 0,
+      };
+      crew.count += 1;
+      crews.set(key, crew);
+    }
+    return [...crews.values()];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeWorkers, rows, serverStatus, overrides, t]);
+
+  return (
+    <Card title={t("manpower.attendance.title")}>
+      <div className="flex flex-col gap-2">
+        {activeWorkers.length === 0 && !adding && <p className="text-white/30 text-[12px]">{t("manpower.attendance.noWorkers")}</p>}
+        {activeWorkers.length > 0 && (
+          <p className="text-[11px] font-mono text-white/45">
+            {t("manpower.attendance.summary", { present: String(counts.present), absent: String(counts.absent), total: String(counts.total) })}
+          </p>
+        )}
+        {grouped.map(([groupKey, groupWorkers]) => (
+          <div key={groupKey || "-"} className="flex flex-col gap-1">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-white/30 mt-1">{groupKey || t("manpower.noCompany")}</p>
+            {groupWorkers.map((w) => {
+              const s = statusOf(w.id);
+              return (
+                <div key={w.id} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] text-white/80 truncate">{w.name}{w.worker_code ? <span className="text-white/30 font-mono text-[10px]"> · {w.worker_code}</span> : null}</p>
+                    {w.trade && <p className="text-[10px] text-white/30 truncate">{w.trade}</p>}
+                  </div>
+                  <button onClick={() => toggle(w.id)}
+                    className="shrink-0 font-mono text-[10px] px-2.5 py-1 rounded-full min-w-[64px] text-center transition-colors"
+                    style={s ? { color: ATTENDANCE_COLOR[s], backgroundColor: `${ATTENDANCE_COLOR[s]}1a` } : { color: "rgba(255,255,255,0.3)", backgroundColor: "rgba(255,255,255,0.05)" }}>
+                    {s ? t(`manpower.attendance.${s.toLowerCase()}`) : "—"}
+                  </button>
+                  {canDelete && (
+                    <button onClick={() => deleteCMWorker(w.id).then(invalidateWorkers)} className="shrink-0 w-5 h-5 rounded-full text-white/20 hover:text-red-400 flex items-center justify-center">×</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {canCreate && pendingCrews.length > 0 && (
+          <div className="mt-1">
+            <button onClick={() => onAddToHeadcount(pendingCrews)} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+              {t("manpower.attendance.addToHeadcount", { count: String(pendingCrews.reduce((sum, c) => sum + c.count, 0)) })}
+            </button>
+            <p className="text-[10px] text-white/25 mt-1.5">{t("manpower.attendance.addToHeadcountHint")}</p>
+          </div>
+        )}
+
+        {canCreate && (adding ? (
+          <div className="flex flex-col gap-2 mt-1">
+            <div className="grid grid-cols-2 gap-2">
+              <input className={inputCls} placeholder={t("manpower.attendance.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
+              <input className={inputCls} placeholder={t("manpower.attendance.codePlaceholder")} value={code} onChange={(e) => setCode(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <FieldSelect value={company} onChange={setCompany} searchable allowCustom placeholder={t("manpower.selectCompany")}
+                options={[{ value: "", label: t("common.none") }, ...companyOptions.map((c) => ({ value: c, label: c }))]} />
+              <FieldSelect value={trade} onChange={setTrade} searchable allowCustom placeholder={t("manpower.selectTrade")}
+                options={tradeOptions.map((tr) => ({ value: tr, label: tr }))} />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleAddWorker} disabled={!name.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("manpower.attendance.addWorker")}</button>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -905,6 +1079,19 @@ function CMManpowerPage() {
                 userId={user.id} projectId={projectId} date={date} rows={rows}
                 canCreate={canCreate} canEdit={canEdit} canDelete={canDelete}
                 companyOptions={companyOptions} tradeOptions={tradeOptions}
+              />
+            </div>
+
+            <div className="mb-4">
+              <AttendanceSection
+                userId={user.id} projectId={projectId} date={date} rows={rows}
+                canCreate={canCreate} canDelete={canDelete}
+                companyOptions={companyOptions} tradeOptions={tradeOptions}
+                onAddToHeadcount={async (crews) => {
+                  const next = [...rows, ...crews];
+                  setLocalRows(next);
+                  await persistRows(next, "manpower_attendance_to_headcount");
+                }}
               />
             </div>
 
