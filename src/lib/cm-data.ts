@@ -268,6 +268,7 @@ export async function createCMDailyLog(
   const { data, error } = await db().from("cm_daily_logs")
     .insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
+  logCMActivity(projectId, ownerId, "created", "site_diary", data.id, { doc_number: docNumber });
   return data as CMDailyLog;
 }
 
@@ -392,6 +393,7 @@ export async function createCMTask(
   const docNumber = await generateCMDocNumber(projectId, "punch_list", "PNL");
   const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
+  logCMActivity(projectId, ownerId, "created", "punch_list", data.id, { title: data.title });
   return data as CMTask;
 }
 
@@ -1214,6 +1216,23 @@ export function useCMAuditLog(projectId: string | undefined) {
   });
 }
 
+/** Per-record activity log — unlike useCMAuditLog (project-wide, capped at
+ *  50 rows), this filters directly by entity so a record's own history is
+ *  never pushed out by unrelated activity elsewhere in the project. */
+export function useCMEntityAuditLog(entityType: string, entityId: string | undefined) {
+  return useQuery<CMAuditLogEntry[]>({
+    queryKey: ["cm_audit_log_entity", entityType, entityId],
+    enabled: !!entityId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_audit_log").select("*")
+        .eq("entity_type", entityType).eq("entity_id", entityId).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as CMAuditLogEntry[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 export async function logCMActivity(
   projectId: string,
   actorId: string,
@@ -1228,6 +1247,43 @@ export async function logCMActivity(
       entity_id: entityId ?? null, detail: detail ?? null,
     });
   } catch { /* logging is best-effort; never block the underlying action */ }
+}
+
+/* ── Comments (polymorphic — any record in any module) ──── */
+export interface CMComment {
+  id: string;
+  project_id: string;
+  entity_type: string;
+  entity_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+}
+
+export function useCMComments(entityType: string, entityId: string | undefined) {
+  return useQuery<CMComment[]>({
+    queryKey: ["cm_comments", entityType, entityId],
+    enabled: !!entityId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_comments").select("*")
+        .eq("entity_type", entityType).eq("entity_id", entityId).order("created_at", { ascending: true });
+      if (error) throw error;
+      return data as CMComment[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function addCMComment(projectId: string, entityType: string, entityId: string, authorId: string, body: string) {
+  const { data, error } = await db().from("cm_comments")
+    .insert({ project_id: projectId, entity_type: entityType, entity_id: entityId, author_id: authorId, body }).select().single();
+  if (error) throw error;
+  return data as CMComment;
+}
+
+export async function deleteCMComment(id: string) {
+  const { error } = await db().from("cm_comments").delete().eq("id", id);
+  if (error) throw error;
 }
 
 /* ── Work packages (per project) ───────────────────────── */
@@ -2192,6 +2248,7 @@ export async function createCMInspection(
   const docNumber = await generateCMDocNumber(projectId, "inspection", "WIR", input.inspection_date);
   const { data, error } = await db().from("cm_inspections").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
+  logCMActivity(projectId, ownerId, "created", "inspection", data.id, { title: data.title });
   return data as CMInspection;
 }
 
@@ -2249,6 +2306,7 @@ export async function createCMSafetyRecord(
   const docNumber = await generateCMDocNumber(projectId, "safety", "HSE", input.record_date);
   const { data, error } = await db().from("cm_safety_records").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
+  logCMActivity(projectId, ownerId, "created", "safety", data.id, { title: data.title });
   return data as CMSafetyRecord;
 }
 
@@ -2308,6 +2366,7 @@ export async function createCMSubmittal(
   const docNumber = await generateCMDocNumber(projectId, "submittal", "SUB");
   const { data, error } = await db().from("cm_submittals").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
+  logCMActivity(projectId, ownerId, "created", "submittal", data.id, { title: data.title });
   return data as CMSubmittal;
 }
 
@@ -2319,6 +2378,57 @@ export async function updateCMSubmittal(id: string, patch: Partial<CMSubmittal>)
 export async function deleteCMSubmittal(id: string) {
   const { error } = await db().from("cm_submittals").delete().eq("id", id);
   if (error) throw error;
+}
+
+/** A record from another module that shares something concrete with the
+ *  current record — the only two links the schema actually supports today:
+ *  same location_id (Inspection <-> Punch List) and same discipline
+ *  (Inspection <-> Submittal). Safety and Site Diary aren't included since
+ *  neither table has a location_id or discipline column to match on. */
+export interface CMRelatedItem {
+  module: CMPhotoModule;
+  id: string;
+  docNumber: string | null;
+  title: string;
+  to: string;
+}
+
+export function useCMRelatedItems(
+  projectId: string | undefined,
+  self: { module: CMPhotoModule; id: string; locationId?: string | null; discipline?: string | null },
+): CMRelatedItem[] {
+  const { data: inspections } = useCMInspections(projectId);
+  const { data: tasks } = useCMTasks(projectId);
+  const { data: submittals } = useCMSubmittals(projectId);
+
+  const items: CMRelatedItem[] = [];
+  const isSelf = (module: CMPhotoModule, id: string) => module === self.module && id === self.id;
+
+  if (self.locationId) {
+    for (const x of inspections ?? []) {
+      if (x.location_id === self.locationId && !isSelf("inspection", x.id)) {
+        items.push({ module: "inspection", id: x.id, docNumber: x.doc_number, title: x.title, to: "/cm/inspection" });
+      }
+    }
+    for (const x of tasks ?? []) {
+      if (x.location_id === self.locationId && !isSelf("punchList", x.id)) {
+        items.push({ module: "punchList", id: x.id, docNumber: x.doc_number, title: x.title, to: "/cm/punch-list" });
+      }
+    }
+  }
+  if (self.discipline) {
+    for (const x of inspections ?? []) {
+      if (x.discipline === self.discipline && !isSelf("inspection", x.id) && !items.some((i) => i.module === "inspection" && i.id === x.id)) {
+        items.push({ module: "inspection", id: x.id, docNumber: x.doc_number, title: x.title, to: "/cm/inspection" });
+      }
+    }
+    for (const x of submittals ?? []) {
+      if (x.discipline === self.discipline && !isSelf("submittal", x.id)) {
+        items.push({ module: "submittal", id: x.id, docNumber: x.doc_number, title: x.title, to: "/cm/submittal" });
+      }
+    }
+  }
+  return items;
 }
 
 /* ── Cross-module daily activity (Site Diary "Today's Activity", Reports) ── */
