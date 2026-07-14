@@ -31,6 +31,7 @@ import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageI
 import { Route as CmSubmittalRouteImport } from './routes/cm/submittal'
 import { Route as CmSiteDiaryRouteImport } from './routes/cm/site-diary'
 import { Route as CmSettingsRouteImport } from './routes/cm/settings'
+import { Route as CmSearchRouteImport } from './routes/cm/search'
 import { Route as CmScheduleRouteImport } from './routes/cm/schedule'
 import { Route as CmSafetyRouteImport } from './routes/cm/safety'
 import { Route as CmRolePermissionsRouteImport } from './routes/cm/role-permissions'
@@ -162,6 +163,11 @@ const CmSettingsRoute = CmSettingsRouteImport.update({
   path: '/cm/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmSearchRoute = CmSearchRouteImport.update({
+  id: '/cm/search',
+  path: '/cm/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmScheduleRoute = CmScheduleRouteImport.update({
   id: '/cm/schedule',
   path: '/cm/schedule',
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/cm/role-permissions': typeof CmRolePermissionsRoute
   '/cm/safety': typeof CmSafetyRoute
   '/cm/schedule': typeof CmScheduleRoute
+  '/cm/search': typeof CmSearchRoute
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
@@ -331,6 +338,7 @@ export interface FileRoutesByTo {
   '/cm/role-permissions': typeof CmRolePermissionsRoute
   '/cm/safety': typeof CmSafetyRoute
   '/cm/schedule': typeof CmScheduleRoute
+  '/cm/search': typeof CmSearchRoute
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
@@ -375,6 +383,7 @@ export interface FileRoutesById {
   '/cm/role-permissions': typeof CmRolePermissionsRoute
   '/cm/safety': typeof CmSafetyRoute
   '/cm/schedule': typeof CmScheduleRoute
+  '/cm/search': typeof CmSearchRoute
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/cm/role-permissions'
     | '/cm/safety'
     | '/cm/schedule'
+    | '/cm/search'
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
@@ -462,6 +472,7 @@ export interface FileRouteTypes {
     | '/cm/role-permissions'
     | '/cm/safety'
     | '/cm/schedule'
+    | '/cm/search'
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
@@ -505,6 +516,7 @@ export interface FileRouteTypes {
     | '/cm/role-permissions'
     | '/cm/safety'
     | '/cm/schedule'
+    | '/cm/search'
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
@@ -548,6 +560,7 @@ export interface RootRouteChildren {
   CmRolePermissionsRoute: typeof CmRolePermissionsRoute
   CmSafetyRoute: typeof CmSafetyRoute
   CmScheduleRoute: typeof CmScheduleRoute
+  CmSearchRoute: typeof CmSearchRoute
   CmSettingsRoute: typeof CmSettingsRoute
   CmSiteDiaryRoute: typeof CmSiteDiaryRoute
   CmSubmittalRoute: typeof CmSubmittalRoute
@@ -713,6 +726,13 @@ declare module '@tanstack/react-router' {
       path: '/cm/settings'
       fullPath: '/cm/settings'
       preLoaderRoute: typeof CmSettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cm/search': {
+      id: '/cm/search'
+      path: '/cm/search'
+      fullPath: '/cm/search'
+      preLoaderRoute: typeof CmSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cm/schedule': {
@@ -905,6 +925,7 @@ const rootRouteChildren: RootRouteChildren = {
   CmRolePermissionsRoute: CmRolePermissionsRoute,
   CmSafetyRoute: CmSafetyRoute,
   CmScheduleRoute: CmScheduleRoute,
+  CmSearchRoute: CmSearchRoute,
   CmSettingsRoute: CmSettingsRoute,
   CmSiteDiaryRoute: CmSiteDiaryRoute,
   CmSubmittalRoute: CmSubmittalRoute,

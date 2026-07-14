@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuthCM } from "@/lib/auth-cm";
 import { supabaseCM } from "@/lib/supabase-cm";
 import { useCMLang } from "@/lib/cm-i18n";
@@ -85,9 +85,17 @@ export function CMIndexPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-8 pb-28">
-        <div className="flex items-center justify-between mb-10">
+        <div className="flex items-center justify-between mb-10 gap-3">
           <CompanyMark userId={user.id} />
-          <AvatarButton />
+          <div className="flex items-center gap-2 shrink-0">
+            <Link to="/cm/search" aria-label={t("search.title")}
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
+              </svg>
+            </Link>
+            <AvatarButton />
+          </div>
         </div>
 
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 border-t border-l border-white/7 rounded-2xl overflow-hidden">
