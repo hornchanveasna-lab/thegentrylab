@@ -99,7 +99,7 @@ function CMSettingsPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col font-sans">
-      <div className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-10 flex-1">
+      <div className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24 flex-1">
         <div className="flex items-center gap-3 mb-6">
           <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -1863,6 +1863,33 @@ export function useCMProjectMembers(projectId: string | undefined) {
   });
 }
 
+/** A person can hold a different job role on every project they belong to
+ *  (spec section 29) — this is the cross-project view of that, for the
+ *  Profile screen, joined against the project's name/code for display. */
+export interface CMMyMembership {
+  project_id: string;
+  project_name: string;
+  project_code: string | null;
+  role: CMMemberRole;
+  job_role: CMJobRole | null;
+}
+
+export function useCMMyMemberships(userId: string | undefined) {
+  return useQuery<CMMyMembership[]>({
+    queryKey: ["cm_my_memberships", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_members")
+        .select("project_id, role, job_role, project:cm_projects!inner(name, project_code)")
+        .eq("user_id", userId);
+      if (error) throw error;
+      return (data as unknown as Array<{ project_id: string; role: CMMemberRole; job_role: CMJobRole | null; project: { name: string; project_code: string | null } }>)
+        .map((r) => ({ project_id: r.project_id, project_name: r.project.name, project_code: r.project.project_code, role: r.role, job_role: r.job_role }));
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 export async function updateCMMemberRole(id: string, role: CMMemberRole) {
   const { error } = await db().from("cm_project_members").update({ role }).eq("id", id);
   if (error) throw error;

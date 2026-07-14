@@ -668,7 +668,7 @@ export function FAB({ onClick, label }: { onClick: () => void; label: string }) 
     <button
       onClick={onClick}
       aria-label={label}
-      className="fixed bottom-7 right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform z-30"
+      className="fixed bottom-24 right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform z-30"
       style={{ backgroundColor: "#ff5100" }}
     >
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
