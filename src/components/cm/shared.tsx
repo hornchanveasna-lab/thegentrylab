@@ -10,6 +10,7 @@ import {
   useCMRelatedItems, type CMRelatedItem,
   useCMEntityAuditLog,
   useCMNotifications,
+  useCMWorkflowSteps,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
@@ -1249,15 +1250,44 @@ export function ActivityLogPanel({ entityType, entityId }: { entityType: string;
   );
 }
 
-/** Bundles Comments + Related Items + Activity Log behind one tab switcher
- *  so every module's record-detail view wires this in with a single call
- *  instead of duplicating the same three-panel tab logic five times. */
+/** Read-only view of the approval chain configured for this module in
+ *  Project Settings → Workflows (spec section 35). Only surfaces the
+ *  configured steps — it doesn't track per-record approval state, since
+ *  that would need a new "who has signed off on this specific record"
+ *  table the schema doesn't have yet. */
+export function ApprovalChainPanel({ projectId, entityType }: { projectId: string; entityType: string }) {
+  const { t } = useCMLang();
+  const { data: steps } = useCMWorkflowSteps(projectId);
+  const moduleSteps = (steps ?? []).filter((s) => s.module_key === entityType);
+  if (moduleSteps.length === 0) return <p className="text-white/30 text-[12px]">{t("approvals.none")}</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {moduleSteps.map((s, i) => (
+        <div key={s.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
+          <span className="font-mono text-[10px] text-white/30 shrink-0">{i + 1}.</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] text-white/80 truncate">{s.approver_value}</p>
+            <p className="text-[10px] text-white/35">
+              {t(`workflows.approverType.${s.approver_type}`)}
+              {s.required_comment && ` · ${t("workflows.requiresComment")}`}
+              {s.required_signature && ` · ${t("workflows.requiresSignature")}`}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Bundles Comments + Related Items + Activity Log + Approval Chain behind
+ *  one tab switcher so every module's record-detail view wires this in with
+ *  a single call instead of duplicating the same panel-tab logic five times. */
 export function RecordDetailExtras({ projectId, entityType, module, entityId, userId, locationId, discipline }: {
   projectId: string;
-  /** Key used for comments/audit-log rows — matches the doc-numbering
-   *  module keys (site_diary/inspection/punch_list/safety/submittal),
-   *  which is snake_case for two of these and so isn't always identical
-   *  to CMPhotoModule (siteDiary/punchList are camelCase there). */
+  /** Key used for comments/audit-log/workflow-step rows — matches the
+   *  doc-numbering module keys (site_diary/inspection/punch_list/safety/
+   *  submittal), which is snake_case for two of these and so isn't always
+   *  identical to CMPhotoModule (siteDiary/punchList are camelCase there). */
   entityType: string;
   /** The CMPhotoModule value — used only for related-item icon/color
    *  lookups, kept separate from entityType because of the casing split
@@ -1267,7 +1297,7 @@ export function RecordDetailExtras({ projectId, entityType, module, entityId, us
   locationId?: string | null; discipline?: string | null;
 }) {
   const { t } = useCMLang();
-  const [tab, setTab] = useState<"comments" | "related" | "activity">("comments");
+  const [tab, setTab] = useState<"comments" | "related" | "activity" | "approvals">("comments");
   const relatedItems = useCMRelatedItems(projectId, { module, id: entityId, locationId, discipline });
 
   return (
@@ -1277,12 +1307,14 @@ export function RecordDetailExtras({ projectId, entityType, module, entityId, us
           { value: "comments" as const, label: t("comments.title") },
           { value: "related" as const, label: t("relatedItems.title") },
           { value: "activity" as const, label: t("activityLog.title") },
+          { value: "approvals" as const, label: t("approvals.title") },
         ]}
         value={tab} onChange={setTab}
       />
       {tab === "comments" && <CommentsPanel projectId={projectId} entityType={entityType} entityId={entityId} userId={userId} />}
       {tab === "related" && <RelatedItemsPanel items={relatedItems} />}
       {tab === "activity" && <ActivityLogPanel entityType={entityType} entityId={entityId} />}
+      {tab === "approvals" && <ApprovalChainPanel projectId={projectId} entityType={entityType} />}
     </div>
   );
 }
