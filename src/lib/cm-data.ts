@@ -67,6 +67,36 @@ export interface CMManpowerRow {
   /** Links this row to a cm_manpower_roster entry so trade/company can be
    *  picked instead of retyped; null for free-text "Custom" rows. */
   roster_item_id: string | null;
+  /** Worker category (Engineer, Skilled Worker, Operator…) — missing on
+   *  rows created before the Manpower module round; treat as unset. */
+  category?: string | null;
+  /** Links the crew to a cm_project_locations row; null/missing = project-wide. */
+  location_id?: string | null;
+  /** Free-text related work activity, e.g. "Steel Column Erection". */
+  activity?: string | null;
+  /** Per-worker hours for the day. Missing on old rows — labor-hour math
+   *  falls back to 8h normal / 0h OT so historical totals stay sensible. */
+  normal_hours?: number | null;
+  ot_hours?: number | null;
+}
+
+/** Worker categories per the Manpower spec — a fixed suggestion list, not a
+ *  constraint; rows may still carry any free-text category. */
+export const CM_WORKER_CATEGORIES = [
+  "Project Management", "Engineer", "Supervisor", "Foreman", "Skilled Worker",
+  "General Worker", "Operator", "Driver", "Safety Staff", "QA/QC Staff",
+  "Surveyor", "Technician", "Other",
+] as const;
+
+/** Labor Hours = Worker Count × Working Hours, normal and OT kept separate.
+ *  Rows without hours (pre-module data) count as 8h normal / 0h OT. */
+export function cmLaborHours(rows: CMManpowerRow[]) {
+  let normal = 0, ot = 0;
+  for (const r of rows) {
+    normal += r.count * (r.normal_hours ?? 8);
+    ot += r.count * (r.ot_hours ?? 0);
+  }
+  return { normal, ot, total: normal + ot };
 }
 
 /** Where a reported BOQ quantity sits in the commercial pipeline:
