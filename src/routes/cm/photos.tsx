@@ -6,7 +6,7 @@ import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, MiniCalendar,
-  ConfirmationDialog,
+  ConfirmationDialog, useClickOutside,
 } from "@/components/cm/shared";
 import {
   useAllCMPhotos,
@@ -77,8 +77,8 @@ function ToggleRow({ icon, label, checked, disabled, onChange }: {
   );
 }
 
-function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, showConsultantLogos, monotoneLogos, timestamp, onClose, onChanged }: {
-  ownerId: string; showCompanyLogo: boolean; showProjectInfo: boolean; showConsultantLogos: boolean; monotoneLogos: boolean; timestamp: boolean; onClose: () => void; onChanged: () => void;
+function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, showConsultantLogos, monotoneLogos, timestamp, onChanged }: {
+  ownerId: string; showCompanyLogo: boolean; showProjectInfo: boolean; showConsultantLogos: boolean; monotoneLogos: boolean; timestamp: boolean; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
@@ -94,8 +94,6 @@ function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, show
   };
 
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
       <div className="absolute right-0 top-11 z-50 w-64 rounded-xl overflow-hidden shadow-xl backdrop-blur-xl menu-surface">
         <div className="py-1.5">
           <ToggleRow
@@ -150,7 +148,6 @@ function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, show
           />
         </div>
       </div>
-    </>
   );
 }
 
@@ -383,10 +380,12 @@ function CMPhotosPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | CMPhotoModule>("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("date");
   const [groupMenuOpen, setGroupMenuOpen] = useState(false);
+  const groupMenuRef = useClickOutside<HTMLDivElement>(groupMenuOpen, () => setGroupMenuOpen(false));
   const [view, setView] = useState<View>("grid");
   const [lightbox, setLightbox] = useState<{ items: CMPhotoWithContext[]; index: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const settingsMenuRef = useClickOutside<HTMLDivElement>(showSettings, () => setShowSettings(false));
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
@@ -503,7 +502,7 @@ function CMPhotosPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
             )}
           </button>
-          <div className="relative shrink-0">
+          <div ref={settingsMenuRef} className="relative shrink-0">
             <button onClick={() => setShowSettings((v) => !v)} aria-label={t("photos.settingsTitle")}
               className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
@@ -516,7 +515,6 @@ function CMPhotosPage() {
                 showConsultantLogos={account?.photo_show_consultant_logos ?? true}
                 monotoneLogos={account?.photo_monotone_logos ?? false}
                 timestamp={account?.photo_timestamp ?? true}
-                onClose={() => setShowSettings(false)}
                 onChanged={invalidateAccount}
               />
             )}
@@ -544,7 +542,7 @@ function CMPhotosPage() {
 
         <div className="flex items-center justify-between gap-2 mb-5">
           {view === "grid" ? (
-            <div className="relative inline-block">
+            <div ref={groupMenuRef} className="relative inline-block">
               <button onClick={() => setGroupMenuOpen((v) => !v)}
                 className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white/75 hover:text-white transition-colors">
                 {GROUP_ICON[groupBy]}
@@ -555,23 +553,20 @@ function CMPhotosPage() {
               </button>
 
               {groupMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setGroupMenuOpen(false)} />
-                  <div className="absolute left-0 top-11 z-20 w-48 rounded-2xl bg-[#0d0d0e] border border-white/10 overflow-hidden shadow-xl">
-                    {GROUP_OPTIONS.map((g) => (
-                      <button key={g} onClick={() => { setGroupBy(g); setGroupMenuOpen(false); }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
-                        <span className="text-white/50 shrink-0">{GROUP_ICON[g]}</span>
-                        <span className="flex-1 text-[13px] text-white/85">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
-                        {groupBy === g && (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                            <path d="M4 12.5l5 5L20 6" />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </>
+                <div className="absolute left-0 top-11 z-20 w-48 rounded-2xl bg-[#0d0d0e] border border-white/10 overflow-hidden shadow-xl">
+                  {GROUP_OPTIONS.map((g) => (
+                    <button key={g} onClick={() => { setGroupBy(g); setGroupMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
+                      <span className="text-white/50 shrink-0">{GROUP_ICON[g]}</span>
+                      <span className="flex-1 text-[13px] text-white/85">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
+                      {groupBy === g && (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                          <path d="M4 12.5l5 5L20 6" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           ) : <div />}
