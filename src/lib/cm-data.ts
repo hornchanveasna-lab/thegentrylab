@@ -2392,6 +2392,79 @@ export async function deleteCMSubmittal(id: string) {
   if (error) throw error;
 }
 
+/** One matched record from useCMGlobalSearch, across every module. */
+export interface CMSearchResult {
+  module: CMPhotoModule | "equipment" | "boq" | "schedule";
+  id: string;
+  title: string;
+  subtitle: string | null;
+  docNumber: string | null;
+  to: string;
+}
+
+/** Searches every module's records within one project by title/doc number/
+ *  description/company/person — the fields spec section 22 calls out.
+ *  Scoped to a single project (matching how every list page already works
+ *  in this app) rather than across all projects, since each source hook
+ *  is itself per-project. */
+export function useCMGlobalSearch(projectId: string | undefined, query: string): CMSearchResult[] {
+  const { data: logs } = useCMDailyLogs(projectId);
+  const { data: tasks } = useCMTasks(projectId);
+  const { data: inspections } = useCMInspections(projectId);
+  const { data: safetyRecords } = useCMSafetyRecords(projectId);
+  const { data: submittals } = useCMSubmittals(projectId);
+  const { data: equipment } = useCMEquipment(projectId);
+  const { data: boqItems } = useCMBOQItems(projectId);
+  const { data: scheduleItems } = useCMScheduleItems(projectId);
+
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const matches = (...fields: (string | null | undefined)[]) => fields.some((f) => f?.toLowerCase().includes(q));
+
+  const results: CMSearchResult[] = [];
+  for (const l of logs ?? []) {
+    if (matches(l.doc_number, l.activities, l.notes, l.log_date)) {
+      results.push({ module: "siteDiary", id: l.id, title: l.log_date, subtitle: l.doc_number, docNumber: l.doc_number, to: "/cm/site-diary" });
+    }
+  }
+  for (const x of tasks ?? []) {
+    if (matches(x.doc_number, x.title, x.description, x.assignee)) {
+      results.push({ module: "punchList", id: x.id, title: x.title, subtitle: x.assignee, docNumber: x.doc_number, to: "/cm/punch-list" });
+    }
+  }
+  for (const x of inspections ?? []) {
+    if (matches(x.doc_number, x.title, x.inspector, x.notes)) {
+      results.push({ module: "inspection", id: x.id, title: x.title, subtitle: x.inspector, docNumber: x.doc_number, to: "/cm/inspection" });
+    }
+  }
+  for (const x of safetyRecords ?? []) {
+    if (matches(x.doc_number, x.title, x.description, x.involved)) {
+      results.push({ module: "safety", id: x.id, title: x.title, subtitle: x.involved, docNumber: x.doc_number, to: "/cm/safety" });
+    }
+  }
+  for (const x of submittals ?? []) {
+    if (matches(x.doc_number, x.title, x.spec_section, x.reviewer)) {
+      results.push({ module: "submittal", id: x.id, title: x.title, subtitle: x.reviewer, docNumber: x.doc_number, to: "/cm/submittal" });
+    }
+  }
+  for (const x of equipment ?? []) {
+    if (matches(x.name, x.type, x.notes)) {
+      results.push({ module: "equipment", id: x.id, title: x.name, subtitle: x.type, docNumber: null, to: "/cm/equipment" });
+    }
+  }
+  for (const x of boqItems ?? []) {
+    if (matches(x.description, x.category)) {
+      results.push({ module: "boq", id: x.id, title: x.description, subtitle: x.category, docNumber: null, to: "/cm/boq" });
+    }
+  }
+  for (const x of scheduleItems ?? []) {
+    if (matches(x.title, x.group_label)) {
+      results.push({ module: "schedule", id: x.id, title: x.title, subtitle: x.group_label, docNumber: null, to: "/cm/schedule" });
+    }
+  }
+  return results;
+}
+
 /** A record from another module that shares something concrete with the
  *  current record — the only two links the schema actually supports today:
  *  same location_id (Inspection <-> Punch List) and same discipline
