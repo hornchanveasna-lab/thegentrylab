@@ -6,7 +6,7 @@ import {
   useCMProjects, useCMProject, useCMDailyLogs, useCMDailyActivityRange,
   useCMInspections, useCMTasks, useCMSafetyRecords, useCMSubmittals,
   useCMEquipment, useActiveCMBOQItems, useCMScheduleItems, useAllCMPhotos,
-  buildSCurveSeries,
+  buildSCurveSeries, useCMManpowerPlans, cmLaborHours,
   type InspectionStatus, type TaskStatus, type SafetySeverity, type SubmittalStatus, type EquipmentStatus,
 } from "@/lib/cm-data";
 import { FieldSelect, CMDailyActivityList, MODULE_ROUTES, setPendingHighlight } from "@/components/cm/shared";
@@ -87,6 +87,7 @@ function CMReportsPage() {
   const { data: boqItems } = useActiveCMBOQItems(projectId || undefined);
   const { data: scheduleItems } = useCMScheduleItems(projectId || undefined);
   const { data: allPhotos } = useAllCMPhotos(user?.id);
+  const { data: manpowerPlans } = useCMManpowerPlans(projectId || undefined);
 
   const activeProject = (projects ?? []).find((p) => p.id === projectId);
 
@@ -136,12 +137,43 @@ function CMReportsPage() {
     [allPhotos, projectId, fromDate, toDate],
   );
 
-  const manpowerByTrade = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const l of filteredLogs) for (const m of l.manpower) map.set(m.trade, (map.get(m.trade) ?? 0) + m.count);
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
+  // Man-days + labor-hour rollups per spec §22 — one grouping helper feeds
+  // both the By Trade and By Company sections of the Manpower report.
+  const manpowerGroups = useMemo(() => {
+    const group = (keyOf: (m: { trade: string; company: string | null }) => string) => {
+      const map = new Map<string, { count: number; normal: number; ot: number }>();
+      for (const l of filteredLogs) {
+        for (const m of l.manpower) {
+          const key = keyOf(m);
+          const acc = map.get(key) ?? { count: 0, normal: 0, ot: 0 };
+          const h = cmLaborHours([m]);
+          acc.count += m.count; acc.normal += h.normal; acc.ot += h.ot;
+          map.set(key, acc);
+        }
+      }
+      return [...map.entries()].sort((a, b) => b[1].count - a[1].count);
+    };
+    return {
+      byTrade: group((m) => m.trade),
+      byCompany: group((m) => m.company?.trim() || "—"),
+    };
   }, [filteredLogs]);
+  const manpowerByTrade = manpowerGroups.byTrade;
   const totalManDays = filteredLogs.reduce((sum, l) => sum + l.manpower.reduce((ms, m) => ms + m.count, 0), 0);
+  const rangeLaborHours = useMemo(() => cmLaborHours(filteredLogs.flatMap((l) => l.manpower)), [filteredLogs]);
+  const dailyManpower = useMemo(
+    () => filteredLogs.filter((l) => l.manpower.length > 0).map((l) => ({
+      date: l.log_date,
+      workers: l.manpower.reduce((s, m) => s + m.count, 0),
+      hours: cmLaborHours(l.manpower),
+    })),
+    [filteredLogs],
+  );
+  const plannedInRange = useMemo(
+    () => (manpowerPlans ?? []).filter((p) => p.plan_date >= fromDate && p.plan_date <= toDate)
+      .reduce((s, p) => s + p.planned_count, 0),
+    [manpowerPlans, fromDate, toDate],
+  );
 
   const boqProgress = useMemo(() => {
     const delivered = new Map<string, number>();
@@ -363,18 +395,68 @@ function CMReportsPage() {
                 <StatGrid stats={[
                   { label: t("reports.totalManDays"), value: totalManDays },
                   { label: t("reports.avgWorkforce"), value: avgWorkforce ?? "—" },
-                  { label: t("reports.diaryEntries"), value: filteredLogs.length },
-                  { label: t("reports.trades"), value: manpowerByTrade.length },
+                  { label: t("manpower.normalHoursShort"), value: rangeLaborHours.normal.toLocaleString() },
+                  { label: t("manpower.otHoursShort"), value: rangeLaborHours.ot.toLocaleString() },
                 ]} />
+
+                {plannedInRange > 0 && (
+                  <div className={`${rowCls} flex items-center justify-between gap-3`}>
+                    <span className="text-[12px] text-white/80 print:text-black">{t("manpower.plannedVsActual")}</span>
+                    <span className="font-mono text-[12px] text-white/50 print:text-black/60">
+                      {t("manpower.planned")} {plannedInRange} · {t("manpower.actual")} {totalManDays} ({totalManDays - plannedInRange >= 0 ? "+" : ""}{totalManDays - plannedInRange})
+                    </span>
+                  </div>
+                )}
+
                 {manpowerByTrade.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
-                <div className="flex flex-col gap-2">
-                  {manpowerByTrade.map(([trade, count]) => (
-                    <div key={trade} className={`${rowCls} flex items-center justify-between`}>
-                      <span className="text-[12px] text-white/80 print:text-black">{trade}</span>
-                      <span className="font-mono text-[12px] text-white/50 print:text-black/60">{count}</span>
+
+                {manpowerGroups.byCompany.length > 0 && (
+                  <>
+                    <p className={labelCls}>{t("manpower.byCompany")}</p>
+                    <div className="flex flex-col gap-2">
+                      {manpowerGroups.byCompany.map(([company, g]) => (
+                        <div key={company} className={`${rowCls} flex items-center justify-between gap-3`}>
+                          <span className="text-[12px] text-white/80 print:text-black truncate">{company}</span>
+                          <span className="font-mono text-[11px] text-white/50 print:text-black/60 shrink-0">
+                            {g.count} · {g.normal.toLocaleString()}h{g.ot > 0 ? ` + ${g.ot.toLocaleString()} OT` : ""}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </>
+                )}
+
+                {manpowerByTrade.length > 0 && (
+                  <>
+                    <p className={labelCls}>{t("manpower.byTrade")}</p>
+                    <div className="flex flex-col gap-2">
+                      {manpowerByTrade.map(([trade, g]) => (
+                        <div key={trade} className={`${rowCls} flex items-center justify-between gap-3`}>
+                          <span className="text-[12px] text-white/80 print:text-black truncate">{trade}</span>
+                          <span className="font-mono text-[11px] text-white/50 print:text-black/60 shrink-0">
+                            {g.count} · {g.normal.toLocaleString()}h{g.ot > 0 ? ` + ${g.ot.toLocaleString()} OT` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {dailyManpower.length > 0 && (
+                  <>
+                    <p className={labelCls}>{t("reports.dailyBreakdown")}</p>
+                    <div className="flex flex-col gap-2">
+                      {dailyManpower.map((d) => (
+                        <div key={d.date} className={`${rowCls} flex items-center justify-between gap-3`}>
+                          <span className="font-mono text-[11px] text-white/70 print:text-black">{d.date}</span>
+                          <span className="font-mono text-[11px] text-white/50 print:text-black/60 shrink-0">
+                            {d.workers} {t("reports.workers")} · {d.hours.normal.toLocaleString()}h{d.hours.ot > 0 ? ` + ${d.hours.ot.toLocaleString()} OT` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             )}
 
