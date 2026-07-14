@@ -1239,6 +1239,41 @@ export function useCMAuditLog(projectId: string | undefined) {
   });
 }
 
+/** Cross-project audit trail for App Settings — RLS already scopes
+ *  `cm_audit_log` selects to rows whose project the signed-in user has a
+ *  role on, so a plain unfiltered query naturally returns only what this
+ *  owner/member is allowed to see across every one of their projects. */
+export function useCMGlobalAuditLog(userId: string | undefined) {
+  return useQuery<CMAuditLogEntry[]>({
+    queryKey: ["cm_audit_log_global", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_audit_log").select("*")
+        .order("created_at", { ascending: false }).limit(300);
+      if (error) throw error;
+      return data as CMAuditLogEntry[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+/** Members across several projects in one query — used to resolve an audit
+ *  entry's actor_id to a display name in the global (cross-project) log,
+ *  where a single useCMProjectMembers(projectId) call isn't enough. */
+export function useCMAllProjectMembers(projectIds: string[]) {
+  const key = [...projectIds].sort().join(",");
+  return useQuery<CMProjectMember[]>({
+    queryKey: ["cm_project_members_multi", key],
+    enabled: projectIds.length > 0 && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_members").select("*").in("project_id", projectIds);
+      if (error) throw error;
+      return data as CMProjectMember[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 /** Per-record activity log — unlike useCMAuditLog (project-wide, capped at
  *  50 rows), this filters directly by entity so a record's own history is
  *  never pushed out by unrelated activity elsewhere in the project. */
