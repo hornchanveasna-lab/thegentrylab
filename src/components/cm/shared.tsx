@@ -295,17 +295,22 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
 
 /** Discipline picker shared across modules — thin wrapper over FieldSelect
  *  so every module presents the same discipline list the same way. */
-export function DisciplineSelect({ value, onChange, disabled }: {
+export function DisciplineSelect({ value, onChange, disabled, disciplines }: {
   value: Discipline | null; onChange: (v: Discipline | null) => void; disabled?: boolean;
+  /** Restrict the option list — pass a project's enabledDisciplines() so a
+   *  project that has disabled a discipline in Settings stops offering it here. */
+  disciplines?: Discipline[];
 }) {
   const { t } = useCMLang();
+  const list = disciplines ?? DISCIPLINES;
+  const shown = value && !list.includes(value) ? [value, ...list] : list;
   return (
     <FieldSelect
       value={value ?? ""}
       onChange={(v) => onChange((v || null) as Discipline | null)}
       disabled={disabled}
       placeholder={t("common.selectDiscipline")}
-      options={[{ value: "", label: t("common.none") }, ...DISCIPLINES.map((d) => ({ value: d, label: t(`discipline.${d}`) }))]}
+      options={[{ value: "", label: t("common.none") }, ...shown.map((d) => ({ value: d, label: t(`discipline.${d}`) }))]}
     />
   );
 }

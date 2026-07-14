@@ -17,6 +17,7 @@ import {
   uploadCMPhotoWithThumb,
   useCMProjectLocations,
   locationBreadcrumb,
+  enabledDisciplines,
   type CMInspection,
   type InspectionStatus,
   type Discipline,
@@ -32,8 +33,8 @@ const STATUS_COLOR: Record<InspectionStatus, string> = {
 };
 const STATUS_OPTIONS: InspectionStatus[] = ["Scheduled", "Passed", "Failed", "Not Applicable"];
 
-function NewInspectionSheet({ ownerId, projectId, existing, canApprove, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMInspection; canApprove: boolean; onClose: () => void; onCreated: () => void;
+function NewInspectionSheet({ ownerId, projectId, existing, canApprove, disciplines, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMInspection; canApprove: boolean; disciplines: Discipline[]; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Passed" && s !== "Failed") || s === existing?.status);
@@ -93,7 +94,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, onClose,
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("common.discipline")}</span>
-            <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} />
+            <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("inspection.inspector")}</span>
@@ -122,8 +123,8 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, onClose,
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function InspectionCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
-  item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, onChanged, onOpenPhoto }: {
+  item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[];
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
@@ -188,7 +189,7 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, onChanged, onOpe
         </div>
       )}
       {editing && (
-        <NewInspectionSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
+        <NewInspectionSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove} disciplines={disciplines}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
@@ -204,6 +205,8 @@ function CMInspectionPage() {
   const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const activeProject = projects?.find((p) => p.id === projectId);
+  const projectDisciplines = enabledDisciplines(activeProject);
   const { data: inspections, isLoading, isError, refetch } = useCMInspections(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "inspection", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "inspection", "edit");
@@ -263,7 +266,7 @@ function CMInspectionPage() {
               <>
                 {!isLoading && visibleInspections.length === 0 && <EmptyState message={t("inspection.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             ))}
@@ -272,7 +275,7 @@ function CMInspectionPage() {
         )}
       </main>
 
-      {showNew && projectId && <NewInspectionSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && projectId && <NewInspectionSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
         <PhotoLightbox
