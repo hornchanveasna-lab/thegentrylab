@@ -16,6 +16,29 @@ export interface FieldSelectOption<T extends string> {
   label: string;
 }
 
+/** Closes an open dropdown/menu on any tap outside its bounds, without
+ *  changing whatever was selected — used instead of a `fixed inset-0`
+ *  backdrop div, which can silently fail to catch outside taps when nested
+ *  inside an ancestor that establishes its own CSS containing block (e.g.
+ *  Sheet's `backdrop-blur` wrapper). Listens on `pointerdown` in the capture
+ *  phase so it fires before any click handler underneath, and reads the
+ *  latest `onOutside` via a ref so the listener itself doesn't need to be
+ *  re-attached every render. */
+export function useClickOutside<T extends HTMLElement>(active: boolean, onOutside: () => void) {
+  const ref = useRef<T>(null);
+  const onOutsideRef = useRef(onOutside);
+  onOutsideRef.current = onOutside;
+  useEffect(() => {
+    if (!active) return;
+    const handler = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onOutsideRef.current();
+    };
+    document.addEventListener("pointerdown", handler, true);
+    return () => document.removeEventListener("pointerdown", handler, true);
+  }, [active]);
+  return ref;
+}
+
 /** Reactive read of the `data-theme` attribute `settings.tsx`'s applyTheme()
  *  sets on <html> — for the rare case (Recharts inline style props) where a
  *  color can't be expressed as a CSS class the light-mode stylesheet can
@@ -181,6 +204,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const containerRef = useClickOutside<HTMLDivElement>(open, () => { setOpen(false); setSearch(""); });
   const selected = options.find((o) => o.value === value);
   const q = search.trim().toLowerCase();
   const visibleOptions = searchable && q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
@@ -195,7 +219,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
   };
 
   return (
-    <div className={`relative ${className ?? ""}`}>
+    <div ref={containerRef} className={`relative ${className ?? ""}`}>
       <button type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
         className={triggerClassName ?? fieldSelectTriggerCls} style={triggerStyle}>
         <span className="truncate text-left">{selected?.label ?? placeholder ?? ""}</span>
@@ -204,9 +228,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
         </svg>
       </button>
       {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => { setOpen(false); setSearch(""); }} />
-          <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
             {searchable && (
               <div className="p-2 border-b border-white/6">
                 <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder}
@@ -237,7 +259,6 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
               ))}
             </div>
           </div>
-        </>
       )}
     </div>
   );
@@ -440,6 +461,7 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
   const { t } = useCMLang();
   const [showSearch, setShowSearch] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useClickOutside<HTMLDivElement>(showMenu, () => setShowMenu(false));
 
   return (
     <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
@@ -464,28 +486,25 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
         )}
       </button>
-      <div className="relative shrink-0">
+      <div ref={menuRef} className="relative shrink-0">
         <button type="button" aria-label={t("common.sort")} onClick={() => setShowMenu((v) => !v)}
           className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
         </button>
         {showMenu && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
-              {[{ asc: false, label: t("common.newestFirst") }, { asc: true, label: t("common.oldestFirst") }].map((opt) => (
-                <button key={String(opt.asc)} type="button" onClick={() => { onToggleSort(opt.asc); setShowMenu(false); }}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
-                  <span className="text-[13px] text-white/85">{opt.label}</span>
-                  {sortAsc === opt.asc && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <path d="M4 12.5l5 5L20 6" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          </>
+          <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+            {[{ asc: false, label: t("common.newestFirst") }, { asc: true, label: t("common.oldestFirst") }].map((opt) => (
+              <button key={String(opt.asc)} type="button" onClick={() => { onToggleSort(opt.asc); setShowMenu(false); }}
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
+                <span className="text-[13px] text-white/85">{opt.label}</span>
+                {sortAsc === opt.asc && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <path d="M4 12.5l5 5L20 6" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>
