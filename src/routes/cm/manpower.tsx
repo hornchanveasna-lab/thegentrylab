@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls } from "@/components/cm/shared";
+import { ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, useCMTheme } from "@/components/cm/shared";
 import {
   useCMDailyLogs, useCMManpowerRoster, addCMManpowerRosterItem, removeCMManpowerRosterItem,
   type CMDailyLog,
@@ -49,7 +49,7 @@ function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap gap-1.5">
           {(roster ?? []).map((r) => (
-            <span key={r.id} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[10px] bg-white/[0.05] text-white/60">
+            <span key={r.id} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[10px] bg-white/5 text-white/60">
               {r.company ? `${r.company} — ` : ""}{r.trade}
               {canDelete && (
                 <button onClick={() => removeCMManpowerRosterItem(r.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-4 h-4 rounded-full flex items-center justify-center">×</button>
@@ -80,6 +80,12 @@ function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
 function CMManpowerPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
+  const theme = useCMTheme();
+  const chartGrid = theme === "light" ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.06)";
+  const chartTick = theme === "light" ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.35)";
+  const chartTooltipBg = theme === "light" ? "#ffffff" : "#181818";
+  const chartTooltipBorder = theme === "light" ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.1)";
+  const chartTooltipLabel = theme === "light" ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.8)";
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: logs, isLoading } = useCMDailyLogs(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "manpower", "create");
@@ -131,11 +137,11 @@ function CMManpowerPage() {
               <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-4" style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                    <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 9 }} tickLine={false} axisLine={false} minTickGap={30} />
-                    <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
-                    <Tooltip contentStyle={{ background: "#181818", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, fontSize: 11 }}
-                      labelStyle={{ color: "rgba(255,255,255,0.8)" }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
+                    <XAxis dataKey="date" tick={{ fill: chartTick, fontSize: 9 }} tickLine={false} axisLine={false} minTickGap={30} />
+                    <YAxis tick={{ fill: chartTick, fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
+                    <Tooltip contentStyle={{ background: chartTooltipBg, border: `1px solid ${chartTooltipBorder}`, borderRadius: 12, fontSize: 11 }}
+                      labelStyle={{ color: chartTooltipLabel }} />
                     <Bar dataKey="headcount" name={t("manpower.headcount")} fill="#3b82f6" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -150,7 +156,7 @@ function CMManpowerPage() {
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {log.manpower.map((m, i) => (
-                      <span key={i} className="px-2.5 py-1 rounded-full text-[10px] bg-white/[0.05] text-white/60">
+                      <span key={i} className="px-2.5 py-1 rounded-full text-[10px] bg-white/5 text-white/60">
                         {m.company ? `${m.company} — ` : ""}{m.trade}: {m.count}
                       </span>
                     ))}

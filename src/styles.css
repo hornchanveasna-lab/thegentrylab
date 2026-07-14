@@ -240,6 +240,7 @@
 [data-theme="light"] .bg-\[\#0d0d0e\] { background-color: var(--surface-1) !important; }
 [data-theme="light"] .bg-\[\#0e0e10\] { background-color: var(--surface-2) !important; }
 [data-theme="light"] .bg-\[\#111113\] { background-color: var(--surface-3) !important; }
+[data-theme="light"] .bg-\[\#141415\] { background-color: var(--surface-3) !important; }
 [data-theme="light"] .bg-black\/90    { background-color: rgba(245,244,240,0.95) !important; }
 [data-theme="light"] .bg-black\/95    { background-color: rgba(245,244,240,0.98) !important; }
 [data-theme="light"] .bg-black\/60    { background-color: rgba(0,0,0,0.08) !important; }

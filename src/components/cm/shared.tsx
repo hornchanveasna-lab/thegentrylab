@@ -16,6 +16,24 @@ export interface FieldSelectOption<T extends string> {
   label: string;
 }
 
+/** Reactive read of the `data-theme` attribute `settings.tsx`'s applyTheme()
+ *  sets on <html> — for the rare case (Recharts inline style props) where a
+ *  color can't be expressed as a CSS class the light-mode stylesheet can
+ *  override, and has to be picked in JS instead. */
+export function useCMTheme(): "dark" | "light" {
+  const [theme, setTheme] = useState<"dark" | "light">(
+    () => (document.documentElement.getAttribute("data-theme") as "dark" | "light") || "dark",
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme((document.documentElement.getAttribute("data-theme") as "dark" | "light") || "dark");
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+  return theme;
+}
+
 export const EQUIPMENT_STATUS_OPTIONS: EquipmentStatus[] = ["Operational", "Maintenance", "Out of Service"];
 export const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = { Operational: "#34d399", Maintenance: "#fbbf24", "Out of Service": "#f43f5e" };
 
@@ -126,7 +144,7 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
     <div className="flex flex-col gap-2">
       <span className={labelCls}>{label}</span>
       {rows.map((row, i) => (
-        <div key={i} className="relative rounded-xl bg-white/[0.03] p-3 pr-9">
+        <div key={i} className="relative rounded-xl bg-white/3 p-3 pr-9">
           {renderRow(row, (patch) => updateRow(i, patch))}
           <button type="button" onClick={() => removeRow(i)}
             className="absolute top-2 right-2 text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
@@ -893,6 +911,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
   const { t } = useCMLang();
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const filmstripRef = useRef<HTMLDivElement>(null);
   const item = items[index];
 
@@ -934,7 +953,8 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
 
   const handleDelete = async () => {
     setMenuOpen(false);
-    if (!onDelete || !window.confirm(t("photos.deleteConfirm"))) return;
+    setConfirmingDelete(false);
+    if (!onDelete) return;
     await onDelete(item);
   };
 
@@ -971,7 +991,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
               <button onClick={handleSave} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">{t("photos.save")}</button>
               <button onClick={handleShare} className={`w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] ${onDelete ? "border-b border-white/[0.06]" : ""}`}>{t("photos.share")}</button>
               {onDelete && (
-                <button onClick={handleDelete} className="w-full text-left px-4 py-3 text-[13px] text-red-400 hover:bg-white/[0.05]">{t("photos.delete")}</button>
+                <button onClick={() => { setMenuOpen(false); setConfirmingDelete(true); }} className="w-full text-left px-4 py-3 text-[13px] text-red-400 hover:bg-white/[0.05]">{t("photos.delete")}</button>
               )}
             </div>
           )}
@@ -999,6 +1019,10 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
       )}
 
       {toast && <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/[0.15] backdrop-blur text-[12px] text-white/[0.95] z-30">{toast}</div>}
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("photos.deleteConfirm")} confirmLabel={t("photos.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
+      )}
     </div>
   );
 }
@@ -1036,7 +1060,7 @@ export function CMDailyActivityList({ activity, projectId, onOpenItem }: {
       <span className={labelCls}>{t("siteDiary.todaysActivity")}</span>
       {rows.map((row) => (
         <button key={`${row.module}-${row.recordId}`} type="button" onClick={() => onOpenItem(row.module, row.recordId, projectId)}
-          className="w-full flex items-center gap-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2 text-left transition-colors">
+          className="w-full flex items-center gap-2.5 rounded-xl bg-white/3 hover:bg-white/6 px-3 py-2 text-left transition-colors">
           <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[row.module], backgroundColor: `${MODULE_COLOR[row.module]}22` }}>
             {MODULE_ICON[row.module]}
           </span>

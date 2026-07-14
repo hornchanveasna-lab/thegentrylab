@@ -354,7 +354,7 @@ function ConsultantRow({ c, canEdit, canDelete, editing, editValue, onEditValueC
   );
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
       {editing && canEdit ? (
         <input
           className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
@@ -522,7 +522,7 @@ function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
     <Card title={t("locations.title")}>
       <div className="flex flex-col gap-2">
         {(locations ?? []).map((l) => (
-          <div key={l.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5" style={{ marginLeft: locationDepth(l, locations ?? []) * 16 }}>
+          <div key={l.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5" style={{ marginLeft: locationDepth(l, locations ?? []) * 16 }}>
             {editingId === l.id && canEdit ? (
               <input
                 className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
@@ -588,7 +588,7 @@ function ChecklistSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
     <Card title={t("projectSettings.checklist")}>
       <div className="flex flex-col gap-2">
         {(items ?? []).map((item) => (
-          <div key={item.id} className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5">
+          <div key={item.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
             <button onClick={canEdit ? () => updateCMChecklistItem(item.id, { is_done: !item.is_done }).then(invalidate) : undefined}
               className="w-5 h-5 rounded-md border flex items-center justify-center shrink-0"
               style={{ borderColor: item.is_done ? "#34d399" : "rgba(255,255,255,0.2)", backgroundColor: item.is_done ? "#34d399" : "transparent" }}>
@@ -636,7 +636,7 @@ function MemberEditRow({ member, companyOptions, canEdit, onChanged }: {
 
   if (!canEdit) {
     return (
-      <div className="rounded-lg bg-white/[0.04] px-3 py-2.5 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+      <div className="rounded-lg bg-white/4 px-3 py-2.5 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
         {member.position && <p className="text-[10px] text-white/40">{member.position}</p>}
         <p className="text-[11px] text-white/60">
           {member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
@@ -647,7 +647,7 @@ function MemberEditRow({ member, companyOptions, canEdit, onChanged }: {
   }
 
   return (
-    <div className="rounded-lg bg-white/[0.04] px-3 py-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+    <div className="rounded-lg bg-white/4 px-3 py-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
       <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={member.position ?? ""}
         onBlur={(e) => { if (e.target.value !== (member.position ?? "")) updateCMMemberPosition(member.id, e.target.value.trim() || null).then(onChanged); }} />
       <div className="flex items-center gap-2">
@@ -698,7 +698,7 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName, canCreat
   };
 
   return (
-    <div className="rounded-xl bg-white/[0.03] px-3 py-2.5 flex flex-col gap-2">
+    <div className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
         <p className="text-[12px] text-white/80 font-medium truncate">{consultantName}</p>
         {(people?.length ?? 0) > 0 && <span className="font-mono text-[10px] text-white/30 shrink-0">×{people!.length}</span>}
@@ -816,7 +816,7 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           {grouped.map(([company, group]) => (
-            <div key={company} className="rounded-xl bg-white/[0.03] px-3 py-2.5 flex flex-col gap-2">
+            <div key={company} className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[12px] text-white/80 font-medium truncate">{company}</p>
                 <span className="font-mono text-[10px] text-white/30 shrink-0">×{group.members.length + group.subs.length}</span>
@@ -898,7 +898,7 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
               </button>
             </div>
             {activeInvites.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3 py-2">
                 <span className="font-mono text-[10px] text-white/50 truncate">{t(`team.role.${inv.role}`)} — {inv.token.slice(0, 8)}…</span>
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => copyInviteLink(inv.token, inv.id)} className={smallBtn} style={{ color: "#ff5100" }}>

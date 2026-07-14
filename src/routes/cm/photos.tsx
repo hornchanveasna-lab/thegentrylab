@@ -6,6 +6,7 @@ import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, MiniCalendar,
+  ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
   useAllCMPhotos,
@@ -389,6 +390,7 @@ function CMPhotosPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const selectMode = selectedUrls.size > 0;
   const bindLongPress = useLongPress();
 
@@ -415,8 +417,8 @@ function CMPhotosPage() {
   };
 
   const handleDeleteSelected = async () => {
+    setConfirmingBulkDelete(false);
     const targets = filtered.filter((p) => selectedUrls.has(p.url));
-    if (!window.confirm(t("photos.deleteConfirm"))) return;
     setSelectedUrls(new Set());
     try {
       await Promise.all(targets.map((p) => deleteCMPhoto(p.module, p.recordId, p.url)));
@@ -688,12 +690,16 @@ function CMPhotosPage() {
               <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="M16 6l-4-4-4 4" /><path d="M12 2v14" />
             </svg>
           </button>
-          <button onClick={handleDeleteSelected} className="w-9 h-9 rounded-full flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0">
+          <button onClick={() => setConfirmingBulkDelete(true)} className="w-9 h-9 rounded-full flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors shrink-0">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 7h16" /><path d="M10 11v6M14 11v6" /><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" />
             </svg>
           </button>
         </div>
+      )}
+      {confirmingBulkDelete && (
+        <ConfirmationDialog message={t("photos.deleteConfirm")} confirmLabel={t("common.delete")}
+          onConfirm={handleDeleteSelected} onCancel={() => setConfirmingBulkDelete(false)} />
       )}
     </div>
   );

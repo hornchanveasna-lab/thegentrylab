@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls } from "@/components/cm/shared";
+import { ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls, ConfirmationDialog } from "@/components/cm/shared";
 import {
   useCMBOQItems,
   createCMBOQItem,
@@ -102,6 +102,7 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged }: {
   const [quantity, setQuantity] = useState(String(item.quantity));
   const [unitCost, setUnitCost] = useState(String(item.unit_cost));
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const commit = async (patch: Partial<CMBOQItem>) => {
     setBusy(true);
@@ -109,7 +110,7 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged }: {
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3 py-2.5">
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <p className="text-[12px] text-white/80 truncate">{item.description}</p>
         <div className="flex items-center gap-1.5 mt-1">
@@ -143,10 +144,14 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged }: {
           {(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </span>
         {canDelete && (
-          <button onClick={() => { if (confirm(t("boq.confirmDelete"))) deleteCMBOQItem(item.id).then(onChanged); }} disabled={busy}
+          <button onClick={() => setConfirmingDelete(true)} disabled={busy}
             className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
         )}
       </div>
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("boq.confirmDelete")} confirmLabel={t("common.delete")}
+          onConfirm={() => { setConfirmingDelete(false); deleteCMBOQItem(item.id).then(onChanged); }} onCancel={() => setConfirmingDelete(false)} />
+      )}
     </div>
   );
 }
@@ -296,7 +301,7 @@ function ImportBoqSheet({ ownerId, projectId, onClose, onImported }: {
               </label>
             ))}
 
-            <div className="rounded-xl bg-white/[0.03] p-3 flex flex-col gap-1.5">
+            <div className="rounded-xl bg-white/3 p-3 flex flex-col gap-1.5">
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.import.preview")} — {referenceSheet.sheetName}</p>
               {previewItems.slice(0, 5).map((item, i) => (
                 <p key={i} className="text-[11px] text-white/60 truncate">
@@ -306,7 +311,7 @@ function ImportBoqSheet({ ownerId, projectId, onClose, onImported }: {
               {previewItems.length === 0 && <p className="text-[11px] text-white/30">{t("boq.import.noItemsDetected")}</p>}
             </div>
 
-            <div className="rounded-xl bg-white/[0.03] p-3 text-[12px] text-white/60">
+            <div className="rounded-xl bg-white/3 p-3 text-[12px] text-white/60">
               {t("boq.import.summary", { count: String(allDraftItems.length), categories: String(categoryCount) })}
               {skippedCount > 0 && <p className="text-white/30 mt-1">{t("boq.import.skipped", { count: String(skippedCount) })}</p>}
             </div>

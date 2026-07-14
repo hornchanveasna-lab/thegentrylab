@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { Avatar, CompanySelect } from "@/components/cm/shared";
+import { Avatar, CompanySelect, ConfirmationDialog } from "@/components/cm/shared";
 import {
   useCMDirectoryContacts,
   createCMDirectoryContact,
@@ -111,9 +111,10 @@ function ContactCard({ contact, ownerId, onChanged, linked }: { contact: CMDirec
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(t("directory.confirmRemove", { name: contact.name }))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMDirectoryContact(contact.id); onChanged(); } finally { setBusy(false); }
   };
@@ -157,7 +158,11 @@ function ContactCard({ contact, ownerId, onChanged, linked }: { contact: CMDirec
           {contact.notes && <p className="text-[11px] text-white/35 mt-1.5">{contact.notes}</p>}
         </div>
       </div>
-      <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+      <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("directory.confirmRemove", { name: contact.name })} confirmLabel={t("common.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
+      )}
     </div>
   );
 }
