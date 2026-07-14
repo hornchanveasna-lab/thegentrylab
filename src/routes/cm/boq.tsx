@@ -12,7 +12,14 @@ import {
   deleteCMBOQItem,
   useCMScheduleItems,
   useCMDailyLogs,
+  useCMPhotoBoqTags,
+  updateCMDailyLog,
+  QUANTITY_STATUS_ORDER,
   type CMBOQItem,
+  type CMDailyLog,
+  type CMScheduleItem,
+  type CMDeliveryRow,
+  type CMQuantityStatus,
 } from "@/lib/cm-data";
 import {
   parseWorkbookRows,
@@ -95,8 +102,8 @@ function NewBoqItemSheet({ ownerId, projectId, onClose, onCreated }: {
   );
 }
 
-function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged }: {
-  item: CMBOQItem; delivered: number | undefined; canEdit: boolean; canDelete: boolean; onChanged: () => void;
+function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged, onOpenDetail }: {
+  item: CMBOQItem; delivered: number | undefined; canEdit: boolean; canDelete: boolean; onChanged: () => void; onOpenDetail: () => void;
 }) {
   const { t } = useCMLang();
   const [quantity, setQuantity] = useState(String(item.quantity));
@@ -112,7 +119,9 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged }: {
   return (
     <div className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] text-white/80 truncate">{item.description}</p>
+        <button type="button" onClick={onOpenDetail} className="text-left w-full">
+          <p className="text-[12px] text-white/80 truncate hover:text-white transition-colors">{item.description}</p>
+        </button>
         <div className="flex items-center gap-1.5 mt-1">
           {canEdit ? (
             <>
@@ -156,9 +165,9 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged }: {
   );
 }
 
-function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, canEdit, canDelete, onChanged }: {
+function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, canEdit, canDelete, onChanged, onOpenDetail }: {
   category: string; items: CMBOQItem[]; grandTotal: number; linkedCount: number; linkedAvgActual: number | null;
-  deliveredByBoqItem: Map<string, number>; canEdit: boolean; canDelete: boolean; onChanged: () => void;
+  deliveredByBoqItem: Map<string, number>; canEdit: boolean; canDelete: boolean; onChanged: () => void; onOpenDetail: (item: CMBOQItem) => void;
 }) {
   const { t } = useCMLang();
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
@@ -167,7 +176,7 @@ function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgAc
   return (
     <Card title={category} action={<span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{ratio.toFixed(1)}% {t("boq.ratioOfTotal")}</span>}>
       <div className="flex flex-col gap-2">
-        {items.map((item) => <BoqItemRow key={item.id} item={item} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} />)}
+        {items.map((item) => <BoqItemRow key={item.id} item={item} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} onOpenDetail={() => onOpenDetail(item)} />)}
         <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
           <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
@@ -179,6 +188,184 @@ function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgAc
         )}
       </div>
     </Card>
+  );
+}
+
+const QUANTITY_STATUS_COLOR: Record<CMQuantityStatus, string> = {
+  Reported: "#9ca3af",
+  Accepted: "#3b82f6",
+  Claimed: "#f59e0b",
+  Certified: "#22c55e",
+};
+
+function DeliveryStatusRow({ logId, logDate, index, row, unit, canEdit, busy, onStatusChange }: {
+  logId: string; logDate: string; index: number; row: CMDeliveryRow; unit: string | null; canEdit: boolean; busy: boolean;
+  onStatusChange: (logId: string, index: number, status: CMQuantityStatus, certifiedQuantity?: string) => void;
+}) {
+  const { t } = useCMLang();
+  const status = row.status ?? "Reported";
+  const [certifiedQty, setCertifiedQty] = useState(row.certified_quantity ?? row.quantity);
+
+  return (
+    <div className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-white/50">{logDate}</span>
+        <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{row.quantity} {unit ?? ""}</span>
+      </div>
+      {canEdit ? (
+        <FieldSelect
+          value={status}
+          onChange={(v) => onStatusChange(logId, index, v as CMQuantityStatus)}
+          options={QUANTITY_STATUS_ORDER.map((s) => ({ value: s, label: t(`boq.status.${s.toLowerCase()}`) }))}
+          disabled={busy}
+        />
+      ) : (
+        <span className="self-start text-[10px] px-2 py-0.5 rounded-full font-mono" style={{ color: QUANTITY_STATUS_COLOR[status], backgroundColor: `${QUANTITY_STATUS_COLOR[status]}1a` }}>
+          {t(`boq.status.${status.toLowerCase()}`)}
+        </span>
+      )}
+      {status === "Certified" && canEdit && (
+        <label className="flex flex-col gap-1 mt-0.5">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.detail.certifiedQty")}</span>
+          <input type="number" className={inputCls} value={certifiedQty} disabled={busy}
+            onChange={(e) => setCertifiedQty(e.target.value)}
+            onBlur={() => onStatusChange(logId, index, "Certified", certifiedQty)} />
+        </label>
+      )}
+    </div>
+  );
+}
+
+/** Tapping a BOQ item's description opens this detail sheet: the item's own
+ *  overview, the Reported -> Accepted -> Claimed -> Certified quantity
+ *  pipeline computed from every Site Diary delivery row linked to it, plus
+ *  whatever photos and schedule activities are already connected. Status is
+ *  stored per delivery row (inside cm_daily_logs.deliveries), so advancing
+ *  a row's status patches the whole daily log it lives in. */
+function BoqItemDetailSheet({ item, projectId, dailyLogs, scheduleItems, canEdit, onClose }: {
+  item: CMBOQItem; projectId: string; dailyLogs: CMDailyLog[]; scheduleItems: CMScheduleItem[]; canEdit: boolean; onClose: () => void;
+}) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: photoTags } = useCMPhotoBoqTags(projectId);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const linkedDeliveries = useMemo(() => {
+    const rows: { logId: string; logDate: string; index: number; row: CMDeliveryRow }[] = [];
+    for (const log of dailyLogs) {
+      log.deliveries.forEach((row, index) => {
+        if (row.boq_item_id === item.id) rows.push({ logId: log.id, logDate: log.log_date, index, row });
+      });
+    }
+    return rows.sort((a, b) => (a.logDate < b.logDate ? 1 : -1));
+  }, [dailyLogs, item.id]);
+
+  const totals = useMemo(() => {
+    let reported = 0, accepted = 0, claimed = 0, certified = 0;
+    for (const { row } of linkedDeliveries) {
+      const qty = Number(row.quantity) || 0;
+      const status = row.status ?? "Reported";
+      reported += qty;
+      if (status === "Accepted" || status === "Claimed" || status === "Certified") accepted += qty;
+      if (status === "Claimed" || status === "Certified") claimed += qty;
+      if (status === "Certified") certified += Number(row.certified_quantity ?? row.quantity) || 0;
+    }
+    return { reported, accepted, claimed, certified, remaining: Math.max(item.quantity - certified, 0) };
+  }, [linkedDeliveries, item.quantity]);
+
+  const linkedSchedule = useMemo(() => (item.category ? scheduleItems.filter((s) => s.boq_category === item.category) : []), [scheduleItems, item.category]);
+
+  const linkedPhotos = useMemo(() => {
+    const urls = new Set<string>();
+    for (const { row } of linkedDeliveries) for (const p of row.photos) urls.add(p);
+    for (const tag of photoTags ?? []) if (tag.boq_item_id === item.id) urls.add(tag.photo_url);
+    return Array.from(urls);
+  }, [linkedDeliveries, photoTags, item.id]);
+
+  const handleStatusChange = async (logId: string, index: number, status: CMQuantityStatus, certifiedQuantity?: string) => {
+    const log = dailyLogs.find((l) => l.id === logId);
+    if (!log) return;
+    const key = `${logId}-${index}`;
+    setBusyKey(key);
+    try {
+      const nextDeliveries = log.deliveries.map((row, i) =>
+        i === index ? { ...row, status, certified_quantity: status === "Certified" ? (certifiedQuantity ?? row.certified_quantity ?? row.quantity) : row.certified_quantity } : row,
+      );
+      await updateCMDailyLog(logId, { deliveries: nextDeliveries });
+      queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return (
+    <Sheet title={item.description} onClose={onClose}>
+      <div className="px-6 pb-8 pt-2 flex flex-col gap-5">
+        <div className="rounded-2xl bg-white/3 p-4 flex flex-col gap-1.5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("boq.detail.overview")}</p>
+          <div className="flex items-center justify-between text-[12px] text-white/60">
+            <span>{t("boq.qty")}</span>
+            <span className="font-mono">{item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}</span>
+          </div>
+          <div className="flex items-center justify-between text-[12px] text-white/60">
+            <span>{t("boq.unitCost")}</span>
+            <span className="font-mono">{item.unit_cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          </div>
+          <div className="flex items-center justify-between text-[12px] text-white/60 pt-1 border-t border-white/6">
+            <span>{t("boq.total")}</span>
+            <span className="font-mono font-bold" style={{ color: "#ff5100" }}>{(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white/3 p-4 flex flex-col gap-2">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("boq.detail.pipelineTitle")}</p>
+          {([["reported", totals.reported, "Reported"], ["accepted", totals.accepted, "Accepted"], ["claimed", totals.claimed, "Claimed"], ["certified", totals.certified, "Certified"]] as const).map(([key, value, statusKey]) => (
+            <div key={key} className="flex items-center justify-between text-[12px]">
+              <span className="text-white/50">{t(`boq.status.${key}`)}</span>
+              <span className="font-mono" style={{ color: QUANTITY_STATUS_COLOR[statusKey] }}>
+                {value.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}
+              </span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between text-[12px] pt-1.5 border-t border-white/6">
+            <span className="text-white/50">{t("boq.detail.remaining")}</span>
+            <span className="font-mono font-bold text-white/80">{totals.remaining.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.records")}</p>
+          {linkedDeliveries.length === 0 && <p className="text-[12px] text-white/30 px-1">{t("boq.detail.noRecords")}</p>}
+          {linkedDeliveries.map(({ logId, logDate, index, row }) => (
+            <DeliveryStatusRow key={`${logId}-${index}`} logId={logId} logDate={logDate} index={index} row={row}
+              unit={item.unit} canEdit={canEdit} busy={busyKey === `${logId}-${index}`} onStatusChange={handleStatusChange} />
+          ))}
+        </div>
+
+        {linkedPhotos.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.photos")}</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {linkedPhotos.map((url, i) => (
+                <img key={i} src={url} alt="" className="w-full aspect-square rounded-lg object-cover" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {linkedSchedule.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.schedule")}</p>
+            {linkedSchedule.map((s) => (
+              <div key={s.id} className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2 text-[12px]">
+                <span className="text-white/60 truncate">{s.title}</span>
+                <span className="font-mono text-white/40">{s.actual_percent}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Sheet>
   );
 }
 
@@ -342,6 +529,7 @@ function CMBoqPage() {
   const canDelete = usePermission(projectId || undefined, user?.id, "boq", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [detailItem, setDetailItem] = useState<CMBOQItem | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -426,7 +614,8 @@ function CMBoqPage() {
                 return (
                   <CategorySection key={category} category={category} items={categoryItems} grandTotal={grandTotal}
                     linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null}
-                    deliveredByBoqItem={deliveredByBoqItem} canEdit={canEdit} canDelete={canDelete} onChanged={invalidate} />
+                    deliveredByBoqItem={deliveredByBoqItem} canEdit={canEdit} canDelete={canDelete} onChanged={invalidate}
+                    onOpenDetail={setDetailItem} />
                 );
               })}
             </div>
@@ -445,6 +634,10 @@ function CMBoqPage() {
 
       {showNew && projectId && canCreate && <NewBoqItemSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
       {showImport && projectId && canCreate && <ImportBoqSheet ownerId={user.id} projectId={projectId} onClose={() => setShowImport(false)} onImported={invalidate} />}
+      {detailItem && projectId && (
+        <BoqItemDetailSheet item={detailItem} projectId={projectId} dailyLogs={dailyLogs ?? []} scheduleItems={scheduleItems ?? []}
+          canEdit={canEdit} onClose={() => setDetailItem(null)} />
+      )}
     </div>
   );
 }
