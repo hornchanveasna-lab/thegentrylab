@@ -173,6 +173,10 @@ const EN: Dict = {
 
   "people.title": "People",
   "people.noPeople": "No one on this project yet.",
+  "people.members": "Members",
+  "people.noMembers": "No one has joined yet — generate an invite link below.",
+  "people.subcontractors": "Subcontractors",
+  "people.noSubcontractors": "No subcontractors assigned yet.",
   "people.companyPlaceholder": "Company",
   "people.createCompany": "+ Create \"{name}\"",
   "people.reassignCompany": "Change company",
@@ -782,6 +786,10 @@ const KM: Dict = {
 
   "people.title": "មនុស្ស",
   "people.noPeople": "មិនទាន់មាននរណាម្នាក់នៅលើគម្រោងនេះទេ។",
+  "people.members": "សមាជិក",
+  "people.noMembers": "មិនទាន់មាននរណាចូលរួមទេ — បង្កើតតំណភ្ជាប់អញ្ជើញខាងក្រោម។",
+  "people.subcontractors": "អ្នកម៉ៅការបន្ត",
+  "people.noSubcontractors": "មិនទាន់មានអ្នកម៉ៅការបន្តត្រូវបានចាត់តាំងទេ។",
   "people.companyPlaceholder": "ក្រុមហ៊ុន",
   "people.createCompany": "+ បង្កើត \"{name}\"",
   "people.reassignCompany": "ប្តូរក្រុមហ៊ុន",
@@ -1391,6 +1399,10 @@ const ZH: Dict = {
 
   "people.title": "人员",
   "people.noPeople": "此项目尚无人员。",
+  "people.members": "成员",
+  "people.noMembers": "还没有人加入 — 在下方生成邀请链接。",
+  "people.subcontractors": "分包商",
+  "people.noSubcontractors": "尚未指定分包商。",
   "people.companyPlaceholder": "公司",
   "people.createCompany": "+ 创建\"{name}\"",
   "people.reassignCompany": "更改公司",

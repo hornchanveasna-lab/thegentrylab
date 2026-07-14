@@ -628,53 +628,60 @@ function ChecklistSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
 const MEMBER_ROLE_OPTIONS: CMMemberRole[] = ["admin", "member", "visitor"];
 const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeholder-white/20 focus:outline-none focus:text-white/70 transition-colors";
 
-/** Inline edit row for one member, shown below their chip in the grouped
- *  view when tapped — position/company (per-project attributes) are kept
- *  visually separate from the permission-role dropdown (system access) so
- *  "job title" and "system permission" aren't confused. */
-function MemberEditRow({ member, companyOptions, allJobRoles, canEdit, onChanged }: {
-  member: CMProjectMember; companyOptions: string[]; allJobRoles: string[]; canEdit: boolean; onChanged: () => void;
+/** Always-visible row for one joined project member — shown up front in its
+ *  own "Members" list (not buried inside the company-grouped avatar chips,
+ *  which mix in subcontractor Directory contacts that never logged in and
+ *  looked visually identical). Role/job-role/company are editable inline,
+ *  no tap-to-expand needed. */
+function MemberRow({ member, companyOptions, allJobRoles, canEdit, canDelete, onChanged, onRemove }: {
+  member: CMProjectMember; companyOptions: string[]; allJobRoles: string[]; canEdit: boolean; canDelete: boolean; onChanged: () => void; onRemove: () => void;
 }) {
   const { t } = useCMLang();
 
-  if (!canEdit) {
-    return (
-      <div className="rounded-lg bg-white/4 px-3 py-2.5 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-        {member.position && <p className="text-[10px] text-white/40">{member.position}</p>}
+  return (
+    <div className="rounded-xl bg-white/4 px-3 py-3 flex flex-col gap-2.5">
+      <div className="flex items-center gap-3">
+        <Avatar name={member.display_name || member.email || "?"} photoUrl={member.avatar_url} size={36} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] text-white/85 font-medium truncate">{member.display_name || member.email || t("team.unknownMember")}</p>
+          {member.email && <p className="text-[10px] text-white/35 truncate">{member.email}</p>}
+        </div>
+        {canDelete && (
+          <button onClick={onRemove} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+        )}
+      </div>
+      {canEdit ? (
+        <>
+          <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={member.position ?? ""}
+            onBlur={(e) => { if (e.target.value !== (member.position ?? "")) updateCMMemberPosition(member.id, e.target.value.trim() || null).then(onChanged); }} />
+          <div className="grid grid-cols-2 gap-2">
+            <FieldSelect
+              value={member.company ?? ""}
+              onChange={(v) => updateCMMemberCompany(member.id, v.trim() || null).then(onChanged)}
+              onCreateCustom={(v) => updateCMMemberCompany(member.id, v || null).then(onChanged)}
+              placeholder={t("people.companyPlaceholder")}
+              searchable
+              allowCustom
+              options={companyOptions.map((c) => ({ value: c, label: c }))}
+            />
+            <FieldSelect value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
+              options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
+          </div>
+          <FieldSelect
+            value={member.job_role ?? ""}
+            onChange={(v) => updateCMMemberJobRole(member.id, (v || null) as CMProjectMember["job_role"]).then(onChanged)}
+            placeholder={t("team.jobRolePlaceholder")}
+            searchable
+            allowCustom
+            options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...allJobRoles.map((r) => ({ value: r, label: jobRoleLabel(r, t) }))]}
+          />
+        </>
+      ) : (
         <p className="text-[11px] text-white/60">
-          {member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
+          {member.position && `${member.position} · `}{member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
           {member.job_role && ` · ${jobRoleLabel(member.job_role, t)}`}
         </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg bg-white/4 px-3 py-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-      <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={member.position ?? ""}
-        onBlur={(e) => { if (e.target.value !== (member.position ?? "")) updateCMMemberPosition(member.id, e.target.value.trim() || null).then(onChanged); }} />
-      <div className="flex items-center gap-2">
-        <FieldSelect
-          className="flex-1"
-          value={member.company ?? ""}
-          onChange={(v) => updateCMMemberCompany(member.id, v.trim() || null).then(onChanged)}
-          onCreateCustom={(v) => updateCMMemberCompany(member.id, v || null).then(onChanged)}
-          placeholder={t("people.companyPlaceholder")}
-          searchable
-          allowCustom
-          options={companyOptions.map((c) => ({ value: c, label: c }))}
-        />
-        <FieldSelect value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
-          options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
-      </div>
-      <FieldSelect
-        value={member.job_role ?? ""}
-        onChange={(v) => updateCMMemberJobRole(member.id, (v || null) as CMProjectMember["job_role"]).then(onChanged)}
-        placeholder={t("team.jobRolePlaceholder")}
-        searchable
-        allowCustom
-        options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...allJobRoles.map((r) => ({ value: r, label: jobRoleLabel(r, t) }))]}
-      />
+      )}
     </div>
   );
 }
@@ -762,7 +769,6 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   const [inviteJobRole, setInviteJobRole] = useState<CMJobRole | null>(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [addingContact, setAddingContact] = useState(false);
   const [contactId, setContactId] = useState("");
   const [role, setRole] = useState("");
@@ -776,20 +782,20 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
     [members, subcontractors, consultants],
   );
 
-  // Members and Subcontractors merge into one company-grouped view;
-  // Consultant people stay grouped under their own consultant (below),
-  // since a consultant's company name is a fixed identity, not free text.
-  const grouped = useMemo(() => {
-    const map = new Map<string, { members: CMProjectMember[]; subs: CMProjectSubcontractor[] }>();
+  // Subcontractors (Directory contacts with no login) grouped by company —
+  // kept separate from actual joined Members (below), which used to be
+  // merged into these same company chips and were visually indistinguishable
+  // from a subcontractor contact.
+  const subsGrouped = useMemo(() => {
+    const map = new Map<string, CMProjectSubcontractor[]>();
     const keyOf = (name: string | null) => name || t("projectSettings.independent");
-    const ensure = (k: string) => {
-      if (!map.has(k)) map.set(k, { members: [], subs: [] });
-      return map.get(k)!;
-    };
-    for (const m of members ?? []) ensure(keyOf(m.company)).members.push(m);
-    for (const s of subcontractors ?? []) ensure(keyOf(s.contact.company)).subs.push(s);
+    for (const s of subcontractors ?? []) {
+      const k = keyOf(s.contact.company);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(s);
+    }
     return Array.from(map.entries());
-  }, [members, subcontractors, t]);
+  }, [subcontractors, t]);
 
   const copyInviteLink = async (token: string, id: string) => {
     await navigator.clipboard.writeText(`${window.location.origin}/cm/join/${token}`);
@@ -816,33 +822,29 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   };
 
   const activeInvites = (invites ?? []).filter((i) => !i.revoked_at);
-  const isEmpty = (members?.length ?? 0) === 0 && (subcontractors?.length ?? 0) === 0;
 
   return (
     <Card title={t("people.title")}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          {grouped.map(([company, group]) => (
+          <span className={labelCls}>{t("people.members")}</span>
+          {(members ?? []).map((m) => (
+            <MemberRow key={m.id} member={m} companyOptions={companyOptions} allJobRoles={allJobRoles} canEdit={canEdit} canDelete={canDelete}
+              onChanged={invalidateMembers} onRemove={() => removeCMProjectMember(m.id).then(invalidateMembers)} />
+          ))}
+          {(members?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("people.noMembers")}</p>}
+        </div>
+
+        <div className="flex flex-col gap-3 pt-3 border-t border-white/5">
+          <span className={labelCls}>{t("people.subcontractors")}</span>
+          {subsGrouped.map(([company, subs]) => (
             <div key={company} className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[12px] text-white/80 font-medium truncate">{company}</p>
-                <span className="font-mono text-[10px] text-white/30 shrink-0">×{group.members.length + group.subs.length}</span>
+                <span className="font-mono text-[10px] text-white/30 shrink-0">×{subs.length}</span>
               </div>
               <div className="flex flex-wrap gap-3">
-                {group.members.map((m) => (
-                  <div key={m.id} className="relative flex flex-col items-center gap-1 cursor-pointer" style={{ width: 56 }}
-                    onClick={() => setExpandedMemberId((cur) => (cur === m.id ? null : m.id))}>
-                    <Avatar name={m.display_name || m.email || "?"} photoUrl={m.avatar_url} size={36} />
-                    <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={m.display_name || m.email || ""}>
-                      {m.position || t(`team.role.${m.role}`)}
-                    </p>
-                    {canDelete && (
-                      <button onClick={(e) => { e.stopPropagation(); removeCMProjectMember(m.id).then(invalidateMembers); }}
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
-                    )}
-                  </div>
-                ))}
-                {group.subs.map((s) => (
+                {subs.map((s) => (
                   <div key={s.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
                     <Avatar name={s.contact.name} photoUrl={s.contact.photo_url} size={36} />
                     <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={s.contact.name}>
@@ -855,15 +857,12 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
                   </div>
                 ))}
               </div>
-              {group.members.filter((m) => m.id === expandedMemberId).map((m) => (
-                <MemberEditRow key={m.id} member={m} companyOptions={companyOptions} allJobRoles={allJobRoles} canEdit={canEdit} onChanged={invalidateMembers} />
-              ))}
             </div>
           ))}
           {(consultants ?? []).map((c) => (
             <ConsultantPeopleGroup key={c.id} ownerId={ownerId} consultantId={c.id} consultantName={c.name} canCreate={canCreate} canDelete={canDelete} />
           ))}
-          {isEmpty && <p className="text-white/30 text-[12px]">{t("people.noPeople")}</p>}
+          {(subcontractors?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("people.noSubcontractors")}</p>}
           {(contacts?.length ?? 0) === 0 && (
             <p className="text-[11px] text-white/30">
               {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
