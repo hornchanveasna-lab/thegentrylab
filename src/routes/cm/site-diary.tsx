@@ -7,7 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
-  MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
+  MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -25,13 +25,6 @@ import {
   useActiveCMBOQItems,
   useCMManpowerRoster,
   useCMProjectSubcontractors,
-  createCMInspection,
-  updateCMInspection,
-  createCMTask,
-  updateCMTask,
-  createCMSafetyRecord,
-  updateCMSafetyRecord,
-  enabledDisciplines,
   type CMDailyLog,
   type CMDailyLogWithProject,
   type CMManpowerRow,
@@ -41,7 +34,6 @@ import {
   type CMDelayRow,
   type CMDelayCause,
   type CMPhotoModule,
-  type Discipline,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/site-diary")({
@@ -148,215 +140,6 @@ function RowPhotoPicker({ ownerId, projectId, photos, photoThumbs, onChange, dis
         <input type="file" accept="image/*" multiple className="hidden" disabled={disabled || uploading} onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
       </label>
     </div>
-  );
-}
-
-type CapturePurpose = "progress" | "inspection" | "punchList" | "safety" | "delivery" | "manpower" | "equipment" | "delay" | "visitor" | "general";
-const CAPTURE_PURPOSES: CapturePurpose[] = ["progress", "inspection", "punchList", "safety", "delivery", "manpower", "equipment", "delay", "visitor", "general"];
-const CAPTURE_PURPOSE_ICON: Record<CapturePurpose, React.ReactNode> = {
-  progress: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l2-7 4 14 2-7h6" /></svg>,
-  inspection: MODULE_ICON.inspection,
-  punchList: MODULE_ICON.punchList,
-  safety: MODULE_ICON.safety,
-  delivery: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="9" width="14" height="9" rx="1" /><path d="M15 12h4l3 3v3h-7z" /><circle cx="6" cy="20" r="1.6" /><circle cx="17.5" cy="20" r="1.6" /></svg>,
-  manpower: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" /></svg>,
-  equipment: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" /></svg>,
-  delay: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>,
-  visitor: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.2" r="2.1" /><path d="M3.3 20c0-3.3 2.5-5.6 5.7-5.6s5.7 2.3 5.7 5.6" /><path d="M14.8 14.9c2.5.4 4.4 2.5 4.4 5.1" /></svg>,
-  general: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="13" height="16" rx="2" /><path d="M8 8.5h5M8 12.5h5" /></svg>,
-};
-const DISCIPLINE_PURPOSES = new Set<CapturePurpose>(["progress", "inspection", "punchList", "safety"]);
-
-/** Photo-first quick capture: take/pick photos, tap one purpose, confirm a
- *  handful of fields, save — routes into whichever module or Site-Diary
- *  structured array that purpose corresponds to. Deliberately skips the
- *  spec's voice-note transcription and AI photo-grouping/suggestion
- *  features (sections 10-11), which need a speech/AI service this app
- *  doesn't have configured; every other field here is a direct tap/type. */
-function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
-  ownerId: string; projectId: string; disciplines: Discipline[]; onClose: () => void; onCreated: () => void;
-}) {
-  const { t } = useCMLang();
-  const [files, setFiles] = useState<File[]>([]);
-  const [pickerOpen, setPickerOpen] = useState(true);
-  const [purpose, setPurpose] = useState<CapturePurpose | null>(null);
-  const [locationId, setLocationId] = useState<string | null>(null);
-  const [discipline, setDiscipline] = useState<Discipline | null>(null);
-  const [note, setNote] = useState("");
-  const [company, setCompany] = useState("");
-  const [count, setCount] = useState("1");
-  const [hoursLost, setHoursLost] = useState("1");
-  const [delayCause, setDelayCause] = useState<CMDelayCause>("Weather");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const addFiles = (list: FileList | null) => {
-    if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)]);
-    setPickerOpen(false);
-  };
-
-  const handleSave = async () => {
-    if (!purpose || saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const uploaded = await Promise.all(files.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
-      const urls = uploaded.map((u) => u.url);
-      const thumbs = uploaded.map((u) => u.thumbUrl);
-      const log = await findOrCreateCMDailyLog(ownerId, projectId, today);
-      if (urls.length > 0) {
-        await updateCMDailyLog(log.id, { photos: [...log.photos, ...urls], photo_thumbs: [...log.photo_thumbs, ...thumbs] });
-      }
-
-      if (purpose === "progress") {
-        const text = [log.activities, note.trim()].filter(Boolean).join("\n");
-        await updateCMDailyLog(log.id, { activities: text || null });
-      } else if (purpose === "inspection") {
-        const created = await createCMInspection(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.inspection"), location_id: locationId, discipline, inspection_date: today });
-        if (urls.length > 0) await updateCMInspection(created.id, { photos: urls, photo_thumbs: thumbs });
-      } else if (purpose === "punchList") {
-        const created = await createCMTask(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.punchList"), location_id: locationId, priority: "Medium", status: "To Do" });
-        if (urls.length > 0) await updateCMTask(created.id, { photos: urls, photo_thumbs: thumbs });
-      } else if (purpose === "safety") {
-        const created = await createCMSafetyRecord(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.safety"), record_type: "Safety Observation", severity: "Low", record_date: today });
-        if (urls.length > 0) await updateCMSafetyRecord(created.id, { photos: urls, photo_thumbs: thumbs });
-      } else if (purpose === "delivery") {
-        const row: CMDeliveryRow = { material: note.trim() || t("siteDiary.capture.delivery"), quantity: "", unit: null, supplier: company.trim() || null, boq_item_id: null, photos: urls, photo_thumbs: thumbs, status: "Reported", certified_quantity: null };
-        await updateCMDailyLog(log.id, { deliveries: [...log.deliveries, row] });
-      } else if (purpose === "manpower") {
-        const row: CMManpowerRow = { trade: note.trim() || t("siteDiary.capture.manpower"), company: company.trim() || null, count: parseInt(count, 10) || 0, roster_item_id: null };
-        await updateCMDailyLog(log.id, { manpower: [...log.manpower, row] });
-      } else if (purpose === "equipment") {
-        const text = [log.equipment_used, note.trim()].filter(Boolean).join("\n");
-        await updateCMDailyLog(log.id, { equipment_used: text || null });
-      } else if (purpose === "delay") {
-        const row: CMDelayRow = { cause: delayCause, description: note.trim(), hours_lost: parseFloat(hoursLost) || 0 };
-        await updateCMDailyLog(log.id, { delays: [...log.delays, row] });
-      } else if (purpose === "visitor") {
-        const row: CMVisitorRow = { name: note.trim() || t("siteDiary.capture.visitor"), organization: company.trim() || null, kind: "visitor", note: "", photos: urls, photo_thumbs: thumbs };
-        await updateCMDailyLog(log.id, { visitors: [...log.visitors, row] });
-      } else {
-        const text = [log.notes, note.trim()].filter(Boolean).join("\n");
-        await updateCMDailyLog(log.id, { notes: text || null });
-      }
-      onCreated();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
-      setSaving(false);
-    }
-  };
-
-  if (files.length === 0 || pickerOpen) {
-    return (
-      <Sheet title={t("siteDiary.capture.title")} onClose={onClose}>
-        <div className="px-6 pb-8 pt-4 flex flex-col gap-3">
-          {files.length > 0 && (
-            <button type="button" onClick={() => setPickerOpen(false)}
-              className="self-start font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors mb-1">
-              ← {t("siteDiary.capture.backToReview", { count: String(files.length) })}
-            </button>
-          )}
-          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]" style={{ backgroundColor: "#ff5100" }}>
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13.5" r="3.5" />
-            </svg>
-            <span className="text-[13px] font-bold uppercase tracking-widest">{t("photos.takePhoto")}</span>
-            <input type="file" accept="image/*" capture="environment" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          </label>
-          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-white/70 bg-white/5 hover:bg-white/10 cursor-pointer text-center transition-colors">
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.5" /><path d="M21 16l-5.2-5.2a1.5 1.5 0 0 0-2.1 0L4 20" />
-            </svg>
-            <span className="text-[13px] font-bold uppercase tracking-widest">{t("photos.chooseLibrary")}</span>
-            <input type="file" accept="image/*" multiple className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          </label>
-        </div>
-      </Sheet>
-    );
-  }
-
-  if (!purpose) {
-    return (
-      <Sheet title={t("siteDiary.capture.purposeTitle")} onClose={onClose}>
-        <div className="px-6 pb-8 pt-2">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {files.slice(0, 6).map((f, i) => <img key={i} src={URL.createObjectURL(f)} alt="" className="w-12 h-12 rounded-lg object-cover" />)}
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            {CAPTURE_PURPOSES.map((p) => (
-              <button key={p} type="button" onClick={() => setPurpose(p)}
-                className="flex flex-col items-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors px-3 py-4 text-center">
-                <span className="text-white/70">{CAPTURE_PURPOSE_ICON[p]}</span>
-                <span className="text-[11px] text-white/80">{t(`siteDiary.capture.${p}`)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </Sheet>
-    );
-  }
-
-  return (
-    <Sheet title={t(`siteDiary.capture.${purpose}`)} onClose={onClose}>
-      <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
-        <button type="button" onClick={() => setPurpose(null)}
-          className="self-start font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
-          ← {t("siteDiary.capture.changePurpose")}
-        </button>
-
-        {(purpose === "progress" || purpose === "inspection" || purpose === "punchList" || purpose === "safety") && (
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("common.location")}</span>
-            <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
-          </label>
-        )}
-        {DISCIPLINE_PURPOSES.has(purpose) && (
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("common.discipline")}</span>
-            <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
-          </label>
-        )}
-        {(purpose === "delivery" || purpose === "manpower" || purpose === "visitor") && (
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{purpose === "visitor" ? t("siteDiary.organization") : t("siteDiary.company")}</span>
-            <input className={inputCls} value={company} onChange={(e) => setCompany(e.target.value)} disabled={saving} />
-          </label>
-        )}
-        {purpose === "manpower" && (
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("siteDiary.headcount")}</span>
-            <input type="number" min="0" className={inputCls} value={count} onChange={(e) => setCount(e.target.value)} disabled={saving} />
-          </label>
-        )}
-        {purpose === "delay" && (
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>{t("siteDiary.delayCause")}</span>
-              <FieldSelect value={delayCause} onChange={setDelayCause} disabled={saving} options={DELAY_CAUSE_OPTIONS.map((c) => ({ value: c, label: t(`siteDiary.delayCause.${c}`) }))} />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>{t("siteDiary.hoursLost")}</span>
-              <input type="number" min="0" step="0.5" className={inputCls} value={hoursLost} onChange={(e) => setHoursLost(e.target.value)} disabled={saving} />
-            </label>
-          </div>
-        )}
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{purpose === "visitor" ? t("siteDiary.visitorName") : t("siteDiary.capture.note")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={note} onChange={(e) => setNote(e.target.value)} disabled={saving} autoFocus />
-        </label>
-
-        {error && <p className="text-[12px] text-red-400">{error}</p>}
-        <button type="button" onClick={handleSave} disabled={saving}
-          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
-          {saving ? t("inspection.saving") : t("common.save")}
-        </button>
-      </div>
-    </Sheet>
   );
 }
 
@@ -1188,8 +971,6 @@ function CMSiteDiaryPage() {
   const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const activeProject = projects.find((p) => p.id === projectId);
-  const projectDisciplines = enabledDisciplines(activeProject);
   const canCreate = usePermission(projectId || undefined, user?.id, "site_diary", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "site_diary", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "site_diary", "delete");
@@ -1201,7 +982,6 @@ function CMSiteDiaryPage() {
   const logs: (CMDailyLog | CMDailyLogWithProject)[] | undefined = viewAll ? allLogs : singleLogs;
   const isLoading = viewAll ? allLoading : singleLoading;
   const [showNew, setShowNew] = useState(false);
-  const [showCapture, setShowCapture] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -1285,17 +1065,6 @@ function CMSiteDiaryPage() {
         <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {!viewAll && projectId && canCreate && (
-          <button type="button" onClick={() => setShowCapture(true)}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98]"
-            style={{ backgroundColor: "#ff5100" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13.5" r="3.5" />
-            </svg>
-            {t("siteDiary.captureBtn")}
-          </button>
-        )}
-
         {(viewAll || projectId) && (
           <>
             <CalendarStrip logs={logs ?? []} lang={lang} dateFilter={dateFilter} onSelectDate={selectDate}
@@ -1359,11 +1128,6 @@ function CMSiteDiaryPage() {
       </main>
 
       {showNew && !viewAll && projectId && canCreate && <NewLogSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
-
-      {showCapture && !viewAll && projectId && canCreate && (
-        <CaptureSheet ownerId={user.id} projectId={projectId} disciplines={projectDisciplines}
-          onClose={() => setShowCapture(false)} onCreated={() => { invalidate(); setShowCapture(false); }} />
-      )}
 
       {lightbox && (
         <PhotoLightbox
