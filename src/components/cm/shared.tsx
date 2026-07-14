@@ -9,6 +9,7 @@ import {
   useCMProjectMembers,
   useCMRelatedItems, type CMRelatedItem,
   useCMEntityAuditLog,
+  useCMNotifications,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
@@ -1283,5 +1284,27 @@ export function RecordDetailExtras({ projectId, entityType, module, entityId, us
       {tab === "related" && <RelatedItemsPanel items={relatedItems} />}
       {tab === "activity" && <ActivityLogPanel entityType={entityType} entityId={entityId} />}
     </div>
+  );
+}
+
+/** Header icon showing an unread-count badge, linking to /cm/notifications.
+ *  Polls via useCMNotifications' refetchInterval rather than a realtime
+ *  subscription — consistent with the rest of the app's data layer. */
+export function NotificationBell({ userId }: { userId: string | undefined }) {
+  const { t } = useCMLang();
+  const { data: notifications } = useCMNotifications(userId);
+  const unread = (notifications ?? []).filter((n) => !n.read_at).length;
+  return (
+    <Link to="/cm/notifications" aria-label={t("notifications.bell.title")}
+      className="relative w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
+      </svg>
+      {unread > 0 && (
+        <span className="absolute top-1 right-1 min-w-[15px] h-[15px] px-[3px] rounded-full bg-[#ff5100] text-[9px] leading-[15px] font-bold text-black text-center">
+          {unread > 9 ? "9+" : unread}
+        </span>
+      )}
+    </Link>
   );
 }

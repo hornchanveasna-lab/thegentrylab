@@ -4,6 +4,7 @@ import { supabaseCM } from "@/lib/supabase-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { useCMAccountSettings } from "@/lib/cm-data";
 import { AppTile } from "@/components/cm/AppTile";
+import { NotificationBell } from "@/components/cm/shared";
 
 export const Route = createFileRoute("/cm/")({
   head: () => ({
@@ -94,6 +95,7 @@ export function CMIndexPage() {
                 <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
               </svg>
             </Link>
+            <NotificationBell userId={user.id} />
             <AvatarButton />
           </div>
         </div>

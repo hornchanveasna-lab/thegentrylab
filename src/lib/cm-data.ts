@@ -1286,6 +1286,59 @@ export async function deleteCMComment(id: string) {
   if (error) throw error;
 }
 
+/* ── Notifications (in-app only — no email/push provider configured) ──── */
+export interface CMNotification {
+  id: string;
+  project_id: string;
+  user_id: string;
+  event_key: string;
+  title: string;
+  body: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}
+
+export function useCMNotifications(userId: string | undefined) {
+  return useQuery<CMNotification[]>({
+    queryKey: ["cm_notifications", userId],
+    enabled: !!userId && !!supabaseCM,
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_notifications").select("*")
+        .eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return data as CMNotification[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+/** Best-effort — a notification failing to insert should never block the
+ *  action that triggered it (assignment, status change, etc.). */
+export async function notifyCMUser(
+  projectId: string, userId: string, eventKey: string, title: string,
+  body?: string | null, entityType?: string | null, entityId?: string | null,
+) {
+  try {
+    await db().from("cm_notifications").insert({
+      project_id: projectId, user_id: userId, event_key: eventKey, title,
+      body: body ?? null, entity_type: entityType ?? null, entity_id: entityId ?? null,
+    });
+  } catch { /* best-effort */ }
+}
+
+export async function markCMNotificationRead(id: string) {
+  const { error } = await db().from("cm_notifications").update({ read_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function markAllCMNotificationsRead(userId: string) {
+  const { error } = await db().from("cm_notifications").update({ read_at: new Date().toISOString() }).eq("user_id", userId).is("read_at", null);
+  if (error) throw error;
+}
+
 /* ── Work packages (per project) ───────────────────────── */
 export interface CMWorkPackage {
   id: string;
@@ -2253,8 +2306,11 @@ export async function createCMInspection(
 }
 
 export async function updateCMInspection(id: string, patch: Partial<CMInspection>) {
-  const { error } = await db().from("cm_inspections").update(patch).eq("id", id);
+  const { data, error } = await db().from("cm_inspections").update(patch).eq("id", id).select().single();
   if (error) throw error;
+  if (patch.status === "Failed" && data) {
+    notifyCMUser(data.project_id, data.owner_id, "rejection", data.title, data.doc_number, "inspection", data.id);
+  }
 }
 
 export async function deleteCMInspection(id: string) {
@@ -2307,6 +2363,10 @@ export async function createCMSafetyRecord(
   const { data, error } = await db().from("cm_safety_records").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   logCMActivity(projectId, ownerId, "created", "safety", data.id, { title: data.title });
+  if (data.severity === "Critical") {
+    const { data: proj } = await db().from("cm_projects").select("owner_id").eq("id", projectId).maybeSingle();
+    if (proj?.owner_id) notifyCMUser(projectId, proj.owner_id, "critical_safety_issue", data.title, data.doc_number, "safety", data.id);
+  }
   return data as CMSafetyRecord;
 }
 
@@ -2383,8 +2443,11 @@ export async function createCMSubmittal(
 }
 
 export async function updateCMSubmittal(id: string, patch: Partial<CMSubmittal>) {
-  const { error } = await db().from("cm_submittals").update(patch).eq("id", id);
+  const { data, error } = await db().from("cm_submittals").update(patch).eq("id", id).select().single();
   if (error) throw error;
+  if ((patch.status === "Rejected" || patch.status === "Revise & Resubmit") && data) {
+    notifyCMUser(data.project_id, data.owner_id, "rejection", data.title, data.doc_number, "submittal", data.id);
+  }
 }
 
 export async function deleteCMSubmittal(id: string) {
