@@ -153,6 +153,7 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, onC
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
+          {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
         <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />

@@ -142,6 +142,7 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPho
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.record_date}</span>
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`safetyType.${item.record_type}`)}</span>
+          {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
         <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />

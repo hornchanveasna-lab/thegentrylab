@@ -152,7 +152,10 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, onChanged, onOpen
   return (
     <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2 transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
-        <h3 className={`text-[13px] font-bold leading-tight ${item.status === "Done" ? "text-white/40 line-through" : "text-white"}`}>{item.title}</h3>
+        <div className="min-w-0">
+          <h3 className={`text-[13px] font-bold leading-tight ${item.status === "Done" ? "text-white/40 line-through" : "text-white"}`}>{item.title}</h3>
+          {item.doc_number && <p className="font-mono text-[10px] text-white/30 mt-0.5">{item.doc_number}</p>}
+        </div>
         <div className="flex items-center gap-1 shrink-0">
           {canEdit && (
             <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">

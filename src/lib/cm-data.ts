@@ -132,6 +132,7 @@ export interface CMTask {
   id: string;
   project_id: string;
   owner_id: string;
+  doc_number: string | null;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -237,25 +238,33 @@ export function useCMDailyLogs(projectId: string | undefined) {
   });
 }
 
-/** Numbering uses the log's own date, not wall-clock "today" — Site Diary
- *  entries are routinely backdated (findOrCreateCMDailyLog below), so
- *  numbering by log_date keeps the year segment correct near a year
- *  boundary. Best-effort: a numbering failure never blocks log creation. */
+/** Shared document-numbering helper for every module's create function.
+ *  Reads the project's configured module code (falling back to
+ *  `fallbackCode` if unset), then asks the `cm_next_doc_number` RPC for the
+ *  next sequence for that project/module/year. Numbering is best-effort —
+ *  a failure (missing RPC, network) never blocks record creation, it just
+ *  leaves doc_number null. Uses the record's own date (not wall-clock
+ *  "today") so backdated entries keep the correct year segment. */
+async function generateCMDocNumber(projectId: string, moduleKey: string, fallbackCode: string, dateStr?: string): Promise<string | null> {
+  try {
+    const year = new Date(dateStr ?? new Date().toISOString().slice(0, 10)).getFullYear();
+    const { data: proj } = await db().from("cm_projects").select("doc_module_codes").eq("id", projectId).maybeSingle();
+    const moduleCode = (proj?.doc_module_codes as Record<string, string> | null)?.[moduleKey] || fallbackCode;
+    const { data } = await db().rpc("cm_next_doc_number", {
+      p_project_id: projectId, p_module_key: moduleKey, p_module_code: moduleCode, p_year: year,
+    });
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createCMDailyLog(
   ownerId: string,
   projectId: string,
   input: Partial<Omit<CMDailyLog, "id" | "project_id" | "owner_id" | "created_at" | "updated_at">>,
 ) {
-  const year = new Date(input.log_date ?? new Date().toISOString().slice(0, 10)).getFullYear();
-  let docNumber: string | null = null;
-  try {
-    const { data: proj } = await db().from("cm_projects").select("doc_module_codes").eq("id", projectId).maybeSingle();
-    const moduleCode = (proj?.doc_module_codes as Record<string, string> | null)?.site_diary || "SD";
-    const { data } = await db().rpc("cm_next_doc_number", {
-      p_project_id: projectId, p_module_key: "site_diary", p_module_code: moduleCode, p_year: year,
-    });
-    docNumber = data ?? null;
-  } catch { /* numbering is best-effort; never block log creation on it */ }
+  const docNumber = await generateCMDocNumber(projectId, "site_diary", "SD", input.log_date);
   const { data, error } = await db().from("cm_daily_logs")
     .insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
@@ -380,7 +389,8 @@ export async function createCMTask(
   projectId: string,
   input: Pick<CMTask, "title"> & Partial<Pick<CMTask, "description" | "status" | "priority" | "location_id" | "assignee" | "due_date">>,
 ) {
-  const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  const docNumber = await generateCMDocNumber(projectId, "punch_list", "PNL");
+  const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   return data as CMTask;
 }
@@ -2147,6 +2157,7 @@ export interface CMInspection {
   id: string;
   project_id: string;
   owner_id: string;
+  doc_number: string | null;
   title: string;
   status: InspectionStatus;
   discipline: Discipline | null;
@@ -2178,7 +2189,8 @@ export async function createCMInspection(
   projectId: string,
   input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "discipline" | "location_id" | "inspector" | "inspection_date" | "notes">>,
 ) {
-  const { data, error } = await db().from("cm_inspections").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  const docNumber = await generateCMDocNumber(projectId, "inspection", "WIR", input.inspection_date);
+  const { data, error } = await db().from("cm_inspections").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   return data as CMInspection;
 }
@@ -2202,6 +2214,7 @@ export interface CMSafetyRecord {
   id: string;
   project_id: string;
   owner_id: string;
+  doc_number: string | null;
   record_type: SafetyRecordType;
   title: string;
   description: string | null;
@@ -2233,7 +2246,8 @@ export async function createCMSafetyRecord(
   projectId: string,
   input: Pick<CMSafetyRecord, "title"> & Partial<Pick<CMSafetyRecord, "record_type" | "description" | "severity" | "record_date" | "involved" | "status">>,
 ) {
-  const { data, error } = await db().from("cm_safety_records").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  const docNumber = await generateCMDocNumber(projectId, "safety", "HSE", input.record_date);
+  const { data, error } = await db().from("cm_safety_records").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   return data as CMSafetyRecord;
 }
@@ -2255,6 +2269,7 @@ export interface CMSubmittal {
   id: string;
   project_id: string;
   owner_id: string;
+  doc_number: string | null;
   title: string;
   spec_section: string | null;
   discipline: Discipline | null;
@@ -2290,7 +2305,8 @@ export async function createCMSubmittal(
   projectId: string,
   input: Pick<CMSubmittal, "title"> & Partial<Pick<CMSubmittal, "spec_section" | "discipline" | "status" | "submitted_date" | "due_date" | "reviewer" | "notes">>,
 ) {
-  const { data, error } = await db().from("cm_submittals").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  const docNumber = await generateCMDocNumber(projectId, "submittal", "SUB");
+  const { data, error } = await db().from("cm_submittals").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   return data as CMSubmittal;
 }
