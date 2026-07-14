@@ -6,9 +6,14 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, useCMTheme,
+  ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, labelCls, useCMTheme,
   FieldSelect, LocationSelect, Sheet, PhotoPicker, SegmentedField,
 } from "@/components/cm/shared";
+import { parseWorkbookRows, type BoqSheet } from "@/lib/cm-boq-import";
+import {
+  detectManpowerHeaderRow, rowsToManpowerDraftRows, MANPOWER_IMPORT_FIELDS,
+  type ManpowerColumnMapping,
+} from "@/lib/cm-manpower-import";
 import {
   useCMDailyLogs, useCMManpowerRoster, addCMManpowerRosterItem, removeCMManpowerRosterItem,
   useCMProjectSubcontractors, useCMProjectLocations, locationBreadcrumb,
@@ -289,6 +294,169 @@ function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, companyOption
   );
 }
 
+/** Daily manpower Excel import (spec §7): same detect-then-confirm flow as
+ *  the BOQ importer — upload, correct the column mapping, preview, then the
+ *  parsed crews are appended to the day's shared Site Diary record. Location
+ *  text cells resolve to project locations by name; unmatched text is kept
+ *  in the row's activity so nothing typed in the sheet silently disappears. */
+function ImportManpowerSheet({ projectId, date, onImport, onClose }: {
+  projectId: string; date: string;
+  onImport: (rows: CMManpowerRow[]) => Promise<void>;
+  onClose: () => void;
+}) {
+  const { t } = useCMLang();
+  const { data: locations } = useCMProjectLocations(projectId);
+  const [step, setStep] = useState<"upload" | "review">("upload");
+  const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [sheets, setSheets] = useState<BoqSheet[]>([]);
+  const [sheetIdx, setSheetIdx] = useState(0);
+  const [headerRowIdx, setHeaderRowIdx] = useState(0);
+  const [mapping, setMapping] = useState<ManpowerColumnMapping>({
+    company: null, trade: null, category: null, count: null,
+    normalHours: null, otHours: null, location: null, activity: null,
+  });
+
+  const handleFile = async (file: File) => {
+    setError("");
+    try {
+      const parsed = (await parseWorkbookRows(file)).filter((s) => s.rows.length > 0);
+      if (parsed.length === 0) { setError(t("boq.import.noRows")); return; }
+      const withHeader = parsed.map((s, i) => ({ i, detected: detectManpowerHeaderRow(s.rows) })).find((x) => x.detected);
+      if (!withHeader?.detected) { setError(t("boq.import.noHeaderFound")); return; }
+      setSheets(parsed);
+      setSheetIdx(withHeader.i);
+      setHeaderRowIdx(withHeader.detected.rowIndex);
+      setMapping(withHeader.detected.mapping);
+      setStep("review");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to parse file");
+    }
+  };
+
+  const sheet = sheets[sheetIdx] as BoqSheet | undefined;
+  const headerCells = sheet?.rows[headerRowIdx] ?? [];
+  const columnOptions = headerCells.map((cell, i) => ({ value: String(i), label: String(cell || `Col ${i + 1}`) }));
+
+  const draftRows = useMemo(
+    () => (sheet ? rowsToManpowerDraftRows(sheet.rows, headerRowIdx, mapping) : []),
+    [sheet, headerRowIdx, mapping],
+  );
+
+  const locationIdByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of locations ?? []) {
+      map.set(l.name.trim().toLowerCase(), l.id);
+      map.set(locationBreadcrumb(l, locations ?? []).trim().toLowerCase(), l.id);
+    }
+    return map;
+  }, [locations]);
+
+  const handleImport = async () => {
+    setImporting(true);
+    setError("");
+    try {
+      const rows: CMManpowerRow[] = draftRows.map((d) => {
+        const locId = d.location_text ? locationIdByName.get(d.location_text.toLowerCase()) ?? null : null;
+        const unresolvedLocation = d.location_text && !locId ? d.location_text : null;
+        return {
+          trade: d.trade,
+          company: d.company,
+          count: d.count,
+          roster_item_id: null,
+          category: d.category,
+          location_id: locId,
+          activity: [d.activity, unresolvedLocation].filter(Boolean).join(" — ") || null,
+          normal_hours: d.normal_hours ?? 8,
+          ot_hours: d.ot_hours ?? 0,
+        };
+      });
+      await onImport(rows);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to import manpower");
+      setImporting(false);
+    }
+  };
+
+  return (
+    <Sheet title={t("manpower.import.title")} onClose={onClose}>
+      <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
+        {step === "upload" && (
+          <>
+            <p className="text-[12px] text-white/40">{t("manpower.import.uploadHint", { date })}</p>
+            <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl border border-dashed border-white/15 text-white/60 hover:border-white/30 cursor-pointer text-center transition-colors">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+              </svg>
+              <span className="text-[13px] font-bold uppercase tracking-widest">{t("boq.import.chooseFile")}</span>
+              <input type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+            </label>
+            {error && <p className="text-[12px] text-red-400">{error}</p>}
+          </>
+        )}
+
+        {step === "review" && sheet && (
+          <>
+            <p className="text-[12px] text-white/40">{t("boq.import.reviewHint")}</p>
+            {sheets.length > 1 && (
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("manpower.import.sheet")}</span>
+                <FieldSelect
+                  value={String(sheetIdx)}
+                  onChange={(v) => {
+                    const idx = Number(v);
+                    setSheetIdx(idx);
+                    const detected = detectManpowerHeaderRow(sheets[idx].rows);
+                    setHeaderRowIdx(detected?.rowIndex ?? 0);
+                    if (detected) setMapping(detected.mapping);
+                  }}
+                  options={sheets.map((s, i) => ({ value: String(i), label: s.sheetName }))}
+                  disabled={importing}
+                />
+              </label>
+            )}
+            {MANPOWER_IMPORT_FIELDS.map((field) => (
+              <label key={field} className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t(`manpower.import.field.${field}`)}</span>
+                <FieldSelect
+                  value={mapping[field] != null ? String(mapping[field]) : ""}
+                  onChange={(v) => setMapping((m) => ({ ...m, [field]: v === "" ? null : Number(v) }))}
+                  placeholder={t("boq.import.notMapped")}
+                  options={[{ value: "", label: t("boq.import.notMapped") }, ...columnOptions]}
+                  disabled={importing}
+                />
+              </label>
+            ))}
+
+            <div className="rounded-xl bg-white/3 p-3 flex flex-col gap-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.import.preview")} — {sheet.sheetName}</p>
+              {draftRows.slice(0, 6).map((d, i) => (
+                <p key={i} className="text-[11px] text-white/60 truncate">
+                  {d.company ? `${d.company} — ` : ""}{d.trade}: {d.count} × {d.normal_hours ?? 8}h{(d.ot_hours ?? 0) > 0 ? ` + ${d.ot_hours} OT` : ""}
+                </p>
+              ))}
+              {draftRows.length === 0 && <p className="text-[11px] text-white/30">{t("boq.import.noItemsDetected")}</p>}
+            </div>
+
+            <div className="rounded-xl bg-white/3 p-3 text-[12px] text-white/60">
+              {t("manpower.import.summary", { count: String(draftRows.length), workers: String(draftRows.reduce((s, d) => s + d.count, 0)), date })}
+            </div>
+
+            {error && <p className="text-[12px] text-red-400">{error}</p>}
+            <button type="button" onClick={handleImport} disabled={importing || draftRows.length === 0}
+              className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
+              style={{ backgroundColor: "#ff5100" }}>
+              {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
+            </button>
+          </>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
 /** Planned vs Actual (spec §14): planning targets per company+trade for the
  *  selected date, matched against the day's actual crews by text. Variance
  *  is labelled Under-resourced / On plan / Over-resourced — over-resourced
@@ -430,6 +598,7 @@ function CMManpowerPage() {
   const [date, setDate] = useState(todayStr);
   const [view, setView] = useState<"company" | "trade" | "location">("company");
   const [sheet, setSheet] = useState<{ editIndex: number | null } | null>(null);
+  const [showImport, setShowImport] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
   const dayLog = useMemo(() => (logs ?? []).find((l) => l.log_date === date), [logs, date]);
@@ -633,6 +802,11 @@ function CMManpowerPage() {
                   {t("manpower.copyPreviousDay")} ({prevLog.log_date})
                 </button>
               )}
+              {canCreate && (
+                <button onClick={() => setShowImport(true)} className={`${smallBtn} px-4 py-2 bg-white/10 text-white/70`}>
+                  {t("manpower.import.title")}
+                </button>
+              )}
             </div>
 
             {/* Missing daily manpower from assigned subcontractors */}
@@ -773,6 +947,19 @@ function CMManpowerPage() {
           </>
         )}
       </main>
+
+      {showImport && projectId && (
+        <ImportManpowerSheet
+          projectId={projectId}
+          date={date}
+          onImport={async (imported) => {
+            const next = [...rows, ...imported];
+            setLocalRows(next);
+            await persistRows(next, "manpower_imported");
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
 
       {sheet && projectId && (
         <ManpowerEntrySheet
