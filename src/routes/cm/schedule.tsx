@@ -13,7 +13,7 @@ import {
   updateCMScheduleItem,
   deleteCMScheduleItem,
   scheduleItemPlanPercent,
-  useCMBOQItems,
+  useActiveCMBOQItems,
   type CMScheduleItem,
 } from "@/lib/cm-data";
 
@@ -190,7 +190,7 @@ function CMSchedulePage() {
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMScheduleItems(projectId || undefined);
-  const { data: boqItems } = useCMBOQItems(projectId || undefined);
+  const { data: boqItems } = useActiveCMBOQItems(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "schedule", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "schedule", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "schedule", "delete");

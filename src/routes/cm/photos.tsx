@@ -26,7 +26,7 @@ import {
   updateCMSafetyRecord,
   createCMSubmittal,
   updateCMSubmittal,
-  useCMBOQItems,
+  useActiveCMBOQItems,
   createCMPhotoBoqTag,
   type CMPhotoModule,
   type CMPhotoWithContext,
@@ -172,7 +172,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
 }) {
   const { t } = useCMLang();
   const { data: consultants } = useCMProjectConsultants(projectId);
-  const { data: boqItems } = useCMBOQItems(projectId);
+  const { data: boqItems } = useActiveCMBOQItems(projectId);
   const [files, setFiles] = useState<File[]>([]);
   const [boqTags, setBoqTags] = useState<Map<File, string>>(new Map());
   const [pickerOpen, setPickerOpen] = useState(true);

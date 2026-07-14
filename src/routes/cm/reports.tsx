@@ -5,7 +5,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import {
   useCMProjects, useCMProject, useCMDailyLogs, useCMDailyActivityRange,
   useCMInspections, useCMTasks, useCMSafetyRecords, useCMSubmittals,
-  useCMEquipment, useCMBOQItems, useCMScheduleItems, useAllCMPhotos,
+  useCMEquipment, useActiveCMBOQItems, useCMScheduleItems, useAllCMPhotos,
   buildSCurveSeries,
   type InspectionStatus, type TaskStatus, type SafetySeverity, type SubmittalStatus, type EquipmentStatus,
 } from "@/lib/cm-data";
@@ -38,7 +38,7 @@ const cardCls = "rounded-2xl bg-[#0d0d0e] print:bg-white print:border print:bord
 const rowCls = "rounded-2xl bg-[#0d0d0e] print:bg-white print:border print:border-black/10 px-4 py-3";
 
 const INSPECTION_STATUS_COLOR: Record<InspectionStatus, string> = { Scheduled: "#94a3b8", Passed: "#34d399", Failed: "#f43f5e", "Not Applicable": "#fbbf24" };
-const TASK_STATUS_COLOR: Record<TaskStatus, string> = { "To Do": "#94a3b8", "In Progress": "#fbbf24", Blocked: "#f43f5e", Done: "#34d399" };
+const TASK_STATUS_COLOR: Record<TaskStatus, string> = { "To Do": "#94a3b8", "In Progress": "#fbbf24", Blocked: "#f43f5e", "Ready for Check": "#a78bfa", Done: "#34d399" };
 const SAFETY_SEVERITY_COLOR: Record<SafetySeverity, string> = { Low: "#94a3b8", Medium: "#fbbf24", High: "#f97316", Critical: "#f43f5e" };
 const SUBMITTAL_STATUS_COLOR: Record<SubmittalStatus, string> = {
   Draft: "#94a3b8", Submitted: "#60a5fa", "Under Review": "#a78bfa", Approved: "#34d399",
@@ -84,7 +84,7 @@ function CMReportsPage() {
   const { data: safetyRecords } = useCMSafetyRecords(projectId || undefined);
   const { data: submittals } = useCMSubmittals(projectId || undefined);
   const { data: equipment } = useCMEquipment(projectId || undefined);
-  const { data: boqItems } = useCMBOQItems(projectId || undefined);
+  const { data: boqItems } = useActiveCMBOQItems(projectId || undefined);
   const { data: scheduleItems } = useCMScheduleItems(projectId || undefined);
   const { data: allPhotos } = useAllCMPhotos(user?.id);
 

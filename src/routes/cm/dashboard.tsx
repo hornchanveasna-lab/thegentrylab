@@ -8,7 +8,7 @@ import {
   useCMProject,
   useCMDailyLogs,
   useCMScheduleItems,
-  useCMBOQItems,
+  useActiveCMBOQItems,
   useCMEquipment,
   buildSCurveSeries,
   scheduleItemPlanPercent,
@@ -40,7 +40,7 @@ function CMDashboardPage() {
   const { data: project } = useCMProject(projectId || undefined);
   const { data: logs } = useCMDailyLogs(projectId || undefined);
   const { data: scheduleItems } = useCMScheduleItems(projectId || undefined);
-  const { data: boqItems } = useCMBOQItems(projectId || undefined);
+  const { data: boqItems } = useActiveCMBOQItems(projectId || undefined);
   const { data: equipment } = useCMEquipment(projectId || undefined);
 
   const series = useMemo(

@@ -22,7 +22,7 @@ import {
   updateCMDailyLog,
   deleteCMDailyLog,
   uploadCMPhotoWithThumb,
-  useCMBOQItems,
+  useActiveCMBOQItems,
   useCMManpowerRoster,
   useCMProjectSubcontractors,
   createCMInspection,
@@ -364,7 +364,7 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
   ownerId: string; projectId: string; existing?: CMDailyLog; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const { data: boqItems } = useCMBOQItems(projectId);
+  const { data: boqItems } = useActiveCMBOQItems(projectId);
   const { data: roster } = useCMManpowerRoster(projectId);
   const { data: subcontractors } = useCMProjectSubcontractors(projectId);
 
