@@ -295,6 +295,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
                   searchPlaceholder={t("photos.searchBoq")}
                   disabled={saving}
                   triggerClassName="w-20 flex items-center justify-between gap-1 bg-white/5 rounded-lg border border-white/10 px-1.5 py-1 text-[9px] text-white/60 disabled:opacity-40"
+                  menuClassName="left-0 w-56"
                   options={[{ value: "", label: t("photos.tagBoq") }, ...(boqItems ?? []).map((b) => ({ value: b.id, label: b.description }))]}
                 />
               )}

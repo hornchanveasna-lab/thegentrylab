@@ -42,6 +42,9 @@ export interface CMProject {
   client_logo_url: string | null;
   project_code: string | null;
   disabled_disciplines: string[];
+  doc_module_codes: Record<string, string>;
+  revision_format: string;
+  doc_footer: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -246,8 +249,10 @@ export async function createCMDailyLog(
   const year = new Date(input.log_date ?? new Date().toISOString().slice(0, 10)).getFullYear();
   let docNumber: string | null = null;
   try {
+    const { data: proj } = await db().from("cm_projects").select("doc_module_codes").eq("id", projectId).maybeSingle();
+    const moduleCode = (proj?.doc_module_codes as Record<string, string> | null)?.site_diary || "SD";
     const { data } = await db().rpc("cm_next_doc_number", {
-      p_project_id: projectId, p_module_key: "site_diary", p_module_code: "SD", p_year: year,
+      p_project_id: projectId, p_module_key: "site_diary", p_module_code: moduleCode, p_year: year,
     });
     docNumber = data ?? null;
   } catch { /* numbering is best-effort; never block log creation on it */ }

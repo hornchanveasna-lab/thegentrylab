@@ -205,13 +205,20 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
  *  the app's one dropdown pattern, replacing every native `<select>` so
  *  option lists always look and behave the same regardless of platform
  *  (native pickers render wildly differently per OS/browser). */
-export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, disabled, placeholder, searchable, searchPlaceholder, allowCustom, onCreateCustom }: {
+export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, menuClassName, disabled, placeholder, searchable, searchPlaceholder, allowCustom, onCreateCustom }: {
   value: T;
   options: FieldSelectOption<T>[];
   onChange: (v: T) => void;
   className?: string;
   triggerClassName?: string;
   triggerStyle?: React.CSSProperties;
+  /** Overrides the dropdown panel's positioning/width classes — the panel
+   *  defaults to stretching edge-to-edge with the trigger (`left-0 right-0`),
+   *  which collapses to a sliver on compact icon-sized triggers (e.g. a
+   *  40px sort button) and wraps every option's text into single
+   *  characters. Pass e.g. "left-auto right-0 w-56" for a compact trigger
+   *  that should still open a normal-width menu. */
+  menuClassName?: string;
   disabled?: boolean;
   placeholder?: string;
   searchable?: boolean;
@@ -250,7 +257,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+        <div className={`absolute top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl ${menuClassName ?? "left-0 right-0"}`}>
             {searchable && (
               <div className="p-2 border-b border-white/6">
                 <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder}

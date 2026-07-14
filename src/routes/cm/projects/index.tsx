@@ -483,7 +483,7 @@ export function CMProjectsPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
               {filterCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#ff5100] text-black text-[9px] font-bold flex items-center justify-center">{filterCount}</span>}
             </button>
-            <FieldSelect value={sortBy} onChange={setSortBy} triggerClassName="!w-10 !px-0 justify-center"
+            <FieldSelect value={sortBy} onChange={setSortBy} triggerClassName="!w-10 !px-0 justify-center" menuClassName="left-auto right-0 w-56"
               options={(["updated", "name", "start", "end", "value", "health"] as SortKey[]).map((k) => ({ value: k, label: t(`projects.sort.${k}`) }))} />
             <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 shrink-0">
               <button type="button" onClick={() => setView("card")} aria-label={t("projects.viewCard")}
