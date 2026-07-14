@@ -1461,8 +1461,8 @@ export function useCMInviteByToken(token: string | undefined) {
 /** Finds an existing Directory contact by (owner, email) and refreshes its
  *  name, or creates one — via a SECURITY DEFINER RPC since this runs as the
  *  invitee, who has no write access to the project owner's contacts. */
-export async function upsertCMDirectoryContactByEmail(ownerId: string, email: string, name: string): Promise<CMDirectoryContact> {
-  const { data, error } = await db().rpc("cm_upsert_contact_from_invite", { p_owner_id: ownerId, p_email: email, p_name: name }).single();
+export async function upsertCMDirectoryContactByEmail(ownerId: string, email: string, name: string, photoUrl: string | null = null): Promise<CMDirectoryContact> {
+  const { data, error } = await db().rpc("cm_upsert_contact_from_invite", { p_owner_id: ownerId, p_email: email, p_name: name, p_photo_url: photoUrl }).single();
   if (error) throw error;
   return data as CMDirectoryContact;
 }
@@ -1487,8 +1487,9 @@ export async function acceptCMProjectInvite(
   if (findError) throw findError;
   if (existing) return existing as CMProjectMember;
 
+  const avatarUrl = (user.user_metadata?.avatar_url as string) ?? null;
   const contact = user.email && intake.displayName
-    ? await upsertCMDirectoryContactByEmail(invite.project_owner_id, user.email, intake.displayName)
+    ? await upsertCMDirectoryContactByEmail(invite.project_owner_id, user.email, intake.displayName, avatarUrl)
     : null;
 
   const { data, error } = await db().from("cm_project_members").insert({
@@ -1498,7 +1499,7 @@ export async function acceptCMProjectInvite(
     job_role: invite.job_role,
     email: user.email ?? null,
     display_name: intake.displayName || null,
-    avatar_url: (user.user_metadata?.avatar_url as string) ?? null,
+    avatar_url: avatarUrl,
     position: intake.position,
     contact_id: contact?.id ?? null,
     company: contact?.company ?? null,
