@@ -290,7 +290,8 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
           <div className="flex flex-wrap gap-2">
             {PROJECT_STATUS_OPTIONS.map((s) => (
               <button key={s} type="button" onClick={() => onChange({ statuses: toggle(statuses, s) })}
-                className={chipCls} style={statuses.has(s) ? { backgroundColor: "#ff510022", color: "#ff5100" } : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)" }}>
+                className={`${chipCls} ${statuses.has(s) ? "bg-[#ff510022]" : "bg-white/5 text-white/50"}`}
+                style={statuses.has(s) ? { color: "#ff5100" } : undefined}>
                 {t(`status.${s}`)}
               </button>
             ))}
@@ -301,7 +302,8 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
           <div className="flex flex-wrap gap-2">
             {PROJECT_HEALTH_OPTIONS.map((h) => (
               <button key={h} type="button" onClick={() => onChange({ healths: toggle(healths, h) })}
-                className={chipCls} style={healths.has(h) ? { backgroundColor: "#ff510022", color: "#ff5100" } : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)" }}>
+                className={`${chipCls} ${healths.has(h) ? "bg-[#ff510022]" : "bg-white/5 text-white/50"}`}
+                style={healths.has(h) ? { color: "#ff5100" } : undefined}>
                 {t(`health.${h}`)}
               </button>
             ))}
@@ -312,7 +314,8 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
           <div className="flex flex-wrap gap-2">
             {CM_PROJECT_SECTORS.map((s) => (
               <button key={s} type="button" onClick={() => onChange({ sectors: toggle(sectors, s) })}
-                className={chipCls} style={sectors.has(s) ? { backgroundColor: "#ff510022", color: "#ff5100" } : { backgroundColor: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.5)" }}>
+                className={`${chipCls} ${sectors.has(s) ? "bg-[#ff510022]" : "bg-white/5 text-white/50"}`}
+                style={sectors.has(s) ? { color: "#ff5100" } : undefined}>
                 {t(`sector.${s}`)}
               </button>
             ))}
