@@ -41,6 +41,7 @@ export interface CMProject {
   description: string | null;
   client_logo_url: string | null;
   project_code: string | null;
+  disabled_disciplines: string[];
   created_at: string;
   updated_at: string;
 }
@@ -908,6 +909,21 @@ export const DISCIPLINES = [
 ] as const;
 export type Discipline = typeof DISCIPLINES[number];
 
+/** Disciplines a project's pickers should actually show — DISCIPLINES minus
+ *  whatever this project's admin disabled in Settings, so a small project
+ *  isn't forced to scroll past 15 trades it doesn't use. */
+export function enabledDisciplines(project: Pick<CMProject, "disabled_disciplines"> | null | undefined): Discipline[] {
+  const disabled = new Set(project?.disabled_disciplines ?? []);
+  return DISCIPLINES.filter((d) => !disabled.has(d));
+}
+
+export async function setCMProjectDisciplineEnabled(project: CMProject, discipline: Discipline, enabled: boolean) {
+  const next = enabled
+    ? project.disabled_disciplines.filter((d) => d !== discipline)
+    : [...project.disabled_disciplines, discipline];
+  await updateCMProject(project.id, { disabled_disciplines: next });
+}
+
 /** Per-project location hierarchy (Building → Floor → Zone → Area), unlike
  *  DISCIPLINES which is a fixed global list — every project defines its own
  *  buildings/floors/zones, so this is owner-managed data, not a constant. */
@@ -1070,11 +1086,33 @@ export async function deleteCMChecklistItem(id: string) {
  *  consumers (distinctCMCompanyNames, Subcontractor/People grouping) keep
  *  working unchanged. Not yet linked from Manpower/Project Members/
  *  Consultants — a later round once this pilot is validated. */
+export type CompanyType =
+  | "Client" | "Developer" | "Consultant" | "Architect" | "Designer" | "Main Contractor"
+  | "Subcontractor" | "Supplier" | "Manufacturer" | "Testing Agency" | "Authority" | "Other";
+export const CM_COMPANY_TYPES: CompanyType[] = [
+  "Client", "Developer", "Consultant", "Architect", "Designer", "Main Contractor",
+  "Subcontractor", "Supplier", "Manufacturer", "Testing Agency", "Authority", "Other",
+];
+export type CompanyStatus = "Active" | "Inactive";
+
 export interface CMCompany {
   id: string;
   owner_id: string;
   name: string;
+  short_name: string | null;
+  company_type: CompanyType | null;
+  registration_number: string | null;
+  tax_number: string | null;
+  address: string | null;
+  country: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  primary_contact: string | null;
   logo_url: string | null;
+  stamp_url: string | null;
+  status: CompanyStatus;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1092,13 +1130,17 @@ export function useCMCompanies(ownerId: string | undefined) {
   });
 }
 
-export async function createCMCompany(ownerId: string, name: string): Promise<CMCompany> {
-  const { data, error } = await db().from("cm_companies").insert({ owner_id: ownerId, name }).select().single();
+export async function createCMCompany(
+  ownerId: string,
+  name: string,
+  patch: Partial<Omit<CMCompany, "id" | "owner_id" | "name" | "created_at" | "updated_at">> = {},
+): Promise<CMCompany> {
+  const { data, error } = await db().from("cm_companies").insert({ owner_id: ownerId, name, ...patch }).select().single();
   if (error) throw error;
   return data as CMCompany;
 }
 
-export async function updateCMCompany(id: string, patch: Partial<Pick<CMCompany, "name" | "logo_url">>) {
+export async function updateCMCompany(id: string, patch: Partial<Omit<CMCompany, "id" | "owner_id" | "created_at" | "updated_at">>) {
   const { error } = await db().from("cm_companies").update(patch).eq("id", id);
   if (error) throw error;
 }
@@ -1106,6 +1148,26 @@ export async function updateCMCompany(id: string, patch: Partial<Pick<CMCompany,
 export async function deleteCMCompany(id: string) {
   const { error } = await db().from("cm_companies").delete().eq("id", id);
   if (error) throw error;
+}
+
+export async function uploadCMCompanyMasterLogo(ownerId: string, companyId: string, file: File): Promise<string> {
+  const client = db();
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${ownerId}/companies/${companyId}-logo-${Date.now()}.${ext}`;
+  const { error } = await client.storage.from("site-media").upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = await client.storage.from("site-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+  return data?.signedUrl ?? path;
+}
+
+export async function uploadCMCompanyStamp(ownerId: string, companyId: string, file: File): Promise<string> {
+  const client = db();
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${ownerId}/companies/${companyId}-stamp-${Date.now()}.${ext}`;
+  const { error } = await client.storage.from("site-media").upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = await client.storage.from("site-media").createSignedUrl(path, 60 * 60 * 24 * 365);
+  return data?.signedUrl ?? path;
 }
 
 /* ── Directory contacts (global, cross-project) ────────── */
