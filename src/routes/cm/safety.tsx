@@ -18,6 +18,7 @@ import {
   type CMSafetyRecord,
   type SafetyRecordType,
   type SafetySeverity,
+  SAFETY_RECORD_TYPES,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/safety")({
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/cm/safety")({
 });
 
 const SEVERITY_COLOR: Record<SafetySeverity, string> = { Low: "#94a3b8", Medium: "#fbbf24", High: "#f97316", Critical: "#f43f5e" };
-const TYPE_OPTIONS: SafetyRecordType[] = ["Incident", "Toolbox Talk", "Hazard Observation"];
+const TYPE_OPTIONS: SafetyRecordType[] = [...SAFETY_RECORD_TYPES];
 const SEVERITY_OPTIONS: SafetySeverity[] = ["Low", "Medium", "High", "Critical"];
 
 function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {

@@ -228,7 +228,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
         const item = await createCMTask(ownerId, projectId, { title, status: "To Do", priority: "Medium", due_date: photoDate });
         await updateCMTask(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "safety") {
-        const item = await createCMSafetyRecord(ownerId, projectId, { title, record_type: "Hazard Observation", severity: "Low", record_date: photoDate });
+        const item = await createCMSafetyRecord(ownerId, projectId, { title, record_type: "Safety Observation", severity: "Low", record_date: photoDate });
         await updateCMSafetyRecord(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "submittal") {
         const item = await createCMSubmittal(ownerId, projectId, { title, status: "Draft", submitted_date: photoDate });
