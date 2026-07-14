@@ -864,7 +864,7 @@ function CompanySheet({ ownerId, company, onClose, onSaved }: {
   );
 }
 
-function CompaniesSection({ ownerId, canCreate, canEdit }: { ownerId: string; canCreate: boolean; canEdit: boolean }) {
+export function CompaniesSection({ ownerId, canCreate, canEdit }: { ownerId: string; canCreate: boolean; canEdit: boolean }) {
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: companies } = useCMCompanies(ownerId);
