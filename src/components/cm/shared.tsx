@@ -205,7 +205,7 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
  *  the app's one dropdown pattern, replacing every native `<select>` so
  *  option lists always look and behave the same regardless of platform
  *  (native pickers render wildly differently per OS/browser). */
-export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, menuClassName, disabled, placeholder, searchable, searchPlaceholder, allowCustom, onCreateCustom }: {
+export function FieldSelect<T extends string>({ value, options, onChange, className, triggerClassName, triggerStyle, triggerIcon, menuClassName, disabled, placeholder, searchable, searchPlaceholder, allowCustom, onCreateCustom }: {
   value: T;
   options: FieldSelectOption<T>[];
   onChange: (v: T) => void;
@@ -219,6 +219,10 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
    *  characters. Pass e.g. "left-auto right-0 w-56" for a compact trigger
    *  that should still open a normal-width menu. */
   menuClassName?: string;
+  /** Renders this icon in the trigger instead of the selected option's
+   *  label/chevron — for compact icon-only triggers (e.g. a small sort
+   *  button) where showing the label text would overflow the button. */
+  triggerIcon?: React.ReactNode;
   disabled?: boolean;
   placeholder?: string;
   searchable?: boolean;
@@ -251,10 +255,14 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
     <div ref={containerRef} className={`relative ${className ?? ""}`}>
       <button type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
         className={triggerClassName ?? fieldSelectTriggerCls} style={triggerStyle}>
-        <span className="truncate text-left">{selected?.label ?? placeholder ?? ""}</span>
-        <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>
-          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        {triggerIcon ?? (
+          <>
+            <span className="truncate text-left">{selected?.label ?? placeholder ?? ""}</span>
+            <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>
+              <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </>
+        )}
       </button>
       {open && (
         <div className={`absolute top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl ${menuClassName ?? "left-0 right-0"}`}>
