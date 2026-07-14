@@ -1,14 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
-import { SegmentedField, ProjectPicker, useSelectedProject } from "@/components/cm/shared";
+import { SegmentedField, ProjectPicker, FieldSelect, useSelectedProject } from "@/components/cm/shared";
 import { ProjectSettingsView, CompaniesSection } from "@/components/cm/ProjectSettingsView";
 import {
   useCMAccountSettings,
   upsertCMAccountSettings,
   uploadCMCompanyLogo,
+  useCMGlobalAuditLog,
+  useCMAllProjectMembers,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/settings")({
@@ -41,11 +43,103 @@ type SettingsTab = "app" | "project";
 
 /** App Settings categories with no backing feature yet — shown as an honest
  *  placeholder (matching the same convention Project Settings already uses
- *  for "integrations") rather than fabricated controls. */
+ *  for "integrations") rather than fabricated controls. "auditLog" is not
+ *  in this list — it has a real, working section below, since the data
+ *  (cm_audit_log) already exists per-project and just needed aggregating. */
 const APP_PLACEHOLDER_KEYS = [
   "organizations", "masterData", "modules", "documentStandards",
-  "templates", "notifications", "integrations", "storage", "security", "auditLog", "subscription",
+  "templates", "notifications", "integrations", "storage", "security", "subscription",
 ] as const;
+
+/** Cross-project audit trail (App Settings → Audit Log). RLS already scopes
+ *  cm_audit_log to rows this user can see, so this is a real aggregate view
+ *  over existing per-project audit data, not a new logging system. */
+function GlobalAuditLogSection({ userId, projects, onBack }: {
+  userId: string; projects: { id: string; name: string }[]; onBack: () => void;
+}) {
+  const { t } = useCMLang();
+  const { data: entries, isLoading } = useCMGlobalAuditLog(userId);
+  const projectIds = useMemo(() => projects.map((p) => p.id), [projects]);
+  const { data: members } = useCMAllProjectMembers(projectIds);
+  const [projectFilter, setProjectFilter] = useState("");
+  const [entityFilter, setEntityFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  const projectNameById = useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
+  const actorNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of members ?? []) if (m.display_name || m.email) map.set(m.user_id, m.display_name || m.email!);
+    return map;
+  }, [members]);
+
+  const entityTypes = useMemo(() => Array.from(new Set((entries ?? []).map((e) => e.entity_type))).sort(), [entries]);
+  const actions = useMemo(() => Array.from(new Set((entries ?? []).map((e) => e.action))).sort(), [entries]);
+
+  const filtered = useMemo(() => {
+    let list = entries ?? [];
+    if (projectFilter) list = list.filter((e) => e.project_id === projectFilter);
+    if (entityFilter) list = list.filter((e) => e.entity_type === entityFilter);
+    if (actionFilter) list = list.filter((e) => e.action === actionFilter);
+    if (fromDate) list = list.filter((e) => e.created_at.slice(0, 10) >= fromDate);
+    if (toDate) list = list.filter((e) => e.created_at.slice(0, 10) <= toDate);
+    return list;
+  }, [entries, projectFilter, entityFilter, actionFilter, fromDate, toDate]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <button onClick={onBack} className="flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors self-start">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
+        <span className="text-[12px] font-mono uppercase tracking-widest">{t("settings.appTab")}</span>
+      </button>
+
+      <div className="rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-3">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("appSettingsNav.auditLog")}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <FieldSelect value={projectFilter} onChange={setProjectFilter}
+            placeholder={t("auditLog.allProjects")}
+            options={[{ value: "", label: t("auditLog.allProjects") }, ...projects.map((p) => ({ value: p.id, label: p.name }))]} />
+          <FieldSelect value={entityFilter} onChange={setEntityFilter}
+            placeholder={t("auditLog.allModules")}
+            options={[{ value: "", label: t("auditLog.allModules") }, ...entityTypes.map((e) => ({ value: e, label: e }))]} />
+          <FieldSelect value={actionFilter} onChange={setActionFilter}
+            placeholder={t("auditLog.allActions")}
+            options={[{ value: "", label: t("auditLog.allActions") }, ...actions.map((a) => ({ value: a, label: a }))]} />
+          <div />
+          <input type="date" className="bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#ff5100]/60"
+            value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          <input type="date" className="bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#ff5100]/60"
+            value={toDate} onChange={(e) => setToDate(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+        {!isLoading && filtered.length === 0 && (
+          <div className="rounded-2xl border border-dashed border-white/10 py-12 flex items-center justify-center text-center px-4">
+            <p className="text-white/40 text-sm">{t("auditLog.nothingYet")}</p>
+          </div>
+        )}
+        {filtered.map((e) => (
+          <div key={e.id} className="rounded-xl bg-[#0d0d0e] px-4 py-3 flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[12px] text-white/80 truncate">{projectNameById.get(e.project_id) ?? e.project_id}</span>
+              <span className="font-mono text-[9px] text-white/30 shrink-0">{e.created_at.slice(0, 16).replace("T", " ")}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap text-[11px] text-white/50">
+              <span className="font-mono uppercase tracking-widest" style={{ color: "#ff5100" }}>{e.action}</span>
+              <span>·</span>
+              <span>{e.entity_type}</span>
+              <span>·</span>
+              <span>{e.actor_id ? (actorNameById.get(e.actor_id) ?? t("comments.unknownUser")) : t("comments.unknownUser")}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function CMSettingsPage() {
   const { user, signOut } = useAuthCM();
@@ -59,6 +153,7 @@ function CMSettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const syncedLangOnce = useRef(false);
   const [tab, setTab] = useState<SettingsTab>("app");
+  const [showAuditLog, setShowAuditLog] = useState(false);
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects.find((p) => p.id === projectId);
 
@@ -151,7 +246,11 @@ function CMSettingsPage() {
           />
         </div>
 
-        {tab === "app" && (
+        {tab === "app" && showAuditLog && user && (
+          <GlobalAuditLogSection userId={user.id} projects={projects} onBack={() => setShowAuditLog(false)} />
+        )}
+
+        {tab === "app" && !showAuditLog && (
           <>
             <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
               <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.companyBranding")}</p>
@@ -216,6 +315,13 @@ function CMSettingsPage() {
                   <p className="text-[13px] text-white/85">{t("appSettingsNav.roles")}</p>
                   <p className="text-[10px] text-white/30 mt-0.5">{t("appSettingsNav.rolesHint")}</p>
                 </Link>
+                <span className="text-white/25 shrink-0">›</span>
+              </Row>
+              <Row onClick={() => setShowAuditLog(true)}>
+                <div className="min-w-0">
+                  <p className="text-[13px] text-white/85">{t("appSettingsNav.auditLog")}</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">{t("appSettingsNav.auditLogHint")}</p>
+                </div>
                 <span className="text-white/25 shrink-0">›</span>
               </Row>
             </div>
