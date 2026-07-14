@@ -1242,7 +1242,11 @@ export type CMModuleKey =
   | "equipment" | "boq" | "schedule" | "manpower" | "people" | "settings";
 export type CMPermissionAction = "view" | "create" | "edit" | "approve" | "delete";
 
+/** `owner_id === null` rows are the shared global default matrix (seeded
+ *  in Round 1); an owner_id-scoped row overrides the global default for
+ *  every project that owner runs, without affecting anyone else's. */
 export interface CMRolePermission {
+  owner_id: string | null;
   job_role: CMJobRole;
   module_key: CMModuleKey;
   can_view: boolean;
@@ -1252,17 +1256,38 @@ export interface CMRolePermission {
   can_delete: boolean;
 }
 
-export function useCMRolePermissions() {
+export function useCMRolePermissions(projectOwnerId: string | undefined) {
   return useQuery<CMRolePermission[]>({
-    queryKey: ["cm_role_permissions"],
+    queryKey: ["cm_role_permissions", projectOwnerId],
     enabled: !!supabaseCM,
     queryFn: async () => {
-      const { data, error } = await db().from("cm_role_permissions").select("*");
+      const query = db().from("cm_role_permissions").select("*");
+      const { data, error } = await (projectOwnerId
+        ? query.or(`owner_id.is.null,owner_id.eq.${projectOwnerId}`)
+        : query.is("owner_id", null));
       if (error) throw error;
       return data as CMRolePermission[];
     },
     staleTime: 60 * 60 * 1000,
   });
+}
+
+export async function setCMRolePermission(
+  ownerId: string, jobRole: CMJobRole, moduleKey: CMModuleKey,
+  patch: Partial<Pick<CMRolePermission, "can_view" | "can_create" | "can_edit" | "can_approve" | "can_delete">>,
+  fallbackDefaults: Pick<CMRolePermission, "can_view" | "can_create" | "can_edit" | "can_approve" | "can_delete">,
+) {
+  const { data: existing, error: findError } = await db().from("cm_role_permissions").select("id")
+    .eq("owner_id", ownerId).eq("job_role", jobRole).eq("module_key", moduleKey).maybeSingle();
+  if (findError) throw findError;
+  if (existing) {
+    const { error } = await db().from("cm_role_permissions").update(patch).eq("id", existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await db().from("cm_role_permissions")
+      .insert({ owner_id: ownerId, job_role: jobRole, module_key: moduleKey, ...fallbackDefaults, ...patch });
+    if (error) throw error;
+  }
 }
 
 export interface CMProjectMember {
@@ -1330,6 +1355,7 @@ export interface CMProjectInvite {
   project_id: string;
   token: string;
   role: CMMemberRole;
+  job_role: CMJobRole | null;
   created_by: string;
   revoked_at: string | null;
   created_at: string;
@@ -1358,9 +1384,9 @@ export function useCMProjectInvites(projectId: string | undefined) {
   });
 }
 
-export async function createCMProjectInvite(createdBy: string, projectId: string, role: CMMemberRole) {
+export async function createCMProjectInvite(createdBy: string, projectId: string, role: CMMemberRole, jobRole: CMJobRole | null = null) {
   const token = crypto.randomUUID();
-  const { data, error } = await db().from("cm_project_invites").insert({ project_id: projectId, token, role, created_by: createdBy }).select().single();
+  const { data, error } = await db().from("cm_project_invites").insert({ project_id: projectId, token, role, job_role: jobRole, created_by: createdBy }).select().single();
   if (error) throw error;
   return data as CMProjectInvite;
 }
@@ -1427,6 +1453,7 @@ export async function acceptCMProjectInvite(
     project_id: invite.project_id,
     user_id: user.id,
     role: invite.role,
+    job_role: invite.job_role,
     email: user.email ?? null,
     display_name: intake.displayName || null,
     avatar_url: (user.user_metadata?.avatar_url as string) ?? null,

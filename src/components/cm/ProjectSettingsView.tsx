@@ -43,6 +43,7 @@ import {
   type CMProjectSubcontractor,
   type CMProjectMember,
   type CMMemberRole,
+  type CMJobRole,
   type CMProjectLocation,
   type CMLocationLevel,
   type ProjectStatus,
@@ -751,6 +752,7 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   const { data: contacts } = useCMDirectoryContacts(ownerId);
 
   const [inviteRole, setInviteRole] = useState<CMMemberRole>("member");
+  const [inviteJobRole, setInviteJobRole] = useState<CMJobRole | null>(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
@@ -791,7 +793,7 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   const handleCreateInvite = async () => {
     setCreatingInvite(true);
     try {
-      const invite = await createCMProjectInvite(ownerId, projectId, inviteRole);
+      const invite = await createCMProjectInvite(ownerId, projectId, inviteRole, inviteJobRole);
       invalidateInvites();
       await copyInviteLink(invite.token, invite.id);
     } finally {
@@ -885,6 +887,12 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
             <div className="flex gap-2">
               <FieldSelect value={inviteRole} onChange={setInviteRole}
                 options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
+              <FieldSelect
+                value={inviteJobRole ?? ""}
+                onChange={(v) => setInviteJobRole((v || null) as CMJobRole | null)}
+                placeholder={t("team.jobRolePlaceholder")}
+                options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...CM_JOB_ROLES.map((r) => ({ value: r, label: t(`team.jobRole.${r}`) }))]}
+              />
               <button onClick={handleCreateInvite} disabled={creatingInvite} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
                 {t("team.generateLink")}
               </button>

@@ -33,6 +33,7 @@ import { Route as CmSiteDiaryRouteImport } from './routes/cm/site-diary'
 import { Route as CmSettingsRouteImport } from './routes/cm/settings'
 import { Route as CmScheduleRouteImport } from './routes/cm/schedule'
 import { Route as CmSafetyRouteImport } from './routes/cm/safety'
+import { Route as CmRolePermissionsRouteImport } from './routes/cm/role-permissions'
 import { Route as CmReportsRouteImport } from './routes/cm/reports'
 import { Route as CmPunchListRouteImport } from './routes/cm/punch-list'
 import { Route as CmPhotosRouteImport } from './routes/cm/photos'
@@ -171,6 +172,11 @@ const CmSafetyRoute = CmSafetyRouteImport.update({
   path: '/cm/safety',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmRolePermissionsRoute = CmRolePermissionsRouteImport.update({
+  id: '/cm/role-permissions',
+  path: '/cm/role-permissions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmReportsRoute = CmReportsRouteImport.update({
   id: '/cm/reports',
   path: '/cm/reports',
@@ -280,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/cm/photos': typeof CmPhotosRoute
   '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
+  '/cm/role-permissions': typeof CmRolePermissionsRoute
   '/cm/safety': typeof CmSafetyRoute
   '/cm/schedule': typeof CmScheduleRoute
   '/cm/settings': typeof CmSettingsRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/cm/photos': typeof CmPhotosRoute
   '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
+  '/cm/role-permissions': typeof CmRolePermissionsRoute
   '/cm/safety': typeof CmSafetyRoute
   '/cm/schedule': typeof CmScheduleRoute
   '/cm/settings': typeof CmSettingsRoute
@@ -364,6 +372,7 @@ export interface FileRoutesById {
   '/cm/photos': typeof CmPhotosRoute
   '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
+  '/cm/role-permissions': typeof CmRolePermissionsRoute
   '/cm/safety': typeof CmSafetyRoute
   '/cm/schedule': typeof CmScheduleRoute
   '/cm/settings': typeof CmSettingsRoute
@@ -408,6 +417,7 @@ export interface FileRouteTypes {
     | '/cm/photos'
     | '/cm/punch-list'
     | '/cm/reports'
+    | '/cm/role-permissions'
     | '/cm/safety'
     | '/cm/schedule'
     | '/cm/settings'
@@ -449,6 +459,7 @@ export interface FileRouteTypes {
     | '/cm/photos'
     | '/cm/punch-list'
     | '/cm/reports'
+    | '/cm/role-permissions'
     | '/cm/safety'
     | '/cm/schedule'
     | '/cm/settings'
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/cm/photos'
     | '/cm/punch-list'
     | '/cm/reports'
+    | '/cm/role-permissions'
     | '/cm/safety'
     | '/cm/schedule'
     | '/cm/settings'
@@ -533,6 +545,7 @@ export interface RootRouteChildren {
   CmPhotosRoute: typeof CmPhotosRoute
   CmPunchListRoute: typeof CmPunchListRoute
   CmReportsRoute: typeof CmReportsRoute
+  CmRolePermissionsRoute: typeof CmRolePermissionsRoute
   CmSafetyRoute: typeof CmSafetyRoute
   CmScheduleRoute: typeof CmScheduleRoute
   CmSettingsRoute: typeof CmSettingsRoute
@@ -716,6 +729,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmSafetyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/role-permissions': {
+      id: '/cm/role-permissions'
+      path: '/cm/role-permissions'
+      fullPath: '/cm/role-permissions'
+      preLoaderRoute: typeof CmRolePermissionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cm/reports': {
       id: '/cm/reports'
       path: '/cm/reports'
@@ -882,6 +902,7 @@ const rootRouteChildren: RootRouteChildren = {
   CmPhotosRoute: CmPhotosRoute,
   CmPunchListRoute: CmPunchListRoute,
   CmReportsRoute: CmReportsRoute,
+  CmRolePermissionsRoute: CmRolePermissionsRoute,
   CmSafetyRoute: CmSafetyRoute,
   CmScheduleRoute: CmScheduleRoute,
   CmSettingsRoute: CmSettingsRoute,

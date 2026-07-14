@@ -163,6 +163,15 @@ function CMSettingsPage() {
         </div>
 
         <div className="rounded-2xl overflow-hidden mb-5">
+          <Row>
+            <Link to="/cm/role-permissions" className="text-[13px] text-white/85">
+              {t("rolePermissions.title")}
+            </Link>
+            <span className="text-white/25">›</span>
+          </Row>
+        </div>
+
+        <div className="rounded-2xl overflow-hidden mb-5">
           <Row onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
             <span className="text-[13px] text-white/85">{t("settings.appearance")}</span>
             <span className="text-[12px] text-white/40 font-mono uppercase tracking-widest">{theme === "dark" ? t("settings.dark") : t("settings.light")}</span>
