@@ -23,6 +23,7 @@ import {
   useCMScheduleItems,
   useCMBOQItems,
   useCMEquipment,
+  useCMAuditLog,
   buildSCurveSeries,
   scheduleItemPlanPercent,
   jobRoleLabel,
@@ -110,6 +111,7 @@ function CMProjectPage() {
   const { data: scheduleItems } = useCMScheduleItems(projectId);
   const { data: boqItems } = useCMBOQItems(projectId);
   const { data: equipment } = useCMEquipment(projectId);
+  const { data: auditLog } = useCMAuditLog(projectId);
   const [tab, setTab] = useState<InsightTab>("overview");
 
   const ownerId = project?.owner_id;
@@ -175,8 +177,17 @@ function CMProjectPage() {
     for (const x of inspections ?? []) rows.push({ id: `in-${x.id}`, ts: x.updated_at, label: `${t("inspection.title")} — ${x.title}`, to: "/cm/inspection" });
     for (const x of safetyRecords ?? []) rows.push({ id: `sf-${x.id}`, ts: x.updated_at, label: `${t("safety.title")} — ${x.title}`, to: "/cm/safety" });
     for (const x of submittals ?? []) rows.push({ id: `sb-${x.id}`, ts: x.updated_at, label: `${t("submittal.title")} — ${x.title}`, to: "/cm/submittal" });
+    for (const a of auditLog ?? []) {
+      const entityLabel = a.entity_type.replace(/_/g, " ");
+      const detailName = typeof a.detail?.name === "string" ? a.detail.name : (typeof a.detail?.title === "string" ? a.detail.title : null);
+      rows.push({
+        id: `al-${a.id}`, ts: a.created_at,
+        label: `${t("insight.settingsChange")}: ${a.action} ${entityLabel}${detailName ? ` — ${detailName}` : ""}`,
+        to: "settings",
+      });
+    }
     return rows.sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 15);
-  }, [logs, tasks, inspections, safetyRecords, submittals, t]);
+  }, [logs, tasks, inspections, safetyRecords, submittals, auditLog, t]);
 
   const goToModule = (to: string) => {
     if (projectId) setLastProject(projectId);
@@ -458,7 +469,7 @@ function CMProjectPage() {
             ) : (
               <div className="flex flex-col gap-1">
                 {activityFeed.map((row) => (
-                  <button key={row.id} onClick={() => goToModule(row.to)} className="flex items-center justify-between gap-2 rounded-xl hover:bg-white/5 px-2 py-2 text-left transition-colors">
+                  <button key={row.id} onClick={() => (row.to === "settings" ? setTab("settings") : goToModule(row.to))} className="flex items-center justify-between gap-2 rounded-xl hover:bg-white/5 px-2 py-2 text-left transition-colors">
                     <span className="text-[12px] text-white/70 truncate">{row.label}</span>
                     <span className="font-mono text-[9px] text-white/25 shrink-0">{row.ts.slice(0, 10)}</span>
                   </button>

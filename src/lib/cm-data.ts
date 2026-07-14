@@ -1175,6 +1175,276 @@ export async function uploadCMCompanyStamp(ownerId: string, companyId: string, f
   return data?.signedUrl ?? path;
 }
 
+/* ── Audit log — a lightweight "what changed" trail for project settings.
+ *  Not wired into every mutation in the app (that would mean touching
+ *  dozens of call sites); covers the settings-area mutations added or
+ *  touched this round. Failure to log never blocks the underlying action. */
+export interface CMAuditLogEntry {
+  id: string;
+  project_id: string;
+  actor_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  detail: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export function useCMAuditLog(projectId: string | undefined) {
+  return useQuery<CMAuditLogEntry[]>({
+    queryKey: ["cm_audit_log", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_audit_log").select("*").eq("project_id", projectId)
+        .order("created_at", { ascending: false }).limit(50);
+      if (error) throw error;
+      return data as CMAuditLogEntry[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function logCMActivity(
+  projectId: string,
+  actorId: string,
+  action: string,
+  entityType: string,
+  entityId?: string | null,
+  detail?: Record<string, unknown> | null,
+) {
+  try {
+    await db().from("cm_audit_log").insert({
+      project_id: projectId, actor_id: actorId, action, entity_type: entityType,
+      entity_id: entityId ?? null, detail: detail ?? null,
+    });
+  } catch { /* logging is best-effort; never block the underlying action */ }
+}
+
+/* ── Work packages (per project) ───────────────────────── */
+export interface CMWorkPackage {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  name: string;
+  company_id: string | null;
+  discipline: Discipline | null;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMWorkPackages(projectId: string | undefined) {
+  return useQuery<CMWorkPackage[]>({
+    queryKey: ["cm_work_packages", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_work_packages").select("*").eq("project_id", projectId)
+        .order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as CMWorkPackage[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMWorkPackage(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMWorkPackage, "name"> & Partial<Pick<CMWorkPackage, "company_id" | "discipline" | "description">>,
+) {
+  const { data, error } = await db().from("cm_work_packages").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMWorkPackage;
+}
+
+export async function updateCMWorkPackage(id: string, patch: Partial<Pick<CMWorkPackage, "name" | "company_id" | "discipline" | "description" | "sort_order">>) {
+  const { error } = await db().from("cm_work_packages").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMWorkPackage(id: string) {
+  const { error } = await db().from("cm_work_packages").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Workflow steps — configurable approval chain per module. Storage and
+ *  settings UI only; no module currently reads these to gate its own
+ *  status transitions (Site Diary/Inspection/etc. keep their existing
+ *  approval logic untouched), so this documents intent rather than
+ *  enforcing it yet. ── */
+export type WorkflowApproverType = "role" | "company" | "user";
+
+export interface CMWorkflowStep {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  module_key: string;
+  step_order: number;
+  approver_type: WorkflowApproverType;
+  approver_value: string;
+  parallel: boolean;
+  required_comment: boolean;
+  required_signature: boolean;
+  escalation_days: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMWorkflowSteps(projectId: string | undefined) {
+  return useQuery<CMWorkflowStep[]>({
+    queryKey: ["cm_workflow_steps", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_workflow_steps").select("*").eq("project_id", projectId)
+        .order("module_key").order("step_order");
+      if (error) throw error;
+      return data as CMWorkflowStep[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMWorkflowStep(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMWorkflowStep, "module_key" | "approver_type" | "approver_value"> & Partial<Pick<CMWorkflowStep, "step_order" | "parallel" | "required_comment" | "required_signature" | "escalation_days">>,
+) {
+  const { data, error } = await db().from("cm_workflow_steps").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMWorkflowStep;
+}
+
+export async function updateCMWorkflowStep(id: string, patch: Partial<Omit<CMWorkflowStep, "id" | "project_id" | "owner_id" | "created_at" | "updated_at">>) {
+  const { error } = await db().from("cm_workflow_steps").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMWorkflowStep(id: string) {
+  const { error } = await db().from("cm_workflow_steps").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Checklist templates ("Forms and Templates") — named, reusable
+ *  checklists tagged by module. Storage and CRUD only; Inspection/Safety/
+ *  etc. don't yet offer "start from a template" when creating a record —
+ *  that consumption is a follow-up. ── */
+export interface CMChecklistTemplate {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  module_key: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CMChecklistTemplateItem {
+  id: string;
+  template_id: string;
+  title: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export function useCMChecklistTemplates(projectId: string | undefined) {
+  return useQuery<CMChecklistTemplate[]>({
+    queryKey: ["cm_checklist_templates", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_checklist_templates").select("*").eq("project_id", projectId).order("created_at");
+      if (error) throw error;
+      return data as CMChecklistTemplate[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCMChecklistTemplateItems(templateId: string | undefined) {
+  return useQuery<CMChecklistTemplateItem[]>({
+    queryKey: ["cm_checklist_template_items", templateId],
+    enabled: !!templateId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_checklist_template_items").select("*").eq("template_id", templateId).order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as CMChecklistTemplateItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMChecklistTemplate(ownerId: string, projectId: string, moduleKey: string, name: string) {
+  const { data, error } = await db().from("cm_checklist_templates").insert({ owner_id: ownerId, project_id: projectId, module_key: moduleKey, name }).select().single();
+  if (error) throw error;
+  return data as CMChecklistTemplate;
+}
+
+export async function deleteCMChecklistTemplate(id: string) {
+  const { error } = await db().from("cm_checklist_templates").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export async function addCMChecklistTemplateItem(templateId: string, title: string, sortOrder = 0) {
+  const { data, error } = await db().from("cm_checklist_template_items").insert({ template_id: templateId, title, sort_order: sortOrder }).select().single();
+  if (error) throw error;
+  return data as CMChecklistTemplateItem;
+}
+
+export async function deleteCMChecklistTemplateItem(id: string) {
+  const { error } = await db().from("cm_checklist_template_items").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Notification rules — event + recipient configuration only. No send
+ *  pipeline exists in this app (no email/push integration), so these
+ *  rules currently document intent rather than triggering anything. ── */
+export type NotificationRecipientType = "role" | "company" | "user" | "module";
+
+export interface CMNotificationRule {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  event_key: string;
+  recipient_type: NotificationRecipientType;
+  recipient_value: string;
+  created_at: string;
+}
+
+export const NOTIFICATION_EVENTS = [
+  "new_assignment", "approval_required", "rejection", "overdue_action",
+  "critical_safety_issue", "late_submittal", "inspection_reminder",
+  "certificate_expiry", "daily_report_missing",
+] as const;
+export type NotificationEvent = typeof NOTIFICATION_EVENTS[number];
+
+export function useCMNotificationRules(projectId: string | undefined) {
+  return useQuery<CMNotificationRule[]>({
+    queryKey: ["cm_notification_rules", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_notification_rules").select("*").eq("project_id", projectId).order("created_at");
+      if (error) throw error;
+      return data as CMNotificationRule[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMNotificationRule(
+  ownerId: string, projectId: string, eventKey: NotificationEvent, recipientType: NotificationRecipientType, recipientValue: string,
+) {
+  const { data, error } = await db().from("cm_notification_rules")
+    .insert({ owner_id: ownerId, project_id: projectId, event_key: eventKey, recipient_type: recipientType, recipient_value: recipientValue })
+    .select().single();
+  if (error) throw error;
+  return data as CMNotificationRule;
+}
+
+export async function deleteCMNotificationRule(id: string) {
+  const { error } = await db().from("cm_notification_rules").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /* ── Directory contacts (global, cross-project) ────────── */
 export interface CMDirectoryContact {
   id: string;

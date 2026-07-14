@@ -14,6 +14,7 @@ import {
   updateCMSubmittal,
   deleteCMSubmittal,
   uploadCMPhotoWithThumb,
+  enabledDisciplines,
   type CMSubmittal,
   type SubmittalStatus,
   type Discipline,
@@ -31,8 +32,8 @@ const STATUS_COLOR: Record<SubmittalStatus, string> = {
 const STATUS_OPTIONS: SubmittalStatus[] = ["Draft", "Submitted", "Under Review", "Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
 const APPROVAL_STATUSES: SubmittalStatus[] = ["Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
 
-function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; onClose: () => void; onCreated: () => void;
+function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplines, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; disciplines: Discipline[]; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === existing?.status);
@@ -93,7 +94,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, onClose, 
         </div>
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("common.discipline")}</span>
-          <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} />
+          <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
@@ -123,8 +124,8 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, onClose, 
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SubmittalCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
-  item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, onChanged, onOpenPhoto }: {
+  item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[];
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
@@ -200,7 +201,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, onChanged, onOpen
         </div>
       )}
       {editing && (
-        <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
+        <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove} disciplines={disciplines}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
     </div>
@@ -212,6 +213,8 @@ function CMSubmittalPage() {
   const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const activeProject = projects?.find((p) => p.id === projectId);
+  const projectDisciplines = enabledDisciplines(activeProject);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "submittal", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "submittal", "edit");
@@ -275,7 +278,7 @@ function CMSubmittalPage() {
                   </div>
                 )}
                 <div className="flex flex-col gap-3">
-                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             )}
@@ -284,7 +287,7 @@ function CMSubmittalPage() {
         )}
       </main>
 
-      {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {lightbox && (
         <PhotoLightbox

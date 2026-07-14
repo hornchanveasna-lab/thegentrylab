@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { FieldSelect, Card, Avatar, Sheet, PROJECT_STATUS_OPTIONS, PROJECT_HEALTH_OPTIONS } from "@/components/cm/shared";
+import { FieldSelect, Card, Avatar, Sheet, PROJECT_STATUS_OPTIONS, PROJECT_HEALTH_OPTIONS, ConfirmationDialog } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
@@ -66,7 +66,36 @@ import {
   type CompanyType,
   type CompanyStatus,
   type Discipline,
+  useCMWorkPackages,
+  createCMWorkPackage,
+  updateCMWorkPackage,
+  deleteCMWorkPackage,
+  type CMWorkPackage,
+  useCMWorkflowSteps,
+  createCMWorkflowStep,
+  updateCMWorkflowStep,
+  deleteCMWorkflowStep,
+  type CMWorkflowStep,
+  type WorkflowApproverType,
+  useCMChecklistTemplates,
+  useCMChecklistTemplateItems,
+  createCMChecklistTemplate,
+  deleteCMChecklistTemplate,
+  addCMChecklistTemplateItem,
+  deleteCMChecklistTemplateItem,
+  type CMChecklistTemplate,
+  useCMNotificationRules,
+  createCMNotificationRule,
+  deleteCMNotificationRule,
+  NOTIFICATION_EVENTS,
+  type NotificationEvent,
+  type NotificationRecipientType,
+  useCMTasks,
+  useCMInspections,
+  useCMSubmittals,
+  logCMActivity,
 } from "@/lib/cm-data";
+import { useAuthCM } from "@/lib/auth-cm";
 
 const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
@@ -923,6 +952,468 @@ function PlaceholderSection({ title, description }: { title: string; description
   );
 }
 
+/* ── Work Packages ──────────────────────────────────────── */
+function WorkPackagesSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
+  ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+}) {
+  const { t } = useCMLang();
+  const { user } = useAuthCM();
+  const qc = useQueryClient();
+  const { data: workPackages } = useCMWorkPackages(projectId);
+  const { data: companies } = useCMCompanies(ownerId);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [companyId, setCompanyId] = useState("");
+  const [discipline, setDiscipline] = useState<Discipline | "">("");
+  const [description, setDescription] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_work_packages", projectId] });
+
+  const handleAdd = async () => {
+    if (!name.trim()) return;
+    const wp = await createCMWorkPackage(ownerId, projectId, {
+      name: name.trim(), company_id: companyId || null, discipline: discipline || null, description: description.trim() || null,
+    });
+    if (user) logCMActivity(projectId, user.id, "created", "work_package", wp.id, { name: wp.name });
+    setName(""); setCompanyId(""); setDiscipline(""); setDescription(""); setAdding(false);
+    invalidate();
+  };
+
+  const companyName = (id: string | null) => companies?.find((c) => c.id === id)?.name ?? null;
+
+  return (
+    <Card title={t("workPackages.title")}>
+      <div className="flex flex-col gap-2">
+        {(workPackages ?? []).map((wp) => (
+          <div key={wp.id} className="rounded-xl bg-white/3 px-3 py-2.5 flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] text-white/80 font-medium truncate">{wp.name}</p>
+              <p className="text-[10px] text-white/35 truncate">
+                {wp.discipline && t(`discipline.${wp.discipline}`)}
+                {wp.discipline && companyName(wp.company_id) && " · "}
+                {companyName(wp.company_id)}
+              </p>
+            </div>
+            {canDelete && (
+              <button onClick={() => deleteCMWorkPackage(wp.id).then(() => {
+                if (user) logCMActivity(projectId, user.id, "deleted", "work_package", wp.id, { name: wp.name });
+                invalidate();
+              })} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+            )}
+          </div>
+        ))}
+        {(workPackages?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("workPackages.none")}</p>}
+        {canCreate && (adding ? (
+          <div className="flex flex-col gap-2 mt-1">
+            <input className={inputCls} placeholder={t("workPackages.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <div className="grid grid-cols-2 gap-3">
+              <FieldSelect value={companyId} onChange={setCompanyId} placeholder={t("companies.typePlaceholder")}
+                options={[{ value: "", label: t("workPackages.noCompany") }, ...(companies ?? []).map((c) => ({ value: c.id, label: c.name }))]} />
+              <FieldSelect value={discipline} onChange={setDiscipline} placeholder={t("common.selectDiscipline")}
+                options={[{ value: "", label: t("common.none") }, ...DISCIPLINES.map((d) => ({ value: d, label: t(`discipline.${d}`) }))]} />
+            </div>
+            <textarea className={`${inputCls} resize-y min-h-[56px]`} placeholder={t("workPackages.description")} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <div className="flex gap-2">
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("workPackages.add")}</button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/* ── Document Control ──────────────────────────────────── */
+const DOC_MODULES = ["site_diary", "inspection", "punch_list", "safety", "submittal"] as const;
+
+function DocumentControlSection({ project, canEdit, onChanged }: { project: CMProject; canEdit: boolean; onChanged: () => void }) {
+  const { t } = useCMLang();
+  const { user } = useAuthCM();
+  const [codes, setCodes] = useState<Record<string, string>>(project.doc_module_codes ?? {});
+  const [revisionFormat, setRevisionFormat] = useState(project.revision_format ?? "Rev {n}");
+  const [footer, setFooter] = useState(project.doc_footer ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateCMProject(project.id, { doc_module_codes: codes, revision_format: revisionFormat, doc_footer: footer.trim() || null });
+      if (user) logCMActivity(project.id, user.id, "updated", "document_control");
+      onChanged();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const preview = `${project.project_code ?? "PRJ"}-${codes.site_diary || "SD"}-${new Date().getFullYear()}-0001`;
+
+  return (
+    <Card title={t("documentControl.title")}>
+      <p className="text-[12px] text-white/45 mb-3">{t("documentControl.hint")}</p>
+      <div className="flex flex-col gap-3 mb-3">
+        <span className={labelCls}>{t("documentControl.moduleCodes")}</span>
+        <div className="grid grid-cols-2 gap-3">
+          {DOC_MODULES.map((m) => (
+            <label key={m} className="flex flex-col gap-1.5">
+              <span className="text-[10px] text-white/40">{t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`)}</span>
+              <input className={inputCls} disabled={!canEdit} value={codes[m] ?? ""} maxLength={6}
+                onChange={(e) => setCodes((prev) => ({ ...prev, [m]: e.target.value.toUpperCase() }))} />
+            </label>
+          ))}
+        </div>
+      </div>
+      <label className="flex flex-col gap-1.5 mb-3">
+        <span className={labelCls}>{t("documentControl.revisionFormat")}</span>
+        <input className={inputCls} disabled={!canEdit} value={revisionFormat} onChange={(e) => setRevisionFormat(e.target.value)} />
+      </label>
+      <label className="flex flex-col gap-1.5 mb-3">
+        <span className={labelCls}>{t("documentControl.footer")}</span>
+        <textarea className={`${inputCls} resize-y min-h-[56px]`} disabled={!canEdit} value={footer} onChange={(e) => setFooter(e.target.value)} />
+      </label>
+      <div className="rounded-xl bg-white/3 px-3 py-2.5 mb-3">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("documentControl.preview")}</p>
+        <p className="font-mono text-[12px] text-white/70">{preview}</p>
+      </div>
+      {canEdit && (
+        <button onClick={handleSave} disabled={saving}
+          className="self-start px-5 py-2 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
+          style={{ backgroundColor: "#ff5100" }}>
+          {saving ? t("projectSettings.saving") : t("projectSettings.saveChanges")}
+        </button>
+      )}
+    </Card>
+  );
+}
+
+/* ── Workflows ──────────────────────────────────────────── */
+const WORKFLOW_MODULES = ["site_diary", "inspection", "punch_list", "safety", "submittal"] as const;
+const APPROVER_TYPES: WorkflowApproverType[] = ["role", "company", "user"];
+
+function WorkflowsSection({ ownerId, projectId, canCreate, canDelete }: { ownerId: string; projectId: string; canCreate: boolean; canDelete: boolean }) {
+  const { t } = useCMLang();
+  const { user } = useAuthCM();
+  const qc = useQueryClient();
+  const { data: steps } = useCMWorkflowSteps(projectId);
+  const [module, setModule] = useState<typeof WORKFLOW_MODULES[number]>("site_diary");
+  const [approverType, setApproverType] = useState<WorkflowApproverType>("role");
+  const [approverValue, setApproverValue] = useState("");
+  const [requiredComment, setRequiredComment] = useState(false);
+  const [requiredSignature, setRequiredSignature] = useState(false);
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_workflow_steps", projectId] });
+
+  const moduleSteps = (steps ?? []).filter((s) => s.module_key === module);
+
+  const handleAdd = async () => {
+    if (!approverValue.trim()) return;
+    const step = await createCMWorkflowStep(ownerId, projectId, {
+      module_key: module, approver_type: approverType, approver_value: approverValue.trim(),
+      step_order: moduleSteps.length, required_comment: requiredComment, required_signature: requiredSignature,
+    });
+    if (user) logCMActivity(projectId, user.id, "created", "workflow_step", step.id, { module_key: module, approver_value: step.approver_value });
+    setApproverValue(""); setRequiredComment(false); setRequiredSignature(false);
+    invalidate();
+  };
+
+  const handleDelete = (id: string) => {
+    deleteCMWorkflowStep(id).then(() => {
+      if (user) logCMActivity(projectId, user.id, "deleted", "workflow_step", id);
+      invalidate();
+    });
+  };
+
+  return (
+    <Card title={t("workflows.title")}>
+      <p className="text-[12px] text-white/45 mb-3">{t("workflows.hint")}</p>
+      <div className="mb-3">
+        <FieldSelect value={module} onChange={setModule}
+          options={WORKFLOW_MODULES.map((m) => ({ value: m, label: t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`) }))} />
+      </div>
+      <div className="flex flex-col gap-2 mb-3">
+        {moduleSteps.map((s, i) => (
+          <div key={s.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
+            <span className="font-mono text-[10px] text-white/30 shrink-0">{i + 1}.</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] text-white/80 truncate">{s.approver_value}</p>
+              <p className="text-[10px] text-white/35">
+                {t(`workflows.approverType.${s.approver_type}`)}
+                {s.required_comment && ` · ${t("workflows.requiresComment")}`}
+                {s.required_signature && ` · ${t("workflows.requiresSignature")}`}
+              </p>
+            </div>
+            {canDelete && (
+              <button onClick={() => handleDelete(s.id)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+            )}
+          </div>
+        ))}
+        {moduleSteps.length === 0 && <p className="text-white/30 text-[12px]">{t("workflows.none")}</p>}
+      </div>
+      {canCreate && (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-3">
+            <FieldSelect value={approverType} onChange={setApproverType} options={APPROVER_TYPES.map((a) => ({ value: a, label: t(`workflows.approverType.${a}`) }))} />
+            <input className={inputCls} placeholder={t("workflows.approverValuePlaceholder")} value={approverValue} onChange={(e) => setApproverValue(e.target.value)} />
+          </div>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={requiredComment} onChange={(e) => setRequiredComment(e.target.checked)} className="w-4 h-4 rounded accent-[#ff5100]" />
+              <span className="text-[12px] text-white/60">{t("workflows.requiresComment")}</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={requiredSignature} onChange={(e) => setRequiredSignature(e.target.checked)} className="w-4 h-4 rounded accent-[#ff5100]" />
+              <span className="text-[12px] text-white/60">{t("workflows.requiresSignature")}</span>
+            </label>
+          </div>
+          <button onClick={handleAdd} disabled={!approverValue.trim()} className={`${smallBtn} self-start disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("workflows.addStep")}</button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ── Forms and Templates ───────────────────────────────── */
+const TEMPLATE_MODULES = ["site_diary", "inspection", "punch_list", "safety", "submittal"] as const;
+
+function ChecklistTemplateRow({ template, canEdit, canDelete, onDeleted }: {
+  template: CMChecklistTemplate; canEdit: boolean; canDelete: boolean; onDeleted: () => void;
+}) {
+  const { t } = useCMLang();
+  const { user } = useAuthCM();
+  const qc = useQueryClient();
+  const { data: items } = useCMChecklistTemplateItems(template.id);
+  const [expanded, setExpanded] = useState(false);
+  const [itemTitle, setItemTitle] = useState("");
+  const invalidateItems = () => qc.invalidateQueries({ queryKey: ["cm_checklist_template_items", template.id] });
+
+  const handleAddItem = async () => {
+    if (!itemTitle.trim()) return;
+    await addCMChecklistTemplateItem(template.id, itemTitle.trim(), items?.length ?? 0);
+    if (user) logCMActivity(template.project_id, user.id, "added", "checklist_template_item", template.id, { title: itemTitle.trim() });
+    setItemTitle("");
+    invalidateItems();
+  };
+
+  return (
+    <div className="rounded-xl bg-white/3 px-3 py-2.5">
+      <div className="flex items-center gap-3 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] text-white/80 font-medium truncate">{template.name}</p>
+          <p className="text-[10px] text-white/35">{t(`${template.module_key === "site_diary" ? "siteDiary" : template.module_key === "punch_list" ? "punchList" : template.module_key}.title`)} · {(items?.length ?? 0)} {t("templates.items")}</p>
+        </div>
+        {canDelete && (
+          <button onClick={(e) => {
+            e.stopPropagation();
+            deleteCMChecklistTemplate(template.id).then(() => {
+              if (user) logCMActivity(template.project_id, user.id, "deleted", "checklist_template", template.id, { name: template.name });
+              onDeleted();
+            });
+          }} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+        )}
+      </div>
+      {expanded && (
+        <div className="flex flex-col gap-2 mt-2.5 pt-2.5 border-t border-white/6">
+          {(items ?? []).map((item) => (
+            <div key={item.id} className="flex items-center gap-2">
+              <span className="text-[12px] text-white/70 flex-1 truncate">{item.title}</span>
+              {canDelete && (
+                <button onClick={() => deleteCMChecklistTemplateItem(item.id).then(invalidateItems)} className="text-white/25 hover:text-red-400 w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+              )}
+            </div>
+          ))}
+          {canEdit && (
+            <div className="flex gap-2">
+              <input className={`${inputCls} flex-1`} placeholder={t("templates.itemPlaceholder")} value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} />
+              <button onClick={handleAddItem} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
+  ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+}) {
+  const { t } = useCMLang();
+  const { user } = useAuthCM();
+  const qc = useQueryClient();
+  const { data: templates } = useCMChecklistTemplates(projectId);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState("");
+  const [module, setModule] = useState<typeof TEMPLATE_MODULES[number]>("inspection");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_checklist_templates", projectId] });
+
+  const handleAdd = async () => {
+    if (!name.trim()) return;
+    const tpl = await createCMChecklistTemplate(ownerId, projectId, module, name.trim());
+    if (user) logCMActivity(projectId, user.id, "created", "checklist_template", tpl.id, { name: tpl.name });
+    setName(""); setAdding(false);
+    invalidate();
+  };
+
+  return (
+    <Card title={t("templates.title")}>
+      <p className="text-[12px] text-white/45 mb-3">{t("templates.hint")}</p>
+      <div className="flex flex-col gap-2">
+        {(templates ?? []).map((tpl) => (
+          <ChecklistTemplateRow key={tpl.id} template={tpl} canEdit={canEdit} canDelete={canDelete} onDeleted={invalidate} />
+        ))}
+        {(templates?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("templates.none")}</p>}
+        {canCreate && (adding ? (
+          <div className="flex flex-col gap-2 mt-1">
+            <input className={inputCls} placeholder={t("templates.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+            <FieldSelect value={module} onChange={setModule}
+              options={TEMPLATE_MODULES.map((m) => ({ value: m, label: t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`) }))} />
+            <div className="flex gap-2">
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("templates.add")}</button>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/* ── Notifications ──────────────────────────────────────── */
+function NotificationsSection({ ownerId, projectId, canCreate, canDelete }: { ownerId: string; projectId: string; canCreate: boolean; canDelete: boolean }) {
+  const { t } = useCMLang();
+  const { user } = useAuthCM();
+  const qc = useQueryClient();
+  const { data: rules } = useCMNotificationRules(projectId);
+  const [event, setEvent] = useState<NotificationEvent>("approval_required");
+  const [recipientType, setRecipientType] = useState<NotificationRecipientType>("role");
+  const [recipientValue, setRecipientValue] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_notification_rules", projectId] });
+
+  const handleAdd = async () => {
+    if (!recipientValue.trim()) return;
+    const rule = await createCMNotificationRule(ownerId, projectId, event, recipientType, recipientValue.trim());
+    if (user) logCMActivity(projectId, user.id, "created", "notification_rule", rule.id, { event_key: event, recipient_value: rule.recipient_value });
+    setRecipientValue("");
+    invalidate();
+  };
+
+  const handleDelete = (id: string) => {
+    deleteCMNotificationRule(id).then(() => {
+      if (user) logCMActivity(projectId, user.id, "deleted", "notification_rule", id);
+      invalidate();
+    });
+  };
+
+  return (
+    <Card title={t("notifications.title")}>
+      <p className="text-[12px] text-white/45 mb-3">{t("notifications.hint")}</p>
+      <div className="flex flex-col gap-2 mb-3">
+        {(rules ?? []).map((r) => (
+          <div key={r.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] text-white/80 truncate">{t(`notifications.event.${r.event_key}`)}</p>
+              <p className="text-[10px] text-white/35 truncate">{t(`notifications.recipientType.${r.recipient_type}`)}: {r.recipient_value}</p>
+            </div>
+            {canDelete && (
+              <button onClick={() => handleDelete(r.id)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+            )}
+          </div>
+        ))}
+        {(rules?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("notifications.none")}</p>}
+      </div>
+      {canCreate && (
+        <div className="flex flex-col gap-2">
+          <FieldSelect value={event} onChange={setEvent} options={NOTIFICATION_EVENTS.map((e) => ({ value: e, label: t(`notifications.event.${e}`) }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <FieldSelect value={recipientType} onChange={setRecipientType}
+              options={(["role", "company", "user", "module"] as NotificationRecipientType[]).map((rt) => ({ value: rt, label: t(`notifications.recipientType.${rt}`) }))} />
+            <input className={inputCls} placeholder={t("notifications.recipientPlaceholder")} value={recipientValue} onChange={(e) => setRecipientValue(e.target.value)} />
+          </div>
+          <button onClick={handleAdd} disabled={!recipientValue.trim()} className={`${smallBtn} self-start disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("notifications.addRule")}</button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ── Data and Archive: real closeout checklist + Archive action ────────── */
+function DataArchiveSection({ project, canEdit, onProjectChanged }: { project: CMProject; canEdit: boolean; onProjectChanged: () => void }) {
+  const { t } = useCMLang();
+  const { user } = useAuthCM();
+  const { data: tasks } = useCMTasks(project.id);
+  const { data: inspections } = useCMInspections(project.id);
+  const { data: submittals } = useCMSubmittals(project.id);
+  const [confirming, setConfirming] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+
+  const openPunch = (tasks ?? []).filter((x) => x.status !== "Done").length;
+  const pendingInspections = (inspections ?? []).filter((x) => x.status === "Scheduled").length;
+  const pendingSubmittals = (submittals ?? []).filter((x) => x.status === "Submitted" || x.status === "Under Review").length;
+  const outstanding = openPunch + pendingInspections + pendingSubmittals;
+  const isArchived = project.status === "Archived";
+
+  const handleArchive = async () => {
+    setArchiving(true);
+    try {
+      await updateCMProject(project.id, { status: "Archived" });
+      if (user) logCMActivity(project.id, user.id, "archived", "project", project.id, { outstanding });
+      onProjectChanged();
+    } finally {
+      setArchiving(false);
+      setConfirming(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    await updateCMProject(project.id, { status: "Active" });
+    if (user) logCMActivity(project.id, user.id, "restored", "project", project.id);
+    onProjectChanged();
+  };
+
+  return (
+    <Card title={t("settingsNav.dataArchive")}>
+      <p className="text-[12px] text-white/45 mb-3">{t("archive.closeoutHint")}</p>
+      <div className="flex flex-col gap-2 mb-4">
+        <div className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5">
+          <span className="text-[12px] text-white/70">{t("archive.openPunch")}</span>
+          <span className={`font-mono text-[12px] font-bold ${openPunch > 0 ? "text-red-400" : "text-emerald-400"}`}>{openPunch}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5">
+          <span className="text-[12px] text-white/70">{t("archive.pendingInspections")}</span>
+          <span className={`font-mono text-[12px] font-bold ${pendingInspections > 0 ? "text-red-400" : "text-emerald-400"}`}>{pendingInspections}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5">
+          <span className="text-[12px] text-white/70">{t("archive.pendingSubmittals")}</span>
+          <span className={`font-mono text-[12px] font-bold ${pendingSubmittals > 0 ? "text-red-400" : "text-emerald-400"}`}>{pendingSubmittals}</span>
+        </div>
+      </div>
+      {isArchived ? (
+        <>
+          <p className="text-[12px] text-emerald-400 mb-3">{t("archive.isArchived")}</p>
+          {canEdit && (
+            <button onClick={handleRestore} className={`${smallBtn}`} style={{ color: "#ff5100" }}>{t("archive.restore")}</button>
+          )}
+        </>
+      ) : canEdit && (
+        confirming ? (
+          <ConfirmationDialog
+            message={outstanding > 0 ? t("archive.confirmWithOutstanding", { count: String(outstanding) }) : t("archive.confirm")}
+            confirmLabel={t("archive.archiveProject")}
+            onConfirm={handleArchive}
+            onCancel={() => setConfirming(false)}
+          />
+        ) : (
+          <button onClick={() => setConfirming(true)} disabled={archiving}
+            className="px-5 py-2 rounded-full text-[11px] font-mono uppercase tracking-widest text-red-400 bg-red-500/10 hover:bg-red-500/15 transition-colors disabled:opacity-40">
+            {t("archive.archiveProject")}
+          </button>
+        )
+      )}
+    </Card>
+  );
+}
+
 /* ── People: unified Team + Subcontractor + Consultant-people view, grouped
  *  by company, so there's one place to see and reassign everyone regardless
  *  of how they joined (invited login vs. a Directory-only contact with no
@@ -1243,9 +1734,7 @@ type SettingsCategory =
 
 /** Categories with no backing feature yet — shown as an honest placeholder
  *  rather than fabricated controls. Each is its own future project. */
-const PLACEHOLDER_CATEGORIES: SettingsCategory[] = [
-  "workPackages", "documentControl", "workflows", "formsTemplates", "notifications", "integrations", "dataArchive",
-];
+const PLACEHOLDER_CATEGORIES: SettingsCategory[] = ["integrations"];
 
 const CATEGORY_ORDER: SettingsCategory[] = [
   "general", "branding", "companies", "peopleRoles", "permissions",
@@ -1318,13 +1807,17 @@ export function ProjectSettingsView({ project, ownerId, onProjectChanged }: {
           canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
       )}
       {category === "checklist" && <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
-      {category === "workPackages" && <PlaceholderSection title={t("settingsNav.workPackages")} description={t("settingsNav.workPackagesHint")} />}
-      {category === "documentControl" && <PlaceholderSection title={t("settingsNav.documentControl")} description={t("settingsNav.documentControlHint")} />}
-      {category === "workflows" && <PlaceholderSection title={t("settingsNav.workflows")} description={t("settingsNav.workflowsHint")} />}
-      {category === "formsTemplates" && <PlaceholderSection title={t("settingsNav.formsTemplates")} description={t("settingsNav.formsTemplatesHint")} />}
-      {category === "notifications" && <PlaceholderSection title={t("settingsNav.notifications")} description={t("settingsNav.notificationsHint")} />}
+      {category === "workPackages" && (
+        <WorkPackagesSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      )}
+      {category === "documentControl" && <DocumentControlSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}
+      {category === "workflows" && <WorkflowsSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canDelete={settingsCanDelete} />}
+      {category === "formsTemplates" && (
+        <TemplatesSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      )}
+      {category === "notifications" && <NotificationsSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canDelete={settingsCanDelete} />}
       {category === "integrations" && <PlaceholderSection title={t("settingsNav.integrations")} description={t("settingsNav.integrationsHint")} />}
-      {category === "dataArchive" && <PlaceholderSection title={t("settingsNav.dataArchive")} description={t("settingsNav.dataArchiveHint")} />}
+      {category === "dataArchive" && <DataArchiveSection project={project} canEdit={settingsCanEdit} onProjectChanged={onProjectChanged} />}
     </div>
   );
 }
