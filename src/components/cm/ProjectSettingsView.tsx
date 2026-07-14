@@ -1,13 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { FieldSelect, Card, Avatar, PROJECT_STATUS_OPTIONS, PROJECT_HEALTH_OPTIONS } from "@/components/cm/shared";
+import { FieldSelect, Card, Avatar, Sheet, PROJECT_STATUS_OPTIONS, PROJECT_HEALTH_OPTIONS } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
   monotonePreviewUrl,
   CM_PROJECT_SECTORS,
+  useCMCompanies,
+  createCMCompany,
+  updateCMCompany,
+  uploadCMCompanyMasterLogo,
+  uploadCMCompanyStamp,
+  CM_COMPANY_TYPES,
+  DISCIPLINES,
+  setCMProjectDisciplineEnabled,
   useCMChecklistItems,
   createCMChecklistItem,
   updateCMChecklistItem,
@@ -53,6 +62,10 @@ import {
   type ProjectStatus,
   type ProjectHealth,
   type ProjectSector,
+  type CMCompany,
+  type CompanyType,
+  type CompanyStatus,
+  type Discipline,
 } from "@/lib/cm-data";
 
 const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
@@ -654,6 +667,262 @@ function ChecklistSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
   );
 }
 
+/* ── Companies: a shared master database (one record per company, reused
+ *  across every project) instead of the free-text company names typed on
+ *  Directory contacts — kept as its own settings category since merging it
+ *  into Consultants (a separate, lightweight per-project branding entity)
+ *  would be a bigger migration than this round covers. ── */
+function CompanySheet({ ownerId, company, onClose, onSaved }: {
+  ownerId: string; company: CMCompany | null; onClose: () => void; onSaved: () => void;
+}) {
+  const { t } = useCMLang();
+  const [name, setName] = useState(company?.name ?? "");
+  const [shortName, setShortName] = useState(company?.short_name ?? "");
+  const [companyType, setCompanyType] = useState<CompanyType | "">(company?.company_type ?? "");
+  const [registrationNumber, setRegistrationNumber] = useState(company?.registration_number ?? "");
+  const [taxNumber, setTaxNumber] = useState(company?.tax_number ?? "");
+  const [address, setAddress] = useState(company?.address ?? "");
+  const [country, setCountry] = useState(company?.country ?? "");
+  const [phone, setPhone] = useState(company?.phone ?? "");
+  const [email, setEmail] = useState(company?.email ?? "");
+  const [website, setWebsite] = useState(company?.website ?? "");
+  const [primaryContact, setPrimaryContact] = useState(company?.primary_contact ?? "");
+  const [status, setStatus] = useState<CompanyStatus>(company?.status ?? "Active");
+  const [notes, setNotes] = useState(company?.notes ?? "");
+  const [logoUrl, setLogoUrl] = useState(company?.logo_url ?? null);
+  const [stampUrl, setStampUrl] = useState(company?.stamp_url ?? null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingStamp, setUploadingStamp] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleUploadLogo = async (file: File) => {
+    if (!company) return;
+    setUploadingLogo(true);
+    try {
+      const url = await uploadCMCompanyMasterLogo(ownerId, company.id, file);
+      await updateCMCompany(company.id, { logo_url: url });
+      setLogoUrl(url);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleUploadStamp = async (file: File) => {
+    if (!company) return;
+    setUploadingStamp(true);
+    try {
+      const url = await uploadCMCompanyStamp(ownerId, company.id, file);
+      await updateCMCompany(company.id, { stamp_url: url });
+      setStampUrl(url);
+    } finally {
+      setUploadingStamp(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || saving) return;
+    setSaving(true);
+    try {
+      const patch = {
+        short_name: shortName.trim() || null,
+        company_type: (companyType || null) as CompanyType | null,
+        registration_number: registrationNumber.trim() || null,
+        tax_number: taxNumber.trim() || null,
+        address: address.trim() || null,
+        country: country.trim() || null,
+        phone: phone.trim() || null,
+        email: email.trim() || null,
+        website: website.trim() || null,
+        primary_contact: primaryContact.trim() || null,
+        status,
+        notes: notes.trim() || null,
+      };
+      if (company) await updateCMCompany(company.id, { name: name.trim(), ...patch });
+      else await createCMCompany(ownerId, name.trim(), patch);
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet title={company ? company.name : t("companies.add")} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+        {company && (
+          <div className="flex items-center gap-3">
+            <label className="h-14 w-24 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-white/5 cursor-pointer">
+              {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full object-contain" style={{ opacity: uploadingLogo ? 0.4 : 1 }} /> : <span className="text-white/20 text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>}
+              <input type="file" accept="image/*" className="hidden" disabled={uploadingLogo} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(f); }} />
+            </label>
+            <label className="h-14 w-24 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-white/5 cursor-pointer">
+              {stampUrl ? <img src={stampUrl} alt="" className="h-full w-full object-contain" style={{ opacity: uploadingStamp ? 0.4 : 1 }} /> : <span className="text-white/20 text-[9px] font-mono uppercase">{t("companies.stamp")}</span>}
+              <input type="file" accept="image/*" className="hidden" disabled={uploadingStamp} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadStamp(f); }} />
+            </label>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.name")}</span>
+            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} required autoFocus disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.shortName")}</span>
+            <input className={inputCls} value={shortName} onChange={(e) => setShortName(e.target.value)} disabled={saving} />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.type")}</span>
+            <FieldSelect value={companyType} onChange={setCompanyType} disabled={saving} placeholder={t("companies.typePlaceholder")}
+              options={[{ value: "", label: t("companies.typePlaceholder") }, ...CM_COMPANY_TYPES.map((ty) => ({ value: ty, label: t(`companyType.${ty}`) }))]} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.status")}</span>
+            <FieldSelect value={status} onChange={setStatus} disabled={saving}
+              options={[{ value: "Active" as CompanyStatus, label: t("companies.active") }, { value: "Inactive" as CompanyStatus, label: t("companies.inactive") }]} />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.registrationNumber")}</span>
+            <input className={inputCls} value={registrationNumber} onChange={(e) => setRegistrationNumber(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.taxNumber")}</span>
+            <input className={inputCls} value={taxNumber} onChange={(e) => setTaxNumber(e.target.value)} disabled={saving} />
+          </label>
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("companies.address")}</span>
+          <input className={inputCls} value={address} onChange={(e) => setAddress(e.target.value)} disabled={saving} />
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.country")}</span>
+            <input className={inputCls} value={country} onChange={(e) => setCountry(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.phone")}</span>
+            <input className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} disabled={saving} />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.email")}</span>
+            <input type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("companies.website")}</span>
+            <input className={inputCls} value={website} onChange={(e) => setWebsite(e.target.value)} disabled={saving} />
+          </label>
+        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("companies.primaryContact")}</span>
+          <input className={inputCls} value={primaryContact} onChange={(e) => setPrimaryContact(e.target.value)} disabled={saving} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("companies.notes")}</span>
+          <textarea className={`${inputCls} resize-y min-h-[64px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
+        </label>
+        <button type="submit" disabled={saving || !name.trim()}
+          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
+          style={{ backgroundColor: "#ff5100" }}>
+          {saving ? t("projectSettings.saving") : t("common.save")}
+        </button>
+      </form>
+    </Sheet>
+  );
+}
+
+function CompaniesSection({ ownerId, canCreate, canEdit }: { ownerId: string; canCreate: boolean; canEdit: boolean }) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: companies } = useCMCompanies(ownerId);
+  const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<CMCompany | null | "new">(null);
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_companies", ownerId] });
+
+  const q = search.trim().toLowerCase();
+  const filtered = (companies ?? []).filter((c) => !q || c.name.toLowerCase().includes(q) || (c.short_name ?? "").toLowerCase().includes(q));
+
+  return (
+    <Card title={t("companies.title")}>
+      <div className="flex flex-col gap-3">
+        <input className={inputCls} placeholder={t("companies.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        {filtered.length === 0 && <p className="text-white/30 text-[12px]">{t("companies.none")}</p>}
+        {filtered.map((c) => (
+          <button key={c.id} onClick={() => canEdit && setEditing(c)} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
+            <Avatar name={c.name} photoUrl={c.logo_url} size={32} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] text-white/80 font-medium truncate">{c.name}</p>
+              <p className="text-[10px] text-white/35 truncate">{c.company_type ? t(`companyType.${c.company_type}`) : t("companies.typePlaceholder")}</p>
+            </div>
+            {c.status === "Inactive" && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25 shrink-0">{t("companies.inactive")}</span>}
+          </button>
+        ))}
+        {canCreate && (
+          <button onClick={() => setEditing("new")} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("companies.add")}</button>
+        )}
+      </div>
+      {editing && (
+        <CompanySheet
+          ownerId={ownerId}
+          company={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); invalidate(); }}
+        />
+      )}
+    </Card>
+  );
+}
+
+/* ── Disciplines: enable/disable which of the fixed global trade list this
+ *  project actually uses, so Inspection/Submittal discipline pickers aren't
+ *  forced to show all 15 on a project that only touches a handful. ── */
+function DisciplinesSection({ project, canEdit, onChanged }: { project: CMProject; canEdit: boolean; onChanged: () => void }) {
+  const { t } = useCMLang();
+  const disabled = new Set(project.disabled_disciplines);
+
+  const toggle = async (d: Discipline) => {
+    if (!canEdit) return;
+    await setCMProjectDisciplineEnabled(project, d, disabled.has(d));
+    onChanged();
+  };
+
+  return (
+    <Card title={t("disciplines.title")}>
+      <p className="text-[12px] text-white/45 mb-3">{t("disciplines.hint")}</p>
+      <div className="flex flex-col gap-1">
+        {DISCIPLINES.map((d) => {
+          const enabled = !disabled.has(d);
+          return (
+            <button key={d} type="button" onClick={() => toggle(d)} disabled={!canEdit}
+              className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-white/5 transition-colors disabled:opacity-60">
+              <span className="text-[12px] text-white/70">{t(`discipline.${d}`)}</span>
+              <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-white/15"}`}
+                style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
+                <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                  style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
+function PlaceholderSection({ title, description }: { title: string; description: string }) {
+  const { t } = useCMLang();
+  return (
+    <Card title={title}>
+      <p className="text-[12px] text-white/40 mb-2">{description}</p>
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("settingsNav.notBuiltYet")}</p>
+    </Card>
+  );
+}
+
 /* ── People: unified Team + Subcontractor + Consultant-people view, grouped
  *  by company, so there's one place to see and reassign everyone regardless
  *  of how they joined (invited login vs. a Directory-only contact with no
@@ -966,21 +1235,96 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
  *  PeopleSection component, just no longer duplicated here), so this is
  *  project configuration only: info, branding, consultants, locations,
  *  checklist. No header of its own since the Insight page already has one. */
+type SettingsCategory =
+  | "general" | "branding" | "companies" | "peopleRoles" | "permissions"
+  | "locations" | "disciplines" | "consultants" | "checklist"
+  | "workPackages" | "documentControl" | "workflows" | "formsTemplates"
+  | "notifications" | "integrations" | "dataArchive";
+
+/** Categories with no backing feature yet — shown as an honest placeholder
+ *  rather than fabricated controls. Each is its own future project. */
+const PLACEHOLDER_CATEGORIES: SettingsCategory[] = [
+  "workPackages", "documentControl", "workflows", "formsTemplates", "notifications", "integrations", "dataArchive",
+];
+
+const CATEGORY_ORDER: SettingsCategory[] = [
+  "general", "branding", "companies", "peopleRoles", "permissions",
+  "locations", "disciplines", "consultants", "checklist",
+  "workPackages", "documentControl", "workflows", "formsTemplates",
+  "notifications", "integrations", "dataArchive",
+];
+
+function SettingsCategoryRow({ label, subtitle, onClick }: { label: string; subtitle?: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-[#0d0d0e] first:rounded-t-2xl last:rounded-b-2xl border-b border-white/6 last:border-b-0 text-left hover:bg-white/5 transition-colors">
+      <div className="min-w-0">
+        <p className="text-[13px] text-white/85">{label}</p>
+        {subtitle && <p className="text-[10px] text-white/30 mt-0.5">{subtitle}</p>}
+      </div>
+      <span className="text-white/25 shrink-0">›</span>
+    </button>
+  );
+}
+
 export function ProjectSettingsView({ project, ownerId, onProjectChanged }: {
   project: CMProject; ownerId: string; onProjectChanged: () => void;
 }) {
+  const { t } = useCMLang();
   const [previewMonotone, setPreviewMonotone] = useState(false);
+  const [category, setCategory] = useState<SettingsCategory | null>(null);
   const settingsCanCreate = usePermission(project.id, ownerId, "settings", "create");
   const settingsCanEdit = usePermission(project.id, ownerId, "settings", "edit");
   const settingsCanDelete = usePermission(project.id, ownerId, "settings", "delete");
+
+  if (category === null) {
+    return (
+      <div className="rounded-2xl overflow-hidden">
+        {CATEGORY_ORDER.map((c) => (
+          <SettingsCategoryRow key={c} label={t(`settingsNav.${c}`)}
+            subtitle={PLACEHOLDER_CATEGORIES.includes(c) ? t("settingsNav.notBuiltYet") : undefined}
+            onClick={() => setCategory(c)} />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
-      <InfoSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />
-      <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
-      <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
-        canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-      <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-      <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      <button onClick={() => setCategory(null)} className="flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors self-start">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
+        <span className="text-[12px] font-mono uppercase tracking-widest">{t("projectSettings.title")}</span>
+      </button>
+
+      {category === "general" && <InfoSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}
+      {category === "branding" && (
+        <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
+      )}
+      {category === "companies" && <CompaniesSection ownerId={ownerId} canCreate={settingsCanCreate} canEdit={settingsCanEdit} />}
+      {category === "peopleRoles" && (
+        <Card title={t("settingsNav.peopleRoles")}>
+          <p className="text-[12px] text-white/45">{t("settingsNav.peopleRolesHint")}</p>
+        </Card>
+      )}
+      {category === "permissions" && (
+        <Card title={t("settingsNav.permissions")}>
+          <p className="text-[12px] text-white/45 mb-3">{t("settingsNav.permissionsHint")}</p>
+          <Link to="/cm/role-permissions" className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("rolePermissions.title")} →</Link>
+        </Card>
+      )}
+      {category === "locations" && <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
+      {category === "disciplines" && <DisciplinesSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}
+      {category === "consultants" && (
+        <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
+          canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      )}
+      {category === "checklist" && <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
+      {category === "workPackages" && <PlaceholderSection title={t("settingsNav.workPackages")} description={t("settingsNav.workPackagesHint")} />}
+      {category === "documentControl" && <PlaceholderSection title={t("settingsNav.documentControl")} description={t("settingsNav.documentControlHint")} />}
+      {category === "workflows" && <PlaceholderSection title={t("settingsNav.workflows")} description={t("settingsNav.workflowsHint")} />}
+      {category === "formsTemplates" && <PlaceholderSection title={t("settingsNav.formsTemplates")} description={t("settingsNav.formsTemplatesHint")} />}
+      {category === "notifications" && <PlaceholderSection title={t("settingsNav.notifications")} description={t("settingsNav.notificationsHint")} />}
+      {category === "integrations" && <PlaceholderSection title={t("settingsNav.integrations")} description={t("settingsNav.integrationsHint")} />}
+      {category === "dataArchive" && <PlaceholderSection title={t("settingsNav.dataArchive")} description={t("settingsNav.dataArchiveHint")} />}
     </div>
   );
 }
