@@ -1217,13 +1217,13 @@ export type CMMemberRole = "admin" | "member" | "visitor";
  *  RLS access tier (unchanged); `job_role` additionally drives a per-module
  *  permission matrix (cm_role_permissions) that can only narrow access, and
  *  defaults to fully permissive while null — a member never assigned one
- *  behaves exactly as they do today. */
-export type CMJobRole =
-  | "project_manager" | "site_engineer" | "site_supervisor" | "qa_qc_engineer"
-  | "safety_officer" | "architect" | "structural_engineer" | "mep_engineer"
-  | "surveyor" | "planning_engineer" | "document_controller" | "store_keeper"
-  | "procurement_officer" | "subcontractor" | "consultant"
-  | "client_representative" | "owners_representative" | "inspector_auditor";
+ *  behaves exactly as they do today.
+ *
+ *  Stored as free text (not a fixed union) so an owner can add roles beyond
+ *  the 18 built-ins below — CM_JOB_ROLES is only the curated starter list
+ *  used to seed pickers; useCMCustomJobRoles() surfaces any additional ones
+ *  already in use. */
+export type CMJobRole = string;
 
 export const CM_JOB_ROLES: CMJobRole[] = [
   "project_manager", "site_engineer", "site_supervisor", "qa_qc_engineer",
@@ -1232,6 +1232,38 @@ export const CM_JOB_ROLES: CMJobRole[] = [
   "procurement_officer", "subcontractor", "consultant",
   "client_representative", "owners_representative", "inspector_auditor",
 ];
+
+/** Custom job roles an owner has created — either by toggling a permission
+ *  for a brand-new role name on the Role Permissions page, or by typing one
+ *  directly onto a team member. Both sources feed every job-role picker so
+ *  a custom role stays usable everywhere once created either way. */
+export function useCMCustomJobRoles(ownerId: string | undefined) {
+  return useQuery<string[]>({
+    queryKey: ["cm_custom_job_roles", ownerId],
+    enabled: !!ownerId && !!supabaseCM,
+    queryFn: async () => {
+      const known = new Set<string>(CM_JOB_ROLES);
+      const [fromMatrix, fromMembers] = await Promise.all([
+        db().from("cm_role_permissions").select("job_role").eq("owner_id", ownerId),
+        db().from("cm_project_members").select("job_role, project:cm_projects!inner(owner_id)").eq("project.owner_id", ownerId).not("job_role", "is", null),
+      ]);
+      if (fromMatrix.error) throw fromMatrix.error;
+      if (fromMembers.error) throw fromMembers.error;
+      const set = new Set<string>();
+      for (const r of fromMatrix.data ?? []) if (!known.has(r.job_role)) set.add(r.job_role);
+      for (const r of (fromMembers.data ?? []) as { job_role: string | null }[]) if (r.job_role && !known.has(r.job_role)) set.add(r.job_role);
+      return Array.from(set).sort();
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+/** Display label for a job role — built-ins go through i18n (`team.jobRole.*`),
+ *  custom roles just show the raw text the owner typed (already human-readable,
+ *  there's no translation for something that doesn't exist ahead of time). */
+export function jobRoleLabel(role: CMJobRole, t: (key: string) => string): string {
+  return CM_JOB_ROLES.includes(role) ? t(`team.jobRole.${role}`) : role;
+}
 
 /** Per-module action matrix, keyed by job_role — the enforcement layer that
  *  job_role exists to drive. A missing row (or job_role === null) means
