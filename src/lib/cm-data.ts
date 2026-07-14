@@ -1818,6 +1818,55 @@ export async function removeCMManpowerRosterItem(id: string) {
   if (error) throw error;
 }
 
+/* ── Planned manpower (spec §14) — planning targets per date/company/trade,
+ *  compared against the actual crews recorded on cm_daily_logs.manpower for
+ *  the same date. Matching is by company+trade text, so a plan row lights up
+ *  Under-resourced / On plan / Over-resourced without any hard link. ──── */
+export interface CMManpowerPlan {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  plan_date: string;
+  company: string | null;
+  trade: string;
+  activity: string | null;
+  planned_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMManpowerPlans(projectId: string | undefined) {
+  return useQuery<CMManpowerPlan[]>({
+    queryKey: ["cm_manpower_plans", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_manpower_plans").select("*").eq("project_id", projectId).order("plan_date", { ascending: false }).order("trade");
+      if (error) throw error;
+      return data as CMManpowerPlan[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMManpowerPlan(
+  ownerId: string,
+  projectId: string,
+  input: Pick<CMManpowerPlan, "plan_date" | "company" | "trade" | "activity" | "planned_count">,
+) {
+  const { error } = await db().from("cm_manpower_plans").insert({ owner_id: ownerId, project_id: projectId, ...input });
+  if (error) throw error;
+}
+
+export async function updateCMManpowerPlan(id: string, patch: Partial<Pick<CMManpowerPlan, "company" | "trade" | "activity" | "planned_count">>) {
+  const { error } = await db().from("cm_manpower_plans").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMManpowerPlan(id: string) {
+  const { error } = await db().from("cm_manpower_plans").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /* ── Project members & invites. RLS is now project-role-aware across every
  *  project-scoped table (cm_project_role() Postgres function), so a member
  *  who accepts an invite can actually read/write Site Diary/Photos/BOQ/etc.
