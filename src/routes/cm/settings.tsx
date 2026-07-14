@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
@@ -39,6 +39,7 @@ const LANG_OPTIONS: CMLang[] = ["en", "km", "zh"];
 function CMSettingsPage() {
   const { user, signOut } = useAuthCM();
   const { lang, setLang, t } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: account } = useCMAccountSettings(user?.id);
   const [theme, setTheme] = useState<"dark" | "light">(getStoredTheme);
@@ -89,6 +90,11 @@ function CMSettingsPage() {
   const handleLangChange = async (l: CMLang) => {
     setLang(l);
     if (user) await upsertCMAccountSettings(user.id, { language: l }).then(invalidateAccount);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/cm" });
   };
 
   return (
@@ -188,7 +194,7 @@ function CMSettingsPage() {
         </div>
 
         <button
-          onClick={() => signOut()}
+          onClick={() => handleSignOut()}
           className="w-full px-5 py-3.5 rounded-2xl text-[13px] font-bold text-red-400 bg-red-500/10 hover:bg-red-500/15 transition-colors"
         >
           {t("settings.signOut")}

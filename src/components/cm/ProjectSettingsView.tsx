@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { FieldSelect, Card, Avatar } from "@/components/cm/shared";
+import { FieldSelect, Card, Avatar, PROJECT_STATUS_OPTIONS, PROJECT_HEALTH_OPTIONS } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
   monotonePreviewUrl,
+  CM_PROJECT_SECTORS,
   useCMChecklistItems,
   createCMChecklistItem,
   updateCMChecklistItem,
@@ -50,12 +51,13 @@ import {
   type CMProjectLocation,
   type CMLocationLevel,
   type ProjectStatus,
+  type ProjectHealth,
+  type ProjectSector,
 } from "@/lib/cm-data";
 
 const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
-const STATUS_OPTIONS: ProjectStatus[] = ["Planning", "Active", "On Hold", "Completed"];
 
 /** Swaps a logo's `src` for the exact same monotone tint the photo stamp
  *  would burn onto a photo, so the settings-page preview toggle shows real
@@ -106,6 +108,9 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
       [t("projectSettings.address"), project.address],
       [t("projectSettings.location"), project.location],
       [t("projectSettings.status"), t(`status.${project.status}`)],
+      [t("projectSettings.health"), t(`health.${project.health}`)],
+      [t("projectSettings.sector"), project.sector ? t(`sector.${project.sector}`) : null],
+      [t("projectSettings.contractValue"), project.contract_value != null ? `${project.currency ? `${project.currency} ` : ""}${project.contract_value.toLocaleString()}` : null],
       [t("projectSettings.start"), project.start_date],
       [t("projectSettings.finish"), project.target_end_date],
       [t("projectSettings.description"), project.description],
@@ -131,6 +136,10 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
   const [location, setLocation] = useState(project.location ?? "");
   const [locationMapUrl, setLocationMapUrl] = useState(project.location_map_url ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project.status);
+  const [health, setHealth] = useState<ProjectHealth>(project.health);
+  const [sector, setSector] = useState<ProjectSector | "">(project.sector ?? "");
+  const [contractValue, setContractValue] = useState(project.contract_value != null ? String(project.contract_value) : "");
+  const [currency, setCurrency] = useState(project.currency ?? "");
   const [startDate, setStartDate] = useState(project.start_date ?? "");
   const [targetEndDate, setTargetEndDate] = useState(project.target_end_date ?? "");
   const [description, setDescription] = useState(project.description ?? "");
@@ -194,6 +203,10 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
         location: location.trim() || null,
         location_map_url: locationMapUrl.trim() || null,
         status,
+        health,
+        sector: sector || null,
+        contract_value: contractValue.trim() ? Number(contractValue) : null,
+        currency: currency.trim() || null,
         start_date: startDate || null,
         target_end_date: targetEndDate || null,
         description: description.trim() || null,
@@ -265,7 +278,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
         <div className="grid grid-cols-3 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("projectSettings.status")}</span>
-            <FieldSelect value={status} onChange={setStatus} options={STATUS_OPTIONS.map((s) => ({ value: s, label: t(`status.${s}`) }))} />
+            <FieldSelect value={status} onChange={setStatus} options={PROJECT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`status.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("projectSettings.start")}</span>
@@ -274,6 +287,27 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("projectSettings.finish")}</span>
             <input type="date" className={inputCls} value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)} />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projectSettings.health")}</span>
+            <FieldSelect value={health} onChange={setHealth} options={PROJECT_HEALTH_OPTIONS.map((h) => ({ value: h, label: t(`health.${h}`) }))} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projectSettings.sector")}</span>
+            <FieldSelect value={sector} onChange={setSector} placeholder={t("projects.sectorPlaceholder")}
+              options={[{ value: "", label: t("projects.sectorPlaceholder") }, ...CM_PROJECT_SECTORS.map((s) => ({ value: s, label: t(`sector.${s}`) }))]} />
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projectSettings.contractValue")}</span>
+            <input type="number" min="0" step="any" className={inputCls} value={contractValue} onChange={(e) => setContractValue(e.target.value)} placeholder="0" />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("projects.currency")}</span>
+            <input className={inputCls} value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="USD" />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
@@ -628,53 +662,60 @@ function ChecklistSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
 const MEMBER_ROLE_OPTIONS: CMMemberRole[] = ["admin", "member", "visitor"];
 const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeholder-white/20 focus:outline-none focus:text-white/70 transition-colors";
 
-/** Inline edit row for one member, shown below their chip in the grouped
- *  view when tapped — position/company (per-project attributes) are kept
- *  visually separate from the permission-role dropdown (system access) so
- *  "job title" and "system permission" aren't confused. */
-function MemberEditRow({ member, companyOptions, allJobRoles, canEdit, onChanged }: {
-  member: CMProjectMember; companyOptions: string[]; allJobRoles: string[]; canEdit: boolean; onChanged: () => void;
+/** Always-visible row for one joined project member — shown up front in its
+ *  own "Members" list (not buried inside the company-grouped avatar chips,
+ *  which mix in subcontractor Directory contacts that never logged in and
+ *  looked visually identical). Role/job-role/company are editable inline,
+ *  no tap-to-expand needed. */
+function MemberRow({ member, companyOptions, allJobRoles, canEdit, canDelete, onChanged, onRemove }: {
+  member: CMProjectMember; companyOptions: string[]; allJobRoles: string[]; canEdit: boolean; canDelete: boolean; onChanged: () => void; onRemove: () => void;
 }) {
   const { t } = useCMLang();
 
-  if (!canEdit) {
-    return (
-      <div className="rounded-lg bg-white/4 px-3 py-2.5 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-        {member.position && <p className="text-[10px] text-white/40">{member.position}</p>}
+  return (
+    <div className="rounded-xl bg-white/4 px-3 py-3 flex flex-col gap-2.5">
+      <div className="flex items-center gap-3">
+        <Avatar name={member.display_name || member.email || "?"} photoUrl={member.avatar_url} size={36} />
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] text-white/85 font-medium truncate">{member.display_name || member.email || t("team.unknownMember")}</p>
+          {member.email && <p className="text-[10px] text-white/35 truncate">{member.email}</p>}
+        </div>
+        {canDelete && (
+          <button onClick={onRemove} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+        )}
+      </div>
+      {canEdit ? (
+        <>
+          <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={member.position ?? ""}
+            onBlur={(e) => { if (e.target.value !== (member.position ?? "")) updateCMMemberPosition(member.id, e.target.value.trim() || null).then(onChanged); }} />
+          <div className="grid grid-cols-2 gap-2">
+            <FieldSelect
+              value={member.company ?? ""}
+              onChange={(v) => updateCMMemberCompany(member.id, v.trim() || null).then(onChanged)}
+              onCreateCustom={(v) => updateCMMemberCompany(member.id, v || null).then(onChanged)}
+              placeholder={t("people.companyPlaceholder")}
+              searchable
+              allowCustom
+              options={companyOptions.map((c) => ({ value: c, label: c }))}
+            />
+            <FieldSelect value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
+              options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
+          </div>
+          <FieldSelect
+            value={member.job_role ?? ""}
+            onChange={(v) => updateCMMemberJobRole(member.id, (v || null) as CMProjectMember["job_role"]).then(onChanged)}
+            placeholder={t("team.jobRolePlaceholder")}
+            searchable
+            allowCustom
+            options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...allJobRoles.map((r) => ({ value: r, label: jobRoleLabel(r, t) }))]}
+          />
+        </>
+      ) : (
         <p className="text-[11px] text-white/60">
-          {member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
+          {member.position && `${member.position} · `}{member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
           {member.job_role && ` · ${jobRoleLabel(member.job_role, t)}`}
         </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg bg-white/4 px-3 py-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-      <input className={positionInputCls} placeholder={t("team.positionPlaceholder")} defaultValue={member.position ?? ""}
-        onBlur={(e) => { if (e.target.value !== (member.position ?? "")) updateCMMemberPosition(member.id, e.target.value.trim() || null).then(onChanged); }} />
-      <div className="flex items-center gap-2">
-        <FieldSelect
-          className="flex-1"
-          value={member.company ?? ""}
-          onChange={(v) => updateCMMemberCompany(member.id, v.trim() || null).then(onChanged)}
-          onCreateCustom={(v) => updateCMMemberCompany(member.id, v || null).then(onChanged)}
-          placeholder={t("people.companyPlaceholder")}
-          searchable
-          allowCustom
-          options={companyOptions.map((c) => ({ value: c, label: c }))}
-        />
-        <FieldSelect value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
-          options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
-      </div>
-      <FieldSelect
-        value={member.job_role ?? ""}
-        onChange={(v) => updateCMMemberJobRole(member.id, (v || null) as CMProjectMember["job_role"]).then(onChanged)}
-        placeholder={t("team.jobRolePlaceholder")}
-        searchable
-        allowCustom
-        options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...allJobRoles.map((r) => ({ value: r, label: jobRoleLabel(r, t) }))]}
-      />
+      )}
     </div>
   );
 }
@@ -745,7 +786,7 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName, canCreat
   );
 }
 
-function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
+export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
 }) {
   const { t } = useCMLang();
@@ -762,7 +803,6 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   const [inviteJobRole, setInviteJobRole] = useState<CMJobRole | null>(null);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [addingContact, setAddingContact] = useState(false);
   const [contactId, setContactId] = useState("");
   const [role, setRole] = useState("");
@@ -776,20 +816,20 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
     [members, subcontractors, consultants],
   );
 
-  // Members and Subcontractors merge into one company-grouped view;
-  // Consultant people stay grouped under their own consultant (below),
-  // since a consultant's company name is a fixed identity, not free text.
-  const grouped = useMemo(() => {
-    const map = new Map<string, { members: CMProjectMember[]; subs: CMProjectSubcontractor[] }>();
+  // Subcontractors (Directory contacts with no login) grouped by company —
+  // kept separate from actual joined Members (below), which used to be
+  // merged into these same company chips and were visually indistinguishable
+  // from a subcontractor contact.
+  const subsGrouped = useMemo(() => {
+    const map = new Map<string, CMProjectSubcontractor[]>();
     const keyOf = (name: string | null) => name || t("projectSettings.independent");
-    const ensure = (k: string) => {
-      if (!map.has(k)) map.set(k, { members: [], subs: [] });
-      return map.get(k)!;
-    };
-    for (const m of members ?? []) ensure(keyOf(m.company)).members.push(m);
-    for (const s of subcontractors ?? []) ensure(keyOf(s.contact.company)).subs.push(s);
+    for (const s of subcontractors ?? []) {
+      const k = keyOf(s.contact.company);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(s);
+    }
     return Array.from(map.entries());
-  }, [members, subcontractors, t]);
+  }, [subcontractors, t]);
 
   const copyInviteLink = async (token: string, id: string) => {
     await navigator.clipboard.writeText(`${window.location.origin}/cm/join/${token}`);
@@ -816,33 +856,29 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   };
 
   const activeInvites = (invites ?? []).filter((i) => !i.revoked_at);
-  const isEmpty = (members?.length ?? 0) === 0 && (subcontractors?.length ?? 0) === 0;
 
   return (
     <Card title={t("people.title")}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          {grouped.map(([company, group]) => (
+          <span className={labelCls}>{t("people.members")}</span>
+          {(members ?? []).map((m) => (
+            <MemberRow key={m.id} member={m} companyOptions={companyOptions} allJobRoles={allJobRoles} canEdit={canEdit} canDelete={canDelete}
+              onChanged={invalidateMembers} onRemove={() => removeCMProjectMember(m.id).then(invalidateMembers)} />
+          ))}
+          {(members?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("people.noMembers")}</p>}
+        </div>
+
+        <div className="flex flex-col gap-3 pt-3 border-t border-white/5">
+          <span className={labelCls}>{t("people.subcontractors")}</span>
+          {subsGrouped.map(([company, subs]) => (
             <div key={company} className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[12px] text-white/80 font-medium truncate">{company}</p>
-                <span className="font-mono text-[10px] text-white/30 shrink-0">×{group.members.length + group.subs.length}</span>
+                <span className="font-mono text-[10px] text-white/30 shrink-0">×{subs.length}</span>
               </div>
               <div className="flex flex-wrap gap-3">
-                {group.members.map((m) => (
-                  <div key={m.id} className="relative flex flex-col items-center gap-1 cursor-pointer" style={{ width: 56 }}
-                    onClick={() => setExpandedMemberId((cur) => (cur === m.id ? null : m.id))}>
-                    <Avatar name={m.display_name || m.email || "?"} photoUrl={m.avatar_url} size={36} />
-                    <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={m.display_name || m.email || ""}>
-                      {m.position || t(`team.role.${m.role}`)}
-                    </p>
-                    {canDelete && (
-                      <button onClick={(e) => { e.stopPropagation(); removeCMProjectMember(m.id).then(invalidateMembers); }}
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
-                    )}
-                  </div>
-                ))}
-                {group.subs.map((s) => (
+                {subs.map((s) => (
                   <div key={s.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
                     <Avatar name={s.contact.name} photoUrl={s.contact.photo_url} size={36} />
                     <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={s.contact.name}>
@@ -855,15 +891,12 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
                   </div>
                 ))}
               </div>
-              {group.members.filter((m) => m.id === expandedMemberId).map((m) => (
-                <MemberEditRow key={m.id} member={m} companyOptions={companyOptions} allJobRoles={allJobRoles} canEdit={canEdit} onChanged={invalidateMembers} />
-              ))}
             </div>
           ))}
           {(consultants ?? []).map((c) => (
             <ConsultantPeopleGroup key={c.id} ownerId={ownerId} consultantId={c.id} consultantName={c.name} canCreate={canCreate} canDelete={canDelete} />
           ))}
-          {isEmpty && <p className="text-white/30 text-[12px]">{t("people.noPeople")}</p>}
+          {(subcontractors?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("people.noSubcontractors")}</p>}
           {(contacts?.length ?? 0) === 0 && (
             <p className="text-[11px] text-white/30">
               {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
@@ -928,34 +961,26 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
 }
 
 /* ── Main settings view ──────────────────────────────── */
-export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged }: {
-  project: CMProject; ownerId: string; onBack: () => void; onProjectChanged: () => void;
+/** Rendered as the "Settings" tab of the Project Insight page — team/people
+ *  management now lives in its own Insight "Team" tab (still the same
+ *  PeopleSection component, just no longer duplicated here), so this is
+ *  project configuration only: info, branding, consultants, locations,
+ *  checklist. No header of its own since the Insight page already has one. */
+export function ProjectSettingsView({ project, ownerId, onProjectChanged }: {
+  project: CMProject; ownerId: string; onProjectChanged: () => void;
 }) {
-  const { t } = useCMLang();
   const [previewMonotone, setPreviewMonotone] = useState(false);
   const settingsCanCreate = usePermission(project.id, ownerId, "settings", "create");
   const settingsCanEdit = usePermission(project.id, ownerId, "settings", "edit");
   const settingsCanDelete = usePermission(project.id, ownerId, "settings", "delete");
-  const peopleCanCreate = usePermission(project.id, ownerId, "people", "create");
-  const peopleCanEdit = usePermission(project.id, ownerId, "people", "edit");
-  const peopleCanDelete = usePermission(project.id, ownerId, "people", "delete");
   return (
-    <>
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
-        </button>
-        <h1 className="text-xl font-extrabold tracking-tight text-white">{t("projectSettings.title")}</h1>
-      </div>
-      <div className="flex flex-col gap-4">
-        <InfoSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />
-        <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
-        <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
-          canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-        <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-        <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-        <PeopleSection ownerId={ownerId} projectId={project.id} canCreate={peopleCanCreate} canEdit={peopleCanEdit} canDelete={peopleCanDelete} />
-      </div>
-    </>
+    <div className="flex flex-col gap-4">
+      <InfoSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />
+      <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
+      <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
+        canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+    </div>
   );
 }

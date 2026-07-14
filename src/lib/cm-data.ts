@@ -8,9 +8,20 @@ import { supabaseCM } from "./supabase-cm";
 
 const STALE_TIME = 60 * 1000;
 
-export type ProjectStatus = "Planning" | "Active" | "On Hold" | "Completed";
+export type ProjectStatus =
+  | "Draft" | "Tender" | "Planning" | "Pre-Construction" | "Active" | "On Hold" | "Delayed"
+  | "Defect Liability" | "Handover" | "Completed" | "Closed" | "Archived";
+export type ProjectHealth = "Green" | "Amber" | "Red";
+export type ProjectSector =
+  | "Industrial" | "Warehouse" | "Factory" | "Commercial" | "Residential" | "Infrastructure"
+  | "Airport" | "Stadium" | "Logistics" | "Healthcare" | "Education" | "Other";
 export type TaskStatus = "To Do" | "In Progress" | "Blocked" | "Done";
 export type TaskPriority = "Low" | "Medium" | "High";
+
+export const CM_PROJECT_SECTORS: ProjectSector[] = [
+  "Industrial", "Warehouse", "Factory", "Commercial", "Residential", "Infrastructure",
+  "Airport", "Stadium", "Logistics", "Healthcare", "Education", "Other",
+];
 
 export interface CMProject {
   id: string;
@@ -21,6 +32,10 @@ export interface CMProject {
   location: string | null;
   location_map_url: string | null;
   status: ProjectStatus;
+  health: ProjectHealth;
+  sector: ProjectSector | null;
+  contract_value: number | null;
+  currency: string | null;
   start_date: string | null;
   target_end_date: string | null;
   description: string | null;
@@ -161,7 +176,7 @@ export function useCMProject(projectId: string | undefined) {
 
 export async function createCMProject(
   ownerId: string,
-  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "address" | "location" | "location_map_url" | "status" | "start_date" | "target_end_date" | "description" | "project_code">>,
+  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "address" | "location" | "location_map_url" | "status" | "health" | "sector" | "contract_value" | "currency" | "start_date" | "target_end_date" | "description" | "project_code">>,
 ) {
   const { data, error } = await db().from("cm_projects").insert({ owner_id: ownerId, ...input }).select().single();
   if (error) throw error;
@@ -176,6 +191,31 @@ export async function updateCMProject(id: string, patch: Partial<CMProject>) {
 export async function deleteCMProject(id: string) {
   const { error } = await db().from("cm_projects").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ── Project favorites (per-user, not per-owner — any team member can star
+ *  a project independently of everyone else's picks) ─────────────────── */
+export function useCMProjectFavorites(userId: string | undefined) {
+  return useQuery<Set<string>>({
+    queryKey: ["cm_project_favorites", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_favorites").select("project_id").eq("user_id", userId);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.project_id as string));
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function setCMProjectFavorite(userId: string, projectId: string, isFavorite: boolean) {
+  if (isFavorite) {
+    const { error } = await db().from("cm_project_favorites").upsert({ user_id: userId, project_id: projectId }, { onConflict: "project_id,user_id" });
+    if (error) throw error;
+  } else {
+    const { error } = await db().from("cm_project_favorites").delete().eq("user_id", userId).eq("project_id", projectId);
+    if (error) throw error;
+  }
 }
 
 /* ── Daily logs (site diary) ───────────────────────────────── */
@@ -1461,8 +1501,8 @@ export function useCMInviteByToken(token: string | undefined) {
 /** Finds an existing Directory contact by (owner, email) and refreshes its
  *  name, or creates one — via a SECURITY DEFINER RPC since this runs as the
  *  invitee, who has no write access to the project owner's contacts. */
-export async function upsertCMDirectoryContactByEmail(ownerId: string, email: string, name: string): Promise<CMDirectoryContact> {
-  const { data, error } = await db().rpc("cm_upsert_contact_from_invite", { p_owner_id: ownerId, p_email: email, p_name: name }).single();
+export async function upsertCMDirectoryContactByEmail(ownerId: string, email: string, name: string, photoUrl: string | null = null): Promise<CMDirectoryContact> {
+  const { data, error } = await db().rpc("cm_upsert_contact_from_invite", { p_owner_id: ownerId, p_email: email, p_name: name, p_photo_url: photoUrl }).single();
   if (error) throw error;
   return data as CMDirectoryContact;
 }
@@ -1487,8 +1527,9 @@ export async function acceptCMProjectInvite(
   if (findError) throw findError;
   if (existing) return existing as CMProjectMember;
 
+  const avatarUrl = (user.user_metadata?.avatar_url as string) ?? null;
   const contact = user.email && intake.displayName
-    ? await upsertCMDirectoryContactByEmail(invite.project_owner_id, user.email, intake.displayName)
+    ? await upsertCMDirectoryContactByEmail(invite.project_owner_id, user.email, intake.displayName, avatarUrl)
     : null;
 
   const { data, error } = await db().from("cm_project_members").insert({
@@ -1498,7 +1539,7 @@ export async function acceptCMProjectInvite(
     job_role: invite.job_role,
     email: user.email ?? null,
     display_name: intake.displayName || null,
-    avatar_url: (user.user_metadata?.avatar_url as string) ?? null,
+    avatar_url: avatarUrl,
     position: intake.position,
     contact_id: contact?.id ?? null,
     company: contact?.company ?? null,
@@ -2044,6 +2085,7 @@ export interface CMAccountSettings {
   company_name: string | null;
   company_logo_url: string | null;
   language: "en" | "km" | "zh";
+  projects_view: "card" | "list";
   photo_show_company_logo: boolean;
   photo_show_project_info: boolean;
   photo_show_consultant_logos: boolean;

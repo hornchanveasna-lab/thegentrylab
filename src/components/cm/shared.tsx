@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
   useCMProjectLocations, locationBreadcrumb, useCMCompanies, createCMCompany,
+  type ProjectStatus, type ProjectHealth,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
@@ -59,6 +60,27 @@ export function useCMTheme(): "dark" | "light" {
 
 export const EQUIPMENT_STATUS_OPTIONS: EquipmentStatus[] = ["Operational", "Maintenance", "Out of Service"];
 export const EQUIPMENT_STATUS_COLOR: Record<EquipmentStatus, string> = { Operational: "#34d399", Maintenance: "#fbbf24", "Out of Service": "#f43f5e" };
+
+export const PROJECT_STATUS_OPTIONS: ProjectStatus[] = [
+  "Draft", "Tender", "Planning", "Pre-Construction", "Active", "On Hold", "Delayed",
+  "Defect Liability", "Handover", "Completed", "Closed", "Archived",
+];
+export const PROJECT_STATUS_COLOR: Record<ProjectStatus, string> = {
+  Draft: "#94a3b8",
+  Tender: "#94a3b8",
+  Planning: "#94a3b8",
+  "Pre-Construction": "#94a3b8",
+  Active: "#ff5100",
+  "On Hold": "#fbbf24",
+  Delayed: "#f43f5e",
+  "Defect Liability": "#a78bfa",
+  Handover: "#a78bfa",
+  Completed: "#34d399",
+  Closed: "#34d399",
+  Archived: "#64748b",
+};
+export const PROJECT_HEALTH_OPTIONS: ProjectHealth[] = ["Green", "Amber", "Red"];
+export const PROJECT_HEALTH_COLOR: Record<ProjectHealth, string> = { Green: "#34d399", Amber: "#fbbf24", Red: "#f43f5e" };
 
 /** A read-only colored pill, extracted from what every module was hand-
  *  rolling inline for its status/priority chips. `PriorityBadge` is the
