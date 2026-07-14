@@ -2289,6 +2289,13 @@ export function buildSCurveSeries(project: CMProject, logs: CMDailyLog[], schedu
 /* ── Inspections (per project) ─────────────────────────── */
 export type InspectionStatus = "Scheduled" | "Passed" | "Failed" | "Not Applicable";
 
+export const INSPECTION_TYPES = [
+  "Work Inspection Request", "Material Inspection Request", "Mock-up Inspection", "Pre-pour Inspection",
+  "Hold Point Inspection", "Witness Point Inspection", "Testing Request", "Factory Inspection",
+  "Final Inspection", "Joint Inspection",
+] as const;
+export type InspectionType = typeof INSPECTION_TYPES[number];
+
 export interface CMInspection {
   id: string;
   project_id: string;
@@ -2296,11 +2303,15 @@ export interface CMInspection {
   doc_number: string | null;
   title: string;
   status: InspectionStatus;
+  inspection_type: InspectionType | null;
   discipline: Discipline | null;
   location_id: string | null;
   inspector: string | null;
   inspection_date: string;
   notes: string | null;
+  drawing_ref: string | null;
+  method_statement_ref: string | null;
+  itp_ref: string | null;
   photos: string[];
   photo_thumbs: string[];
   created_at: string;
@@ -2323,9 +2334,10 @@ export function useCMInspections(projectId: string | undefined) {
 export async function createCMInspection(
   ownerId: string,
   projectId: string,
-  input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "discipline" | "location_id" | "inspector" | "inspection_date" | "notes">>,
+  input: Pick<CMInspection, "title"> & Partial<Pick<CMInspection, "status" | "inspection_type" | "discipline" | "location_id" | "inspector" | "inspection_date" | "notes" | "drawing_ref" | "method_statement_ref" | "itp_ref">>,
 ) {
-  const docNumber = await generateCMDocNumber(projectId, "inspection", "WIR", input.inspection_date);
+  const fallbackCode = input.inspection_type === "Material Inspection Request" ? "MIR" : "WIR";
+  const docNumber = await generateCMDocNumber(projectId, "inspection", fallbackCode, input.inspection_date);
   const { data, error } = await db().from("cm_inspections").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   logCMActivity(projectId, ownerId, "created", "inspection", data.id, { title: data.title });
@@ -2346,7 +2358,12 @@ export async function deleteCMInspection(id: string) {
 }
 
 /* ── Safety records (per project) ──────────────────────── */
-export type SafetyRecordType = "Incident" | "Toolbox Talk" | "Hazard Observation";
+export const SAFETY_RECORD_TYPES = [
+  "Safety Observation", "Unsafe Act", "Unsafe Condition", "Near Miss", "Incident", "Accident",
+  "Toolbox Talk", "Safety Induction", "Permit to Work", "Safety Inspection", "Corrective Action",
+  "PPE Check", "Equipment Safety Check",
+] as const;
+export type SafetyRecordType = typeof SAFETY_RECORD_TYPES[number];
 export type SafetySeverity = "Low" | "Medium" | "High" | "Critical";
 export type SafetyStatus = "Open" | "Resolved";
 

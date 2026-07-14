@@ -18,8 +18,10 @@ import {
   useCMProjectLocations,
   locationBreadcrumb,
   enabledDisciplines,
+  INSPECTION_TYPES,
   type CMInspection,
   type InspectionStatus,
+  type InspectionType,
   type Discipline,
 } from "@/lib/cm-data";
 
@@ -40,11 +42,15 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Passed" && s !== "Failed") || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [status, setStatus] = useState<InspectionStatus>(existing?.status ?? "Scheduled");
+  const [inspectionType, setInspectionType] = useState<InspectionType | null>(existing?.inspection_type ?? null);
   const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
   const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
   const [inspector, setInspector] = useState(existing?.inspector ?? "");
   const [inspectionDate, setInspectionDate] = useState(() => existing?.inspection_date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [drawingRef, setDrawingRef] = useState(existing?.drawing_ref ?? "");
+  const [methodStatementRef, setMethodStatementRef] = useState(existing?.method_statement_ref ?? "");
+  const [itpRef, setItpRef] = useState(existing?.itp_ref ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -56,7 +62,9 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
     setError("");
     try {
       const patch = {
-        title: title.trim(), status, discipline, location_id: locationId, inspector: inspector.trim() || null, inspection_date: inspectionDate, notes: notes.trim() || null,
+        title: title.trim(), status, inspection_type: inspectionType, discipline, location_id: locationId, inspector: inspector.trim() || null,
+        inspection_date: inspectionDate, notes: notes.trim() || null,
+        drawing_ref: drawingRef.trim() || null, method_statement_ref: methodStatementRef.trim() || null, itp_ref: itpRef.trim() || null,
       };
       const inspection = existing ?? await createCMInspection(ownerId, projectId, patch);
       if (existing) await updateCMInspection(existing.id, patch);
@@ -91,6 +99,12 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
             <input type="date" className={inputCls} value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} disabled={saving} />
           </label>
         </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("inspection.type")}</span>
+          <FieldSelect value={inspectionType ?? ""} onChange={(v) => setInspectionType((v || null) as InspectionType | null)} disabled={saving}
+            placeholder={t("inspection.typePlaceholder")}
+            options={[{ value: "", label: t("inspection.typePlaceholder") }, ...INSPECTION_TYPES.map((it) => ({ value: it, label: t(`inspectionType.${it}`) }))]} />
+        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("common.discipline")}</span>
@@ -105,6 +119,20 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
           <span className={labelCls}>{t("common.location")}</span>
           <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
         </label>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("inspection.drawingRef")}</span>
+            <input className={inputCls} value={drawingRef} onChange={(e) => setDrawingRef(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("inspection.methodStatementRef")}</span>
+            <input className={inputCls} value={methodStatementRef} onChange={(e) => setMethodStatementRef(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("inspection.itpRef")}</span>
+            <input className={inputCls} value={itpRef} onChange={(e) => setItpRef(e.target.value)} disabled={saving} />
+          </label>
+        </div>
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("inspection.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
@@ -153,6 +181,7 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, use
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
+          {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`inspectionType.${item.inspection_type}`)}</span>}
           {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
@@ -171,6 +200,9 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, use
           {item.discipline && <p className="text-[12px] text-white/60">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
           {location && <p className="text-[12px] text-white/60">{t("common.location")}: {locationBreadcrumb(location, locations ?? [])}</p>}
           {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
+          {item.drawing_ref && <p className="text-[12px] text-white/60">{t("inspection.drawingRef")}: {item.drawing_ref}</p>}
+          {item.method_statement_ref && <p className="text-[12px] text-white/60">{t("inspection.methodStatementRef")}: {item.method_statement_ref}</p>}
+          {item.itp_ref && <p className="text-[12px] text-white/60">{t("inspection.itpRef")}: {item.itp_ref}</p>}
           {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
           {item.photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
