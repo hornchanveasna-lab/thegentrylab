@@ -302,6 +302,9 @@ const EN: Dict = {
   "notifications.recipientType.company": "Company",
   "notifications.recipientType.user": "User",
   "notifications.recipientType.module": "Module",
+  "notifications.bell.title": "Notifications",
+  "notifications.bell.markAllRead": "Mark all read",
+  "notifications.bell.none": "No notifications yet.",
 
   "archive.archiveProject": "Archive project",
   "archive.restore": "Restore project",
@@ -1192,6 +1195,9 @@ const KM: Dict = {
   "notifications.recipientType.company": "ក្រុមហ៊ុន",
   "notifications.recipientType.user": "អ្នកប្រើ",
   "notifications.recipientType.module": "ម៉ូឌុល",
+  "notifications.bell.title": "ការជូនដំណឹង",
+  "notifications.bell.markAllRead": "សម្គាល់ថាបានអានទាំងអស់",
+  "notifications.bell.none": "មិនទាន់មានការជូនដំណឹងទេ។",
 
   "archive.archiveProject": "ដាក់គម្រោងក្នុងបណ្ណសារ",
   "archive.restore": "ស្តារគម្រោង",
@@ -2082,6 +2088,9 @@ const ZH: Dict = {
   "notifications.recipientType.company": "公司",
   "notifications.recipientType.user": "用户",
   "notifications.recipientType.module": "模块",
+  "notifications.bell.title": "通知",
+  "notifications.bell.markAllRead": "全部标记为已读",
+  "notifications.bell.none": "暂无通知。",
 
   "archive.archiveProject": "归档项目",
   "archive.restore": "恢复项目",

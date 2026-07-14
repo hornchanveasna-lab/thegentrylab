@@ -38,6 +38,7 @@ import { Route as CmRolePermissionsRouteImport } from './routes/cm/role-permissi
 import { Route as CmReportsRouteImport } from './routes/cm/reports'
 import { Route as CmPunchListRouteImport } from './routes/cm/punch-list'
 import { Route as CmPhotosRouteImport } from './routes/cm/photos'
+import { Route as CmNotificationsRouteImport } from './routes/cm/notifications'
 import { Route as CmManpowerRouteImport } from './routes/cm/manpower'
 import { Route as CmInspectionRouteImport } from './routes/cm/inspection'
 import { Route as CmEquipmentRouteImport } from './routes/cm/equipment'
@@ -198,6 +199,11 @@ const CmPhotosRoute = CmPhotosRouteImport.update({
   path: '/cm/photos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmNotificationsRoute = CmNotificationsRouteImport.update({
+  id: '/cm/notifications',
+  path: '/cm/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CmManpowerRoute = CmManpowerRouteImport.update({
   id: '/cm/manpower',
   path: '/cm/manpower',
@@ -289,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
   '/cm/manpower': typeof CmManpowerRoute
+  '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
   '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
@@ -332,6 +339,7 @@ export interface FileRoutesByTo {
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
   '/cm/manpower': typeof CmManpowerRoute
+  '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
   '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
@@ -377,6 +385,7 @@ export interface FileRoutesById {
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
   '/cm/manpower': typeof CmManpowerRoute
+  '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
   '/cm/punch-list': typeof CmPunchListRoute
   '/cm/reports': typeof CmReportsRoute
@@ -423,6 +432,7 @@ export interface FileRouteTypes {
     | '/cm/equipment'
     | '/cm/inspection'
     | '/cm/manpower'
+    | '/cm/notifications'
     | '/cm/photos'
     | '/cm/punch-list'
     | '/cm/reports'
@@ -466,6 +476,7 @@ export interface FileRouteTypes {
     | '/cm/equipment'
     | '/cm/inspection'
     | '/cm/manpower'
+    | '/cm/notifications'
     | '/cm/photos'
     | '/cm/punch-list'
     | '/cm/reports'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/cm/equipment'
     | '/cm/inspection'
     | '/cm/manpower'
+    | '/cm/notifications'
     | '/cm/photos'
     | '/cm/punch-list'
     | '/cm/reports'
@@ -554,6 +566,7 @@ export interface RootRouteChildren {
   CmEquipmentRoute: typeof CmEquipmentRoute
   CmInspectionRoute: typeof CmInspectionRoute
   CmManpowerRoute: typeof CmManpowerRoute
+  CmNotificationsRoute: typeof CmNotificationsRoute
   CmPhotosRoute: typeof CmPhotosRoute
   CmPunchListRoute: typeof CmPunchListRoute
   CmReportsRoute: typeof CmReportsRoute
@@ -777,6 +790,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmPhotosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/notifications': {
+      id: '/cm/notifications'
+      path: '/cm/notifications'
+      fullPath: '/cm/notifications'
+      preLoaderRoute: typeof CmNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cm/manpower': {
       id: '/cm/manpower'
       path: '/cm/manpower'
@@ -919,6 +939,7 @@ const rootRouteChildren: RootRouteChildren = {
   CmEquipmentRoute: CmEquipmentRoute,
   CmInspectionRoute: CmInspectionRoute,
   CmManpowerRoute: CmManpowerRoute,
+  CmNotificationsRoute: CmNotificationsRoute,
   CmPhotosRoute: CmPhotosRoute,
   CmPunchListRoute: CmPunchListRoute,
   CmReportsRoute: CmReportsRoute,
