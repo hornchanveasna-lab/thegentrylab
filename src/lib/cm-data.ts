@@ -8,9 +8,20 @@ import { supabaseCM } from "./supabase-cm";
 
 const STALE_TIME = 60 * 1000;
 
-export type ProjectStatus = "Planning" | "Active" | "On Hold" | "Completed";
+export type ProjectStatus =
+  | "Draft" | "Tender" | "Planning" | "Pre-Construction" | "Active" | "On Hold" | "Delayed"
+  | "Defect Liability" | "Handover" | "Completed" | "Closed" | "Archived";
+export type ProjectHealth = "Green" | "Amber" | "Red";
+export type ProjectSector =
+  | "Industrial" | "Warehouse" | "Factory" | "Commercial" | "Residential" | "Infrastructure"
+  | "Airport" | "Stadium" | "Logistics" | "Healthcare" | "Education" | "Other";
 export type TaskStatus = "To Do" | "In Progress" | "Blocked" | "Done";
 export type TaskPriority = "Low" | "Medium" | "High";
+
+export const CM_PROJECT_SECTORS: ProjectSector[] = [
+  "Industrial", "Warehouse", "Factory", "Commercial", "Residential", "Infrastructure",
+  "Airport", "Stadium", "Logistics", "Healthcare", "Education", "Other",
+];
 
 export interface CMProject {
   id: string;
@@ -21,6 +32,10 @@ export interface CMProject {
   location: string | null;
   location_map_url: string | null;
   status: ProjectStatus;
+  health: ProjectHealth;
+  sector: ProjectSector | null;
+  contract_value: number | null;
+  currency: string | null;
   start_date: string | null;
   target_end_date: string | null;
   description: string | null;
@@ -161,7 +176,7 @@ export function useCMProject(projectId: string | undefined) {
 
 export async function createCMProject(
   ownerId: string,
-  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "address" | "location" | "location_map_url" | "status" | "start_date" | "target_end_date" | "description" | "project_code">>,
+  input: Pick<CMProject, "name"> & Partial<Pick<CMProject, "client" | "address" | "location" | "location_map_url" | "status" | "health" | "sector" | "contract_value" | "currency" | "start_date" | "target_end_date" | "description" | "project_code">>,
 ) {
   const { data, error } = await db().from("cm_projects").insert({ owner_id: ownerId, ...input }).select().single();
   if (error) throw error;
@@ -176,6 +191,31 @@ export async function updateCMProject(id: string, patch: Partial<CMProject>) {
 export async function deleteCMProject(id: string) {
   const { error } = await db().from("cm_projects").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ── Project favorites (per-user, not per-owner — any team member can star
+ *  a project independently of everyone else's picks) ─────────────────── */
+export function useCMProjectFavorites(userId: string | undefined) {
+  return useQuery<Set<string>>({
+    queryKey: ["cm_project_favorites", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_project_favorites").select("project_id").eq("user_id", userId);
+      if (error) throw error;
+      return new Set((data ?? []).map((r) => r.project_id as string));
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function setCMProjectFavorite(userId: string, projectId: string, isFavorite: boolean) {
+  if (isFavorite) {
+    const { error } = await db().from("cm_project_favorites").upsert({ user_id: userId, project_id: projectId }, { onConflict: "project_id,user_id" });
+    if (error) throw error;
+  } else {
+    const { error } = await db().from("cm_project_favorites").delete().eq("user_id", userId).eq("project_id", projectId);
+    if (error) throw error;
+  }
 }
 
 /* ── Daily logs (site diary) ───────────────────────────────── */
@@ -2045,6 +2085,7 @@ export interface CMAccountSettings {
   company_name: string | null;
   company_logo_url: string | null;
   language: "en" | "km" | "zh";
+  projects_view: "card" | "list";
   photo_show_company_logo: boolean;
   photo_show_project_info: boolean;
   photo_show_consultant_logos: boolean;

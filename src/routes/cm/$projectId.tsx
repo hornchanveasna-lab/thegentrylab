@@ -3,15 +3,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { ProjectSettingsView } from "@/components/cm/ProjectSettingsView";
-import { useCMProject, type ProjectStatus } from "@/lib/cm-data";
+import { useCMProject } from "@/lib/cm-data";
+import { PROJECT_STATUS_COLOR } from "@/components/cm/shared";
 
 export const Route = createFileRoute("/cm/$projectId")({
   component: CMProjectPage,
 });
-
-const PROJECT_STATUS_COLOR: Record<ProjectStatus, string> = {
-  Planning: "#94a3b8", Active: "#ff5100", "On Hold": "#fbbf24", Completed: "#34d399",
-};
 
 function CMProjectPage() {
   const { projectId } = Route.useParams();
