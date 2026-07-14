@@ -967,6 +967,195 @@ function ZoomableImage({ src, onSwipeLeft, onSwipeRight }: { src: string; onSwip
   );
 }
 
+type AnnotationTool = "arrow" | "circle" | "text";
+interface AnnotationBase { color: string }
+type Annotation =
+  | (AnnotationBase & { type: "arrow"; x1: number; y1: number; x2: number; y2: number })
+  | (AnnotationBase & { type: "circle"; x1: number; y1: number; x2: number; y2: number })
+  | (AnnotationBase & { type: "text"; x: number; y: number; text: string });
+
+const ANNOTATION_COLORS = ["#ff3b30", "#ffd60a", "#34c759", "#ffffff"];
+
+function drawAnnotation(ctx: CanvasRenderingContext2D, a: Annotation) {
+  ctx.strokeStyle = a.color;
+  ctx.fillStyle = a.color;
+  ctx.lineWidth = 3;
+  ctx.lineCap = "round";
+  if (a.type === "arrow") {
+    const angle = Math.atan2(a.y2 - a.y1, a.x2 - a.x1);
+    ctx.beginPath();
+    ctx.moveTo(a.x1, a.y1);
+    ctx.lineTo(a.x2, a.y2);
+    ctx.stroke();
+    const headLen = 16;
+    ctx.beginPath();
+    ctx.moveTo(a.x2, a.y2);
+    ctx.lineTo(a.x2 - headLen * Math.cos(angle - Math.PI / 7), a.y2 - headLen * Math.sin(angle - Math.PI / 7));
+    ctx.lineTo(a.x2 - headLen * Math.cos(angle + Math.PI / 7), a.y2 - headLen * Math.sin(angle + Math.PI / 7));
+    ctx.closePath();
+    ctx.fill();
+  } else if (a.type === "circle") {
+    const r = Math.hypot(a.x2 - a.x1, a.y2 - a.y1);
+    ctx.beginPath();
+    ctx.arc(a.x1, a.y1, r, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    ctx.font = "bold 22px sans-serif";
+    ctx.textBaseline = "top";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(0,0,0,0.65)";
+    ctx.strokeText(a.text, a.x, a.y);
+    ctx.fillText(a.text, a.x, a.y);
+  }
+}
+
+/** Freeform arrow/circle/text markup drawn onto a copy of the photo — the
+ *  original stored record is untouched; "Done" saves the annotated result
+ *  as a new downloaded image, the same way the lightbox's existing "Save"
+ *  action works, rather than replacing the photo in whichever module owns it. */
+function AnnotationEditor({ src, onCancel, onDone }: { src: string; onCancel: () => void; onDone: (blob: Blob) => void }) {
+  const { t } = useCMLang();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+  const [tool, setTool] = useState<AnnotationTool>("arrow");
+  const [color, setColor] = useState(ANNOTATION_COLORS[0]);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [liveShape, setLiveShape] = useState<Annotation | null>(null);
+  const drawStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [pendingText, setPendingText] = useState<{ x: number; y: number } | null>(null);
+  const [textValue, setTextValue] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (cancelled) return;
+      imgRef.current = img;
+      const maxW = containerRef.current?.clientWidth ?? img.naturalWidth;
+      const maxH = containerRef.current?.clientHeight ?? img.naturalHeight;
+      const ratio = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+      setCanvasSize({ w: Math.round(img.naturalWidth * ratio), h: Math.round(img.naturalHeight * ratio) });
+    };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img || canvasSize.w === 0) return;
+    canvas.width = canvasSize.w;
+    canvas.height = canvasSize.h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(img, 0, 0, canvasSize.w, canvasSize.h);
+    for (const a of annotations) drawAnnotation(ctx, a);
+    if (liveShape) drawAnnotation(ctx, liveShape);
+  }, [annotations, liveShape, canvasSize]);
+
+  const canvasPoint = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const p = canvasPoint(e);
+    if (tool === "text") {
+      setPendingText(p);
+      setTextValue("");
+      return;
+    }
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    drawStartRef.current = p;
+    setLiveShape({ type: tool, x1: p.x, y1: p.y, x2: p.x, y2: p.y, color });
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!drawStartRef.current) return;
+    const p = canvasPoint(e);
+    setLiveShape({ type: tool as "arrow" | "circle", x1: drawStartRef.current.x, y1: drawStartRef.current.y, x2: p.x, y2: p.y, color });
+  };
+
+  const handlePointerUp = () => {
+    if (!drawStartRef.current || !liveShape) return;
+    setAnnotations((prev) => [...prev, liveShape]);
+    setLiveShape(null);
+    drawStartRef.current = null;
+  };
+
+  const commitText = () => {
+    if (pendingText && textValue.trim()) {
+      setAnnotations((prev) => [...prev, { type: "text", x: pendingText.x, y: pendingText.y, text: textValue.trim(), color }]);
+    }
+    setPendingText(null);
+    setTextValue("");
+  };
+
+  const handleDone = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvas.toBlob((blob) => { if (blob) onDone(blob); }, "image/jpeg", 0.92);
+  };
+
+  const TOOL_ICON: Record<AnnotationTool, React.ReactNode> = {
+    arrow: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 19L19 5" /><path d="M9 5h10v10" /></svg>,
+    circle: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8" /></svg>,
+    text: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 5h14M12 5v14" /></svg>,
+  };
+
+  return (
+    <div className="fixed inset-0 z-[210] bg-[#000] flex flex-col">
+      <div className="flex items-center justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shrink-0">
+        <button onClick={onCancel} className="text-[13px] text-white/[0.70] hover:text-white px-2 py-1.5">{t("common.cancel")}</button>
+        <p className="text-[12px] font-bold text-white/[0.85]">{t("photos.annotate")}</p>
+        <button onClick={handleDone} className="text-[13px] font-bold px-3 py-1.5 rounded-full text-black" style={{ backgroundColor: "#ff5100" }}>{t("common.done")}</button>
+      </div>
+
+      <div ref={containerRef} className="flex-1 relative min-h-0 flex items-center justify-center overflow-hidden">
+        <canvas ref={canvasRef}
+          onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}
+          className="touch-none max-w-full max-h-full" style={{ width: canvasSize.w || undefined, height: canvasSize.h || undefined }} />
+        {pendingText && (
+          <input
+            autoFocus
+            value={textValue}
+            onChange={(e) => setTextValue(e.target.value)}
+            onBlur={commitText}
+            onKeyDown={(e) => { if (e.key === "Enter") commitText(); if (e.key === "Escape") { setPendingText(null); setTextValue(""); } }}
+            style={{ position: "absolute", left: pendingText.x, top: pendingText.y, color, minWidth: 40 }}
+            className="bg-transparent border-b border-dashed border-white/50 text-[22px] font-bold outline-none"
+          />
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2.5 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 shrink-0">
+        <div className="flex items-center justify-center gap-2">
+          {ANNOTATION_COLORS.map((c) => (
+            <button key={c} onClick={() => setColor(c)} aria-label={c}
+              className="w-6 h-6 rounded-full shrink-0" style={{ backgroundColor: c, outline: color === c ? "2px solid white" : "none", outlineOffset: 2 }} />
+          ))}
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          {(["arrow", "circle", "text"] as AnnotationTool[]).map((tt) => (
+            <button key={tt} onClick={() => setTool(tt)}
+              className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+              style={tool === tt ? { backgroundColor: "#ff5100", color: "#000" } : { backgroundColor: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.80)" }}>
+              {TOOL_ICON[tt]}
+            </button>
+          ))}
+          <button onClick={() => setAnnotations((prev) => prev.slice(0, -1))} disabled={annotations.length === 0}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/[0.10] text-white/[0.80] disabled:opacity-30">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInReport, onDelete }: {
   items: PhotoLightboxItem[];
   index: number;
@@ -979,6 +1168,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [annotating, setAnnotating] = useState(false);
   const filmstripRef = useRef<HTMLDivElement>(null);
   const item = items[index];
 
@@ -1028,6 +1218,21 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
   const goPrev = () => index > 0 && onIndexChange(index - 1);
   const goNext = () => index < items.length - 1 && onIndexChange(index + 1);
 
+  const handleAnnotationDone = (blob: Blob) => {
+    setAnnotating(false);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `photo-annotated-${Date.now()}.jpg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    setToast(t("photos.annotateSaved"));
+  };
+
+  if (annotating) {
+    return <AnnotationEditor src={item.url} onCancel={() => setAnnotating(false)} onDone={handleAnnotationDone} />;
+  }
+
   // This viewer is meant to stay a dark, immersive overlay no matter which app
   // theme is active — every color below uses a bracket-arbitrary Tailwind value
   // instead of the plain opacity shorthand, since the app's light-mode
@@ -1055,6 +1260,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
                   {t("photos.showInReport")}
                 </button>
               )}
+              <button onClick={() => { setMenuOpen(false); setAnnotating(true); }} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">{t("photos.annotate")}</button>
               <button onClick={handleSave} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">{t("photos.save")}</button>
               <button onClick={handleShare} className={`w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] ${onDelete ? "border-b border-white/[0.06]" : ""}`}>{t("photos.share")}</button>
               {onDelete && (
