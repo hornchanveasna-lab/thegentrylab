@@ -78,6 +78,10 @@ export interface CMManpowerRow {
    *  falls back to 8h normal / 0h OT so historical totals stay sensible. */
   normal_hours?: number | null;
   ot_hours?: number | null;
+  /** Workforce photos for this crew (photo-first entry) — stored on the row
+   *  itself so the picture travels with the shared Site Diary record. */
+  photos?: string[];
+  photo_thumbs?: string[];
 }
 
 /** Worker categories per the Manpower spec — a fixed suggestion list, not a
@@ -943,7 +947,7 @@ export function useAllCMPhotos(userId: string | undefined) {
     queryFn: async () => {
       const client = db();
       const [logs, inspections, safety, tasks, submittals] = await Promise.all([
-        client.from("cm_daily_logs").select("id, photos, photo_thumbs, log_date, activities, project_id, created_at, cm_projects(name)"),
+        client.from("cm_daily_logs").select("id, photos, photo_thumbs, log_date, activities, manpower, deliveries, visitors, project_id, created_at, cm_projects(name)"),
         client.from("cm_inspections").select("id, photos, photo_thumbs, inspection_date, title, project_id, created_at, cm_projects(name)"),
         client.from("cm_safety_records").select("id, photos, photo_thumbs, record_date, title, project_id, created_at, cm_projects(name)"),
         client.from("cm_tasks").select("id, photos, photo_thumbs, created_at, title, project_id, cm_projects(name)"),
@@ -951,9 +955,32 @@ export function useAllCMPhotos(userId: string | undefined) {
       ]);
       for (const r of [logs, inspections, safety, tasks, submittals]) if (r.error) throw r.error;
 
+      // Photos embedded inside a daily log's structured rows (manpower
+      // crews, deliveries, visitors) live on the row JSON, not the log's
+      // own photos[] — flatten them in so the gallery shows everything the
+      // Site Diary day shows, deep-linking back to the same log record.
+      type EmbeddedPhotoRow = { photos?: string[]; photo_thumbs?: string[] };
+      const logRows = logs.data as unknown as (PhotoRow & {
+        log_date: string; activities: string | null;
+        manpower: CMManpowerRow[] | null; deliveries: CMDeliveryRow[] | null; visitors: CMVisitorRow[] | null;
+      })[];
+      const embedded: CMPhotoWithContext[] = logRows.flatMap((l) => {
+        const fromRows = <R extends EmbeddedPhotoRow>(rows: R[] | null, cap: (r: R) => string | null) =>
+          (rows ?? []).flatMap((r) => (r.photos ?? []).map((url, i) => ({
+            url, thumbUrl: (r.photo_thumbs ?? [])[i] || url, module: "siteDiary" as const,
+            date: l.log_date, createdAt: l.created_at, projectId: l.project_id, recordId: l.id,
+            projectName: l.cm_projects?.name ?? "Untitled project", caption: cap(r),
+          })));
+        return [
+          ...fromRows(l.manpower, (r) => [r.company, r.trade].filter(Boolean).join(" — ") || null),
+          ...fromRows(l.deliveries, (r) => r.material || null),
+          ...fromRows(l.visitors, (r) => r.name || null),
+        ];
+      });
+
       const all = [
-        ...photoRowsToContext(logs.data as unknown as (PhotoRow & { log_date: string; activities: string | null })[],
-          "siteDiary", (r) => r.log_date, (r) => r.activities?.slice(0, 60) || null),
+        ...embedded,
+        ...photoRowsToContext(logRows, "siteDiary", (r) => r.log_date, (r) => r.activities?.slice(0, 60) || null),
         ...photoRowsToContext(inspections.data as unknown as (PhotoRow & { inspection_date: string; title: string })[],
           "inspection", (r) => r.inspection_date, (r) => r.title),
         ...photoRowsToContext(safety.data as unknown as (PhotoRow & { record_date: string; title: string })[],
