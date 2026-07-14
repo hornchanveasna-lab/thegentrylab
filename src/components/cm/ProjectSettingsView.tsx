@@ -29,6 +29,8 @@ import {
   updateCMMemberCompany,
   removeCMProjectMember,
   CM_JOB_ROLES,
+  useCMCustomJobRoles,
+  jobRoleLabel,
   distinctCMCompanyNames,
   useCMProjectInvites,
   createCMProjectInvite,
@@ -629,8 +631,8 @@ const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeh
  *  view when tapped — position/company (per-project attributes) are kept
  *  visually separate from the permission-role dropdown (system access) so
  *  "job title" and "system permission" aren't confused. */
-function MemberEditRow({ member, companyOptions, canEdit, onChanged }: {
-  member: CMProjectMember; companyOptions: string[]; canEdit: boolean; onChanged: () => void;
+function MemberEditRow({ member, companyOptions, allJobRoles, canEdit, onChanged }: {
+  member: CMProjectMember; companyOptions: string[]; allJobRoles: string[]; canEdit: boolean; onChanged: () => void;
 }) {
   const { t } = useCMLang();
 
@@ -640,7 +642,7 @@ function MemberEditRow({ member, companyOptions, canEdit, onChanged }: {
         {member.position && <p className="text-[10px] text-white/40">{member.position}</p>}
         <p className="text-[11px] text-white/60">
           {member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
-          {member.job_role && ` · ${t(`team.jobRole.${member.job_role}`)}`}
+          {member.job_role && ` · ${jobRoleLabel(member.job_role, t)}`}
         </p>
       </div>
     );
@@ -668,7 +670,9 @@ function MemberEditRow({ member, companyOptions, canEdit, onChanged }: {
         value={member.job_role ?? ""}
         onChange={(v) => updateCMMemberJobRole(member.id, (v || null) as CMProjectMember["job_role"]).then(onChanged)}
         placeholder={t("team.jobRolePlaceholder")}
-        options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...CM_JOB_ROLES.map((r) => ({ value: r, label: t(`team.jobRole.${r}`) }))]}
+        searchable
+        allowCustom
+        options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...allJobRoles.map((r) => ({ value: r, label: jobRoleLabel(r, t) }))]}
       />
     </div>
   );
@@ -750,6 +754,8 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   const { data: subcontractors } = useCMProjectSubcontractors(projectId);
   const { data: consultants } = useCMProjectConsultants(projectId);
   const { data: contacts } = useCMDirectoryContacts(ownerId);
+  const { data: customJobRoles } = useCMCustomJobRoles(ownerId);
+  const allJobRoles = [...CM_JOB_ROLES, ...(customJobRoles ?? [])];
 
   const [inviteRole, setInviteRole] = useState<CMMemberRole>("member");
   const [inviteJobRole, setInviteJobRole] = useState<CMJobRole | null>(null);
@@ -849,7 +855,7 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
                 ))}
               </div>
               {group.members.filter((m) => m.id === expandedMemberId).map((m) => (
-                <MemberEditRow key={m.id} member={m} companyOptions={companyOptions} canEdit={canEdit} onChanged={invalidateMembers} />
+                <MemberEditRow key={m.id} member={m} companyOptions={companyOptions} allJobRoles={allJobRoles} canEdit={canEdit} onChanged={invalidateMembers} />
               ))}
             </div>
           ))}
@@ -891,7 +897,9 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
                 value={inviteJobRole ?? ""}
                 onChange={(v) => setInviteJobRole((v || null) as CMJobRole | null)}
                 placeholder={t("team.jobRolePlaceholder")}
-                options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...CM_JOB_ROLES.map((r) => ({ value: r, label: t(`team.jobRole.${r}`) }))]}
+                searchable
+                allowCustom
+                options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...allJobRoles.map((r) => ({ value: r, label: jobRoleLabel(r, t) }))]}
               />
               <button onClick={handleCreateInvite} disabled={creatingInvite} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
                 {t("team.generateLink")}
