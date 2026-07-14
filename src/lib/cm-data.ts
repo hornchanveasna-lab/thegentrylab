@@ -15,7 +15,7 @@ export type ProjectHealth = "Green" | "Amber" | "Red";
 export type ProjectSector =
   | "Industrial" | "Warehouse" | "Factory" | "Commercial" | "Residential" | "Infrastructure"
   | "Airport" | "Stadium" | "Logistics" | "Healthcare" | "Education" | "Other";
-export type TaskStatus = "To Do" | "In Progress" | "Blocked" | "Done";
+export type TaskStatus = "To Do" | "In Progress" | "Blocked" | "Ready for Check" | "Done";
 export type TaskPriority = "Low" | "Medium" | "High";
 
 export const CM_PROJECT_SECTORS: ProjectSector[] = [
@@ -154,8 +154,17 @@ export interface CMTask {
   assignee: string | null;
   due_date: string | null;
   sort_order: number;
+  /** Before photos — taken when the punch item is raised. */
   photos: string[];
   photo_thumbs: string[];
+  /** After photos — uploaded by the responsible company once the defect
+   *  is fixed, for the engineer to compare against the before photos. */
+  after_photos: string[];
+  after_photo_thumbs: string[];
+  /** Set when an engineer accepts (closes) the punch from "Ready for
+   *  Check" — null again if a later reopen sends it back for rework. */
+  verified_by: string | null;
+  closed_at: string | null;
   created_at: string;
   updated_at: string;
 }
