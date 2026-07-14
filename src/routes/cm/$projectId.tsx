@@ -21,7 +21,7 @@ import {
   useCMSubmittals,
   useCMDailyLogs,
   useCMScheduleItems,
-  useCMBOQItems,
+  useActiveCMBOQItems,
   useCMEquipment,
   useCMAuditLog,
   buildSCurveSeries,
@@ -109,7 +109,7 @@ function CMProjectPage() {
   const { data: submittals } = useCMSubmittals(projectId);
   const { data: logs } = useCMDailyLogs(projectId);
   const { data: scheduleItems } = useCMScheduleItems(projectId);
-  const { data: boqItems } = useCMBOQItems(projectId);
+  const { data: boqItems } = useActiveCMBOQItems(projectId);
   const { data: equipment } = useCMEquipment(projectId);
   const { data: auditLog } = useCMAuditLog(projectId);
   const [tab, setTab] = useState<InsightTab>("overview");

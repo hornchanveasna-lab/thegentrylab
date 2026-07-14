@@ -3,6 +3,7 @@
  * Supabase project (own auth.users, standard auth.uid()-based RLS — no shared
  * account system, no custom JWT claims).
  */
+import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabaseCM } from "./supabase-cm";
 
@@ -2098,11 +2099,97 @@ export function useCMLinkedMembersByContact(ownerId: string | undefined) {
   });
 }
 
+/* ── BOQ versions (Tender / Contract / Approved Baseline / Revised, etc.) ─
+ * Only one version per project is ever the live "Approved Baseline" at a
+ * time — approving a new one automatically supersedes the previous. */
+export type CMBOQVersionStatus = "Draft" | "Imported" | "Under Review" | "Approved Baseline" | "Superseded" | "Archived";
+export const BOQ_VERSION_STATUSES: CMBOQVersionStatus[] = ["Draft", "Imported", "Under Review", "Approved Baseline", "Superseded", "Archived"];
+
+export interface CMBOQVersion {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  version_number: number;
+  name: string;
+  status: CMBOQVersionStatus;
+  locked: boolean;
+  approved_by: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMBOQVersions(projectId: string | undefined) {
+  return useQuery<CMBOQVersion[]>({
+    queryKey: ["cm_boq_versions", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_boq_versions").select("*").eq("project_id", projectId).order("version_number");
+      if (error) throw error;
+      return data as CMBOQVersion[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+/** The version a viewer should land on by default: the live Approved
+ *  Baseline if one exists, otherwise the most recently created non-archived
+ *  version (typically the only Draft when a project has just one). */
+export function activeCMBOQVersion(versions: CMBOQVersion[] | undefined): CMBOQVersion | null {
+  if (!versions || versions.length === 0) return null;
+  const baseline = versions.find((v) => v.status === "Approved Baseline");
+  if (baseline) return baseline;
+  const live = versions.filter((v) => v.status !== "Archived" && v.status !== "Superseded");
+  if (live.length === 0) return versions[versions.length - 1];
+  return live.reduce((latest, v) => (v.version_number > latest.version_number ? v : latest), live[0]);
+}
+
+export async function createCMBOQVersion(ownerId: string, projectId: string, name: string, existingVersions: CMBOQVersion[]) {
+  const nextNumber = existingVersions.length > 0 ? Math.max(...existingVersions.map((v) => v.version_number)) + 1 : 1;
+  const { data, error } = await db().from("cm_boq_versions")
+    .insert({ owner_id: ownerId, project_id: projectId, version_number: nextNumber, name, status: "Draft" }).select().single();
+  if (error) throw error;
+  return data as CMBOQVersion;
+}
+
+/** Copies every item from `sourceVersionId` into a brand-new Draft version —
+ *  the only sanctioned way to change an Approved Baseline's numbers, so the
+ *  original approved record stays untouched until the revision is itself
+ *  approved (which then supersedes the source). */
+export async function createCMBOQRevision(ownerId: string, projectId: string, sourceVersion: CMBOQVersion, existingVersions: CMBOQVersion[]) {
+  const revision = await createCMBOQVersion(ownerId, projectId, `${sourceVersion.name.replace(/ V\d+$/, "")} V${existingVersions.length + 1} (Revision)`, existingVersions);
+  const { data: sourceItems, error } = await db().from("cm_boq_items").select("*").eq("version_id", sourceVersion.id);
+  if (error) throw error;
+  if (sourceItems && sourceItems.length > 0) {
+    const copies = (sourceItems as CMBOQItem[]).map(({ id: _id, created_at: _c, updated_at: _u, version_id: _v, ...rest }) => ({ ...rest, version_id: revision.id }));
+    const { error: insertError } = await db().from("cm_boq_items").insert(copies);
+    if (insertError) throw insertError;
+  }
+  return revision;
+}
+
+/** Approves `version` as the new commercial baseline — locks it (original
+ *  quantity/rate become read-only) and supersedes whichever version was
+ *  previously the Approved Baseline for this project, if any. */
+export async function approveCMBOQBaseline(projectId: string, versionId: string, userId: string, allVersions: CMBOQVersion[]) {
+  const previousBaseline = allVersions.find((v) => v.status === "Approved Baseline" && v.id !== versionId);
+  if (previousBaseline) {
+    const { error } = await db().from("cm_boq_versions").update({ status: "Superseded" }).eq("id", previousBaseline.id);
+    if (error) throw error;
+  }
+  const { error } = await db().from("cm_boq_versions")
+    .update({ status: "Approved Baseline", locked: true, approved_by: userId, approved_at: new Date().toISOString() })
+    .eq("id", versionId);
+  if (error) throw error;
+  await logCMActivity(projectId, userId, "approved_baseline", "boq", versionId, {});
+}
+
 /* ── BOQ items (per project) ───────────────────────────── */
 export interface CMBOQItem {
   id: string;
   project_id: string;
   owner_id: string;
+  version_id: string | null;
   description: string;
   unit: string | null;
   quantity: number;
@@ -2126,10 +2213,27 @@ export function useCMBOQItems(projectId: string | undefined) {
   });
 }
 
+/** Most of the app (Dashboard, Reports, Schedule, Site Diary, Search,
+ *  Project Insight) should only ever see the one *effective* set of BOQ
+ *  items — otherwise a project with a superseded version plus its revision
+ *  would double-count everything. Only the BOQ module itself browses across
+ *  versions on purpose. */
+export function useActiveCMBOQItems(projectId: string | undefined) {
+  const itemsQuery = useCMBOQItems(projectId);
+  const versionsQuery = useCMBOQVersions(projectId);
+  const active = activeCMBOQVersion(versionsQuery.data);
+  const data = useMemo(() => {
+    if (!itemsQuery.data) return itemsQuery.data;
+    if (!active) return itemsQuery.data.filter((i) => !i.version_id);
+    return itemsQuery.data.filter((i) => i.version_id === active.id);
+  }, [itemsQuery.data, active]);
+  return { ...itemsQuery, data };
+}
+
 export async function createCMBOQItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category">>,
+  input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category" | "version_id">>,
 ) {
   const { data, error } = await db().from("cm_boq_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -2552,7 +2656,7 @@ export function useCMGlobalSearch(projectId: string | undefined, query: string):
   const { data: safetyRecords } = useCMSafetyRecords(projectId);
   const { data: submittals } = useCMSubmittals(projectId);
   const { data: equipment } = useCMEquipment(projectId);
-  const { data: boqItems } = useCMBOQItems(projectId);
+  const { data: boqItems } = useActiveCMBOQItems(projectId);
   const { data: scheduleItems } = useCMScheduleItems(projectId);
 
   const q = query.trim().toLowerCase();
