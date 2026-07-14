@@ -16,6 +16,9 @@ import {
   deleteCMTask,
   uploadCMPhotoWithThumb,
   useCMProjectLocations,
+  useCMProjectMembers,
+  addCMComment,
+  logCMActivity,
   locationBreadcrumb,
   type CMTask,
   type TaskStatus,
@@ -28,17 +31,17 @@ export const Route = createFileRoute("/cm/punch-list")({
 });
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
-  "To Do": "#94a3b8", "In Progress": "#ff5100", Blocked: "#f43f5e", Done: "#34d399",
+  "To Do": "#94a3b8", "In Progress": "#ff5100", Blocked: "#f43f5e", "Ready for Check": "#a78bfa", Done: "#34d399",
 };
 const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "#fbbf24", High: "#f43f5e" };
-const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Done"];
+const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Ready for Check", "Done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 
 function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, onCreated }: {
   ownerId: string; projectId: string; existing?: CMTask; canApprove: boolean; onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || s !== "Done" || s === existing?.status);
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Done" && s !== "Ready for Check") || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(existing?.status ?? "To Do");
@@ -134,9 +137,25 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
   const [editing, setEditing] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("punchList", item.id);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [afterPhotos, setAfterPhotos] = useState<File[]>([]);
+  const [showAfterPicker, setShowAfterPicker] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
   const { data: locations } = useCMProjectLocations(item.project_id);
+  const { data: members } = useCMProjectMembers(item.project_id);
   const location = locations?.find((l) => l.id === item.location_id);
-  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || s !== "Done" || s === item.status);
+  const isClosed = item.status === "Done";
+  const isReadyForCheck = item.status === "Ready for Check";
+  // Closed punches cannot be edited or deleted — only an approver can reopen
+  // one (a real permission, not just anyone re-editing a signed-off record).
+  const editableNow = canEdit && (!isClosed || canApprove);
+  const deletableNow = canDelete && !isClosed;
+  const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Done" && s !== "Ready for Check") || s === item.status);
+  const memberLabel = (id: string | null) => {
+    if (!id) return null;
+    const m = members?.find((x) => x.user_id === id);
+    return m?.display_name || m?.email || null;
+  };
   const handleStatusChange = async (status: TaskStatus) => {
     setBusy(true);
     try { await updateCMTask(item.id, { status }); onChanged(); } finally { setBusy(false); }
@@ -146,8 +165,51 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
     setBusy(true);
     try { await deleteCMTask(item.id); onChanged(); } finally { setBusy(false); }
   };
+  const handleSubmitForCheck = async () => {
+    if (afterPhotos.length === 0) return;
+    setBusy(true);
+    try {
+      const uploaded = await Promise.all(afterPhotos.map((f) => uploadCMPhotoWithThumb(item.owner_id, item.project_id, f)));
+      await updateCMTask(item.id, {
+        after_photos: [...item.after_photos, ...uploaded.map((u) => u.url)],
+        after_photo_thumbs: [...item.after_photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+        status: "Ready for Check",
+      });
+      await logCMActivity(item.project_id, userId, "submitted_for_check", "punch_list", item.id, { title: item.title });
+      setAfterPhotos([]);
+      setShowAfterPicker(false);
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handleAcceptClose = async () => {
+    setBusy(true);
+    try {
+      await updateCMTask(item.id, { status: "Done", verified_by: userId, closed_at: new Date().toISOString() });
+      await logCMActivity(item.project_id, userId, "closed", "punch_list", item.id, { title: item.title });
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handleReject = async () => {
+    if (!rejectReason.trim()) return;
+    setBusy(true);
+    try {
+      await addCMComment(item.project_id, "punch_list", item.id, userId, `${t("punchList.rejectedPrefix")}: ${rejectReason.trim()}`);
+      await updateCMTask(item.id, { status: "In Progress" });
+      await logCMActivity(item.project_id, userId, "rejected", "punch_list", item.id, { reason: rejectReason.trim() });
+      setRejecting(false);
+      setRejectReason("");
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
   const sc = STATUS_COLOR[item.status];
   const pc = PRIORITY_COLOR[item.priority];
+  const verifierName = memberLabel(item.verified_by);
 
   return (
     <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2 transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
@@ -157,20 +219,20 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
           {item.doc_number && <p className="font-mono text-[10px] text-white/30 mt-0.5">{item.doc_number}</p>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {canEdit && (
+          {editableNow && (
             <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
               </svg>
             </button>
           )}
-          {canDelete && (
+          {deletableNow && (
             <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
           )}
         </div>
       </div>
       {item.description && <p className="text-[12px] text-white/45">{item.description}</p>}
-      {canEdit ? (
+      {editableNow ? (
         <SegmentedField
           options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`), color: STATUS_COLOR[s] }))}
           value={item.status} disabled={busy} onChange={handleStatusChange}
@@ -185,16 +247,100 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>
       {item.photos.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-1">
-          {item.photos.map((url, i) => (
-            <button key={url} type="button" data-photo-url={url}
-              onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
-              className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-              <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
-            </button>
-          ))}
+        <div className="flex flex-col gap-1">
+          {item.after_photos.length > 0 && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("punchList.beforePhotos")}</span>}
+          <div className="flex flex-wrap gap-2 mt-1">
+            {item.photos.map((url, i) => (
+              <button key={url} type="button" data-photo-url={url}
+                onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
+                className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+                <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+              </button>
+            ))}
+          </div>
         </div>
       )}
+      {item.after_photos.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("punchList.afterPhotos")}</span>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {item.after_photos.map((url, i) => (
+              <button key={url} type="button" data-photo-url={url}
+                onClick={() => onOpenPhoto(item.after_photos.map((u, idx) => ({ url: u, thumbUrl: item.after_photo_thumbs[idx] || u })), i)}
+                className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+                <img src={item.after_photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" style={{ boxShadow: "0 0 0 1.5px #22c55e55" }} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Contractor: submit an after-photo to move the item to Ready for Check. */}
+      {canEdit && !isClosed && !isReadyForCheck && (
+        <div className="flex flex-col gap-2 mt-1 pt-2 border-t border-white/6">
+          {!showAfterPicker ? (
+            <button type="button" onClick={() => setShowAfterPicker(true)} disabled={busy}
+              className="self-start text-[11px] font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: "#a78bfa22", color: "#a78bfa" }}>
+              {t("punchList.uploadAfterPhoto")}
+            </button>
+          ) : (
+            <>
+              <PhotoPicker photos={afterPhotos} setPhotos={setAfterPhotos} disabled={busy} />
+              <div className="flex gap-2">
+                <button type="button" onClick={handleSubmitForCheck} disabled={busy || afterPhotos.length === 0}
+                  className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-black disabled:opacity-40" style={{ backgroundColor: "#a78bfa" }}>
+                  {t("punchList.submitForCheck")}
+                </button>
+                <button type="button" onClick={() => { setShowAfterPicker(false); setAfterPhotos([]); }} disabled={busy}
+                  className="px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white/50 bg-white/5">
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Engineer verification: compare before/after, accept & close or reject. */}
+      {canApprove && isReadyForCheck && (
+        <div className="flex flex-col gap-2 mt-1 pt-2 border-t border-white/6">
+          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#a78bfa" }}>{t("punchList.readyForCheck")}</span>
+          {!rejecting ? (
+            <div className="flex gap-2">
+              <button type="button" onClick={handleAcceptClose} disabled={busy}
+                className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-black disabled:opacity-40" style={{ backgroundColor: "#34d399" }}>
+                {t("punchList.acceptClose")}
+              </button>
+              <button type="button" onClick={() => setRejecting(true)} disabled={busy}
+                className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white disabled:opacity-40" style={{ backgroundColor: "#f43f5e" }}>
+                {t("punchList.reject")}
+              </button>
+            </div>
+          ) : (
+            <>
+              <textarea className={`${inputCls} resize-y min-h-[56px]`} value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={t("punchList.rejectReasonPlaceholder")} disabled={busy} autoFocus />
+              <div className="flex gap-2">
+                <button type="button" onClick={handleReject} disabled={busy || !rejectReason.trim()}
+                  className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white disabled:opacity-40" style={{ backgroundColor: "#f43f5e" }}>
+                  {t("punchList.confirmReject")}
+                </button>
+                <button type="button" onClick={() => { setRejecting(false); setRejectReason(""); }} disabled={busy}
+                  className="px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white/50 bg-white/5">
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {isClosed && (verifierName || item.closed_at) && (
+        <p className="font-mono text-[10px] text-white/30 mt-0.5">
+          {t("punchList.closedBy")} {verifierName ?? t("punchList.unknownUser")}{item.closed_at ? ` — ${item.closed_at.slice(0, 10)}` : ""}
+        </p>
+      )}
+
       <RecordDetailExtras projectId={item.project_id} entityType="punch_list" module="punchList" entityId={item.id} userId={userId} locationId={item.location_id} />
       {editing && (
         <NewPunchItemSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
