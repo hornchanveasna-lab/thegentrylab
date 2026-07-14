@@ -237,6 +237,8 @@ const EN: Dict = {
 
   "activityLog.title": "Activity",
   "activityLog.none": "No activity recorded yet.",
+  "approvals.title": "Approvals",
+  "approvals.none": "No approval chain configured for this module.",
 
   "search.title": "Search",
   "search.placeholder": "Search by title, doc number, company, person...",
@@ -1146,6 +1148,8 @@ const KM: Dict = {
 
   "activityLog.title": "សកម្មភាព",
   "activityLog.none": "មិនទាន់មានកំណត់ត្រាសកម្មភាពទេ។",
+  "approvals.title": "ការអនុម័ត",
+  "approvals.none": "មិនទាន់មានលំដាប់អនុម័តសម្រាប់ម៉ូឌុលនេះទេ។",
 
   "search.title": "ស្វែងរក",
   "search.placeholder": "ស្វែងរកតាមចំណងជើង លេខឯកសារ ក្រុមហ៊ុន អ្នកប្រើ...",
@@ -2055,6 +2059,8 @@ const ZH: Dict = {
 
   "activityLog.title": "动态记录",
   "activityLog.none": "暂无动态记录。",
+  "approvals.title": "审批",
+  "approvals.none": "此模块尚未配置审批流程。",
 
   "search.title": "搜索",
   "search.placeholder": "按标题、单号、公司、人员搜索...",
