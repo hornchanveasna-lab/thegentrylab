@@ -94,7 +94,7 @@ const DELAY_CAUSE_OPTIONS: CMDelayCause[] = ["Weather", "Material", "Labor", "Ot
 const RAIN_WEATHER = new Set(["Light Rain", "Heavy Rain", "Storm"]);
 
 const EMPTY_MANPOWER: CMManpowerRow = { trade: "", company: null, count: 0, roster_item_id: null };
-const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null, photos: [], photo_thumbs: [] };
+const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null, photos: [], photo_thumbs: [], status: "Reported", certified_quantity: null };
 const EMPTY_VISITOR: CMVisitorRow = { name: "", organization: null, kind: "visitor", note: "", photos: [], photo_thumbs: [] };
 const EMPTY_DELAY: CMDelayRow = { cause: "Weather", description: "", hours_lost: 0 };
 
@@ -223,7 +223,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
         const created = await createCMSafetyRecord(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.safety"), record_type: "Safety Observation", severity: "Low", record_date: today });
         if (urls.length > 0) await updateCMSafetyRecord(created.id, { photos: urls, photo_thumbs: thumbs });
       } else if (purpose === "delivery") {
-        const row: CMDeliveryRow = { material: note.trim() || t("siteDiary.capture.delivery"), quantity: "", unit: null, supplier: company.trim() || null, boq_item_id: null, photos: urls, photo_thumbs: thumbs };
+        const row: CMDeliveryRow = { material: note.trim() || t("siteDiary.capture.delivery"), quantity: "", unit: null, supplier: company.trim() || null, boq_item_id: null, photos: urls, photo_thumbs: thumbs, status: "Reported", certified_quantity: null };
         await updateCMDailyLog(log.id, { deliveries: [...log.deliveries, row] });
       } else if (purpose === "manpower") {
         const row: CMManpowerRow = { trade: note.trim() || t("siteDiary.capture.manpower"), company: company.trim() || null, count: parseInt(count, 10) || 0, roster_item_id: null };

@@ -68,6 +68,13 @@ export interface CMManpowerRow {
   roster_item_id: string | null;
 }
 
+/** Where a reported BOQ quantity sits in the commercial pipeline:
+ *  Reported (site team) -> Accepted (QA/QC or consultant) -> Claimed
+ *  (included in a payment application) -> Certified (client/consultant
+ *  sign-off, which may differ from the claimed amount). */
+export type CMQuantityStatus = "Reported" | "Accepted" | "Claimed" | "Certified";
+export const QUANTITY_STATUS_ORDER: CMQuantityStatus[] = ["Reported", "Accepted", "Claimed", "Certified"];
+
 export interface CMDeliveryRow {
   material: string;
   quantity: string;
@@ -78,6 +85,12 @@ export interface CMDeliveryRow {
   boq_item_id: string | null;
   photos: string[];
   photo_thumbs: string[];
+  /** Missing on rows created before this field existed — treat as "Reported". */
+  status?: CMQuantityStatus;
+  /** Only meaningful once status is "Certified"; the consultant/client may
+   *  certify a different quantity than what was claimed. Falls back to
+   *  `quantity` when absent. */
+  certified_quantity?: string | null;
 }
 
 export type CMVisitorKind = "visitor" | "instruction";
