@@ -786,7 +786,7 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName, canCreat
   );
 }
 
-function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
+export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
 }) {
   const { t } = useCMLang();
@@ -961,34 +961,26 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
 }
 
 /* ── Main settings view ──────────────────────────────── */
-export function ProjectSettingsView({ project, ownerId, onBack, onProjectChanged }: {
-  project: CMProject; ownerId: string; onBack: () => void; onProjectChanged: () => void;
+/** Rendered as the "Settings" tab of the Project Insight page — team/people
+ *  management now lives in its own Insight "Team" tab (still the same
+ *  PeopleSection component, just no longer duplicated here), so this is
+ *  project configuration only: info, branding, consultants, locations,
+ *  checklist. No header of its own since the Insight page already has one. */
+export function ProjectSettingsView({ project, ownerId, onProjectChanged }: {
+  project: CMProject; ownerId: string; onProjectChanged: () => void;
 }) {
-  const { t } = useCMLang();
   const [previewMonotone, setPreviewMonotone] = useState(false);
   const settingsCanCreate = usePermission(project.id, ownerId, "settings", "create");
   const settingsCanEdit = usePermission(project.id, ownerId, "settings", "edit");
   const settingsCanDelete = usePermission(project.id, ownerId, "settings", "delete");
-  const peopleCanCreate = usePermission(project.id, ownerId, "people", "create");
-  const peopleCanEdit = usePermission(project.id, ownerId, "people", "edit");
-  const peopleCanDelete = usePermission(project.id, ownerId, "people", "delete");
   return (
-    <>
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
-        </button>
-        <h1 className="text-xl font-extrabold tracking-tight text-white">{t("projectSettings.title")}</h1>
-      </div>
-      <div className="flex flex-col gap-4">
-        <InfoSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />
-        <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
-        <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
-          canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-        <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-        <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
-        <PeopleSection ownerId={ownerId} projectId={project.id} canCreate={peopleCanCreate} canEdit={peopleCanEdit} canDelete={peopleCanDelete} />
-      </div>
-    </>
+    <div className="flex flex-col gap-4">
+      <InfoSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />
+      <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
+      <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
+        canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+      <ChecklistSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+    </div>
   );
 }
