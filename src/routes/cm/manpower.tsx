@@ -14,7 +14,8 @@ import {
   useCMProjectSubcontractors, useCMProjectLocations, locationBreadcrumb,
   findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity, uploadCMPhotoWithThumb,
   cmLaborHours, CM_WORKER_CATEGORIES,
-  type CMDailyLog, type CMManpowerRow,
+  useCMManpowerPlans, createCMManpowerPlan, updateCMManpowerPlan, deleteCMManpowerPlan,
+  type CMDailyLog, type CMManpowerRow, type CMManpowerPlan,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/manpower")({
@@ -285,6 +286,124 @@ function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, companyOption
         </div>
       </form>
     </Sheet>
+  );
+}
+
+/** Planned vs Actual (spec §14): planning targets per company+trade for the
+ *  selected date, matched against the day's actual crews by text. Variance
+ *  is labelled Under-resourced / On plan / Over-resourced — over-resourced
+ *  deliberately gets a neutral color, since more workers than planned is a
+ *  deviation to look at, not automatically good performance. */
+function PlannedVsActualSection({ userId, projectId, date, rows, canCreate, canEdit, canDelete, companyOptions, tradeOptions }: {
+  userId: string; projectId: string; date: string; rows: CMManpowerRow[];
+  canCreate: boolean; canEdit: boolean; canDelete: boolean;
+  companyOptions: string[]; tradeOptions: string[];
+}) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: plans } = useCMManpowerPlans(projectId);
+  const dayPlans = useMemo(() => (plans ?? []).filter((p) => p.plan_date === date), [plans, date]);
+  const [adding, setAdding] = useState(false);
+  const [company, setCompany] = useState("");
+  const [trade, setTrade] = useState("");
+  const [count, setCount] = useState("");
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_manpower_plans", projectId] });
+
+  const actualFor = (p: CMManpowerPlan) => rows
+    .filter((r) =>
+      (r.company ?? "").trim().toLowerCase() === (p.company ?? "").trim().toLowerCase()
+      && r.trade.trim().toLowerCase() === p.trade.trim().toLowerCase())
+    .reduce((s, r) => s + r.count, 0);
+
+  const totals = {
+    planned: dayPlans.reduce((s, p) => s + p.planned_count, 0),
+    actual: rows.reduce((s, r) => s + r.count, 0),
+  };
+
+  const handleAdd = async () => {
+    if (!trade.trim()) return;
+    await createCMManpowerPlan(userId, projectId, {
+      plan_date: date, company: company.trim() || null, trade: trade.trim(), activity: null,
+      planned_count: Math.max(0, parseInt(count, 10) || 0),
+    });
+    logCMActivity(projectId, userId, "manpower_plan_added", "manpower", null, { date, trade: trade.trim() });
+    setCompany(""); setTrade(""); setCount(""); setAdding(false);
+    invalidate();
+  };
+
+  const varianceBadge = (planned: number, actual: number) => {
+    const v = actual - planned;
+    const [label, color] = v < 0
+      ? [t("manpower.underResourced"), "#fbbf24"]
+      : v === 0
+        ? [t("manpower.onPlan"), "#4ade80"]
+        : [t("manpower.overResourced"), "#93c5fd"];
+    return (
+      <span className="font-mono text-[10px] px-2 py-0.5 rounded-full shrink-0" style={{ color, backgroundColor: `${color}1a` }}>
+        {v > 0 ? `+${v}` : v} · {label}
+      </span>
+    );
+  };
+
+  if (dayPlans.length === 0 && !canCreate) return null;
+
+  return (
+    <Card title={t("manpower.plannedVsActual")}>
+      <div className="flex flex-col gap-2">
+        {dayPlans.length === 0 && !adding && <p className="text-white/30 text-[12px]">{t("manpower.noPlans")}</p>}
+        {dayPlans.map((p) => {
+          const actual = actualFor(p);
+          return (
+            <div key={p.id} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-white/80 truncate">{p.company ? `${p.company} — ` : ""}{p.trade}</p>
+                <p className="text-[10px] text-white/30">
+                  {t("manpower.planned")} {canEdit ? (
+                    <input
+                      type="number" min={0} defaultValue={p.planned_count} key={`${p.id}-${p.planned_count}`}
+                      className="w-12 bg-transparent border-b border-white/15 text-white/60 text-[10px] text-center focus:outline-none focus:border-[#ff5100]/60"
+                      onBlur={(e) => {
+                        const next = Math.max(0, parseInt(e.target.value, 10) || 0);
+                        if (next !== p.planned_count) updateCMManpowerPlan(p.id, { planned_count: next }).then(invalidate);
+                      }}
+                    />
+                  ) : p.planned_count} · {t("manpower.actual")} {actual}
+                </p>
+              </div>
+              {varianceBadge(p.planned_count, actual)}
+              {canDelete && (
+                <button onClick={() => deleteCMManpowerPlan(p.id).then(invalidate)} className="shrink-0 w-5 h-5 rounded-full text-white/20 hover:text-red-400 flex items-center justify-center">×</button>
+              )}
+            </div>
+          );
+        })}
+        {dayPlans.length > 0 && (
+          <div className="flex items-center justify-between px-3 pt-1">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-white/35">{t("siteDiary.total")}</span>
+            <span className="text-[11px] font-mono text-white/60">
+              {t("manpower.planned")} {totals.planned} · {t("manpower.actual")} {totals.actual}
+            </span>
+          </div>
+        )}
+        {canCreate && (adding ? (
+          <div className="flex flex-col gap-2 mt-1">
+            <FieldSelect value={company} onChange={setCompany} searchable allowCustom placeholder={t("manpower.selectCompany")}
+              options={[{ value: "", label: t("common.none") }, ...companyOptions.map((c) => ({ value: c, label: c }))]} />
+            <div className="grid grid-cols-2 gap-2">
+              <FieldSelect value={trade} onChange={setTrade} searchable allowCustom placeholder={t("manpower.selectTrade")}
+                options={tradeOptions.map((tr) => ({ value: tr, label: tr }))} />
+              <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder={t("manpower.workers")} />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("manpower.addPlan")}</button>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -606,6 +725,14 @@ function CMManpowerPage() {
             {rows.length > 0 && (
               <p className="text-[10px] text-white/25 mb-5">{t("manpower.sharedWithSiteDiary")}</p>
             )}
+
+            <div className="mb-4">
+              <PlannedVsActualSection
+                userId={user.id} projectId={projectId} date={date} rows={rows}
+                canCreate={canCreate} canEdit={canEdit} canDelete={canDelete}
+                companyOptions={companyOptions} tradeOptions={tradeOptions}
+              />
+            </div>
 
             <div className="mb-4">
               <ManpowerRosterSection ownerId={user.id} projectId={projectId} canCreate={canCreate} canDelete={canDelete} />
