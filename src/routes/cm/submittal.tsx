@@ -15,8 +15,12 @@ import {
   deleteCMSubmittal,
   uploadCMPhotoWithThumb,
   enabledDisciplines,
+  SUBMITTAL_TYPES,
+  APPROVAL_CODES,
   type CMSubmittal,
   type SubmittalStatus,
+  type SubmittalType,
+  type ApprovalCode,
   type Discipline,
 } from "@/lib/cm-data";
 
@@ -31,6 +35,14 @@ const STATUS_COLOR: Record<SubmittalStatus, string> = {
 };
 const STATUS_OPTIONS: SubmittalStatus[] = ["Draft", "Submitted", "Under Review", "Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
 const APPROVAL_STATUSES: SubmittalStatus[] = ["Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
+/** i18n key suffixes for SUBMITTAL_TYPES — a few of those values (e.g.
+ *  "O&M Manual") aren't safe to use directly as translation keys. */
+const SUBMITTAL_TYPE_KEY: Record<SubmittalType, string> = {
+  "Shop Drawing": "shopDrawing", "Material Submittal": "materialSubmittal", "Method Statement": "methodStatement",
+  "Material Sample": "materialSample", "Technical Datasheet": "technicalDatasheet", Calculation: "calculation",
+  RFI: "rfi", ITP: "itp", "Test Report": "testReport", "As-Built Drawing": "asBuiltDrawing",
+  "O&M Manual": "omManual", Warranty: "warranty", "Closeout Document": "closeoutDocument",
+};
 
 function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplines, onClose, onCreated }: {
   ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; disciplines: Discipline[]; onClose: () => void; onCreated: () => void;
@@ -38,9 +50,11 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
+  const [submittalType, setSubmittalType] = useState<SubmittalType | "">(existing?.submittal_type ?? "");
   const [specSection, setSpecSection] = useState(existing?.spec_section ?? "");
   const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
   const [status, setStatus] = useState<SubmittalStatus>(existing?.status ?? "Draft");
+  const [approvalCode, setApprovalCode] = useState<ApprovalCode | "">(existing?.approval_code ?? "");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
   const [reviewer, setReviewer] = useState(existing?.reviewer ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
@@ -55,8 +69,8 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
     setError("");
     try {
       const patch = {
-        title: title.trim(), spec_section: specSection.trim() || null, discipline, status,
-        due_date: dueDate || null, reviewer: reviewer.trim() || null, notes: notes.trim() || null,
+        title: title.trim(), submittal_type: submittalType || null, spec_section: specSection.trim() || null, discipline, status,
+        approval_code: approvalCode || null, due_date: dueDate || null, reviewer: reviewer.trim() || null, notes: notes.trim() || null,
         submitted_date: existing ? existing.submitted_date : (status !== "Draft" ? new Date().toISOString().slice(0, 10) : null),
       };
       const item = existing ?? await createCMSubmittal(ownerId, projectId, patch);
@@ -82,6 +96,11 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
           <span className={labelCls}>{t("submittal.titleField")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("submittal.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("submittal.type")}</span>
+          <FieldSelect value={submittalType} onChange={setSubmittalType} disabled={saving} placeholder={t("submittal.typePlaceholder")}
+            options={[{ value: "", label: t("submittal.typePlaceholder") }, ...SUBMITTAL_TYPES.map((s) => ({ value: s, label: t(`submittalType.${SUBMITTAL_TYPE_KEY[s]}`) }))]} />
+        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("submittal.specSection")}</span>
@@ -96,6 +115,13 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
           <span className={labelCls}>{t("common.discipline")}</span>
           <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
         </label>
+        {canApprove && (
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("submittal.approvalCode")}</span>
+            <FieldSelect value={approvalCode} onChange={setApprovalCode} disabled={saving} placeholder={t("submittal.approvalCodePlaceholder")}
+              options={[{ value: "", label: t("submittal.approvalCodePlaceholder") }, ...APPROVAL_CODES.map((c) => ({ value: c, label: t(`approvalCode.${c}`) }))]} />
+          </label>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("submittal.dueDate")}</span>
@@ -157,7 +183,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
         <div className="min-w-0">
           <h3 className="text-[13px] font-bold text-white leading-tight truncate">{item.title}</h3>
           <p className="font-mono text-[10px] text-white/30 mt-0.5">
-            {[item.doc_number, item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
+            {[item.doc_number, item.submittal_type && t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`), item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -186,6 +212,9 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
         <StatusBadge label={t(`submittalStatus.${item.status}`)} color={sc} />
       )}
       <div className="flex flex-wrap items-center gap-2 mt-1">
+        {item.approval_code && (
+          <span className="px-2 py-0.5 rounded-full bg-white/5 font-mono text-[10px] text-white/60" title={t(`approvalCode.${item.approval_code}`)}>{item.approval_code}</span>
+        )}
         {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
         {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
       </div>

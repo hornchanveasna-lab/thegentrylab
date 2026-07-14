@@ -2323,15 +2323,27 @@ export async function deleteCMSafetyRecord(id: string) {
 /* ── Submittals (per project) ──────────────────────────── */
 export type SubmittalStatus = "Draft" | "Submitted" | "Under Review" | "Approved" | "Approved as Noted" | "Revise & Resubmit" | "Rejected";
 
+export const SUBMITTAL_TYPES = [
+  "Shop Drawing", "Material Submittal", "Method Statement", "Material Sample", "Technical Datasheet",
+  "Calculation", "RFI", "ITP", "Test Report", "As-Built Drawing", "O&M Manual", "Warranty", "Closeout Document",
+] as const;
+export type SubmittalType = typeof SUBMITTAL_TYPES[number];
+
+/** A: Approved, B: Approved with Comments, C: Revise and Resubmit, D: Rejected, E: For Information. */
+export const APPROVAL_CODES = ["A", "B", "C", "D", "E"] as const;
+export type ApprovalCode = typeof APPROVAL_CODES[number];
+
 export interface CMSubmittal {
   id: string;
   project_id: string;
   owner_id: string;
   doc_number: string | null;
   title: string;
+  submittal_type: SubmittalType | null;
   spec_section: string | null;
   discipline: Discipline | null;
   status: SubmittalStatus;
+  approval_code: ApprovalCode | null;
   submitted_date: string | null;
   due_date: string | null;
   reviewer: string | null;
@@ -2361,7 +2373,7 @@ export function useCMSubmittals(projectId: string | undefined) {
 export async function createCMSubmittal(
   ownerId: string,
   projectId: string,
-  input: Pick<CMSubmittal, "title"> & Partial<Pick<CMSubmittal, "spec_section" | "discipline" | "status" | "submitted_date" | "due_date" | "reviewer" | "notes">>,
+  input: Pick<CMSubmittal, "title"> & Partial<Pick<CMSubmittal, "submittal_type" | "spec_section" | "discipline" | "status" | "approval_code" | "submitted_date" | "due_date" | "reviewer" | "notes">>,
 ) {
   const docNumber = await generateCMDocNumber(projectId, "submittal", "SUB");
   const { data, error } = await db().from("cm_submittals").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
