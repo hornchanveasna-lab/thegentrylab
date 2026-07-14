@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
   useCMScheduleItems,
@@ -118,6 +118,7 @@ function ActivityRow({ item, canEdit, canDelete, onChanged }: { item: CMSchedule
   const { t } = useCMLang();
   const [actual, setActual] = useState(String(item.actual_percent));
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const plan = scheduleItemPlanPercent(item, today());
 
   const commitActual = async () => {
@@ -128,13 +129,13 @@ function ActivityRow({ item, canEdit, canDelete, onChanged }: { item: CMSchedule
   };
 
   const handleDelete = async () => {
-    if (!confirm(t("schedule.confirmDelete"))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMScheduleItem(item.id); onChanged(); } finally { setBusy(false); }
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-white/[0.03] px-3.5 py-3">
+    <div className="flex items-center gap-3 rounded-xl bg-white/3 px-3.5 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-[12px] text-white/80 truncate">{item.title}</p>
         <p className="font-mono text-[10px] text-white/30">{item.plan_start} → {item.plan_finish}</p>
@@ -153,7 +154,11 @@ function ActivityRow({ item, canEdit, canDelete, onChanged }: { item: CMSchedule
         </div>
       </div>
       {canDelete && (
-        <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+      )}
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("schedule.confirmDelete")} confirmLabel={t("common.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
       )}
     </div>
   );

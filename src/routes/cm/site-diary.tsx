@@ -7,7 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
-  MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField,
+  MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -490,7 +490,7 @@ function CategoryRow({ icon, label, count, onClick }: {
 }) {
   return (
     <button type="button" onClick={onClick}
-      className="w-full flex items-center gap-3 rounded-2xl bg-[#0d0d0e] hover:bg-white/[0.04] px-4 py-3 transition-colors text-left">
+      className="w-full flex items-center gap-3 rounded-2xl bg-[#0d0d0e] hover:bg-white/4 px-4 py-3 transition-colors text-left">
       <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white/70 bg-white/5">{icon}</span>
       <span className="flex-1 min-w-0 text-[13px] text-white/80">{label}</span>
       {count != null && <span className="font-mono text-[12px] text-white/40 shrink-0">{count}</span>}
@@ -574,7 +574,7 @@ function ModuleActivityRow({ row, onOpenItem, onOpenPhoto, flashPhotoUrl }: {
   return (
     <div className="flex flex-col gap-2">
       <button type="button" onClick={() => onOpenItem(row.module, row.recordId)}
-        className="w-full flex items-center gap-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] px-3 py-2 text-left transition-colors">
+        className="w-full flex items-center gap-2.5 rounded-xl bg-white/3 hover:bg-white/6 px-3 py-2 text-left transition-colors">
         <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[row.module], backgroundColor: `${MODULE_COLOR[row.module]}22` }}>
           {MODULE_ICON[row.module]}
         </span>
@@ -609,7 +609,7 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
   const urls = photos ?? [];
   return (
     <div className="flex flex-col gap-2">
-      <div className="w-full flex items-center gap-2.5 rounded-xl bg-white/[0.03] px-3 py-2">
+      <div className="w-full flex items-center gap-2.5 rounded-xl bg-white/3 px-3 py-2">
         <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-white/50 bg-white/5">{icon}</span>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] text-white/70 truncate">{title}</p>
@@ -654,6 +654,7 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, flashPhotoUrl,
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [resourceTab, setResourceTab] = useState<"manpower" | "equipment">("manpower");
   const [workTab, setWorkTab] = useState<"progress" | "boq">("progress");
   const { data: activity } = useCMDailyActivity(log.project_id, log.log_date, { enabled: true });
@@ -677,7 +678,7 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, flashPhotoUrl,
   const hseRows = useMemo(() => (activity ? toActivityRows(activity.safetyRecords, "safety") : []), [activity]);
 
   const handleDelete = async () => {
-    if (!confirm(t("siteDiary.confirmDelete"))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMDailyLog(log.id); onChanged(); } finally { setBusy(false); }
   };
@@ -820,11 +821,15 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, flashPhotoUrl,
           </button>
         )}
         {canDelete && (
-          <button onClick={handleDelete} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
+          <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
             {t("siteDiary.deleteEntry")}
           </button>
         )}
       </div>
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("siteDiary.confirmDelete")} confirmLabel={t("common.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
+      )}
 
       {editing && canEdit && (
         <NewLogSheet ownerId={log.owner_id} projectId={log.project_id} existing={log}

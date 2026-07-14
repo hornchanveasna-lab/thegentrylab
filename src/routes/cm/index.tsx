@@ -90,7 +90,7 @@ export function CMIndexPage() {
           <AvatarButton />
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 border-t border-l border-white/[0.07] rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 border-t border-l border-white/7 rounded-2xl overflow-hidden">
           <AppTile
             label={t("tile.dashboard")}
             to="/cm/dashboard"

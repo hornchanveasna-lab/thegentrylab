@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect, StatusBadge,
+  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect, StatusBadge, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -130,6 +130,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, onChanged, onOpen
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id);
   const sc = STATUS_COLOR[item.status];
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === item.status);
@@ -144,7 +145,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, onChanged, onOpen
     } finally { setBusy(false); }
   };
   const handleDelete = async () => {
-    if (!confirm(t("submittal.confirmDelete"))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMSubmittal(item.id); onChanged(); } finally { setBusy(false); }
   };
@@ -167,10 +168,14 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, onChanged, onOpen
             </button>
           )}
           {canDelete && (
-            <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
           )}
         </div>
       </div>
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("submittal.confirmDelete")} confirmLabel={t("common.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
+      )}
       {canEdit ? (
         <SegmentedField
           options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}

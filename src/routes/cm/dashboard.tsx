@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { BackButton, Card, ProjectPicker, useSelectedProject } from "@/components/cm/shared";
+import { BackButton, Card, ProjectPicker, useSelectedProject, useCMTheme } from "@/components/cm/shared";
 import {
   useCMProject,
   useCMDailyLogs,
@@ -30,6 +30,12 @@ function daysBetween(a: string, b: string) {
 function CMDashboardPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
+  const theme = useCMTheme();
+  const chartGrid = theme === "light" ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.06)";
+  const chartTick = theme === "light" ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.35)";
+  const chartTooltipBg = theme === "light" ? "#ffffff" : "#181818";
+  const chartTooltipBorder = theme === "light" ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.1)";
+  const chartTooltipLabel = theme === "light" ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.8)";
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: project } = useCMProject(projectId || undefined);
   const { data: logs } = useCMDailyLogs(projectId || undefined);
@@ -150,13 +156,13 @@ function CMDashboardPage() {
                 <div style={{ height: 220 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={series}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 9 }} tickLine={false} axisLine={false} minTickGap={30} />
-                      <YAxis yAxisId="left" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
-                      <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
-                      <Tooltip contentStyle={{ background: "#181818", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, fontSize: 11 }}
-                        labelStyle={{ color: "rgba(255,255,255,0.8)" }} />
-                      <Legend wrapperStyle={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} vertical={false} />
+                      <XAxis dataKey="date" tick={{ fill: chartTick, fontSize: 9 }} tickLine={false} axisLine={false} minTickGap={30} />
+                      <YAxis yAxisId="left" tick={{ fill: chartTick, fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
+                      <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: chartTick, fontSize: 9 }} tickLine={false} axisLine={false} width={28} />
+                      <Tooltip contentStyle={{ background: chartTooltipBg, border: `1px solid ${chartTooltipBorder}`, borderRadius: 12, fontSize: 11 }}
+                        labelStyle={{ color: chartTooltipLabel }} />
+                      <Legend wrapperStyle={{ fontSize: 10, color: chartTick }} />
                       <Bar yAxisId="left" dataKey="manpower" name={t("dashboard.manpowerLegend")} fill="#94a3b8" fillOpacity={0.5} radius={[2, 2, 0, 0]} />
                       <Line yAxisId="right" type="monotone" dataKey="plan" name={t("dashboard.planLegend")} stroke="#3b82f6" strokeWidth={2} dot={false} />
                       <Line yAxisId="right" type="monotone" dataKey="actual" name={t("dashboard.actualLegend")} stroke="#ff5100" strokeWidth={2} dot={false} connectNulls />

@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
-  EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR, EmptyState, ErrorState, StatusBadge,
+  EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR, EmptyState, ErrorState, StatusBadge, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
   useCMEquipment,
@@ -76,15 +76,16 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
 function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; canEdit: boolean; canDelete: boolean; onChanged: () => void }) {
   const { t } = useCMLang();
   const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(t("equipment.confirmDelete"))) return;
+    setConfirmingDelete(false);
     setBusy(true);
     try { await deleteCMEquipment(eq.id); onChanged(); } finally { setBusy(false); }
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/[0.03] px-3.5 py-3">
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3.5 py-3">
       <div className="min-w-0">
         <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
         <p className="font-mono text-[10px] text-white/30">{t("equipment.qty")} {eq.quantity}</p>
@@ -102,8 +103,12 @@ function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; 
         ) : (
           <StatusBadge label={t(`equipmentStatus.${eq.status}`)} color={EQUIPMENT_STATUS_COLOR[eq.status]} />
         )}
-        {canDelete && <button onClick={handleDelete} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>}
+        {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>}
       </div>
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("equipment.confirmDelete")} confirmLabel={t("common.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
+      )}
     </div>
   );
 }
