@@ -7,12 +7,12 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, useCMTheme,
-  FieldSelect, LocationSelect, Sheet,
+  FieldSelect, LocationSelect, Sheet, PhotoPicker, SegmentedField,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs, useCMManpowerRoster, addCMManpowerRosterItem, removeCMManpowerRosterItem,
   useCMProjectSubcontractors, useCMProjectLocations, locationBreadcrumb,
-  findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity,
+  findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity, uploadCMPhotoWithThumb,
   cmLaborHours, CM_WORKER_CATEGORIES,
   type CMDailyLog, type CMManpowerRow,
 } from "@/lib/cm-data";
@@ -105,7 +105,8 @@ function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
  *  location → activity → hours. Also handles editing an existing row and the
  *  duplicate check (same company + trade + location must not be silently
  *  combined — the user chooses Edit Existing / Add New / Cancel). */
-function ManpowerEntrySheet({ projectId, rows, editIndex, companyOptions, tradeOptions, onSave, onClose }: {
+function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, companyOptions, tradeOptions, onSave, onClose }: {
+  ownerId: string;
   projectId: string;
   rows: CMManpowerRow[];
   editIndex: number | null;
@@ -128,51 +129,57 @@ function ManpowerEntrySheet({ projectId, rows, editIndex, companyOptions, tradeO
   const [activity, setActivity] = useState(editing?.activity ?? "");
   const [normalHours, setNormalHours] = useState(editing?.normal_hours != null ? String(editing.normal_hours) : "8");
   const [otHours, setOtHours] = useState(editing?.ot_hours != null ? String(editing.ot_hours) : "0");
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [dupIndex, setDupIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const buildRow = (): CMManpowerRow => ({
-    trade: trade.trim(),
-    company: company.trim() || null,
-    count: Math.max(0, parseInt(count, 10) || 0),
-    roster_item_id: editing?.roster_item_id ?? null,
-    category: category || null,
-    location_id: locationId,
-    activity: activity.trim() || null,
-    normal_hours: Math.max(0, Number(normalHours) || 0),
-    ot_hours: Math.max(0, Number(otHours) || 0),
-  });
+  // New workforce photos are appended to whatever the row already carries —
+  // there's no per-photo remove control here, same as the Site Diary sheet.
+  const buildRow = async (): Promise<CMManpowerRow> => {
+    const uploaded = photoFiles.length > 0
+      ? await Promise.all(photoFiles.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)))
+      : [];
+    return {
+      trade: trade.trim(),
+      company: company.trim() || null,
+      count: Math.max(0, parseInt(count, 10) || 0),
+      roster_item_id: editing?.roster_item_id ?? null,
+      category: category || null,
+      location_id: locationId,
+      activity: activity.trim() || null,
+      normal_hours: Math.max(0, Number(normalHours) || 0),
+      ot_hours: Math.max(0, Number(otHours) || 0),
+      photos: [...(editing?.photos ?? []), ...uploaded.map((u) => u.url)],
+      photo_thumbs: [...(editing?.photo_thumbs ?? []), ...uploaded.map((u) => u.thumbUrl)],
+    };
+  };
 
-  const persist = async (next: CMManpowerRow[]) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving || !trade.trim()) return;
+    // Duplicate check runs before any photo upload so cancelling costs nothing.
+    if (editTarget == null) {
+      const dup = rows.findIndex((r) =>
+        r.trade.trim().toLowerCase() === trade.trim().toLowerCase()
+        && (r.company ?? "").trim().toLowerCase() === company.trim().toLowerCase()
+        && (r.location_id ?? null) === (locationId ?? null));
+      if (dup >= 0 && dupIndex == null) {
+        setDupIndex(dup);
+        return;
+      }
+    }
     setSaving(true);
     setError("");
     try {
+      const row = await buildRow();
+      const next = editTarget != null ? rows.map((r, i) => (i === editTarget ? row : r)) : [...rows, row];
       await onSave(next);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setSaving(false);
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (saving || !trade.trim()) return;
-    const row = buildRow();
-    if (editTarget != null) {
-      await persist(rows.map((r, i) => (i === editTarget ? row : r)));
-      return;
-    }
-    const dup = rows.findIndex((r) =>
-      r.trade.trim().toLowerCase() === row.trade.toLowerCase()
-      && (r.company ?? "").trim().toLowerCase() === (row.company ?? "").toLowerCase()
-      && (r.location_id ?? null) === (row.location_id ?? null));
-    if (dup >= 0 && dupIndex == null) {
-      setDupIndex(dup);
-      return;
-    }
-    await persist([...rows, row]);
   };
 
   const fieldLabel = "text-[10px] font-mono uppercase tracking-widest text-white/35";
@@ -234,6 +241,15 @@ function ManpowerEntrySheet({ projectId, rows, editIndex, companyOptions, tradeO
           </div>
         </div>
 
+        {(editing?.photos?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {editing!.photos!.map((url, i) => (
+              <img key={i} src={editing!.photo_thumbs?.[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+            ))}
+          </div>
+        )}
+        <PhotoPicker photos={photoFiles} setPhotos={setPhotoFiles} disabled={saving} />
+
         {dupIndex != null && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col gap-2">
             <p className="text-[12px] text-amber-200/90">{t("manpower.duplicateExists")}</p>
@@ -293,6 +309,7 @@ function CMManpowerPage() {
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [date, setDate] = useState(todayStr);
+  const [view, setView] = useState<"company" | "trade" | "location">("company");
   const [sheet, setSheet] = useState<{ editIndex: number | null } | null>(null);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
@@ -389,16 +406,38 @@ function CMManpowerPage() {
     return { workers, companies: companies.size, trades: trades.size, hours: cmLaborHours(rows) };
   }, [rows]);
 
-  const byCompany = useMemo(() => {
+  // The day's rows grouped by the active view — By Company (default mobile
+  // view per the spec), By Trade, or By Location. Empty keys sort last.
+  const grouped = useMemo(() => {
+    const keyOf = (row: CMManpowerRow) => {
+      if (view === "trade") return row.trade.trim();
+      if (view === "location") return row.location_id ? (locationLabelById.get(row.location_id) ?? "") : "";
+      return row.company?.trim() || "";
+    };
     const groups = new Map<string, { index: number; row: CMManpowerRow }[]>();
     rows.forEach((row, index) => {
-      const key = row.company?.trim() || "";
+      const key = keyOf(row);
       const list = groups.get(key) ?? [];
       list.push({ index, row });
       groups.set(key, list);
     });
-    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }, [rows]);
+    return [...groups.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
+  }, [rows, view, locationLabelById]);
+
+  const emptyGroupLabel = view === "location" ? t("manpower.noLocation") : view === "trade" ? t("common.none") : t("manpower.noCompany");
+
+  // Missing-submission detection (spec §19): assigned subcontractor
+  // companies with nothing recorded for the selected day. Display only —
+  // there's no email/SMS channel to push reminders through.
+  const missingCompanies = useMemo(() => {
+    const recorded = new Set(rows.map((r) => (r.company ?? "").trim().toLowerCase()).filter(Boolean));
+    const assigned = new Map<string, string>();
+    for (const s of subcontractors ?? []) {
+      const name = s.contact.company?.trim();
+      if (name) assigned.set(name.toLowerCase(), name);
+    }
+    return [...assigned.entries()].filter(([key]) => !recorded.has(key)).map(([, name]) => name).sort();
+  }, [rows, subcontractors]);
 
   const daysWithManpower = useMemo(() => {
     let list = (logs ?? []).filter((l) => l.manpower.length > 0);
@@ -477,18 +516,43 @@ function CMManpowerPage() {
               )}
             </div>
 
-            {/* By Company — the day's shared Site Diary manpower record */}
+            {/* Missing daily manpower from assigned subcontractors */}
+            {missingCompanies.length > 0 && date <= todayStr() && (
+              <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 mb-3">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-amber-200/70 mb-1.5">{t("manpower.missingToday")} ({missingCompanies.length})</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {missingCompanies.map((c) => (
+                    <span key={c} className="px-2.5 py-1 rounded-full text-[10px] bg-amber-500/10 text-amber-200/80">{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* The day's shared Site Diary manpower record, grouped by view */}
             {rows.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-10 flex items-center justify-center text-center px-4 mb-4">
                 <p className="text-white/40 text-sm">{t("manpower.noEntriesForDay")}</p>
               </div>
             )}
-            {byCompany.length > 0 && (
+            {rows.length > 0 && (
+              <div className="mb-3">
+                <SegmentedField
+                  value={view}
+                  onChange={setView}
+                  options={[
+                    { value: "company", label: t("manpower.byCompany") },
+                    { value: "trade", label: t("manpower.byTrade") },
+                    { value: "location", label: t("manpower.byLocation") },
+                  ]}
+                />
+              </div>
+            )}
+            {grouped.length > 0 && (
               <div className="flex flex-col gap-2.5 mb-4">
-                {byCompany.map(([company, items]) => (
-                  <div key={company || "-"} className="rounded-2xl bg-[#0d0d0e] px-4 py-3">
+                {grouped.map(([groupKey, items]) => (
+                  <div key={groupKey || "-"} className="rounded-2xl bg-[#0d0d0e] px-4 py-3">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[12px] text-white/75 font-medium truncate">{company || t("manpower.noCompany")}</span>
+                      <span className="text-[12px] text-white/75 font-medium truncate">{groupKey || emptyGroupLabel}</span>
                       <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{items.reduce((s, i) => s + i.row.count, 0)}</span>
                     </div>
                     <div className="flex flex-col gap-1.5">
@@ -496,16 +560,25 @@ function CMManpowerPage() {
                         <div key={index} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
                           <button className="flex-1 min-w-0 text-left" onClick={() => canEdit && setSheet({ editIndex: index })} disabled={!canEdit}>
                             <p className="text-[12px] text-white/80 truncate">
-                              {row.trade}
+                              {view === "company" ? row.trade : (row.company || row.trade)}
                               {row.category ? <span className="text-white/35"> · {t(`workerCategory.${row.category}`)}</span> : null}
                             </p>
                             <p className="text-[10px] text-white/30 truncate">
                               {[
-                                row.location_id ? locationLabelById.get(row.location_id) : null,
+                                view !== "company" && row.company ? row.trade : null,
+                                view !== "location" && row.location_id ? locationLabelById.get(row.location_id) : null,
                                 row.activity,
                                 `${row.normal_hours ?? 8}h${(row.ot_hours ?? 0) > 0 ? ` + ${row.ot_hours} OT` : ""}`,
                               ].filter(Boolean).join(" · ")}
                             </p>
+                            {(row.photos?.length ?? 0) > 0 && (
+                              <div className="flex gap-1 mt-1.5">
+                                {row.photos!.slice(0, 4).map((url, i) => (
+                                  <img key={i} src={row.photo_thumbs?.[i] || url} alt="" className="w-9 h-9 rounded-md object-cover" />
+                                ))}
+                                {row.photos!.length > 4 && <span className="w-9 h-9 rounded-md bg-white/5 text-white/40 text-[10px] flex items-center justify-center">+{row.photos!.length - 4}</span>}
+                              </div>
+                            )}
                           </button>
                           {canEdit ? (
                             <div className="flex items-center gap-1 shrink-0">
@@ -576,6 +649,7 @@ function CMManpowerPage() {
 
       {sheet && projectId && (
         <ManpowerEntrySheet
+          ownerId={user.id}
           projectId={projectId}
           rows={rows}
           editIndex={sheet.editIndex}
