@@ -5,6 +5,10 @@ import {
   useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
   useCMProjectLocations, locationBreadcrumb, useCMCompanies, createCMCompany,
   type ProjectStatus, type ProjectHealth,
+  useCMComments, addCMComment, deleteCMComment,
+  useCMProjectMembers,
+  useCMRelatedItems, type CMRelatedItem,
+  useCMEntityAuditLog,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
@@ -1129,6 +1133,155 @@ export function CMDailyActivityList({ activity, projectId, onOpenItem }: {
           <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{row.status}</span>
         </button>
       ))}
+    </div>
+  );
+}
+
+/** Per-record comments thread — shared across every module's detail view
+ *  so discussion on any record (site diary, inspection, punch item, safety
+ *  record, submittal, ...) looks and behaves the same. */
+export function CommentsPanel({ projectId, entityType, entityId, userId }: {
+  projectId: string; entityType: string; entityId: string; userId: string;
+}) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: comments, isLoading } = useCMComments(entityType, entityId);
+  const { data: members } = useCMProjectMembers(projectId);
+  const [body, setBody] = useState("");
+  const [posting, setPosting] = useState(false);
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_comments", entityType, entityId] });
+
+  const authorLabel = (authorId: string) => {
+    const m = members?.find((x) => x.user_id === authorId);
+    return m?.display_name || m?.email || t("comments.unknownUser");
+  };
+
+  const handlePost = async () => {
+    const trimmed = body.trim();
+    if (!trimmed || posting) return;
+    setPosting(true);
+    try {
+      await addCMComment(projectId, entityType, entityId, userId, trimmed);
+      setBody("");
+      invalidate();
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {isLoading && <p className="text-white/30 text-[12px]">{t("common.loading")}</p>}
+      {!isLoading && (comments?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("comments.none")}</p>}
+      <div className="flex flex-col gap-2">
+        {(comments ?? []).map((c) => (
+          <div key={c.id} className="rounded-xl bg-white/3 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-[11px] font-bold text-white/70 truncate">{authorLabel(c.author_id)}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-mono text-[9px] text-white/25">{c.created_at.slice(0, 16).replace("T", " ")}</span>
+                {c.author_id === userId && (
+                  <button type="button" onClick={() => deleteCMComment(c.id).then(invalidate)}
+                    className="text-white/25 hover:text-red-400 w-4 h-4 flex items-center justify-center">×</button>
+                )}
+              </div>
+            </div>
+            <p className="text-[12px] text-white/70 whitespace-pre-wrap">{c.body}</p>
+          </div>
+        ))}
+      </div>
+      <div className="flex gap-2 items-end">
+        <textarea className={`${inputCls} flex-1 resize-y min-h-[44px]`} value={body} disabled={posting}
+          onChange={(e) => setBody(e.target.value)} placeholder={t("comments.placeholder")} />
+        <button type="button" onClick={handlePost} disabled={posting || !body.trim()}
+          className="px-4 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold disabled:opacity-40 shrink-0"
+          style={{ backgroundColor: "#ff5100" }}>
+          {t("comments.post")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Related records from other modules that share this record's location or
+ *  discipline — see useCMRelatedItems for exactly what "related" means
+ *  given what the schema actually links today. */
+export function RelatedItemsPanel({ items }: { items: CMRelatedItem[] }) {
+  const { t } = useCMLang();
+  if (items.length === 0) return <p className="text-white/30 text-[12px]">{t("relatedItems.none")}</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {items.map((item) => (
+        <Link key={`${item.module}-${item.id}`} to={item.to}
+          className="flex items-center gap-2.5 rounded-xl bg-white/3 hover:bg-white/6 px-3 py-2.5 transition-colors">
+          <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[item.module], backgroundColor: `${MODULE_COLOR[item.module]}22` }}>
+            {MODULE_ICON[item.module]}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] text-white/70 truncate">{item.title}</p>
+            {item.docNumber && <p className="font-mono text-[9px] text-white/25">{item.docNumber}</p>}
+          </div>
+          <span className="text-white/25 shrink-0">›</span>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+/** Per-record activity history — distinct from the project-level Insight
+ *  Activity tab, this is scoped to one entity_id so a record's own history
+ *  survives regardless of how much other activity happens on the project. */
+export function ActivityLogPanel({ entityType, entityId }: { entityType: string; entityId: string }) {
+  const { t } = useCMLang();
+  const { data: entries, isLoading } = useCMEntityAuditLog(entityType, entityId);
+  if (isLoading) return <p className="text-white/30 text-[12px]">{t("common.loading")}</p>;
+  if (!entries || entries.length === 0) return <p className="text-white/30 text-[12px]">{t("activityLog.none")}</p>;
+  return (
+    <div className="flex flex-col gap-1">
+      {entries.map((e) => (
+        <div key={e.id} className="flex items-center justify-between gap-2 px-1 py-1.5">
+          <span className="text-[12px] text-white/60">{e.action}</span>
+          <span className="font-mono text-[9px] text-white/25 shrink-0">{e.created_at.slice(0, 16).replace("T", " ")}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Bundles Comments + Related Items + Activity Log behind one tab switcher
+ *  so every module's record-detail view wires this in with a single call
+ *  instead of duplicating the same three-panel tab logic five times. */
+export function RecordDetailExtras({ projectId, entityType, module, entityId, userId, locationId, discipline }: {
+  projectId: string;
+  /** Key used for comments/audit-log rows — matches the doc-numbering
+   *  module keys (site_diary/inspection/punch_list/safety/submittal),
+   *  which is snake_case for two of these and so isn't always identical
+   *  to CMPhotoModule (siteDiary/punchList are camelCase there). */
+  entityType: string;
+  /** The CMPhotoModule value — used only for related-item icon/color
+   *  lookups, kept separate from entityType because of the casing split
+   *  above. */
+  module: CMPhotoModule;
+  entityId: string; userId: string;
+  locationId?: string | null; discipline?: string | null;
+}) {
+  const { t } = useCMLang();
+  const [tab, setTab] = useState<"comments" | "related" | "activity">("comments");
+  const relatedItems = useCMRelatedItems(projectId, { module, id: entityId, locationId, discipline });
+
+  return (
+    <div className="flex flex-col gap-3 pt-3 border-t border-white/6">
+      <SegmentedField
+        options={[
+          { value: "comments" as const, label: t("comments.title") },
+          { value: "related" as const, label: t("relatedItems.title") },
+          { value: "activity" as const, label: t("activityLog.title") },
+        ]}
+        value={tab} onChange={setTab}
+      />
+      {tab === "comments" && <CommentsPanel projectId={projectId} entityType={entityType} entityId={entityId} userId={userId} />}
+      {tab === "related" && <RelatedItemsPanel items={relatedItems} />}
+      {tab === "activity" && <ActivityLogPanel entityType={entityType} entityId={entityId} />}
     </div>
   );
 }

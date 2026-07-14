@@ -7,7 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
-  PriorityBadge, ConfirmationDialog, LocationSelect,
+  PriorityBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMTasks,
@@ -125,8 +125,8 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function PunchItemCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
-  item: CMTask; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged, onOpenPhoto }: {
+  item: CMTask; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
@@ -195,6 +195,7 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, onChanged, onOpen
           ))}
         </div>
       )}
+      <RecordDetailExtras projectId={item.project_id} entityType="punch_list" module="punchList" entityId={item.id} userId={userId} locationId={item.location_id} />
       {editing && (
         <NewPunchItemSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
@@ -282,7 +283,7 @@ function CMPunchListPage() {
                   <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {open.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {open.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
 
                 {done.length > 0 && (
@@ -292,7 +293,7 @@ function CMPunchListPage() {
                     </button>
                     {showCompleted && (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
-                        {done.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                        {done.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                       </div>
                     )}
                   </div>

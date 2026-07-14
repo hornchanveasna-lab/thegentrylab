@@ -7,7 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
-  StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect,
+  StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMInspections,
@@ -123,8 +123,8 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, onChanged, onOpenPhoto }: {
-  item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[];
+function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, userId, onChanged, onOpenPhoto }: {
+  item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[]; userId: string;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
@@ -187,6 +187,7 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, onC
             {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</button>}
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>}
           </div>
+          <RecordDetailExtras projectId={item.project_id} entityType="inspection" module="inspection" entityId={item.id} userId={userId} locationId={item.location_id} discipline={item.discipline} />
         </div>
       )}
       {editing && (
@@ -267,7 +268,7 @@ function CMInspectionPage() {
               <>
                 {!isLoading && visibleInspections.length === 0 && <EmptyState message={t("inspection.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             ))}

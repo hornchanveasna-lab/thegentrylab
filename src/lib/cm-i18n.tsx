@@ -226,6 +226,18 @@ const EN: Dict = {
 
   "insight.settingsChange": "Settings change",
 
+  "comments.title": "Comments",
+  "comments.none": "No comments yet.",
+  "comments.placeholder": "Write a comment...",
+  "comments.post": "Post",
+  "comments.unknownUser": "Unknown user",
+
+  "relatedItems.title": "Related",
+  "relatedItems.none": "No related records found.",
+
+  "activityLog.title": "Activity",
+  "activityLog.none": "No activity recorded yet.",
+
   "workPackages.title": "Work Packages",
   "workPackages.none": "No work packages yet.",
   "workPackages.add": "+ Add work package",
@@ -1067,6 +1079,18 @@ const KM: Dict = {
 
   "insight.settingsChange": "ការផ្លាស់ប្តូរការកំណត់",
 
+  "comments.title": "មតិយោបល់",
+  "comments.none": "មិនទាន់មានមតិយោបល់ទេ។",
+  "comments.placeholder": "សរសេរមតិយោបល់...",
+  "comments.post": "ប្រកាស",
+  "comments.unknownUser": "អ្នកប្រើមិនស្គាល់",
+
+  "relatedItems.title": "ពាក់ព័ន្ធ",
+  "relatedItems.none": "រកមិនឃើញកំណត់ត្រាពាក់ព័ន្ធទេ។",
+
+  "activityLog.title": "សកម្មភាព",
+  "activityLog.none": "មិនទាន់មានកំណត់ត្រាសកម្មភាពទេ។",
+
   "workPackages.title": "កញ្ចប់ការងារ",
   "workPackages.none": "មិនទាន់មានកញ្ចប់ការងារទេ។",
   "workPackages.add": "+ បន្ថែមកញ្ចប់ការងារ",
@@ -1907,6 +1931,18 @@ const ZH: Dict = {
   "settingsNav.dataArchiveHint": "在所有整改项、验收和报审文件都已解决后归档或关闭此项目。",
 
   "insight.settingsChange": "设置变更",
+
+  "comments.title": "评论",
+  "comments.none": "暂无评论。",
+  "comments.placeholder": "写评论...",
+  "comments.post": "发布",
+  "comments.unknownUser": "未知用户",
+
+  "relatedItems.title": "相关记录",
+  "relatedItems.none": "未找到相关记录。",
+
+  "activityLog.title": "动态记录",
+  "activityLog.none": "暂无动态记录。",
 
   "workPackages.title": "工作包",
   "workPackages.none": "尚无工作包。",

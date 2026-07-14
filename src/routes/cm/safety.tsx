@@ -7,7 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
-  StatusBadge, EmptyState, ErrorState, ConfirmationDialog,
+  StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMSafetyRecords,
@@ -114,8 +114,8 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SafetyCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPhoto }: {
-  item: CMSafetyRecord; canEdit: boolean; canApprove: boolean; canDelete: boolean;
+function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, onOpenPhoto }: {
+  item: CMSafetyRecord; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
@@ -176,6 +176,7 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, onChanged, onOpenPho
               <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
             )}
           </div>
+          <RecordDetailExtras projectId={item.project_id} entityType="safety" module="safety" entityId={item.id} userId={userId} />
         </div>
       )}
       {editing && (
@@ -254,7 +255,7 @@ function CMSafetyPage() {
               <>
                 {!isLoading && visibleRecords.length === 0 && <EmptyState message={t("safety.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             ))}

@@ -7,7 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
-  MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog,
+  MiniCalendar, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -641,11 +641,12 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
  *  week-strip of its own since the page already provides those via
  *  CalendarStrip; a project name label is shown only in "all projects"
  *  mode, where more than one project can share the same selected date. */
-function DayDetailContent({ log, projectName, canEdit, canDelete, flashPhotoUrl, onChanged, onOpenPhoto }: {
+function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashPhotoUrl, onChanged, onOpenPhoto }: {
   log: CMDailyLog | CMDailyLogWithProject;
   projectName?: string;
   canEdit: boolean;
   canDelete: boolean;
+  userId: string;
   flashPhotoUrl: string | null;
   onChanged: () => void;
   onOpenPhoto: (items: LightboxItem[], index: number) => void;
@@ -835,6 +836,7 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, flashPhotoUrl,
         <NewLogSheet ownerId={log.owner_id} projectId={log.project_id} existing={log}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
+      <RecordDetailExtras projectId={log.project_id} entityType="site_diary" module="siteDiary" entityId={log.id} userId={userId} />
     </div>
   );
 }
@@ -1096,7 +1098,7 @@ function CMSiteDiaryPage() {
                           </button>
                         )}
                         <DayDetailContent log={log} projectName={viewAll ? (log as CMDailyLogWithProject).projectName : undefined}
-                          canEdit={canEdit} canDelete={canDelete}
+                          canEdit={canEdit} canDelete={canDelete} userId={user.id}
                           flashPhotoUrl={flashPhotoUrl} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
                       </div>
                     );

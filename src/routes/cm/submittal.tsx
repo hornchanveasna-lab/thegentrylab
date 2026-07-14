@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect, StatusBadge, ConfirmationDialog,
+  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -124,8 +124,8 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, onChanged, onOpenPhoto }: {
-  item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[];
+function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, userId, onChanged, onOpenPhoto }: {
+  item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[]; userId: string;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
@@ -200,6 +200,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, onCh
           ))}
         </div>
       )}
+      <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
       {editing && (
         <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove} disciplines={disciplines}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
@@ -278,7 +279,7 @@ function CMSubmittalPage() {
                   </div>
                 )}
                 <div className="flex flex-col gap-3">
-                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
             )}
