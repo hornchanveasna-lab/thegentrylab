@@ -9,6 +9,7 @@ import {
   setCMRolePermission,
   useCMCustomJobRoles,
   jobRoleLabel,
+  orderedJobRoles,
   CM_JOB_ROLES,
   type CMJobRole,
   type CMModuleKey,
@@ -53,7 +54,7 @@ function CMRolePermissionsPage() {
   const queryClient = useQueryClient();
   const { data: matrix } = useCMRolePermissions(user?.id);
   const { data: customRoles } = useCMCustomJobRoles(user?.id);
-  const allRoles = [...CM_JOB_ROLES, ...(customRoles ?? [])];
+  const allRoles = orderedJobRoles(customRoles ?? []);
   const [jobRole, setJobRole] = useState<CMJobRole>(CM_JOB_ROLES[0]);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState("");

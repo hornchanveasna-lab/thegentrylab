@@ -1233,6 +1233,16 @@ export const CM_JOB_ROLES: CMJobRole[] = [
   "client_representative", "owners_representative", "inspector_auditor",
 ];
 
+/** Every job-role picker shows custom roles right after Project Manager
+ *  (not tacked on at the end) — an owner's own custom roles tend to be
+ *  senior, PM-adjacent titles specific to how their company is organized,
+ *  so they read better grouped near the top than buried after all 18
+ *  built-ins. */
+export function orderedJobRoles(customRoles: CMJobRole[]): CMJobRole[] {
+  const [first, ...rest] = CM_JOB_ROLES;
+  return [first, ...customRoles, ...rest];
+}
+
 /** Custom job roles an owner has created — either by toggling a permission
  *  for a brand-new role name on the Role Permissions page, or by typing one
  *  directly onto a team member. Both sources feed every job-role picker so

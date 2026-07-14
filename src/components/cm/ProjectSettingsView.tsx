@@ -31,6 +31,7 @@ import {
   CM_JOB_ROLES,
   useCMCustomJobRoles,
   jobRoleLabel,
+  orderedJobRoles,
   distinctCMCompanyNames,
   useCMProjectInvites,
   createCMProjectInvite,
@@ -755,7 +756,7 @@ function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
   const { data: consultants } = useCMProjectConsultants(projectId);
   const { data: contacts } = useCMDirectoryContacts(ownerId);
   const { data: customJobRoles } = useCMCustomJobRoles(ownerId);
-  const allJobRoles = [...CM_JOB_ROLES, ...(customJobRoles ?? [])];
+  const allJobRoles = orderedJobRoles(customJobRoles ?? []);
 
   const [inviteRole, setInviteRole] = useState<CMMemberRole>("member");
   const [inviteJobRole, setInviteJobRole] = useState<CMJobRole | null>(null);
