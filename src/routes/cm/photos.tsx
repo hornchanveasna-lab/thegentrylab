@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
@@ -33,8 +33,13 @@ import {
   type CMProject,
 } from "@/lib/cm-data";
 
+interface CMPhotosSearch { new?: boolean }
+
 export const Route = createFileRoute("/cm/photos")({
   head: () => ({ meta: [{ title: "Photos — Construction Management App" }] }),
+  validateSearch: (search: Record<string, unknown>): CMPhotosSearch => ({
+    new: search.new === true || search.new === "1" || search.new === "true" ? true : undefined,
+  }),
   component: CMPhotosPage,
 });
 
@@ -373,6 +378,7 @@ function CMPhotosPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
   const navigate = useNavigate();
+  const routeSearch = Route.useSearch();
   const queryClient = useQueryClient();
   const { data: photos, isLoading } = useAllCMPhotos(user?.id);
   const { data: account } = useCMAccountSettings(user?.id);
@@ -385,6 +391,14 @@ function CMPhotosPage() {
   const [view, setView] = useState<View>("grid");
   const [lightbox, setLightbox] = useState<{ items: CMPhotoWithContext[]; index: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
+
+  useEffect(() => {
+    if (routeSearch.new && projectId) {
+      setShowNew(true);
+      navigate({ to: "/cm/photos", search: {}, replace: true });
+    }
+  }, [routeSearch.new, projectId, navigate]);
+
   const [showSettings, setShowSettings] = useState(false);
   const settingsMenuRef = useClickOutside<HTMLDivElement>(showSettings, () => setShowSettings(false));
   const [showSearch, setShowSearch] = useState(false);

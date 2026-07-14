@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { useCMNotifications, type CMPhotoModule } from "@/lib/cm-data";
+import { useCMNotifications } from "@/lib/cm-data";
 import { Sheet, ProjectPicker, useSelectedProject, setLastProject, MODULE_COLOR, MODULE_ICON } from "@/components/cm/shared";
 
 const HOME_ICON = (
@@ -42,27 +42,38 @@ function NavLink({ to, icon, label, active, badge }: { to: string; icon: React.R
   );
 }
 
-const QUICK_CREATE_ITEMS: { module: CMPhotoModule; to: string }[] = [
-  { module: "siteDiary", to: "/cm/site-diary" },
-  { module: "punchList", to: "/cm/punch-list" },
-  { module: "inspection", to: "/cm/inspection" },
-  { module: "safety", to: "/cm/safety" },
-  { module: "submittal", to: "/cm/submittal" },
+const PHOTO_ICON = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
+    <circle cx="12" cy="13" r="3.4" /><circle cx="17.6" cy="10.4" r="0.6" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const QUICK_CREATE_ITEMS: { key: string; icon: React.ReactNode; color: string; to: string; search?: Record<string, unknown> }[] = [
+  { key: "siteDiary", icon: MODULE_ICON.siteDiary, color: MODULE_COLOR.siteDiary, to: "/cm/site-diary" },
+  { key: "photo", icon: PHOTO_ICON, color: "#eab308", to: "/cm/photos", search: { new: true } },
+  { key: "punchList", icon: MODULE_ICON.punchList, color: MODULE_COLOR.punchList, to: "/cm/punch-list" },
+  { key: "inspection", icon: MODULE_ICON.inspection, color: MODULE_COLOR.inspection, to: "/cm/inspection" },
+  { key: "safety", icon: MODULE_ICON.safety, color: MODULE_COLOR.safety, to: "/cm/safety" },
+  { key: "submittal", icon: MODULE_ICON.submittal, color: MODULE_COLOR.submittal, to: "/cm/submittal" },
 ];
 
 /** Lets the user jump straight to a module with the right project already
  *  selected — the actual record-creation form still lives on each module's
  *  own page (its "+" FAB), since building a second, auto-opening creation
- *  path per module here would duplicate that UI rather than simplify it. */
+ *  path per module here would duplicate that UI rather than simplify it.
+ *  "Photo" is the one exception: it deep-links straight into the camera
+ *  capture sheet on /cm/photos (defaulted to attach to today's Site Diary),
+ *  since that's a one-shot action rather than a form to fill in. */
 function QuickCreateSheet({ onClose, userId }: { onClose: () => void; userId: string | undefined }) {
   const { t } = useCMLang();
   const navigate = useNavigate();
   const { projects, projectId, setProjectId } = useSelectedProject(userId);
 
-  const go = (to: string) => {
+  const go = (to: string, search?: Record<string, unknown>) => {
     if (projectId) setLastProject(projectId);
     onClose();
-    navigate({ to });
+    navigate({ to, search });
   };
 
   return (
@@ -71,12 +82,12 @@ function QuickCreateSheet({ onClose, userId }: { onClose: () => void; userId: st
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
         <div className="flex flex-col gap-2">
           {QUICK_CREATE_ITEMS.map((item) => (
-            <button key={item.module} type="button" onClick={() => go(item.to)}
+            <button key={item.key} type="button" onClick={() => go(item.to, item.search)}
               className="flex items-center gap-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-4 py-3 text-left w-full">
-              <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[item.module], backgroundColor: `${MODULE_COLOR[item.module]}22` }}>
-                {MODULE_ICON[item.module]}
+              <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ color: item.color, backgroundColor: `${item.color}22` }}>
+                {item.icon}
               </span>
-              <span className="text-[13px] text-white/85 flex-1">{t(`quickCreate.${item.module}`)}</span>
+              <span className="text-[13px] text-white/85 flex-1">{t(`quickCreate.${item.key}`)}</span>
               <span className="text-white/25 shrink-0">›</span>
             </button>
           ))}
