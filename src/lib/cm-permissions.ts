@@ -17,6 +17,7 @@ export function hasPermission(
   tierRole: CMMemberRole | "owner" | undefined,
   jobRole: CMJobRole | null | undefined,
   matrix: CMRolePermission[] | undefined,
+  projectOwnerId: string | undefined,
   moduleKey: CMModuleKey,
   action: CMPermissionAction,
 ): boolean {
@@ -25,7 +26,9 @@ export function hasPermission(
   if ((moduleKey === "people" || moduleKey === "settings") && tierRole === "admin") return true;
   if (tierRole === "visitor" && action !== "view") return false;
   if (!jobRole) return true;
-  const row = matrix?.find((p) => p.job_role === jobRole && p.module_key === moduleKey);
+  const row =
+    matrix?.find((p) => p.job_role === jobRole && p.module_key === moduleKey && p.owner_id === projectOwnerId) ??
+    matrix?.find((p) => p.job_role === jobRole && p.module_key === moduleKey && p.owner_id === null);
   if (!row) return true;
   switch (action) {
     case "view": return row.can_view;
@@ -44,9 +47,9 @@ export function usePermission(
 ): boolean {
   const { data: project } = useCMProject(projectId);
   const { data: members } = useCMProjectMembers(projectId);
-  const { data: matrix } = useCMRolePermissions();
+  const { data: matrix } = useCMRolePermissions(project?.owner_id);
   const me = members?.find((m) => m.user_id === userId);
   const tierRole: CMMemberRole | "owner" | undefined =
     project && userId && project.owner_id === userId ? "owner" : me?.role;
-  return hasPermission(tierRole, me?.job_role ?? null, matrix, moduleKey, action);
+  return hasPermission(tierRole, me?.job_role ?? null, matrix, project?.owner_id, moduleKey, action);
 }
