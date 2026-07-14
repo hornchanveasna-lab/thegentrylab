@@ -1,14 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, useCMTheme } from "@/components/cm/shared";
+import {
+  ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, useCMTheme,
+  FieldSelect, LocationSelect, Sheet,
+} from "@/components/cm/shared";
 import {
   useCMDailyLogs, useCMManpowerRoster, addCMManpowerRosterItem, removeCMManpowerRosterItem,
-  type CMDailyLog,
+  useCMProjectSubcontractors, useCMProjectLocations, locationBreadcrumb,
+  findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity,
+  cmLaborHours, CM_WORKER_CATEGORIES,
+  type CMDailyLog, type CMManpowerRow,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/manpower")({
@@ -18,14 +24,32 @@ export const Route = createFileRoute("/cm/manpower")({
 
 const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
 
+/** Suggested trades per the Manpower spec — merged with whatever trades the
+ *  project has actually used, so the picker never blocks a custom trade. */
+const DEFAULT_TRADES = [
+  "Civil", "Concrete", "Reinforcement", "Formwork", "Steel Erection", "Roofing",
+  "Cladding", "Masonry", "Plastering", "Painting", "Electrical", "Mechanical",
+  "Plumbing", "Fire Protection", "Infrastructure", "Landscaping", "Cleaning",
+  "Security", "Other",
+];
+
 function dailyHeadcount(log: CMDailyLog) {
   return log.manpower.reduce((s, m) => s + m.count, 0);
 }
 
+function shiftDate(date: string, days: number) {
+  const d = new Date(`${date}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /** A predefined per-project list of trade/company pairs Site Diary picks
  *  from instead of retyping every day — the roster itself carries no
- *  headcount; that's still entered fresh per day in Site Diary and
- *  aggregated live above, same as before. */
+ *  headcount; that's still entered fresh per day and aggregated live. */
 function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
   ownerId: string; projectId: string; canCreate: boolean; canDelete: boolean;
 }) {
@@ -77,10 +101,182 @@ function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
   );
 }
 
+/** Quick-entry sheet per the spec: company → trade → category → workers →
+ *  location → activity → hours. Also handles editing an existing row and the
+ *  duplicate check (same company + trade + location must not be silently
+ *  combined — the user chooses Edit Existing / Add New / Cancel). */
+function ManpowerEntrySheet({ projectId, rows, editIndex, companyOptions, tradeOptions, onSave, onClose }: {
+  projectId: string;
+  rows: CMManpowerRow[];
+  editIndex: number | null;
+  companyOptions: string[];
+  tradeOptions: string[];
+  onSave: (next: CMManpowerRow[]) => Promise<void>;
+  onClose: () => void;
+}) {
+  const { t } = useCMLang();
+  // The duplicate prompt's "Edit Existing" can retarget the sheet at the
+  // clashing row mid-flight, so the effective edit target is local state
+  // seeded from the prop rather than the prop itself.
+  const [editTarget, setEditTarget] = useState<number | null>(editIndex);
+  const editing = editTarget != null ? rows[editTarget] : undefined;
+  const [company, setCompany] = useState(editing?.company ?? "");
+  const [trade, setTrade] = useState(editing?.trade ?? "");
+  const [category, setCategory] = useState(editing?.category ?? "");
+  const [count, setCount] = useState(editing ? String(editing.count) : "");
+  const [locationId, setLocationId] = useState<string | null>(editing?.location_id ?? null);
+  const [activity, setActivity] = useState(editing?.activity ?? "");
+  const [normalHours, setNormalHours] = useState(editing?.normal_hours != null ? String(editing.normal_hours) : "8");
+  const [otHours, setOtHours] = useState(editing?.ot_hours != null ? String(editing.ot_hours) : "0");
+  const [dupIndex, setDupIndex] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const buildRow = (): CMManpowerRow => ({
+    trade: trade.trim(),
+    company: company.trim() || null,
+    count: Math.max(0, parseInt(count, 10) || 0),
+    roster_item_id: editing?.roster_item_id ?? null,
+    category: category || null,
+    location_id: locationId,
+    activity: activity.trim() || null,
+    normal_hours: Math.max(0, Number(normalHours) || 0),
+    ot_hours: Math.max(0, Number(otHours) || 0),
+  });
+
+  const persist = async (next: CMManpowerRow[]) => {
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(next);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setSaving(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving || !trade.trim()) return;
+    const row = buildRow();
+    if (editTarget != null) {
+      await persist(rows.map((r, i) => (i === editTarget ? row : r)));
+      return;
+    }
+    const dup = rows.findIndex((r) =>
+      r.trade.trim().toLowerCase() === row.trade.toLowerCase()
+      && (r.company ?? "").trim().toLowerCase() === (row.company ?? "").toLowerCase()
+      && (r.location_id ?? null) === (row.location_id ?? null));
+    if (dup >= 0 && dupIndex == null) {
+      setDupIndex(dup);
+      return;
+    }
+    await persist([...rows, row]);
+  };
+
+  const fieldLabel = "text-[10px] font-mono uppercase tracking-widest text-white/35";
+
+  return (
+    <Sheet title={editTarget != null ? t("manpower.editEntry") : t("manpower.addEntry")} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("siteDiary.company")}</span>
+          <FieldSelect
+            value={company}
+            onChange={setCompany}
+            searchable allowCustom
+            placeholder={t("manpower.selectCompany")}
+            options={[{ value: "", label: t("common.none") }, ...companyOptions.map((c) => ({ value: c, label: c }))]}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("siteDiary.trade")}</span>
+          <FieldSelect
+            value={trade}
+            onChange={setTrade}
+            searchable allowCustom
+            placeholder={t("manpower.selectTrade")}
+            options={tradeOptions.map((tr) => ({ value: tr, label: tr }))}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.category")}</span>
+            <FieldSelect
+              value={category}
+              onChange={setCategory}
+              placeholder={t("common.none")}
+              options={[{ value: "", label: t("common.none") }, ...CM_WORKER_CATEGORIES.map((c) => ({ value: c, label: t(`workerCategory.${c}`) }))]}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.workers")}</span>
+            <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder="0" required />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("manpower.location")}</span>
+          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("manpower.activity")}</span>
+          <input className={inputCls} value={activity} onChange={(e) => setActivity(e.target.value)} placeholder={t("manpower.activityPlaceholder")} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.normalHours")}</span>
+            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={normalHours} onChange={(e) => setNormalHours(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.otHours")}</span>
+            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={otHours} onChange={(e) => setOtHours(e.target.value)} />
+          </div>
+        </div>
+
+        {dupIndex != null && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col gap-2">
+            <p className="text-[12px] text-amber-200/90">{t("manpower.duplicateExists")}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}
+                onClick={() => {
+                  const existing = rows[dupIndex];
+                  setCompany(existing.company ?? "");
+                  setTrade(existing.trade);
+                  setCategory(existing.category ?? "");
+                  setCount(String(existing.count));
+                  setLocationId(existing.location_id ?? null);
+                  setActivity(existing.activity ?? "");
+                  setNormalHours(existing.normal_hours != null ? String(existing.normal_hours) : "8");
+                  setOtHours(existing.ot_hours != null ? String(existing.ot_hours) : "0");
+                  // Switch the sheet into edit mode for that row — a submit
+                  // now replaces it instead of appending a twin.
+                  setDupIndex(null);
+                  setEditTarget(dupIndex);
+                }}>{t("manpower.editExisting")}</button>
+              <button type="submit" className={`${smallBtn} bg-white/10 text-white/70`}>{t("manpower.addNew")}</button>
+              <button type="button" className={`${smallBtn} text-white/40`} onClick={() => setDupIndex(null)}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-[12px] text-red-400">{error}</p>}
+        <div className="flex gap-2 mt-1">
+          <button type="submit" disabled={saving || !trade.trim()} className={`${smallBtn} disabled:opacity-40 px-5 py-2.5`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+            {saving ? t("common.loading") : t("common.save")}
+          </button>
+          <button type="button" onClick={onClose} className={`${smallBtn} px-5 py-2.5 text-white/40`}>{t("common.cancel")}</button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
 function CMManpowerPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const theme = useCMTheme();
+  const qc = useQueryClient();
   const chartGrid = theme === "light" ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.06)";
   const chartTick = theme === "light" ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.35)";
   const chartTooltipBg = theme === "light" ? "#ffffff" : "#181818";
@@ -88,15 +284,126 @@ function CMManpowerPage() {
   const chartTooltipLabel = theme === "light" ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.8)";
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: logs, isLoading } = useCMDailyLogs(projectId || undefined);
+  const { data: roster } = useCMManpowerRoster(projectId || undefined);
+  const { data: subcontractors } = useCMProjectSubcontractors(projectId || undefined);
+  const { data: locations } = useCMProjectLocations(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "manpower", "create");
+  const canEdit = usePermission(projectId || undefined, user?.id, "manpower", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "manpower", "delete");
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [date, setDate] = useState(todayStr);
+  const [sheet, setSheet] = useState<{ editIndex: number | null } | null>(null);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+
+  const dayLog = useMemo(() => (logs ?? []).find((l) => l.log_date === date), [logs, date]);
+  const serverRows = dayLog?.manpower ?? [];
+
+  // Optimistic local copy so the +/- steppers respond instantly; the debounced
+  // persist below writes the whole array back to the day's shared Site Diary
+  // record. Cleared whenever the underlying day changes.
+  const [localRows, setLocalRows] = useState<CMManpowerRow[] | null>(null);
+  useEffect(() => { setLocalRows(null); }, [projectId, date]);
+  const rows = localRows ?? serverRows;
+
+  const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (persistTimer.current) clearTimeout(persistTimer.current); }, []);
+
+  const persistRows = async (next: CMManpowerRow[], action: string) => {
+    if (!user || !projectId) return;
+    const log = dayLog ?? await findOrCreateCMDailyLog(user.id, projectId, date);
+    await updateCMDailyLog(log.id, { manpower: next });
+    qc.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
+    logCMActivity(projectId, user.id, action, "manpower", log.id, { date, entries: next.length });
+  };
+
+  const adjustCount = (index: number, delta: number) => {
+    const next = rows.map((r, i) => (i === index ? { ...r, count: Math.max(0, r.count + delta) } : r));
+    setLocalRows(next);
+    if (persistTimer.current) clearTimeout(persistTimer.current);
+    persistTimer.current = setTimeout(() => { persistRows(next, "manpower_adjusted"); }, 700);
+  };
+
+  const removeRow = async (index: number) => {
+    const next = rows.filter((_, i) => i !== index);
+    setLocalRows(next);
+    setDeleteIndex(null);
+    await persistRows(next, "manpower_removed");
+  };
+
+  const handleSheetSave = async (next: CMManpowerRow[]) => {
+    setLocalRows(next);
+    await persistRows(next, sheet?.editIndex != null ? "manpower_updated" : "manpower_added");
+  };
+
+  // Copy Previous Day: latest earlier log that actually has manpower, copied
+  // in as a starting draft the engineer then adjusts with the steppers.
+  const prevLog = useMemo(() => {
+    return (logs ?? [])
+      .filter((l) => l.log_date < date && l.manpower.length > 0)
+      .sort((a, b) => b.log_date.localeCompare(a.log_date))[0];
+  }, [logs, date]);
+
+  const copyPreviousDay = async () => {
+    if (!prevLog) return;
+    const copied = prevLog.manpower.map((r) => ({ ...r }));
+    setLocalRows(copied);
+    await persistRows(copied, "manpower_copied");
+  };
+
+  // Picker suggestions: companies and trades the project already uses
+  // (roster, assigned subcontractors, past entries) + spec default trades.
+  const companyOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of roster ?? []) if (r.company) set.add(r.company);
+    for (const s of subcontractors ?? []) if (s.contact.company) set.add(s.contact.company);
+    for (const l of logs ?? []) for (const m of l.manpower) if (m.company) set.add(m.company);
+    return [...set].sort();
+  }, [roster, subcontractors, logs]);
+
+  const tradeOptions = useMemo(() => {
+    const set = new Set<string>(DEFAULT_TRADES);
+    for (const r of roster ?? []) set.add(r.trade);
+    for (const s of subcontractors ?? []) if (s.contact.trade) set.add(s.contact.trade);
+    for (const l of logs ?? []) for (const m of l.manpower) if (m.trade) set.add(m.trade);
+    return [...set].sort();
+  }, [roster, subcontractors, logs]);
+
+  const locationLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of locations ?? []) map.set(l.id, locationBreadcrumb(l, locations ?? []));
+    return map;
+  }, [locations]);
+
+  // Day summary — the "generate daily manpower summary" step of the spec's
+  // first workflow, always live at the top of the screen.
+  const summary = useMemo(() => {
+    const companies = new Set<string>();
+    const trades = new Set<string>();
+    let workers = 0;
+    for (const r of rows) {
+      workers += r.count;
+      if (r.company) companies.add(r.company.trim().toLowerCase());
+      if (r.trade) trades.add(r.trade.trim().toLowerCase());
+    }
+    return { workers, companies: companies.size, trades: trades.size, hours: cmLaborHours(rows) };
+  }, [rows]);
+
+  const byCompany = useMemo(() => {
+    const groups = new Map<string, { index: number; row: CMManpowerRow }[]>();
+    rows.forEach((row, index) => {
+      const key = row.company?.trim() || "";
+      const list = groups.get(key) ?? [];
+      list.push({ index, row });
+      groups.set(key, list);
+    });
+    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [rows]);
 
   const daysWithManpower = useMemo(() => {
     let list = (logs ?? []).filter((l) => l.manpower.length > 0);
     const q = search.trim().toLowerCase();
-    if (q) list = list.filter((l) => l.manpower.some((m) => [m.trade, m.company].some((f) => f?.toLowerCase().includes(q))));
+    if (q) list = list.filter((l) => l.manpower.some((m) => [m.trade, m.company, m.activity, m.category].some((f) => f?.toLowerCase().includes(q))));
     list = [...list].sort((a, b) => a.log_date.localeCompare(b.log_date));
     return sortAsc ? list : [...list].reverse();
   }, [logs, search, sortAsc]);
@@ -105,6 +412,11 @@ function CMManpowerPage() {
     () => [...(logs ?? [])].sort((a, b) => a.log_date.localeCompare(b.log_date)).map((l) => ({ date: l.log_date, headcount: dailyHeadcount(l) })),
     [logs],
   );
+
+  const dateLabel = useMemo(() => {
+    if (date === todayStr()) return t("manpower.today");
+    return new Date(`${date}T00:00:00`).toLocaleDateString(lang === "km" ? "km-KH" : lang === "zh" ? "zh-CN" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
+  }, [date, lang, t]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -115,6 +427,13 @@ function CMManpowerPage() {
     );
   }
 
+  const stat = (label: string, value: string | number, accent = false) => (
+    <div className="flex flex-col items-center gap-0.5 min-w-0">
+      <span className="font-mono text-[16px] leading-none" style={accent ? { color: "#ff5100" } : undefined}>{value}</span>
+      <span className="text-[9px] uppercase tracking-widest text-white/30 text-center">{label}</span>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
@@ -124,15 +443,102 @@ function CMManpowerPage() {
 
         {projectId && (
           <>
+            {/* Date selector */}
+            <div className="flex items-center gap-2 mb-3">
+              <button onClick={() => setDate(shiftDate(date, -1))} className="w-9 h-9 rounded-xl bg-white/5 text-white/50 flex items-center justify-center" aria-label="previous day">‹</button>
+              <div className="flex-1 relative">
+                <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
+                  className={`${inputCls} text-center font-mono [color-scheme:dark]`} />
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-widest text-white/30 pointer-events-none">{dateLabel}</span>
+              </div>
+              <button onClick={() => setDate(shiftDate(date, 1))} disabled={date >= todayStr()} className="w-9 h-9 rounded-xl bg-white/5 text-white/50 flex items-center justify-center disabled:opacity-30" aria-label="next day">›</button>
+            </div>
+
+            {/* Day summary */}
+            <div className="rounded-2xl bg-[#0d0d0e] px-4 py-3.5 mb-3 grid grid-cols-5 gap-2">
+              {stat(t("manpower.totalWorkersShort"), summary.workers, true)}
+              {stat(t("manpower.companiesShort"), summary.companies)}
+              {stat(t("manpower.tradesShort"), summary.trades)}
+              {stat(t("manpower.normalHoursShort"), summary.hours.normal)}
+              {stat(t("manpower.otHoursShort"), summary.hours.ot)}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {canCreate && (
+                <button onClick={() => setSheet({ editIndex: null })} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+                  {t("manpower.addEntry")}
+                </button>
+              )}
+              {canCreate && rows.length === 0 && prevLog && (
+                <button onClick={copyPreviousDay} className={`${smallBtn} px-4 py-2 bg-white/10 text-white/70`}>
+                  {t("manpower.copyPreviousDay")} ({prevLog.log_date})
+                </button>
+              )}
+            </div>
+
+            {/* By Company — the day's shared Site Diary manpower record */}
+            {rows.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 py-10 flex items-center justify-center text-center px-4 mb-4">
+                <p className="text-white/40 text-sm">{t("manpower.noEntriesForDay")}</p>
+              </div>
+            )}
+            {byCompany.length > 0 && (
+              <div className="flex flex-col gap-2.5 mb-4">
+                {byCompany.map(([company, items]) => (
+                  <div key={company || "-"} className="rounded-2xl bg-[#0d0d0e] px-4 py-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[12px] text-white/75 font-medium truncate">{company || t("manpower.noCompany")}</span>
+                      <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{items.reduce((s, i) => s + i.row.count, 0)}</span>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {items.map(({ index, row }) => (
+                        <div key={index} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+                          <button className="flex-1 min-w-0 text-left" onClick={() => canEdit && setSheet({ editIndex: index })} disabled={!canEdit}>
+                            <p className="text-[12px] text-white/80 truncate">
+                              {row.trade}
+                              {row.category ? <span className="text-white/35"> · {t(`workerCategory.${row.category}`)}</span> : null}
+                            </p>
+                            <p className="text-[10px] text-white/30 truncate">
+                              {[
+                                row.location_id ? locationLabelById.get(row.location_id) : null,
+                                row.activity,
+                                `${row.normal_hours ?? 8}h${(row.ot_hours ?? 0) > 0 ? ` + ${row.ot_hours} OT` : ""}`,
+                              ].filter(Boolean).join(" · ")}
+                            </p>
+                          </button>
+                          {canEdit ? (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => adjustCount(index, -1)} className="w-7 h-7 rounded-lg bg-white/5 text-white/50 flex items-center justify-center text-[14px]" aria-label="decrease">−</button>
+                              <span className="font-mono text-[13px] w-8 text-center">{row.count}</span>
+                              <button onClick={() => adjustCount(index, 1)} className="w-7 h-7 rounded-lg bg-white/5 text-white/50 flex items-center justify-center text-[14px]" aria-label="increase">+</button>
+                            </div>
+                          ) : (
+                            <span className="font-mono text-[13px] shrink-0">{row.count}</span>
+                          )}
+                          {canDelete && (
+                            deleteIndex === index ? (
+                              <button onClick={() => removeRow(index)} className="shrink-0 text-[9px] font-mono uppercase tracking-widest text-red-400 px-1.5">{t("common.delete")}</button>
+                            ) : (
+                              <button onClick={() => setDeleteIndex(index)} className="shrink-0 w-5 h-5 rounded-full text-white/20 hover:text-red-400 flex items-center justify-center">×</button>
+                            )
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {rows.length > 0 && (
+              <p className="text-[10px] text-white/25 mb-5">{t("manpower.sharedWithSiteDiary")}</p>
+            )}
+
             <div className="mb-4">
               <ManpowerRosterSection ownerId={user.id} projectId={projectId} canCreate={canCreate} canDelete={canDelete} />
             </div>
+
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && chartData.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("manpower.nothingYet")}</p>
-              </div>
-            )}
             {!isLoading && chartData.length > 0 && (
               <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-4" style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -149,7 +555,7 @@ function CMManpowerPage() {
             )}
             <div className="flex flex-col gap-2">
               {daysWithManpower.map((log) => (
-                <div key={log.id} className="rounded-2xl bg-[#0d0d0e] px-4 py-3">
+                <button key={log.id} className="rounded-2xl bg-[#0d0d0e] px-4 py-3 text-left" onClick={() => setDate(log.log_date)}>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-mono text-[11px] text-white/70">{log.log_date}</span>
                     <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{t("manpower.total")} {dailyHeadcount(log)}</span>
@@ -161,12 +567,24 @@ function CMManpowerPage() {
                       </span>
                     ))}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </>
         )}
       </main>
+
+      {sheet && projectId && (
+        <ManpowerEntrySheet
+          projectId={projectId}
+          rows={rows}
+          editIndex={sheet.editIndex}
+          companyOptions={companyOptions}
+          tradeOptions={tradeOptions}
+          onSave={handleSheetSave}
+          onClose={() => setSheet(null)}
+        />
+      )}
     </div>
   );
 }
