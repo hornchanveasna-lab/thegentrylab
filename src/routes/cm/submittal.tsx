@@ -157,7 +157,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, onCh
         <div className="min-w-0">
           <h3 className="text-[13px] font-bold text-white leading-tight truncate">{item.title}</h3>
           <p className="font-mono text-[10px] text-white/30 mt-0.5">
-            {[item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
+            {[item.doc_number, item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
