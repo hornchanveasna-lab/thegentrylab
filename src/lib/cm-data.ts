@@ -2483,14 +2483,23 @@ export async function createCMSubmittal(
   const { data, error } = await db().from("cm_submittals").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   logCMActivity(projectId, ownerId, "created", "submittal", data.id, { title: data.title });
+  if (data.status === "Submitted" || data.status === "Under Review") {
+    const { data: proj } = await db().from("cm_projects").select("owner_id").eq("id", projectId).maybeSingle();
+    if (proj?.owner_id) notifyCMUser(projectId, proj.owner_id, "approval_required", data.title, data.doc_number, "submittal", data.id);
+  }
   return data as CMSubmittal;
 }
 
 export async function updateCMSubmittal(id: string, patch: Partial<CMSubmittal>) {
   const { data, error } = await db().from("cm_submittals").update(patch).eq("id", id).select().single();
   if (error) throw error;
-  if ((patch.status === "Rejected" || patch.status === "Revise & Resubmit") && data) {
+  if (patch.status === "Rejected" && data) {
     notifyCMUser(data.project_id, data.owner_id, "rejection", data.title, data.doc_number, "submittal", data.id);
+  } else if (patch.status === "Revise & Resubmit" && data) {
+    notifyCMUser(data.project_id, data.owner_id, "revision_required", data.title, data.doc_number, "submittal", data.id);
+  } else if ((patch.status === "Submitted" || patch.status === "Under Review") && data) {
+    const { data: proj } = await db().from("cm_projects").select("owner_id").eq("id", data.project_id).maybeSingle();
+    if (proj?.owner_id) notifyCMUser(data.project_id, proj.owner_id, "approval_required", data.title, data.doc_number, "submittal", data.id);
   }
 }
 
