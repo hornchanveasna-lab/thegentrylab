@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { FieldSelect, Card, Avatar, Sheet, PROJECT_STATUS_OPTIONS, PROJECT_HEALTH_OPTIONS, ConfirmationDialog } from "@/components/cm/shared";
+import { FieldSelect, Card, Avatar, Sheet, PROJECT_STATUS_OPTIONS, ConfirmationDialog } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
@@ -60,7 +60,6 @@ import {
   type CMProjectLocation,
   type CMLocationLevel,
   type ProjectStatus,
-  type ProjectHealth,
   type ProjectSector,
   type CMCompany,
   type CompanyType,
@@ -150,7 +149,6 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
       [t("projectSettings.address"), project.address],
       [t("projectSettings.location"), project.location],
       [t("projectSettings.status"), t(`status.${project.status}`)],
-      [t("projectSettings.health"), t(`health.${project.health}`)],
       [t("projectSettings.sector"), project.sector ? t(`sector.${project.sector}`) : null],
       [t("projectSettings.contractValue"), project.contract_value != null ? `${project.currency ? `${project.currency} ` : ""}${project.contract_value.toLocaleString()}` : null],
       [t("projectSettings.start"), project.start_date],
@@ -178,7 +176,6 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
   const [location, setLocation] = useState(project.location ?? "");
   const [locationMapUrl, setLocationMapUrl] = useState(project.location_map_url ?? "");
   const [status, setStatus] = useState<ProjectStatus>(project.status);
-  const [health, setHealth] = useState<ProjectHealth>(project.health);
   const [sector, setSector] = useState<ProjectSector | "">(project.sector ?? "");
   const [contractValue, setContractValue] = useState(project.contract_value != null ? String(project.contract_value) : "");
   const [currency, setCurrency] = useState(project.currency ?? "");
@@ -245,7 +242,6 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
         location: location.trim() || null,
         location_map_url: locationMapUrl.trim() || null,
         status,
-        health,
         sector: sector || null,
         contract_value: contractValue.trim() ? Number(contractValue) : null,
         currency: currency.trim() || null,
@@ -331,17 +327,11 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
             <input type="date" className={inputCls} value={targetEndDate} onChange={(e) => setTargetEndDate(e.target.value)} />
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("projectSettings.health")}</span>
-            <FieldSelect value={health} onChange={setHealth} options={PROJECT_HEALTH_OPTIONS.map((h) => ({ value: h, label: t(`health.${h}`) }))} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("projectSettings.sector")}</span>
-            <FieldSelect value={sector} onChange={setSector} placeholder={t("projects.sectorPlaceholder")}
-              options={[{ value: "", label: t("projects.sectorPlaceholder") }, ...CM_PROJECT_SECTORS.map((s) => ({ value: s, label: t(`sector.${s}`) }))]} />
-          </label>
-        </div>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("projectSettings.sector")}</span>
+          <FieldSelect value={sector} onChange={setSector} placeholder={t("projects.sectorPlaceholder")}
+            options={[{ value: "", label: t("projects.sectorPlaceholder") }, ...CM_PROJECT_SECTORS.map((s) => ({ value: s, label: t(`sector.${s}`) }))]} />
+        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("projectSettings.contractValue")}</span>

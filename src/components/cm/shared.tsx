@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
   useCMProjectLocations, locationBreadcrumb, useCMCompanies, createCMCompany,
-  type ProjectStatus, type ProjectHealth,
+  type ProjectStatus, type CMComputedHealth,
   useCMComments, addCMComment, deleteCMComment,
   useCMProjectMembers,
   useCMRelatedItems, type CMRelatedItem,
@@ -85,8 +85,11 @@ export const PROJECT_STATUS_COLOR: Record<ProjectStatus, string> = {
   Closed: "#34d399",
   Archived: "#64748b",
 };
-export const PROJECT_HEALTH_OPTIONS: ProjectHealth[] = ["Green", "Amber", "Red"];
-export const PROJECT_HEALTH_COLOR: Record<ProjectHealth, string> = { Green: "#34d399", Amber: "#fbbf24", Red: "#f43f5e" };
+/** Health is computed from the schedule (cmComputedHealth), never hand-set. */
+export const PROJECT_HEALTH_OPTIONS: CMComputedHealth[] = ["Ahead", "OnSchedule", "Behind"];
+export const PROJECT_HEALTH_COLOR: Record<CMComputedHealth, string> = {
+  Ahead: "#60a5fa", OnSchedule: "#34d399", Behind: "#f43f5e", NoSchedule: "#94a3b8",
+};
 
 /** A read-only colored pill, extracted from what every module was hand-
  *  rolling inline for its status/priority chips. `PriorityBadge` is the

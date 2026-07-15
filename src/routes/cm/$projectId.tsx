@@ -21,6 +21,7 @@ import {
   useCMSubmittals,
   useCMDailyLogs,
   useCMScheduleItems,
+  cmComputedHealth,
   useActiveCMBOQItems,
   useCMEquipment,
   useCMAuditLog,
@@ -234,7 +235,10 @@ function CMProjectPage() {
   }
 
   const sc = PROJECT_STATUS_COLOR[project.status];
-  const hc = PROJECT_HEALTH_COLOR[project.health];
+  // Health is computed from the schedule (Ahead / On Schedule / Behind) so
+  // this chip can never contradict the plan-vs-actual numbers below it.
+  const computedHealth = cmComputedHealth(scheduleItems ?? [], new Date().toISOString().slice(0, 10)).health;
+  const hc = PROJECT_HEALTH_COLOR[computedHealth];
   const value = formatContractValue(project.contract_value, project.currency);
 
   const TAB_OPTIONS: { value: InsightTab; label: string }[] = [
@@ -282,7 +286,7 @@ function CMProjectPage() {
             </span>
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: `${hc}15` }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: hc }}>{t(`health.${project.health}`)}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: hc }}>{t(`health.${computedHealth}`)}</span>
             </span>
             {project.sector && <span className="px-2.5 py-1 rounded-full bg-white/5 font-mono text-[9px] uppercase tracking-widest text-white/40">{t(`sector.${project.sector}`)}</span>}
           </div>
