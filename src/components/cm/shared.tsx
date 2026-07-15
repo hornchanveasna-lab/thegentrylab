@@ -900,11 +900,12 @@ export function QuickUploadButton({ label, onClick }: { label: string; onClick: 
   );
 }
 
-/** Generic "Upload File" quick-create sheet — a title field plus
- *  FilePicker, saved as a brand-new record via the caller's onSubmit
- *  (which wraps that module's own minimal-required-field create
- *  function). Mirrors Site Diary's Capture flow without the
- *  purpose-routing step, since each host module is already the purpose. */
+/** Generic "Upload File" quick-create sheet — pick file(s) first, then a
+ *  title (auto-filled from the first file's name, still editable), saved
+ *  as a brand-new record via the caller's onSubmit (which wraps that
+ *  module's own minimal-required-field create function). Mirrors Site
+ *  Diary's Capture flow without the purpose-routing step, since each
+ *  host module is already the purpose. */
 export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, onClose, onSubmit }: {
   sheetTitle: string;
   titleLabel: string;
@@ -917,6 +918,14 @@ export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, onC
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const handleFilesChange = (fn: (f: File[]) => File[]) => {
+    const next = fn(files);
+    setFiles(next);
+    if (!title.trim() && files.length === 0 && next.length > 0) {
+      setTitle(next[0].name.replace(/\.[^./]+$/, ""));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -935,11 +944,11 @@ export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, onC
   return (
     <Sheet title={sheetTitle} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+        <FilePicker files={files} setFiles={handleFilesChange} disabled={saving} />
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{titleLabel}</span>
-          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={titlePlaceholder} required autoFocus disabled={saving} />
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={titlePlaceholder} required disabled={saving} />
         </label>
-        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full rounded-2xl py-3.5 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98] disabled:opacity-40"
