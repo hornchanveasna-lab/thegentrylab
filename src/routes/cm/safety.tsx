@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
+  PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -206,7 +206,6 @@ function CMSafetyPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
-  const [view, setView] = useState<ModuleView>("list");
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_safety_records", projectId] }); setShowNew(false); };
@@ -234,9 +233,10 @@ function CMSafetyPage() {
         <ModuleHeader title={t("safety.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
-        <div className="flex justify-end mb-3">
-          <ViewToggle view={view} onChange={setView} />
-        </div>
+        {projectId && (
+          <WeekCalendarStrip items={records ?? []} dateOf={(r) => r.record_date} lang={lang}
+            selected={dateFilter} onSelect={setDateFilter} />
+        )}
 
         {dateFilter && (
           <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
@@ -249,17 +249,14 @@ function CMSafetyPage() {
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
-            {!isError && (view === "calendar" ? (
-              <MiniCalendar items={records ?? []} dateOf={(r) => r.record_date} lang={lang}
-                onOpenDay={(dayItems) => { setDateFilter(dayItems[0].record_date); setView("list"); }} />
-            ) : (
+            {!isError && (
               <>
                 {!isLoading && visibleRecords.length === 0 && <EmptyState message={t("safety.noneYet")} />}
                 <div className="flex flex-col gap-3">
                   {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
               </>
-            ))}
+            )}
             {canCreate && <FAB label={t("safety.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}
