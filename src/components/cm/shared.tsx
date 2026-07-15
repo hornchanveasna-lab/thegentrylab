@@ -884,6 +884,73 @@ export function FileAttachmentList({ files }: { files: CMFileAttachment[] }) {
   );
 }
 
+/** Prominent orange pill button matching Site Diary's Capture button —
+ *  opens QuickUploadSheet for modules that just need a quick file-first
+ *  record instead of Site Diary's full purpose-routing flow. */
+export function QuickUploadButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98]"
+      style={{ backgroundColor: "#ff5100" }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+      </svg>
+      {label}
+    </button>
+  );
+}
+
+/** Generic "Upload File" quick-create sheet — a title field plus
+ *  FilePicker, saved as a brand-new record via the caller's onSubmit
+ *  (which wraps that module's own minimal-required-field create
+ *  function). Mirrors Site Diary's Capture flow without the
+ *  purpose-routing step, since each host module is already the purpose. */
+export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, onClose, onSubmit }: {
+  sheetTitle: string;
+  titleLabel: string;
+  titlePlaceholder?: string;
+  onClose: () => void;
+  onSubmit: (title: string, files: File[]) => Promise<void>;
+}) {
+  const { t } = useCMLang();
+  const [title, setTitle] = useState("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await onSubmit(title.trim(), files);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Sheet title={sheetTitle} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{titleLabel}</span>
+          <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={titlePlaceholder} required autoFocus disabled={saving} />
+        </label>
+        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
+        {error && <p className="text-[12px] text-red-400">{error}</p>}
+        <button type="submit" disabled={saving || !title.trim()}
+          className="w-full rounded-2xl py-3.5 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98] disabled:opacity-40"
+          style={{ backgroundColor: "#ff5100" }}>
+          {saving ? t("quickUpload.saving") : t("quickUpload.save")}
+        </button>
+      </form>
+    </Sheet>
+  );
+}
+
 const LAST_PROJECT_KEY = "cm_last_project_id";
 
 /** Set by /cm/join/$token before sending an unauthenticated visitor

@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   PriorityBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -15,6 +15,7 @@ import {
   updateCMTask,
   deleteCMTask,
   uploadCMPhotoWithThumb,
+  uploadCMFile,
   useCMProjectLocations,
   useCMProjectMembers,
   addCMComment,
@@ -50,6 +51,7 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
   const [assignee, setAssignee] = useState(existing?.assignee ?? "");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -65,11 +67,15 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
       };
       const item = existing ?? await createCMTask(ownerId, projectId, patch);
       if (existing) await updateCMTask(existing.id, patch);
-      if (photos.length > 0) {
-        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      if (photos.length > 0 || files.length > 0) {
+        const [uploadedPhotos, uploadedFiles] = await Promise.all([
+          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
+        ]);
         await updateCMTask(item.id, {
-          photos: [...item.photos, ...uploaded.map((u) => u.url)],
-          photo_thumbs: [...item.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+          photos: [...item.photos, ...uploadedPhotos.map((u) => u.url)],
+          photo_thumbs: [...item.photo_thumbs, ...uploadedPhotos.map((u) => u.thumbUrl)],
+          files: [...item.files, ...uploadedFiles],
         });
       }
       onCreated();
@@ -115,6 +121,13 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
           </label>
         </div>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
+        {existing && existing.files.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("common.attachedFiles")}</span>
+            <FileAttachmentList files={existing.files} />
+          </div>
+        )}
+        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -274,6 +287,7 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
           </div>
         </div>
       )}
+      <FileAttachmentList files={item.files} />
 
       {/* Contractor: submit an after-photo to move the item to Ready for Check. */}
       {canEdit && !isClosed && !isReadyForCheck && (
@@ -365,6 +379,7 @@ function CMPunchListPage() {
   const canApprove = usePermission(projectId || undefined, user?.id, "punch_list", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "punch_list", "delete");
   const [showNew, setShowNew] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -399,6 +414,10 @@ function CMPunchListPage() {
         <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <p className="text-[12px] text-white/35 mb-5">{t("punchList.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {projectId && canCreate && (
+          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+        )}
 
         {projectId && (
           <WeekCalendarStrip items={items ?? []} dateOf={(it) => it.created_at.slice(0, 10)} lang={lang}
@@ -448,6 +467,23 @@ function CMPunchListPage() {
       </main>
 
       {showNew && projectId && <NewPunchItemSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+
+      {showQuickUpload && projectId && (
+        <QuickUploadSheet
+          sheetTitle={t("punchList.new")}
+          titleLabel={t("punchList.whatNeedsDone")}
+          titlePlaceholder={t("punchList.whatNeedsDonePlaceholder")}
+          onClose={() => setShowQuickUpload(false)}
+          onSubmit={async (title, files) => {
+            const item = await createCMTask(user.id, projectId, { title });
+            if (files.length > 0) {
+              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
+              await updateCMTask(item.id, { files: uploaded });
+            }
+            invalidate();
+          }}
+        />
+      )}
 
       {lightbox && (
         <PhotoLightbox

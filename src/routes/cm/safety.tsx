@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -15,6 +15,7 @@ import {
   updateCMSafetyRecord,
   deleteCMSafetyRecord,
   uploadCMPhotoWithThumb,
+  uploadCMFile,
   type CMSafetyRecord,
   type SafetyRecordType,
   type SafetySeverity,
@@ -41,6 +42,7 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
   const [recordDate, setRecordDate] = useState(() => existing?.record_date ?? new Date().toISOString().slice(0, 10));
   const [involved, setInvolved] = useState(existing?.involved ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,11 +58,15 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
       };
       const record = existing ?? await createCMSafetyRecord(ownerId, projectId, patch);
       if (existing) await updateCMSafetyRecord(existing.id, patch);
-      if (photos.length > 0) {
-        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      if (photos.length > 0 || files.length > 0) {
+        const [uploadedPhotos, uploadedFiles] = await Promise.all([
+          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
+        ]);
         await updateCMSafetyRecord(record.id, {
-          photos: [...record.photos, ...uploaded.map((u) => u.url)],
-          photo_thumbs: [...record.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+          photos: [...record.photos, ...uploadedPhotos.map((u) => u.url)],
+          photo_thumbs: [...record.photo_thumbs, ...uploadedPhotos.map((u) => u.thumbUrl)],
+          files: [...record.files, ...uploadedFiles],
         });
       }
       onCreated();
@@ -102,6 +108,13 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
           </label>
         </div>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
+        {existing && existing.files.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("common.attachedFiles")}</span>
+            <FileAttachmentList files={existing.files} />
+          </div>
+        )}
+        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -163,6 +176,7 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, o
               ))}
             </div>
           )}
+          <FileAttachmentList files={item.files} />
           <div className="flex items-center gap-3">
             {canApprove && (
               <button onClick={handleResolve} disabled={busy} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest"
@@ -203,6 +217,7 @@ function CMSafetyPage() {
   const canApprove = usePermission(projectId || undefined, user?.id, "safety", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "safety", "delete");
   const [showNew, setShowNew] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -232,6 +247,10 @@ function CMSafetyPage() {
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("safety.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {projectId && canCreate && (
+          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+        )}
 
         {projectId && (
           <WeekCalendarStrip items={records ?? []} dateOf={(r) => r.record_date} lang={lang}
@@ -263,6 +282,23 @@ function CMSafetyPage() {
       </main>
 
       {showNew && projectId && <NewSafetySheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+
+      {showQuickUpload && projectId && (
+        <QuickUploadSheet
+          sheetTitle={t("safety.new")}
+          titleLabel={t("safety.titleField")}
+          titlePlaceholder={t("safety.titlePlaceholder")}
+          onClose={() => setShowQuickUpload(false)}
+          onSubmit={async (title, files) => {
+            const record = await createCMSafetyRecord(user.id, projectId, { title, record_date: new Date().toISOString().slice(0, 10) });
+            if (files.length > 0) {
+              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
+              await updateCMSafetyRecord(record.id, { files: uploaded });
+            }
+            invalidate();
+          }}
+        />
+      )}
 
       {lightbox && (
         <PhotoLightbox
