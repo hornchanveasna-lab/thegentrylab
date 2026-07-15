@@ -12,9 +12,12 @@ import {
   useCMAccountSettings,
   upsertCMAccountSettings,
   CM_PROJECT_SECTORS,
+  useCMAllScheduleItems,
+  cmComputedHealth,
   type CMProject,
+  type CMScheduleItem,
   type ProjectStatus,
-  type ProjectHealth,
+  type CMComputedHealth,
   type ProjectSector,
 } from "@/lib/cm-data";
 import { FieldSelect, Sheet, FAB, PROJECT_STATUS_OPTIONS, PROJECT_STATUS_COLOR, PROJECT_HEALTH_OPTIONS, PROJECT_HEALTH_COLOR } from "@/components/cm/shared";
@@ -51,14 +54,14 @@ const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35"
 const chipCls = "px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest transition-colors";
 
 type SortKey = "updated" | "name" | "start" | "end" | "value" | "health";
-const HEALTH_RANK: Record<ProjectHealth, number> = { Red: 0, Amber: 1, Green: 2 };
+const HEALTH_RANK: Record<CMComputedHealth, number> = { Behind: 0, NoSchedule: 1, OnSchedule: 2, Ahead: 3 };
 
 type SummaryKey = "all" | "Active" | "Planning" | "On Hold" | "Delayed" | "Completed" | "atRisk" | "Archived";
 const SUMMARY_CARDS: SummaryKey[] = ["all", "Active", "Planning", "On Hold", "Delayed", "Completed", "atRisk", "Archived"];
 
-function matchesSummary(p: CMProject, key: SummaryKey): boolean {
+function matchesSummary(p: CMProject, key: SummaryKey, health: CMComputedHealth): boolean {
   if (key === "all") return true;
-  if (key === "atRisk") return p.health === "Red";
+  if (key === "atRisk") return health === "Behind";
   return p.status === key;
 }
 
@@ -197,11 +200,11 @@ function FavoriteButton({ active, onToggle, className }: { active: boolean; onTo
   );
 }
 
-function ProjectCard({ project, favorite, onToggleFavorite, t }: {
-  project: CMProject; favorite: boolean; onToggleFavorite: () => void; t: (key: string, vars?: Record<string, string>) => string;
+function ProjectCard({ project, health, favorite, onToggleFavorite, t }: {
+  project: CMProject; health: CMComputedHealth; favorite: boolean; onToggleFavorite: () => void; t: (key: string, vars?: Record<string, string>) => string;
 }) {
   const sc = PROJECT_STATUS_COLOR[project.status];
-  const hc = PROJECT_HEALTH_COLOR[project.health];
+  const hc = PROJECT_HEALTH_COLOR[health];
   const value = formatContractValue(project.contract_value, project.currency);
   return (
     <Link to="/cm/$projectId" params={{ projectId: project.id }}
@@ -213,7 +216,7 @@ function ProjectCard({ project, favorite, onToggleFavorite, t }: {
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <FavoriteButton active={favorite} onToggle={onToggleFavorite} />
-          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hc }} title={t(`health.${project.health}`)} />
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hc }} title={t(`health.${health}`)} />
         </div>
       </div>
       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
@@ -244,15 +247,15 @@ function ProjectCard({ project, favorite, onToggleFavorite, t }: {
   );
 }
 
-function ProjectRow({ project, favorite, onToggleFavorite, t }: {
-  project: CMProject; favorite: boolean; onToggleFavorite: () => void; t: (key: string, vars?: Record<string, string>) => string;
+function ProjectRow({ project, health, favorite, onToggleFavorite, t }: {
+  project: CMProject; health: CMComputedHealth; favorite: boolean; onToggleFavorite: () => void; t: (key: string, vars?: Record<string, string>) => string;
 }) {
   const sc = PROJECT_STATUS_COLOR[project.status];
-  const hc = PROJECT_HEALTH_COLOR[project.health];
+  const hc = PROJECT_HEALTH_COLOR[health];
   return (
     <Link to="/cm/$projectId" params={{ projectId: project.id }}
       className="flex items-center gap-3 rounded-xl bg-[#0d0d0e] hover:bg-[#111113] transition-colors px-4 py-3">
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: hc }} title={t(`health.${project.health}`)} />
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: hc }} title={t(`health.${health}`)} />
       <div className="min-w-0 flex-1">
         <p className="text-[13px] font-bold text-white truncate">{project.name}</p>
         <p className="text-[11px] text-white/35 truncate">
@@ -270,8 +273,8 @@ function ProjectRow({ project, favorite, onToggleFavorite, t }: {
 }
 
 function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onClose, t }: {
-  statuses: Set<ProjectStatus>; healths: Set<ProjectHealth>; sectors: Set<ProjectSector>; favoritesOnly: boolean;
-  onChange: (patch: Partial<{ statuses: Set<ProjectStatus>; healths: Set<ProjectHealth>; sectors: Set<ProjectSector>; favoritesOnly: boolean }>) => void;
+  statuses: Set<ProjectStatus>; healths: Set<CMComputedHealth>; sectors: Set<ProjectSector>; favoritesOnly: boolean;
+  onChange: (patch: Partial<{ statuses: Set<ProjectStatus>; healths: Set<CMComputedHealth>; sectors: Set<ProjectSector>; favoritesOnly: boolean }>) => void;
   onClose: () => void;
   t: (key: string, vars?: Record<string, string>) => string;
 }) {
@@ -349,12 +352,13 @@ export function CMProjectsPage() {
   const { data: projects, isLoading, error } = useCMProjects(user?.id);
   const { data: favorites } = useCMProjectFavorites(user?.id);
   const { data: account } = useCMAccountSettings(user?.id);
+  const { data: allScheduleItems } = useCMAllScheduleItems(user?.id);
   const [showNew, setShowNew] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("updated");
   const [statuses, setStatuses] = useState<Set<ProjectStatus>>(new Set());
-  const [healths, setHealths] = useState<Set<ProjectHealth>>(new Set());
+  const [healths, setHealths] = useState<Set<CMComputedHealth>>(new Set());
   const [sectors, setSectors] = useState<Set<ProjectSector>>(new Set());
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const view = account?.projects_view ?? "card";
@@ -375,6 +379,22 @@ export function CMProjectsPage() {
     );
   };
 
+  // Health computed per project from its schedule (Ahead / On Schedule /
+  // Behind) — one cross-project query, never a hand-set label.
+  const healthByProject = useMemo(() => {
+    const itemsByProject = new Map<string, CMScheduleItem[]>();
+    for (const item of allScheduleItems ?? []) {
+      itemsByProject.set(item.project_id, [...(itemsByProject.get(item.project_id) ?? []), item]);
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const map = new Map<string, CMComputedHealth>();
+    for (const p of projects ?? []) {
+      map.set(p.id, cmComputedHealth(itemsByProject.get(p.id) ?? [], today).health);
+    }
+    return map;
+  }, [allScheduleItems, projects]);
+  const healthOf = (p: CMProject): CMComputedHealth => healthByProject.get(p.id) ?? "NoSchedule";
+
   const q = search.trim().toLowerCase();
   const searched = useMemo(() => {
     if (!projects) return [];
@@ -389,32 +409,32 @@ export function CMProjectsPage() {
 
   const summaryCounts = useMemo(() => {
     const counts = new Map<SummaryKey, number>();
-    for (const key of SUMMARY_CARDS) counts.set(key, searched.filter((p) => matchesSummary(p, key)).length);
+    for (const key of SUMMARY_CARDS) counts.set(key, searched.filter((p) => matchesSummary(p, key, healthByProject.get(p.id) ?? "NoSchedule")).length);
     return counts;
-  }, [searched]);
+  }, [searched, healthByProject]);
 
   const activeSummary: SummaryKey | null = useMemo(() => {
     if (favoritesOnly || sectors.size > 0) return null;
     if (statuses.size === 0 && healths.size === 0) return "all";
-    if (healths.size === 1 && healths.has("Red") && statuses.size === 0) return "atRisk";
+    if (healths.size === 1 && healths.has("Behind") && statuses.size === 0) return "atRisk";
     if (statuses.size === 1 && healths.size === 0) return [...statuses][0] as SummaryKey;
     return null;
   }, [statuses, healths, sectors, favoritesOnly]);
 
   const applySummary = (key: SummaryKey) => {
     if (key === "all") { setStatuses(new Set()); setHealths(new Set()); return; }
-    if (key === "atRisk") { setStatuses(new Set()); setHealths(new Set(["Red"])); return; }
+    if (key === "atRisk") { setStatuses(new Set()); setHealths(new Set<CMComputedHealth>(["Behind"])); return; }
     setStatuses(new Set([key as ProjectStatus])); setHealths(new Set());
   };
 
   const filtered = useMemo(() => {
     let list = searched;
     if (statuses.size > 0) list = list.filter((p) => statuses.has(p.status));
-    if (healths.size > 0) list = list.filter((p) => healths.has(p.health));
+    if (healths.size > 0) list = list.filter((p) => healths.has(healthByProject.get(p.id) ?? "NoSchedule"));
     if (sectors.size > 0) list = list.filter((p) => p.sector && sectors.has(p.sector));
     if (favoritesOnly) list = list.filter((p) => favorites?.has(p.id));
     return list;
-  }, [searched, statuses, healths, sectors, favoritesOnly, favorites]);
+  }, [searched, statuses, healths, sectors, favoritesOnly, favorites, healthByProject]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -423,11 +443,11 @@ export function CMProjectsPage() {
       case "start": return list.sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""));
       case "end": return list.sort((a, b) => (a.target_end_date ?? "9999").localeCompare(b.target_end_date ?? "9999"));
       case "value": return list.sort((a, b) => (b.contract_value ?? 0) - (a.contract_value ?? 0));
-      case "health": return list.sort((a, b) => HEALTH_RANK[a.health] - HEALTH_RANK[b.health]);
+      case "health": return list.sort((a, b) => HEALTH_RANK[healthByProject.get(a.id) ?? "NoSchedule"] - HEALTH_RANK[healthByProject.get(b.id) ?? "NoSchedule"]);
       case "updated":
       default: return list;
     }
-  }, [filtered, sortBy]);
+  }, [filtered, sortBy, healthByProject]);
 
   const favSorted = useMemo(() => {
     if (!favorites) return sorted;
@@ -543,7 +563,7 @@ export function CMProjectsPage() {
         {!isLoading && favSorted.length > 0 && view === "card" && (
           <div className="flex flex-col gap-3">
             {favSorted.map((p) => (
-              <ProjectCard key={p.id} project={p} favorite={favorites?.has(p.id) ?? false} onToggleFavorite={() => toggleFavorite(p.id)} t={t} />
+              <ProjectCard key={p.id} project={p} health={healthOf(p)} favorite={favorites?.has(p.id) ?? false} onToggleFavorite={() => toggleFavorite(p.id)} t={t} />
             ))}
           </div>
         )}
@@ -551,7 +571,7 @@ export function CMProjectsPage() {
         {!isLoading && favSorted.length > 0 && view === "list" && (
           <div className="flex flex-col gap-2">
             {favSorted.map((p) => (
-              <ProjectRow key={p.id} project={p} favorite={favorites?.has(p.id) ?? false} onToggleFavorite={() => toggleFavorite(p.id)} t={t} />
+              <ProjectRow key={p.id} project={p} health={healthOf(p)} favorite={favorites?.has(p.id) ?? false} onToggleFavorite={() => toggleFavorite(p.id)} t={t} />
             ))}
           </div>
         )}

@@ -2642,6 +2642,39 @@ export function projectPlanPercent(items: CMScheduleItem[], date: string): numbe
   return items.reduce((s, i) => s + i.weight * scheduleItemPlanPercent(i, date), 0) / totalWeight;
 }
 
+/** Project health, computed from the schedule instead of a hand-set label
+ *  (the manual Green/Amber/Red field could sit at its "Green" default while
+ *  the schedule screamed Behind — two contradictory signals on one screen).
+ *  Ahead / On Schedule / Behind by actual-vs-plan variance; NoSchedule when
+ *  a project has no activities to judge by. */
+export type CMComputedHealth = "Ahead" | "OnSchedule" | "Behind" | "NoSchedule";
+
+export function cmComputedHealth(items: CMScheduleItem[], date: string): { health: CMComputedHealth; planned: number; actual: number; variance: number } {
+  if (items.length === 0) return { health: "NoSchedule", planned: 0, actual: 0, variance: 0 };
+  const planned = projectPlanPercent(items, date);
+  const totalWeight = items.reduce((s, i) => s + i.weight, 0) || 1;
+  const actual = items.reduce((s, i) => s + i.weight * i.actual_percent, 0) / totalWeight;
+  const variance = actual - planned;
+  const health: CMComputedHealth = variance > 3 ? "Ahead" : variance >= -3 ? "OnSchedule" : "Behind";
+  return { health, planned, actual, variance };
+}
+
+/** Schedule items across every project the signed-in user can see (RLS
+ *  scopes the unfiltered select) — lets the Portfolio compute each card's
+ *  health in one query instead of one per project. */
+export function useCMAllScheduleItems(userId: string | undefined) {
+  return useQuery<CMScheduleItem[]>({
+    queryKey: ["cm_schedule_items_all", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_schedule_items").select("*");
+      if (error) throw error;
+      return data as CMScheduleItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 function isoDateRange(from: string, to: string): string[] {
   const dates: string[] = [];
   const cursor = new Date(from);

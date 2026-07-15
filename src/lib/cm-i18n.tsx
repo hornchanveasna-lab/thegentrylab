@@ -138,9 +138,10 @@ const EN: Dict = {
   "status.Closed": "Closed",
   "status.Archived": "Archived",
 
-  "health.Green": "Green",
-  "health.Amber": "Amber",
-  "health.Red": "Red",
+  "health.Ahead": "Ahead",
+  "health.OnSchedule": "On Schedule",
+  "health.Behind": "Behind",
+  "health.NoSchedule": "No Schedule",
 
   "sector.Industrial": "Industrial",
   "sector.Warehouse": "Warehouse",
@@ -1283,9 +1284,10 @@ const KM: Dict = {
   "status.Closed": "បិទ",
   "status.Archived": "បានទុកក្នុងបណ្ណសារ",
 
-  "health.Green": "ល្អ",
-  "health.Amber": "មធ្យម",
-  "health.Red": "ត្រូវការការយកចិត្តទុកដាក់",
+  "health.Ahead": "លឿនជាងផែនការ",
+  "health.OnSchedule": "តាមផែនការ",
+  "health.Behind": "យឺតជាងផែនការ",
+  "health.NoSchedule": "គ្មានកាលវិភាគ",
 
   "sector.Industrial": "ឧស្សាហកម្ម",
   "sector.Warehouse": "ឃ្លាំង",
@@ -2428,9 +2430,10 @@ const ZH: Dict = {
   "status.Closed": "已结束",
   "status.Archived": "已归档",
 
-  "health.Green": "良好",
-  "health.Amber": "一般",
-  "health.Red": "需关注",
+  "health.Ahead": "超前",
+  "health.OnSchedule": "按计划",
+  "health.Behind": "滞后",
+  "health.NoSchedule": "无进度计划",
 
   "sector.Industrial": "工业",
   "sector.Warehouse": "仓库",
