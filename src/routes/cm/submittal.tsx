@@ -266,6 +266,7 @@ function CMSubmittalPage() {
   const canDelete = usePermission(projectId || undefined, user?.id, "submittal", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
+  const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -298,7 +299,7 @@ function CMSubmittalPage() {
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && canCreate && (
-          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+          <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
         {projectId && (
@@ -338,6 +339,7 @@ function CMSubmittalPage() {
           sheetTitle={t("submittal.new")}
           titleLabel={t("submittal.titleField")}
           titlePlaceholder={t("submittal.titlePlaceholder")}
+          initialFiles={quickUploadFiles}
           onClose={() => setShowQuickUpload(false)}
           onSubmit={async (title, files) => {
             const item = await createCMSubmittal(user.id, projectId, { title });

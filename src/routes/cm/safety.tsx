@@ -218,6 +218,7 @@ function CMSafetyPage() {
   const canDelete = usePermission(projectId || undefined, user?.id, "safety", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
+  const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -249,7 +250,7 @@ function CMSafetyPage() {
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && canCreate && (
-          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+          <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
         {projectId && (
@@ -288,6 +289,7 @@ function CMSafetyPage() {
           sheetTitle={t("safety.new")}
           titleLabel={t("safety.titleField")}
           titlePlaceholder={t("safety.titlePlaceholder")}
+          initialFiles={quickUploadFiles}
           onClose={() => setShowQuickUpload(false)}
           onSubmit={async (title, files) => {
             const record = await createCMSafetyRecord(user.id, projectId, { title, record_date: new Date().toISOString().slice(0, 10) });

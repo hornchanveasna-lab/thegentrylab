@@ -834,20 +834,34 @@ const FILE_ICON = (
 );
 
 /** Like PhotoPicker but for approval documents of any type (PDF, DWG,
- *  DOCX, XLSX...) — no `accept` restriction, and pending picks show as a
- *  filename+size chip instead of an image thumbnail since most attachments
- *  here aren't renderable as pictures. */
+ *  DOCX, XLSX, images...) — no `accept` restriction. Pending images show
+ *  as real thumbnails (same as PhotoPicker); everything else shows as a
+ *  filename+size chip since it isn't renderable as a picture. */
 export function FilePicker({ files, setFiles, disabled }: { files: File[]; setFiles: (fn: (f: File[]) => File[]) => void; disabled: boolean }) {
   const { t } = useCMLang();
+  const indexed = files.map((f, i) => ({ f, i }));
+  const images = indexed.filter(({ f }) => f.type.startsWith("image/"));
+  const docs = indexed.filter(({ f }) => !f.type.startsWith("image/"));
   return (
     <label className="flex flex-col gap-1.5">
       <span className={labelCls}>{t("common.files")}</span>
       <input type="file" multiple disabled={disabled}
         onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])])}
         className="text-[12px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
-      {files.length > 0 && (
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-1">
+          {images.map(({ f, i }) => (
+            <div key={i} className="relative w-16 h-16">
+              <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 rounded-xl object-cover" />
+              <button type="button" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {docs.length > 0 && (
         <div className="flex flex-col gap-1.5 mt-1">
-          {files.map((f, i) => (
+          {docs.map(({ f, i }) => (
             <div key={i} className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2">
               <span className="text-white/40 shrink-0">{FILE_ICON}</span>
               <div className="min-w-0 flex-1">
@@ -864,13 +878,26 @@ export function FilePicker({ files, setFiles, disabled }: { files: File[]; setFi
   );
 }
 
-/** Read-only list of already-uploaded CMFileAttachments — each row opens
- *  the file in a new tab (signed URL, so no extra fetch needed). */
+/** Read-only list of already-uploaded CMFileAttachments. Images render as
+ *  real picture thumbnails (like a photo grid); everything else renders
+ *  as a filename+size chip. Both open the file in a new tab (signed URL,
+ *  so no extra fetch needed). */
 export function FileAttachmentList({ files }: { files: CMFileAttachment[] }) {
   if (files.length === 0) return null;
+  const images = files.filter((f) => f.type.startsWith("image/"));
+  const docs = files.filter((f) => !f.type.startsWith("image/"));
   return (
     <div className="flex flex-col gap-1.5 mt-1">
-      {files.map((f, i) => (
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {images.map((f, i) => (
+            <a key={i} href={f.url} target="_blank" rel="noopener noreferrer">
+              <img src={f.url} alt={f.name} className="w-16 h-16 rounded-xl object-cover" />
+            </a>
+          ))}
+        </div>
+      )}
+      {docs.map((f, i) => (
         <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
           className="flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-3 py-2">
           <span className="text-white/40 shrink-0">{FILE_ICON}</span>
@@ -887,16 +914,24 @@ export function FileAttachmentList({ files }: { files: CMFileAttachment[] }) {
 /** Prominent orange pill button matching Site Diary's Capture button —
  *  opens QuickUploadSheet for modules that just need a quick file-first
  *  record instead of Site Diary's full purpose-routing flow. */
-export function QuickUploadButton({ label, onClick }: { label: string; onClick: () => void }) {
+export function QuickUploadButton({ label, onFilesSelected }: { label: string; onFilesSelected: (files: File[]) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <button type="button" onClick={onClick}
-      className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98]"
-      style={{ backgroundColor: "#ff5100" }}>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
-      </svg>
-      {label}
-    </button>
+    <>
+      <button type="button" onClick={() => inputRef.current?.click()}
+        className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98]"
+        style={{ backgroundColor: "#ff5100" }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+        </svg>
+        {label}
+      </button>
+      <input ref={inputRef} type="file" multiple className="hidden" onChange={(e) => {
+        const picked = Array.from(e.target.files ?? []);
+        if (picked.length > 0) onFilesSelected(picked);
+        e.target.value = "";
+      }} />
+    </>
   );
 }
 
@@ -906,16 +941,17 @@ export function QuickUploadButton({ label, onClick }: { label: string; onClick: 
  *  module's own minimal-required-field create function). Mirrors Site
  *  Diary's Capture flow without the purpose-routing step, since each
  *  host module is already the purpose. */
-export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, onClose, onSubmit }: {
+export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, initialFiles, onClose, onSubmit }: {
   sheetTitle: string;
   titleLabel: string;
   titlePlaceholder?: string;
+  initialFiles?: File[];
   onClose: () => void;
   onSubmit: (title: string, files: File[]) => Promise<void>;
 }) {
   const { t } = useCMLang();
-  const [title, setTitle] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
+  const [title, setTitle] = useState(() => initialFiles && initialFiles.length > 0 ? initialFiles[0].name.replace(/\.[^./]+$/, "") : "");
+  const [files, setFiles] = useState<File[]>(initialFiles ?? []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 

@@ -135,6 +135,7 @@ function CMEquipmentPage() {
   const canDelete = usePermission(projectId || undefined, user?.id, "equipment", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
+  const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -164,7 +165,7 @@ function CMEquipmentPage() {
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && canCreate && (
-          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+          <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
         {projectId && (
@@ -190,6 +191,7 @@ function CMEquipmentPage() {
         <QuickUploadSheet
           sheetTitle={t("equipment.new")}
           titleLabel={t("equipment.name")}
+          initialFiles={quickUploadFiles}
           onClose={() => setShowQuickUpload(false)}
           onSubmit={async (title, files) => {
             const item = await createCMEquipment(user.id, projectId, { name: title });
