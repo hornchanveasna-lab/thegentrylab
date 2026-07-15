@@ -564,6 +564,123 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
 
 export const CALENDAR_MONTH_LOCALE: Record<CMLang, string> = { en: "en-US", km: "km-KH", zh: "zh-CN" };
 
+/** The Site Diary week-strip calendar, generalized so every day-based
+ *  module shares the same picker: a 7-day Monday-start strip (three weeks
+ *  back, three ahead) swiped left/right via scroll-snap, today ringed in
+ *  orange, days with entries highlighted, and a month label that expands
+ *  into the full MiniCalendar grid for browsing further back. Tapping a
+ *  day selects it; tapping the selected day again clears the selection
+ *  (callers that always need a date map null back to today). */
+export function WeekCalendarStrip<T>({ items, dateOf, lang, selected, onSelect }: {
+  items: T[];
+  dateOf: (item: T) => string;
+  lang: CMLang;
+  selected: string | null;
+  onSelect: (date: string | null) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const touchStartY = useRef<number | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [visibleWeek, setVisibleWeek] = useState(3);
+  const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const markedDates = useMemo(() => new Set(items.map(dateOf)), [items, dateOf]);
+
+  const weeks = useMemo(() => {
+    const base = new Date();
+    const monOffset = (base.getDay() + 6) % 7;
+    const thisMonday = new Date(base);
+    thisMonday.setDate(base.getDate() - monOffset);
+    return Array.from({ length: 7 }, (_, w) => {
+      const weekStart = new Date(thisMonday);
+      weekStart.setDate(thisMonday.getDate() + (w - 3) * 7);
+      return Array.from({ length: 7 }, (_, d) => {
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + d);
+        return day.toISOString().slice(0, 10);
+      });
+    });
+  }, []);
+
+  const monthYearLabel = useMemo(() => {
+    const midWeek = weeks[visibleWeek] ?? weeks[3];
+    return new Date(`${midWeek[3]}T00:00:00`).toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { month: "long", year: "numeric" });
+  }, [weeks, visibleWeek, lang]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || expanded) return;
+    el.scrollLeft = 3 * el.clientWidth;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    setVisibleWeek(Math.round(el.scrollLeft / el.clientWidth));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartY.current == null) return;
+    const delta = e.changedTouches[0].clientY - touchStartY.current;
+    if (delta > 40) setExpanded(true);
+    else if (delta < -40) setExpanded(false);
+    touchStartY.current = null;
+  };
+
+  if (expanded) {
+    return (
+      <div className="flex flex-col gap-2 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+        <MiniCalendar items={items} dateOf={dateOf} lang={lang}
+          onOpenDay={(dayItems) => { onSelect(dateOf(dayItems[0])); setExpanded(false); }} />
+        <button type="button" onClick={() => setExpanded(false)}
+          className="self-center text-white/25 hover:text-white/50 transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <button type="button" onClick={() => setExpanded(true)}
+        className="self-start flex items-center gap-1.5 text-[13px] font-bold text-white/80 hover:text-white transition-colors">
+        {monthYearLabel}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/30">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+      <div ref={scrollRef} onScroll={handleScroll} className="flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1.5 w-full shrink-0 snap-center">
+            {week.map((d) => {
+              const isSelected = d === selected;
+              const isToday = d === today;
+              const dateObj = new Date(`${d}T00:00:00`);
+              return (
+                <button key={d} type="button" onClick={() => onSelect(isSelected ? null : d)}
+                  className="flex flex-col items-center gap-1">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-white/35">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
+                  <span
+                    className={`relative aspect-square w-9 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${
+                      isSelected ? "text-black" : markedDates.has(d) ? "text-white/80 bg-white/5" : "text-white/25"
+                    }`}
+                    style={{
+                      backgroundColor: isSelected ? "#ff5100" : undefined,
+                      boxShadow: isToday && !isSelected ? "inset 0 0 0 1.5px #ff5100" : undefined,
+                    }}>
+                    {dateObj.getDate()}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** A month-by-month calendar of marked days — generalized from the Photos
  *  gallery's original calendar so every module can offer the same "track
  *  back to a date" browsing mode instead of only a flat list. Pass

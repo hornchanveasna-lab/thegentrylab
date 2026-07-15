@@ -7,7 +7,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, labelCls, useCMTheme,
-  FieldSelect, LocationSelect, Sheet, PhotoPicker, SegmentedField,
+  FieldSelect, LocationSelect, Sheet, PhotoPicker, SegmentedField, WeekCalendarStrip,
 } from "@/components/cm/shared";
 import { parseWorkbookRows, type BoqSheet } from "@/lib/cm-boq-import";
 import {
@@ -42,12 +42,6 @@ const DEFAULT_TRADES = [
 
 function dailyHeadcount(log: CMDailyLog) {
   return log.manpower.reduce((s, m) => s + m.count, 0);
-}
-
-function shiftDate(date: string, days: number) {
-  const d = new Date(`${date}T00:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 function todayStr() {
@@ -914,11 +908,6 @@ function CMManpowerPage() {
     [logs],
   );
 
-  const dateLabel = useMemo(() => {
-    if (date === todayStr()) return t("manpower.today");
-    return new Date(`${date}T00:00:00`).toLocaleDateString(lang === "km" ? "km-KH" : lang === "zh" ? "zh-CN" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
-  }, [date, lang, t]);
-
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
     return (
@@ -944,16 +933,16 @@ function CMManpowerPage() {
 
         {projectId && (
           <>
-            {/* Date selector */}
-            <div className="flex items-center gap-2 mb-3">
-              <button onClick={() => setDate(shiftDate(date, -1))} className="w-9 h-9 rounded-xl bg-white/5 text-white/50 flex items-center justify-center" aria-label="previous day">‹</button>
-              <div className="flex-1 relative">
-                <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
-                  className={`${inputCls} text-center font-mono [color-scheme:dark]`} />
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[10px] uppercase tracking-widest text-white/30 pointer-events-none">{dateLabel}</span>
-              </div>
-              <button onClick={() => setDate(shiftDate(date, 1))} disabled={date >= todayStr()} className="w-9 h-9 rounded-xl bg-white/5 text-white/50 flex items-center justify-center disabled:opacity-30" aria-label="next day">›</button>
-            </div>
+            {/* Date selector — the shared Site Diary week strip; clearing
+                the selection jumps back to today since Manpower always
+                operates on a concrete day. */}
+            <WeekCalendarStrip
+              items={(logs ?? []).filter((l) => l.manpower.length > 0)}
+              dateOf={(l) => l.log_date}
+              lang={lang}
+              selected={date}
+              onSelect={(d) => setDate(d ?? todayStr())}
+            />
 
             {/* Day summary */}
             <div className="rounded-2xl bg-[#0d0d0e] px-4 py-3.5 mb-3 grid grid-cols-5 gap-2">

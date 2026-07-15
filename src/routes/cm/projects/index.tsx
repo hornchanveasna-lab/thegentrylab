@@ -117,7 +117,10 @@ function NewProjectSheet({ onClose, onCreated }: { onClose: () => void; onCreate
       });
       onCreated(project);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project");
+      // Supabase errors are plain objects, not Error instances — surface
+      // their real message instead of a generic label that hides the cause.
+      const message = err instanceof Error ? err.message : (err as { message?: string })?.message;
+      setError(message || "Failed to create project");
       setSaving(false);
     }
   };

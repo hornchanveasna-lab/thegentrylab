@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
+  PhotoLightbox, usePendingHighlight, WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -254,7 +254,6 @@ function CMSubmittalPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
-  const [view, setView] = useState<ModuleView>("list");
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateOf = (s: CMSubmittal) => s.submitted_date ?? s.created_at.slice(0, 10);
 
@@ -283,9 +282,10 @@ function CMSubmittalPage() {
         <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
-        <div className="flex justify-end mb-3">
-          <ViewToggle view={view} onChange={setView} />
-        </div>
+        {projectId && (
+          <WeekCalendarStrip items={submittals ?? []} dateOf={dateOf} lang={lang}
+            selected={dateFilter} onSelect={setDateFilter} />
+        )}
 
         {dateFilter && (
           <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
@@ -297,21 +297,16 @@ function CMSubmittalPage() {
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {view === "calendar" ? (
-              <MiniCalendar items={submittals ?? []} dateOf={dateOf} lang={lang}
-                onOpenDay={(dayItems) => { setDateFilter(dateOf(dayItems[0])); setView("list"); }} />
-            ) : (
-              <>
-                {!isLoading && visibleSubmittals.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                    <p className="text-white/40 text-sm">{t("submittal.noneYet")}</p>
-                  </div>
-                )}
-                <div className="flex flex-col gap-3">
-                  {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+            <>
+              {!isLoading && visibleSubmittals.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                  <p className="text-white/40 text-sm">{t("submittal.noneYet")}</p>
                 </div>
-              </>
-            )}
+              )}
+              <div className="flex flex-col gap-3">
+                {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+              </div>
+            </>
             {canCreate && <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />}
           </>
         )}

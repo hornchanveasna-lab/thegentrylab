@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, MiniCalendar, ViewToggle, type ModuleView,
+  PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   PriorityBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -369,7 +369,6 @@ function CMPunchListPage() {
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
-  const [view, setView] = useState<ModuleView>("list");
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
@@ -401,9 +400,10 @@ function CMPunchListPage() {
         <p className="text-[12px] text-white/35 mb-5">{t("punchList.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
-        <div className="flex justify-end mb-3">
-          <ViewToggle view={view} onChange={setView} />
-        </div>
+        {projectId && (
+          <WeekCalendarStrip items={items ?? []} dateOf={(it) => it.created_at.slice(0, 10)} lang={lang}
+            selected={dateFilter} onSelect={setDateFilter} />
+        )}
 
         {dateFilter && (
           <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
@@ -415,11 +415,7 @@ function CMPunchListPage() {
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {view === "calendar" ? (
-              <MiniCalendar items={items ?? []} dateOf={(it) => it.created_at.slice(0, 10)} lang={lang}
-                onOpenDay={(dayItems) => { setDateFilter(dayItems[0].created_at.slice(0, 10)); setView("list"); }} />
-            ) : (
-              <>
+            <>
                 {!isLoading && open.length === 0 && done.length === 0 && (
                   <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
                     <p className="text-white/40 text-sm">{t("punchList.nothingYet")}</p>
@@ -444,8 +440,7 @@ function CMPunchListPage() {
                     )}
                   </div>
                 )}
-              </>
-            )}
+            </>
 
             {canCreate && <FAB label={t("punchList.newBtn")} onClick={() => setShowNew(true)} />}
           </>
