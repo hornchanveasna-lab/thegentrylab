@@ -2530,7 +2530,11 @@ export interface CMScheduleItem {
   owner_id: string;
   group_label: string;
   title: string;
+  /** Activity ID from the source schedule (e.g. "SCH-021") — null for
+   *  activities created by hand before import existed. */
+  activity_code: string | null;
   boq_category: string | null;
+  location_id: string | null;
   plan_start: string;
   plan_finish: string;
   weight: number;
@@ -2538,6 +2542,47 @@ export interface CMScheduleItem {
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+/** Simple derived status per the Schedule spec §6 — computed, not stored,
+ *  so it can never drift from the numbers ("status should update
+ *  automatically where possible"). On Hold/Cancelled aren't derivable and
+ *  are deliberately not modeled yet. */
+export type CMScheduleStatus = "Not Started" | "In Progress" | "Completed" | "Delayed";
+
+export function cmScheduleStatus(item: CMScheduleItem, date: string): CMScheduleStatus {
+  if (item.actual_percent >= 100) return "Completed";
+  if (item.plan_finish < date) return "Delayed";
+  const plan = scheduleItemPlanPercent(item, date);
+  if (item.actual_percent === 0 && plan === 0) return "Not Started";
+  if (plan - item.actual_percent > 10) return "Delayed";
+  return item.actual_percent === 0 ? "Not Started" : "In Progress";
+}
+
+/** Quantity-weighted delivered % per BOQ category, from Site Diary
+ *  deliveries linked to BOQ items — the "progress from site records" a
+ *  schedule activity's linked category can suggest. */
+export function cmBOQCategoryProgress(boqItems: CMBOQItem[], logs: CMDailyLog[]): Map<string, number> {
+  const deliveredById = new Map<string, number>();
+  for (const l of logs) {
+    for (const d of l.deliveries) {
+      if (!d.boq_item_id) continue;
+      deliveredById.set(d.boq_item_id, (deliveredById.get(d.boq_item_id) ?? 0) + (parseFloat(d.quantity) || 0));
+    }
+  }
+  const byCategory = new Map<string, { planned: number; delivered: number }>();
+  for (const b of boqItems) {
+    if (!b.category || b.quantity <= 0) continue;
+    const acc = byCategory.get(b.category) ?? { planned: 0, delivered: 0 };
+    acc.planned += b.quantity;
+    acc.delivered += Math.min(deliveredById.get(b.id) ?? 0, b.quantity);
+    byCategory.set(b.category, acc);
+  }
+  const result = new Map<string, number>();
+  for (const [cat, { planned, delivered }] of byCategory) {
+    if (planned > 0) result.set(cat, Math.round((delivered / planned) * 100));
+  }
+  return result;
 }
 
 export function useCMScheduleItems(projectId: string | undefined) {
@@ -2556,7 +2601,7 @@ export function useCMScheduleItems(projectId: string | undefined) {
 export async function createCMScheduleItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "weight" | "actual_percent">>,
+  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
 ) {
   const { data, error } = await db().from("cm_schedule_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
