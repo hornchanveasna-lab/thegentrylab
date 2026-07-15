@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -265,6 +265,7 @@ function CMSubmittalPage() {
   const canApprove = usePermission(projectId || undefined, user?.id, "submittal", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "submittal", "delete");
   const [showNew, setShowNew] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -295,6 +296,10 @@ function CMSubmittalPage() {
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {projectId && canCreate && (
+          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+        )}
 
         {projectId && (
           <WeekCalendarStrip items={submittals ?? []} dateOf={dateOf} lang={lang}
@@ -327,6 +332,23 @@ function CMSubmittalPage() {
       </main>
 
       {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+
+      {showQuickUpload && projectId && (
+        <QuickUploadSheet
+          sheetTitle={t("submittal.new")}
+          titleLabel={t("submittal.titleField")}
+          titlePlaceholder={t("submittal.titlePlaceholder")}
+          onClose={() => setShowQuickUpload(false)}
+          onSubmit={async (title, files) => {
+            const item = await createCMSubmittal(user.id, projectId, { title });
+            if (files.length > 0) {
+              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
+              await updateCMSubmittal(item.id, { files: uploaded });
+            }
+            invalidate();
+          }}
+        />
+      )}
 
       {lightbox && (
         <PhotoLightbox

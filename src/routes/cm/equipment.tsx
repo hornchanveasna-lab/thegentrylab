@@ -6,6 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
+  FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet,
   EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR, EmptyState, ErrorState, StatusBadge, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
@@ -13,6 +14,7 @@ import {
   createCMEquipment,
   updateCMEquipment,
   deleteCMEquipment,
+  uploadCMFile,
   type CMEquipment,
 } from "@/lib/cm-data";
 
@@ -28,6 +30,7 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
   const [name, setName] = useState("");
   const [type, setType] = useState("");
   const [quantity, setQuantity] = useState("1");
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,7 +40,11 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      await createCMEquipment(ownerId, projectId, { name: name.trim(), type: type.trim() || null, quantity: Number(quantity) || 1 });
+      const item = await createCMEquipment(ownerId, projectId, { name: name.trim(), type: type.trim() || null, quantity: Number(quantity) || 1 });
+      if (files.length > 0) {
+        const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
+        await updateCMEquipment(item.id, { files: uploaded });
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add equipment");
@@ -62,6 +69,7 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
             <input type="number" min={1} className={inputCls} value={quantity} onChange={(e) => setQuantity(e.target.value)} disabled={saving} />
           </label>
         </div>
+        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !name.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -85,26 +93,29 @@ function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; 
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3.5 py-3">
-      <div className="min-w-0">
-        <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
-        <p className="font-mono text-[10px] text-white/30">{t("equipment.qty")} {eq.quantity}</p>
+    <div className="flex flex-col gap-2 rounded-xl bg-white/3 px-3.5 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
+          <p className="font-mono text-[10px] text-white/30">{t("equipment.qty")} {eq.quantity}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {canEdit ? (
+            <FieldSelect
+              value={eq.status}
+              onChange={(v) => updateCMEquipment(eq.id, { status: v }).then(onChanged)}
+              disabled={busy}
+              options={EQUIPMENT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`equipmentStatus.${s}`) }))}
+              triggerClassName="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5"
+              triggerStyle={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}
+            />
+          ) : (
+            <StatusBadge label={t(`equipmentStatus.${eq.status}`)} color={EQUIPMENT_STATUS_COLOR[eq.status]} />
+          )}
+          {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>}
+        </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {canEdit ? (
-          <FieldSelect
-            value={eq.status}
-            onChange={(v) => updateCMEquipment(eq.id, { status: v }).then(onChanged)}
-            disabled={busy}
-            options={EQUIPMENT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`equipmentStatus.${s}`) }))}
-            triggerClassName="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5"
-            triggerStyle={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}
-          />
-        ) : (
-          <StatusBadge label={t(`equipmentStatus.${eq.status}`)} color={EQUIPMENT_STATUS_COLOR[eq.status]} />
-        )}
-        {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>}
-      </div>
+      <FileAttachmentList files={eq.files} />
       {confirmingDelete && (
         <ConfirmationDialog message={t("equipment.confirmDelete")} confirmLabel={t("common.delete")}
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
@@ -123,6 +134,7 @@ function CMEquipmentPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "equipment", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "equipment", "delete");
   const [showNew, setShowNew] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -151,6 +163,10 @@ function CMEquipmentPage() {
         <p className="text-[12px] text-white/35 mb-5">{t("equipment.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
+        {projectId && canCreate && (
+          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+        )}
+
         {projectId && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
@@ -169,6 +185,22 @@ function CMEquipmentPage() {
       </main>
 
       {showNew && projectId && canCreate && <NewEquipmentSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+
+      {showQuickUpload && projectId && (
+        <QuickUploadSheet
+          sheetTitle={t("equipment.new")}
+          titleLabel={t("equipment.name")}
+          onClose={() => setShowQuickUpload(false)}
+          onSubmit={async (title, files) => {
+            const item = await createCMEquipment(user.id, projectId, { name: title });
+            if (files.length > 0) {
+              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
+              await updateCMEquipment(item.id, { files: uploaded });
+            }
+            invalidate();
+          }}
+        />
+      )}
     </div>
   );
 }

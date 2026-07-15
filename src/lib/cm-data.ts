@@ -196,6 +196,7 @@ export interface CMTask {
    *  is fixed, for the engineer to compare against the before photos. */
   after_photos: string[];
   after_photo_thumbs: string[];
+  files: CMFileAttachment[];
   /** Set when an engineer accepts (closes) the punch from "Ready for
    *  Check" — null again if a later reopen sends it back for rework. */
   verified_by: string | null;
@@ -1108,6 +1109,7 @@ export interface CMEquipment {
   quantity: number;
   status: EquipmentStatus;
   notes: string | null;
+  files: CMFileAttachment[];
   created_at: string;
   updated_at: string;
 }
@@ -2775,6 +2777,7 @@ export interface CMInspection {
   itp_ref: string | null;
   photos: string[];
   photo_thumbs: string[];
+  files: CMFileAttachment[];
   created_at: string;
   updated_at: string;
 }
@@ -2841,6 +2844,7 @@ export interface CMSafetyRecord {
   involved: string | null;
   photos: string[];
   photo_thumbs: string[];
+  files: CMFileAttachment[];
   status: SafetyStatus;
   created_at: string;
   updated_at: string;

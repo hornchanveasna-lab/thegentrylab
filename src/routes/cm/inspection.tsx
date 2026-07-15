@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -15,6 +15,7 @@ import {
   updateCMInspection,
   deleteCMInspection,
   uploadCMPhotoWithThumb,
+  uploadCMFile,
   useCMProjectLocations,
   locationBreadcrumb,
   enabledDisciplines,
@@ -52,6 +53,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
   const [methodStatementRef, setMethodStatementRef] = useState(existing?.method_statement_ref ?? "");
   const [itpRef, setItpRef] = useState(existing?.itp_ref ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -68,11 +70,15 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
       };
       const inspection = existing ?? await createCMInspection(ownerId, projectId, patch);
       if (existing) await updateCMInspection(existing.id, patch);
-      if (photos.length > 0) {
-        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      if (photos.length > 0 || files.length > 0) {
+        const [uploadedPhotos, uploadedFiles] = await Promise.all([
+          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
+        ]);
         await updateCMInspection(inspection.id, {
-          photos: [...inspection.photos, ...uploaded.map((u) => u.url)],
-          photo_thumbs: [...inspection.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+          photos: [...inspection.photos, ...uploadedPhotos.map((u) => u.url)],
+          photo_thumbs: [...inspection.photo_thumbs, ...uploadedPhotos.map((u) => u.thumbUrl)],
+          files: [...inspection.files, ...uploadedFiles],
         });
       }
       onCreated();
@@ -138,6 +144,13 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
+        {existing && existing.files.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("common.attachedFiles")}</span>
+            <FileAttachmentList files={existing.files} />
+          </div>
+        )}
+        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -215,6 +228,7 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, use
               ))}
             </div>
           )}
+          <FileAttachmentList files={item.files} />
           <div className="flex items-center gap-4">
             {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</button>}
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>}
@@ -247,6 +261,7 @@ function CMInspectionPage() {
   const canApprove = usePermission(projectId || undefined, user?.id, "inspection", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "inspection", "delete");
   const [showNew, setShowNew] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -276,6 +291,10 @@ function CMInspectionPage() {
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {projectId && canCreate && (
+          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+        )}
 
         {projectId && (
           <WeekCalendarStrip items={inspections ?? []} dateOf={(i) => i.inspection_date} lang={lang}
@@ -307,6 +326,23 @@ function CMInspectionPage() {
       </main>
 
       {showNew && projectId && <NewInspectionSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+
+      {showQuickUpload && projectId && (
+        <QuickUploadSheet
+          sheetTitle={t("inspection.new")}
+          titleLabel={t("inspection.titleField")}
+          titlePlaceholder={t("inspection.titlePlaceholder")}
+          onClose={() => setShowQuickUpload(false)}
+          onSubmit={async (title, files) => {
+            const item = await createCMInspection(user.id, projectId, { title, inspection_date: new Date().toISOString().slice(0, 10) });
+            if (files.length > 0) {
+              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
+              await updateCMInspection(item.id, { files: uploaded });
+            }
+            invalidate();
+          }}
+        />
+      )}
 
       {lightbox && (
         <PhotoLightbox
