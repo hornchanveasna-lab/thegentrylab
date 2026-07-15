@@ -11,6 +11,7 @@ import {
   useCMEntityAuditLog,
   useCMNotifications,
   useCMWorkflowSteps,
+  type CMFileAttachment,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
@@ -817,6 +818,69 @@ export function PhotoPicker({ photos, setPhotos, disabled }: { photos: File[]; s
         </div>
       )}
     </label>
+  );
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const FILE_ICON = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+  </svg>
+);
+
+/** Like PhotoPicker but for approval documents of any type (PDF, DWG,
+ *  DOCX, XLSX...) — no `accept` restriction, and pending picks show as a
+ *  filename+size chip instead of an image thumbnail since most attachments
+ *  here aren't renderable as pictures. */
+export function FilePicker({ files, setFiles, disabled }: { files: File[]; setFiles: (fn: (f: File[]) => File[]) => void; disabled: boolean }) {
+  const { t } = useCMLang();
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className={labelCls}>{t("common.files")}</span>
+      <input type="file" multiple disabled={disabled}
+        onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])])}
+        className="text-[12px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
+      {files.length > 0 && (
+        <div className="flex flex-col gap-1.5 mt-1">
+          {files.map((f, i) => (
+            <div key={i} className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2">
+              <span className="text-white/40 shrink-0">{FILE_ICON}</span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] text-white/80 truncate">{f.name}</p>
+                <p className="text-[10px] text-white/30">{formatFileSize(f.size)}</p>
+              </div>
+              <button type="button" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                className="shrink-0 w-5 h-5 rounded-full text-white/25 hover:text-red-400 flex items-center justify-center">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </label>
+  );
+}
+
+/** Read-only list of already-uploaded CMFileAttachments — each row opens
+ *  the file in a new tab (signed URL, so no extra fetch needed). */
+export function FileAttachmentList({ files }: { files: CMFileAttachment[] }) {
+  if (files.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-1.5 mt-1">
+      {files.map((f, i) => (
+        <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
+          className="flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-3 py-2">
+          <span className="text-white/40 shrink-0">{FILE_ICON}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] text-white/80 truncate">{f.name}</p>
+            <p className="text-[10px] text-white/30">{formatFileSize(f.size)}</p>
+          </div>
+        </a>
+      ))}
+    </div>
   );
 }
 
