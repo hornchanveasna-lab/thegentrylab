@@ -380,6 +380,7 @@ function CMPunchListPage() {
   const canDelete = usePermission(projectId || undefined, user?.id, "punch_list", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
+  const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [showCompleted, setShowCompleted] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -416,7 +417,7 @@ function CMPunchListPage() {
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && canCreate && (
-          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+          <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
         {projectId && (
@@ -473,6 +474,7 @@ function CMPunchListPage() {
           sheetTitle={t("punchList.new")}
           titleLabel={t("punchList.whatNeedsDone")}
           titlePlaceholder={t("punchList.whatNeedsDonePlaceholder")}
+          initialFiles={quickUploadFiles}
           onClose={() => setShowQuickUpload(false)}
           onSubmit={async (title, files) => {
             const item = await createCMTask(user.id, projectId, { title });

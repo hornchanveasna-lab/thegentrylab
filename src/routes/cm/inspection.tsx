@@ -262,6 +262,7 @@ function CMInspectionPage() {
   const canDelete = usePermission(projectId || undefined, user?.id, "inspection", "delete");
   const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
+  const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
@@ -293,7 +294,7 @@ function CMInspectionPage() {
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && canCreate && (
-          <QuickUploadButton label={t("common.uploadFileBtn")} onClick={() => setShowQuickUpload(true)} />
+          <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
         {projectId && (
@@ -332,6 +333,7 @@ function CMInspectionPage() {
           sheetTitle={t("inspection.new")}
           titleLabel={t("inspection.titleField")}
           titlePlaceholder={t("inspection.titlePlaceholder")}
+          initialFiles={quickUploadFiles}
           onClose={() => setShowQuickUpload(false)}
           onSubmit={async (title, files) => {
             const item = await createCMInspection(user.id, projectId, { title, inspection_date: new Date().toISOString().slice(0, 10) });
