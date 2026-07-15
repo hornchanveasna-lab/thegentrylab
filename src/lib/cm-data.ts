@@ -475,6 +475,21 @@ export async function uploadCMPhoto(ownerId: string, projectId: string, file: Fi
   return data?.signedUrl ?? path;
 }
 
+/** Any-file attachment — same bucket/signing as photos, but keeps the
+ *  original filename, size and MIME type since these aren't necessarily
+ *  images (PDFs, DWG, DOCX, XLSX... for submittal approval documents). */
+export interface CMFileAttachment {
+  name: string;
+  url: string;
+  size: number;
+  type: string;
+}
+
+export async function uploadCMFile(ownerId: string, projectId: string, file: File): Promise<CMFileAttachment> {
+  const url = await uploadCMPhoto(ownerId, projectId, file);
+  return { name: file.name, url, size: file.size, type: file.type };
+}
+
 /** Decodes a File into an <img> via a transient object URL. Safe to revoke the
  *  URL as soon as the image has decoded — the bitmap stays usable afterward. */
 function loadImage(file: File): Promise<HTMLImageElement> {
@@ -1987,7 +2002,7 @@ export type CMMemberRole = "admin" | "member" | "visitor";
 export type CMJobRole = string;
 
 export const CM_JOB_ROLES: CMJobRole[] = [
-  "project_manager", "site_engineer", "site_supervisor", "qa_qc_engineer",
+  "project_manager", "construction_manager", "site_engineer", "site_supervisor", "qa_qc_engineer",
   "safety_officer", "architect", "structural_engineer", "mep_engineer",
   "surveyor", "planning_engineer", "document_controller", "store_keeper",
   "procurement_officer", "subcontractor", "consultant",
@@ -2901,6 +2916,9 @@ export interface CMSubmittal {
   notes: string | null;
   photos: string[];
   photo_thumbs: string[];
+  /** Approval documents of any type (PDF, DWG, DOCX, XLSX...) — separate
+   *  from photos since these aren't thumbnailed as images. */
+  files: CMFileAttachment[];
   created_at: string;
   updated_at: string;
 }

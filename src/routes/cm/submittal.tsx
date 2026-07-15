@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -14,6 +14,7 @@ import {
   updateCMSubmittal,
   deleteCMSubmittal,
   uploadCMPhotoWithThumb,
+  uploadCMFile,
   enabledDisciplines,
   SUBMITTAL_TYPES,
   APPROVAL_CODES,
@@ -59,6 +60,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
   const [reviewer, setReviewer] = useState(existing?.reviewer ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -75,11 +77,15 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
       };
       const item = existing ?? await createCMSubmittal(ownerId, projectId, patch);
       if (existing) await updateCMSubmittal(existing.id, patch);
-      if (photos.length > 0) {
-        const uploaded = await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      if (photos.length > 0 || files.length > 0) {
+        const [uploadedPhotos, uploadedFiles] = await Promise.all([
+          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
+        ]);
         await updateCMSubmittal(item.id, {
-          photos: [...item.photos, ...uploaded.map((u) => u.url)],
-          photo_thumbs: [...item.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
+          photos: [...item.photos, ...uploadedPhotos.map((u) => u.url)],
+          photo_thumbs: [...item.photo_thumbs, ...uploadedPhotos.map((u) => u.thumbUrl)],
+          files: [...item.files, ...uploadedFiles],
         });
       }
       onCreated();
@@ -137,6 +143,13 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
           <textarea className={`${inputCls} resize-y min-h-[48px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
+        {existing && existing.files.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("submittal.existingFiles")}</span>
+            <FileAttachmentList files={existing.files} />
+          </div>
+        )}
+        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -229,6 +242,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
           ))}
         </div>
       )}
+      <FileAttachmentList files={item.files} />
       <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
       {editing && (
         <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove} disciplines={disciplines}
