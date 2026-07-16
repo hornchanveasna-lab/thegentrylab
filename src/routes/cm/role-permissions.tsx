@@ -22,7 +22,7 @@ export const Route = createFileRoute("/cm/role-permissions")({
 
 const CM_MODULE_KEYS: CMModuleKey[] = [
   "site_diary", "punch_list", "inspection", "safety", "submittal",
-  "equipment", "boq", "schedule", "manpower", "people", "settings",
+  "equipment", "boq", "schedule", "manpower", "contracts", "instructions", "people", "settings",
 ];
 const MODULE_TITLE_KEY: Record<CMModuleKey, string> = {
   site_diary: "siteDiary.title",
@@ -34,6 +34,8 @@ const MODULE_TITLE_KEY: Record<CMModuleKey, string> = {
   boq: "boq.title",
   schedule: "schedule.title",
   manpower: "manpower.title",
+  contracts: "contracts.title",
+  instructions: "instructions.title",
   people: "people.title",
   settings: "projectSettings.title",
 };
