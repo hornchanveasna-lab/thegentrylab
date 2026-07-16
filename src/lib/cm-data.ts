@@ -2998,6 +2998,7 @@ export interface CMContract {
   completion_date: string | null;
   status: ContractStatus;
   notes: string | null;
+  files: CMFileAttachment[];
   created_at: string;
   updated_at: string;
 }
