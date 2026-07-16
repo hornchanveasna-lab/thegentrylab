@@ -168,10 +168,11 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id);
+  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id, () => setOpen(true));
   const sc = STATUS_COLOR[item.status];
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === item.status);
 
@@ -191,62 +192,60 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
   };
 
   return (
-    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] px-5 py-4 flex flex-col gap-2 transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="text-[13px] font-bold text-white leading-tight truncate">{item.title}</h3>
-          <p className="font-mono text-[10px] text-white/30 mt-0.5">
-            {[item.doc_number, item.submittal_type && t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`), item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
-          </p>
+    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
+        <div className="flex items-center gap-4 min-w-0">
+          <span className="font-mono text-[12px] text-white/70 shrink-0">{item.submitted_date ?? item.created_at.slice(0, 10)}</span>
+          {item.submittal_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`)}</span>}
+          {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+          <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          {canEdit && (
-            <button onClick={() => setEditing(true)} disabled={busy} className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
-            </button>
-          )}
-          {canDelete && (
-            <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
-          )}
-        </div>
-      </div>
-      {confirmingDelete && (
-        <ConfirmationDialog message={t("submittal.confirmDelete")} confirmLabel={t("common.delete")}
-          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
-      )}
-      {canEdit ? (
-        <SegmentedField
-          options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
-          value={item.status} disabled={busy} onChange={handleStatusChange}
-        />
-      ) : (
         <StatusBadge label={t(`submittalStatus.${item.status}`)} color={sc} />
-      )}
-      <div className="flex flex-wrap items-center gap-2 mt-1">
-        {item.approval_code && (
-          <span className="px-2 py-0.5 rounded-full bg-white/5 font-mono text-[10px] text-white/60" title={t(`approvalCode.${item.approval_code}`)}>{item.approval_code}</span>
-        )}
-        {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
-        {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
-      </div>
-      {item.photos.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-1">
-          {item.photos.map((url, i) => (
-            <button key={url} type="button" data-photo-url={url}
-              onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
-              className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-              <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
-            </button>
-          ))}
+      </button>
+      {open && (
+        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
+          <p className="font-mono text-[10px] text-white/30">
+            {[item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
+          </p>
+          {canEdit && (
+            <SegmentedField
+              options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
+              value={item.status} disabled={busy} onChange={handleStatusChange}
+            />
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {item.approval_code && (
+              <span className="px-2 py-0.5 rounded-full bg-white/5 font-mono text-[10px] text-white/60" title={t(`approvalCode.${item.approval_code}`)}>{item.approval_code}</span>
+            )}
+            {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
+            {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
+          </div>
+          {item.photos.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {item.photos.map((url, i) => (
+                <button key={url} type="button" data-photo-url={url}
+                  onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
+                  className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+                  <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+          <FileAttachmentList files={item.files} />
+          <div className="flex items-center gap-4">
+            {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("submittal.edit")}</button>}
+            {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
+          </div>
+          <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
         </div>
       )}
-      <FileAttachmentList files={item.files} />
-      <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
       {editing && (
         <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove} disciplines={disciplines}
           onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
+      )}
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("submittal.confirmDelete")} confirmLabel={t("common.delete")}
+          onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
       )}
     </div>
   );
