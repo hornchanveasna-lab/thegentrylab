@@ -17,7 +17,7 @@ import {
   deleteCMInstruction,
   useCMContracts,
   useCMCompanies,
-  uploadCMPhotoWithThumb,
+  stampAndUploadCMPhotos,
   uploadCMFile,
   INSTRUCTION_SOURCE_TYPES,
   INSTRUCTION_STATUSES,
@@ -79,7 +79,7 @@ function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose
       if (existing) await updateCMInstruction(existing.id, patch);
       if (photos.length > 0 || files.length > 0) {
         const [uploadedPhotos, uploadedFiles] = await Promise.all([
-          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          stampAndUploadCMPhotos(ownerId, projectId, photos),
           files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
         ]);
         await updateCMInstruction(item.id, {

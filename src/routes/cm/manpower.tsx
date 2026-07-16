@@ -17,7 +17,7 @@ import {
 import {
   useCMDailyLogs, useCMManpowerRoster, addCMManpowerRosterItem, removeCMManpowerRosterItem,
   useCMProjectSubcontractors, useCMProjectLocations, locationBreadcrumb,
-  findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity, uploadCMPhotoWithThumb,
+  findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity, stampAndUploadCMPhotos,
   cmLaborHours, CM_WORKER_CATEGORIES,
   useCMManpowerPlans, createCMManpowerPlan, updateCMManpowerPlan, deleteCMManpowerPlan,
   useCMWorkers, createCMWorker, deleteCMWorker, useCMWorkerAttendance, setCMWorkerAttendance,
@@ -138,9 +138,7 @@ function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, companyOption
   // New workforce photos are appended to whatever the row already carries —
   // there's no per-photo remove control here, same as the Site Diary sheet.
   const buildRow = async (): Promise<CMManpowerRow> => {
-    const uploaded = photoFiles.length > 0
-      ? await Promise.all(photoFiles.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)))
-      : [];
+    const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, photoFiles);
     return {
       trade: trade.trim(),
       company: company.trim() || null,

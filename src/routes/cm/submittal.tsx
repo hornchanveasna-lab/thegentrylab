@@ -13,7 +13,7 @@ import {
   createCMSubmittal,
   updateCMSubmittal,
   deleteCMSubmittal,
-  uploadCMPhotoWithThumb,
+  stampAndUploadCMPhotos,
   uploadCMFile,
   enabledDisciplines,
   SUBMITTAL_TYPES,
@@ -79,7 +79,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
       if (existing) await updateCMSubmittal(existing.id, patch);
       if (photos.length > 0 || files.length > 0) {
         const [uploadedPhotos, uploadedFiles] = await Promise.all([
-          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          stampAndUploadCMPhotos(ownerId, projectId, photos),
           files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
         ]);
         await updateCMSubmittal(item.id, {
