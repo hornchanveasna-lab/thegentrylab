@@ -8,6 +8,7 @@ import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
   WeekCalendarStrip, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
+  AccordionSection, ManpowerEntrySheet,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -25,6 +26,8 @@ import {
   useActiveCMBOQItems,
   useCMManpowerRoster,
   useCMProjectSubcontractors,
+  useCMProjectLocations,
+  locationBreadcrumb,
   createCMInspection,
   updateCMInspection,
   createCMTask,
@@ -94,8 +97,10 @@ const DELAY_CAUSE_OPTIONS: CMDelayCause[] = ["Weather", "Material", "Labor", "Ot
 const RAIN_WEATHER = new Set(["Light Rain", "Heavy Rain", "Storm"]);
 
 const EMPTY_MANPOWER: CMManpowerRow = { trade: "", company: null, count: 0, roster_item_id: null };
-const EMPTY_DELIVERY: CMDeliveryRow = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null, photos: [], photo_thumbs: [], status: "Reported", certified_quantity: null };
-const EMPTY_VISITOR: CMVisitorRow = { name: "", organization: null, kind: "visitor", note: "", photos: [], photo_thumbs: [] };
+type DeliveryDraft = CMDeliveryRow & { _pendingFiles?: File[] };
+type VisitorDraft = CMVisitorRow & { _pendingFiles?: File[] };
+const EMPTY_DELIVERY: DeliveryDraft = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null, photos: [], photo_thumbs: [], status: "Reported", certified_quantity: null };
+const EMPTY_VISITOR: VisitorDraft = { name: "", organization: null, kind: "visitor", note: "", photos: [], photo_thumbs: [] };
 const EMPTY_DELAY: CMDelayRow = { cause: "Weather", description: "", hours_lost: 0 };
 
 function totalManpower(rows: CMManpowerRow[]) {
@@ -109,46 +114,6 @@ function rainHours(start: string | null, end: string | null): number | null {
   const minutes = (eh * 60 + em) - (sh * 60 + sm);
   if (!Number.isFinite(minutes) || minutes <= 0) return null;
   return Math.round((minutes / 60) * 10) / 10;
-}
-
-/** Small tap-to-add photo strip reused wherever a sub-row (Visitor,
- *  Delivery) needs its own attachments — same upload-then-thumbnail
- *  pattern as the top-level PhotoPicker, just inline and immediate
- *  since these rows don't have a separate "save" step of their own. */
-function RowPhotoPicker({ ownerId, projectId, photos, photoThumbs, onChange, disabled }: {
-  ownerId: string; projectId: string; photos: string[]; photoThumbs: string[];
-  onChange: (photos: string[], photoThumbs: string[]) => void; disabled?: boolean;
-}) {
-  const [uploading, setUploading] = useState(false);
-
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    setUploading(true);
-    try {
-      const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, Array.from(files));
-      onChange([...photos, ...uploaded.map((u) => u.url)], [...photoThumbs, ...uploaded.map((u) => u.thumbUrl)]);
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const removeAt = (i: number) => onChange(photos.filter((_, idx) => idx !== i), photoThumbs.filter((_, idx) => idx !== i));
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {photoThumbs.map((thumb, i) => (
-        <div key={i} className="relative">
-          <img src={thumb} alt="" className="w-12 h-12 rounded-lg object-cover" />
-          <button type="button" onClick={() => removeAt(i)} disabled={disabled}
-            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-black/70 text-white/70 text-[10px] leading-none flex items-center justify-center">×</button>
-        </div>
-      ))}
-      <label className={`w-12 h-12 rounded-lg border border-dashed border-white/15 flex items-center justify-center text-white/30 text-[16px] cursor-pointer ${disabled || uploading ? "opacity-50 pointer-events-none" : ""}`}>
-        {uploading ? "…" : "+"}
-        <input type="file" accept="image/*" multiple className="hidden" disabled={disabled || uploading} onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }} />
-      </label>
-    </div>
-  );
 }
 
 type CapturePurpose = "progress" | "inspection" | "punchList" | "safety" | "delivery" | "manpower" | "equipment" | "delay" | "visitor" | "general";
@@ -173,8 +138,15 @@ const DISCIPLINE_PURPOSES = new Set<CapturePurpose>(["progress", "inspection", "
  *  spec's voice-note transcription and AI photo-grouping/suggestion
  *  features (sections 10-11), which need a speech/AI service this app
  *  doesn't have configured; every other field here is a direct tap/type. */
-function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
-  ownerId: string; projectId: string; disciplines: Discipline[]; onClose: () => void; onCreated: () => void;
+/** Purposes that add one row to a repeating array — these support the
+ *  "Add Another" loop below, since logging several of the same thing
+ *  (three crews, three deliveries) is common. Scalar purposes (a single
+ *  free-text field) still close on save, since "add another" doesn't
+ *  apply to them. */
+const REPEATABLE_PURPOSES = new Set<CapturePurpose>(["delivery", "manpower", "delay", "visitor"]);
+
+function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCreated }: {
+  ownerId: string; projectId: string; disciplines: Discipline[]; onClose: () => void; onSaved: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const [files, setFiles] = useState<File[]>([]);
@@ -189,11 +161,13 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
   const [delayCause, setDelayCause] = useState<CMDelayCause>("Weather");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [savedFlash, setSavedFlash] = useState(false);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
     setFiles((prev) => [...prev, ...Array.from(list)]);
     setPickerOpen(false);
+    setSavedFlash(false);
   };
 
   const handleSave = async () => {
@@ -241,6 +215,24 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
         const text = [log.notes, note.trim()].filter(Boolean).join("\n");
         await updateCMDailyLog(log.id, { notes: text || null });
       }
+      if (purpose && REPEATABLE_PURPOSES.has(purpose)) {
+        // Loop back to the photo step for the same purpose instead of
+        // closing — logging several of the same thing (three crews, three
+        // deliveries) shouldn't mean running the whole sheet from scratch
+        // each time. The underlying data is already saved and refreshed;
+        // closing via the sheet's own × is "Done" at any point from here.
+        onSaved();
+        setFiles([]);
+        setNote("");
+        setCompany("");
+        setCount("1");
+        setHoursLost("1");
+        setDelayCause("Weather");
+        setPickerOpen(true);
+        setSavedFlash(true);
+        setSaving(false);
+        return;
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -252,6 +244,9 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
     return (
       <Sheet title={t("siteDiary.capture.title")} onClose={onClose}>
         <div className="px-6 pb-8 pt-4 flex flex-col gap-3">
+          {savedFlash && (
+            <p className="text-[12px] text-emerald-400">{t("siteDiary.capture.savedAddAnother")}</p>
+          )}
           {files.length > 0 && (
             <button type="button" onClick={() => setPickerOpen(false)}
               className="self-start font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors mb-1">
@@ -360,41 +355,61 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
   );
 }
 
-function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMDailyLog; onClose: () => void; onCreated: () => void;
+/** Uploads and stamps any pending photo files a draft row is carrying,
+ *  merging the results into its persisted `photos`/`photo_thumbs` and
+ *  stripping the transient `_pendingFiles` field before the row is saved —
+ *  the same defer-until-submit model as the sheet's top-level Photos field,
+ *  now shared by every row instead of Delivery/Visitor rows uploading
+ *  immediately on pick. */
+async function resolveDraftRowPhotos<T extends { photos?: string[] | null; photo_thumbs?: string[] | null; _pendingFiles?: File[] }>(
+  ownerId: string, projectId: string, rows: T[],
+): Promise<Omit<T, "_pendingFiles">[]> {
+  return Promise.all(rows.map(async (r) => {
+    const { _pendingFiles, ...rest } = r;
+    if (_pendingFiles && _pendingFiles.length > 0) {
+      const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, _pendingFiles);
+      return {
+        ...rest,
+        photos: [...(rest.photos ?? []), ...uploaded.map((u) => u.url)],
+        photo_thumbs: [...(rest.photo_thumbs ?? []), ...uploaded.map((u) => u.thumbUrl)],
+      };
+    }
+    return rest;
+  }));
+}
+
+type LogSectionKey = "weather" | "manpower" | "deliveries" | "visitors" | "delays" | "notes";
+
+function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMDailyLog; logs?: (CMDailyLog | CMDailyLogWithProject)[];
+  onClose: () => void; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const { data: boqItems } = useActiveCMBOQItems(projectId);
   const { data: roster } = useCMManpowerRoster(projectId);
   const { data: subcontractors } = useCMProjectSubcontractors(projectId);
+  const { data: locations } = useCMProjectLocations(projectId);
 
-  // Manpower picker options merge two sources: the manually-maintained
-  // roster and the distinct trade/company pairs already assigned as
-  // Subcontractors — deduped by trade+company text so the same pairing
-  // maintained in both places doesn't show twice.
-  const manpowerOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const options: { value: string; label: string; trade: string; company: string | null }[] = [];
-    for (const r of roster ?? []) {
-      const key = `${r.trade}|${r.company ?? ""}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      options.push({ value: `roster:${r.id}`, label: r.company ? `${r.trade} — ${r.company}` : r.trade, trade: r.trade, company: r.company });
-    }
-    for (const s of subcontractors ?? []) {
-      if (!s.contact.trade) continue;
-      const key = `${s.contact.trade}|${s.contact.company ?? ""}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      options.push({
-        value: `sub:${s.id}`,
-        label: s.contact.company ? `${s.contact.trade} — ${s.contact.company}` : s.contact.trade,
-        trade: s.contact.trade,
-        company: s.contact.company,
-      });
-    }
-    return options;
+  // Company/trade suggestions for the reused Manpower quick-entry sheet,
+  // sourced the same way as the Manpower module's own picker options.
+  const companyOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of roster ?? []) if (r.company) set.add(r.company);
+    for (const s of subcontractors ?? []) if (s.contact.company) set.add(s.contact.company);
+    return [...set].sort();
   }, [roster, subcontractors]);
+  const tradeOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of roster ?? []) set.add(r.trade);
+    for (const s of subcontractors ?? []) if (s.contact.trade) set.add(s.contact.trade);
+    return [...set].sort();
+  }, [roster, subcontractors]);
+  const locationLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of locations ?? []) map.set(l.id, locationBreadcrumb(l, locations ?? []));
+    return map;
+  }, [locations]);
+
   const [logDate, setLogDate] = useState(() => existing?.log_date ?? new Date().toISOString().slice(0, 10));
   const [weather, setWeather] = useState(existing?.weather ?? WEATHER_OPTIONS[0]);
   const [temperature, setTemperature] = useState(existing?.temperature_c != null ? String(existing.temperature_c) : "");
@@ -407,12 +422,80 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
   const [issues, setIssues] = useState(existing?.issues ?? "");
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [manpower, setManpower] = useState<CMManpowerRow[]>(existing?.manpower ?? []);
-  const [deliveries, setDeliveries] = useState<CMDeliveryRow[]>(existing?.deliveries ?? []);
-  const [visitors, setVisitors] = useState<CMVisitorRow[]>(existing?.visitors ?? []);
+  const [deliveries, setDeliveries] = useState<DeliveryDraft[]>(existing?.deliveries ?? []);
+  const [visitors, setVisitors] = useState<VisitorDraft[]>(existing?.visitors ?? []);
   const [delays, setDelays] = useState<CMDelayRow[]>(existing?.delays ?? []);
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // The FAB's "New Entry" doesn't know in advance whether the selected date
+  // already has a log — reactively pull it in here (by date, from the
+  // already-loaded list) so reopening for a day with existing data shows
+  // what's there instead of silently starting blank and clobbering it on
+  // submit. Skipped when `existing` is passed directly (the Edit Entry path,
+  // whose Date field is locked, so there's nothing for it to react to).
+  useEffect(() => {
+    if (existing) return;
+    const match = logs?.find((l) => l.log_date === logDate);
+    if (!match) return;
+    setWeather(match.weather ?? WEATHER_OPTIONS[0]);
+    setTemperature(match.temperature_c != null ? String(match.temperature_c) : "");
+    setRainStart(match.rain_start_time ?? "");
+    setRainEnd(match.rain_end_time ?? "");
+    setProgressPct(match.progress_pct != null ? String(match.progress_pct) : "");
+    setActivities(match.activities ?? "");
+    setMaterials(match.materials_used ?? "");
+    setEquipment(match.equipment_used ?? "");
+    setIssues(match.issues ?? "");
+    setNotes(match.notes ?? "");
+    setManpower(match.manpower ?? []);
+    setDeliveries(match.deliveries ?? []);
+    setVisitors(match.visitors ?? []);
+    setDelays(match.delays ?? []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logDate, logs, existing]);
+
+  const [manpowerSheet, setManpowerSheet] = useState<{ editIndex: number | null } | null>(null);
+  const [manpowerDeleteIndex, setManpowerDeleteIndex] = useState<number | null>(null);
+  const adjustManpowerCount = (index: number, delta: number) =>
+    setManpower((prev) => prev.map((r, i) => (i === index ? { ...r, count: Math.max(0, r.count + delta) } : r)));
+  const removeManpowerRow = (index: number) => { setManpower((prev) => prev.filter((_, i) => i !== index)); setManpowerDeleteIndex(null); };
+
+  // Sections default open if they already carry data (so reopening a day
+  // shows what's there without any scrolling), collapsed otherwise — the
+  // sticky jump-nav chip row below always lets a single tap open any
+  // section regardless, so nothing is ever more than one tap away.
+  const sectionRefs = useRef<Partial<Record<LogSectionKey, HTMLDivElement | null>>>({});
+  const [openSections, setOpenSections] = useState<Set<LogSectionKey>>(() => {
+    const set = new Set<LogSectionKey>();
+    const hasWeatherData = !!existing?.weather || existing?.temperature_c != null || !!existing?.rain_start_time || !!existing?.rain_end_time;
+    if (hasWeatherData || !existing) set.add("weather");
+    if ((existing?.manpower?.length ?? 0) > 0) set.add("manpower");
+    if ((existing?.deliveries?.length ?? 0) > 0) set.add("deliveries");
+    if ((existing?.visitors?.length ?? 0) > 0) set.add("visitors");
+    if ((existing?.delays?.length ?? 0) > 0) set.add("delays");
+    if (existing?.activities || existing?.materials_used || existing?.equipment_used || existing?.issues || existing?.notes) set.add("notes");
+    return set;
+  });
+  const toggleSection = (key: LogSectionKey) => setOpenSections((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const jumpToSection = (key: LogSectionKey) => {
+    setOpenSections((prev) => new Set(prev).add(key));
+    requestAnimationFrame(() => sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  const SECTIONS: { key: LogSectionKey; label: string }[] = [
+    { key: "weather", label: t("siteDiary.weather") },
+    { key: "manpower", label: t("siteDiary.manpower") },
+    { key: "deliveries", label: t("siteDiary.deliveries") },
+    { key: "visitors", label: t("siteDiary.visitors") },
+    { key: "delays", label: t("siteDiary.delays") },
+    { key: "notes", label: t("siteDiary.notes") },
+  ];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -420,57 +503,33 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, photos);
-      if (existing) {
-        // Editing replaces the field values outright — the form was
-        // preloaded with the entry's current contents, so what's on screen
-        // now IS the full desired state (unlike create, there's no separate
-        // "old" copy to merge against). Photos still only append, since
-        // there's no per-photo remove control on this sheet.
-        await updateCMDailyLog(existing.id, {
-          weather: weather || null,
-          temperature_c: temperature ? Number(temperature) : null,
-          rain_start_time: RAIN_WEATHER.has(weather) ? rainStart || null : null,
-          rain_end_time: RAIN_WEATHER.has(weather) ? rainEnd || null : null,
-          progress_pct: progressPct ? Number(progressPct) : null,
-          activities: activities.trim() || null,
-          materials_used: materials.trim() || null,
-          equipment_used: equipment.trim() || null,
-          issues: issues.trim() || null,
-          notes: notes.trim() || null,
-          manpower: manpower.filter((r) => r.trade.trim()),
-          deliveries: deliveries.filter((r) => r.material.trim()),
-          visitors: visitors.filter((r) => r.name.trim()),
-          delays: delays.filter((r) => r.description.trim()),
-          photos: [...existing.photos, ...uploaded.map((u) => u.url)],
-          photo_thumbs: [...existing.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
-        });
-      } else {
-        // Find-or-create that day's single entry, then merge this submission's
-        // fields into it (append rows/photos, keep new scalar values where the
-        // form provided one) — this is the fix for the "one report per day"
-        // duplicate-entry bug: re-opening "New Entry" for a day that already
-        // has data adds to it instead of inserting a second row.
-        const log = await findOrCreateCMDailyLog(ownerId, projectId, logDate, {});
-        await updateCMDailyLog(log.id, {
-          weather: weather || log.weather,
-          temperature_c: temperature ? Number(temperature) : log.temperature_c,
-          rain_start_time: RAIN_WEATHER.has(weather) ? rainStart || log.rain_start_time : null,
-          rain_end_time: RAIN_WEATHER.has(weather) ? rainEnd || log.rain_end_time : null,
-          progress_pct: progressPct ? Number(progressPct) : log.progress_pct,
-          activities: activities.trim() || log.activities,
-          materials_used: materials.trim() || log.materials_used,
-          equipment_used: equipment.trim() || log.equipment_used,
-          issues: issues.trim() || log.issues,
-          notes: notes.trim() || log.notes,
-          manpower: [...log.manpower, ...manpower.filter((r) => r.trade.trim())],
-          deliveries: [...log.deliveries, ...deliveries.filter((r) => r.material.trim())],
-          visitors: [...log.visitors, ...visitors.filter((r) => r.name.trim())],
-          delays: [...log.delays, ...delays.filter((r) => r.description.trim())],
-          photos: [...log.photos, ...uploaded.map((u) => u.url)],
-          photo_thumbs: [...log.photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
-        });
-      }
+      const [uploadedTopPhotos, resolvedDeliveries, resolvedVisitors] = await Promise.all([
+        stampAndUploadCMPhotos(ownerId, projectId, photos),
+        resolveDraftRowPhotos(ownerId, projectId, deliveries.filter((r) => r.material.trim())),
+        resolveDraftRowPhotos(ownerId, projectId, visitors.filter((r) => r.name.trim())),
+      ]);
+      // Whether editing directly or creating for a day the preload effect
+      // above already found, the form's local state is now the full desired
+      // state either way — no more separate merge-vs-replace branches.
+      const log = existing ?? await findOrCreateCMDailyLog(ownerId, projectId, logDate, {});
+      await updateCMDailyLog(log.id, {
+        weather: weather || null,
+        temperature_c: temperature ? Number(temperature) : null,
+        rain_start_time: RAIN_WEATHER.has(weather) ? rainStart || null : null,
+        rain_end_time: RAIN_WEATHER.has(weather) ? rainEnd || null : null,
+        progress_pct: progressPct ? Number(progressPct) : null,
+        activities: activities.trim() || null,
+        materials_used: materials.trim() || null,
+        equipment_used: equipment.trim() || null,
+        issues: issues.trim() || null,
+        notes: notes.trim() || null,
+        manpower: manpower.filter((r) => r.trade.trim()),
+        deliveries: resolvedDeliveries,
+        visitors: resolvedVisitors,
+        delays: delays.filter((r) => r.description.trim()),
+        photos: [...log.photos, ...uploadedTopPhotos.map((u) => u.url)],
+        photo_thumbs: [...log.photo_thumbs, ...uploadedTopPhotos.map((u) => u.thumbUrl)],
+      });
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save diary entry");
@@ -481,7 +540,15 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
 
   return (
     <Sheet title={t(existing ? "siteDiary.editEntry" : "siteDiary.newEntry")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+      <div className="sticky top-0 z-10 bg-[#0d0d0e] px-6 pb-2 pt-1 flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
+        {SECTIONS.map((s) => (
+          <button key={s.key} type="button" onClick={() => jumpToSection(s.key)}
+            className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors whitespace-nowrap">
+            {s.label}
+          </button>
+        ))}
+      </div>
+      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-3 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("siteDiary.date")}</span>
@@ -492,156 +559,185 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
             <input type="number" min={0} max={100} className={inputCls} value={progressPct} onChange={(e) => setProgressPct(e.target.value)} disabled={saving} />
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("siteDiary.weather")}</span>
-            <FieldSelect value={weather} onChange={setWeather} disabled={saving} options={WEATHER_OPTIONS.map((w) => ({ value: w, label: t(`weather.${w}`) }))} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("siteDiary.tempC")}</span>
-            <input type="number" className={inputCls} value={temperature} onChange={(e) => setTemperature(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        {RAIN_WEATHER.has(weather) && (
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>{t("siteDiary.rainStart")}</span>
-              <input type="time" className={inputCls} value={rainStart} onChange={(e) => setRainStart(e.target.value)} disabled={saving} />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className={labelCls}>{t("siteDiary.rainEnd")}</span>
-              <input type="time" className={inputCls} value={rainEnd} onChange={(e) => setRainEnd(e.target.value)} disabled={saving} />
-            </label>
-            {rainHours(rainStart, rainEnd) != null && (
-              <p className="col-span-2 font-mono text-[10px] text-white/35">{t("siteDiary.rainHours", { hours: String(rainHours(rainStart, rainEnd)) })}</p>
-            )}
-          </div>
-        )}
 
-        <RepeatingRows
-          label={`${t("siteDiary.manpower")} (${t("siteDiary.total")}: ${totalManpower(manpower)})`}
-          addLabel={t("siteDiary.addManpower")}
-          rows={manpower}
-          onChange={setManpower}
-          emptyRow={EMPTY_MANPOWER}
-          renderRow={(row, update) => (
-            <div className="flex flex-col gap-2">
-              <FieldSelect
-                value={row.roster_item_id ?? ""}
-                onChange={(id) => {
-                  if (!id) { update({ roster_item_id: null }); return; }
-                  const item = manpowerOptions.find((o) => o.value === id);
-                  update({ roster_item_id: id, trade: item?.trade ?? row.trade, company: item?.company ?? row.company });
-                }}
-                placeholder={t("siteDiary.customManpower")}
-                options={[{ value: "", label: t("siteDiary.customManpower") }, ...manpowerOptions.map((o) => ({ value: o.value, label: o.label }))]}
-                disabled={saving}
-              />
-              {!row.roster_item_id && (
-                <div className="grid grid-cols-2 gap-2">
-                  <input className={inputCls} placeholder={t("siteDiary.trade")} value={row.trade} onChange={(e) => update({ trade: e.target.value })} disabled={saving} />
-                  <input className={inputCls} placeholder={t("siteDiary.company")} value={row.company ?? ""} onChange={(e) => update({ company: e.target.value || null })} disabled={saving} />
+        <div ref={(el) => { sectionRefs.current.weather = el; }}>
+          <AccordionSection title={t("siteDiary.weather")} open={openSections.has("weather")} onToggle={() => toggleSection("weather")}
+            badge={weather ? <span className="font-mono text-[10px] text-white/35">{t(`weather.${weather}`)}</span> : undefined}>
+            <SegmentedField value={weather} onChange={setWeather} disabled={saving}
+              options={WEATHER_OPTIONS.map((w) => ({ value: w, label: t(`weather.${w}`), icon: WEATHER_ICON[w] }))} />
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("siteDiary.tempC")}</span>
+              <input type="number" className={inputCls} value={temperature} onChange={(e) => setTemperature(e.target.value)} disabled={saving} />
+            </label>
+            {RAIN_WEATHER.has(weather) && (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelCls}>{t("siteDiary.rainStart")}</span>
+                  <input type="time" className={inputCls} value={rainStart} onChange={(e) => setRainStart(e.target.value)} disabled={saving} />
+                </label>
+                <label className="flex flex-col gap-1.5">
+                  <span className={labelCls}>{t("siteDiary.rainEnd")}</span>
+                  <input type="time" className={inputCls} value={rainEnd} onChange={(e) => setRainEnd(e.target.value)} disabled={saving} />
+                </label>
+                {rainHours(rainStart, rainEnd) != null && (
+                  <p className="col-span-2 font-mono text-[10px] text-white/35">{t("siteDiary.rainHours", { hours: String(rainHours(rainStart, rainEnd)) })}</p>
+                )}
+              </div>
+            )}
+          </AccordionSection>
+        </div>
+
+        <div ref={(el) => { sectionRefs.current.manpower = el; }}>
+          <AccordionSection title={t("siteDiary.manpower")} open={openSections.has("manpower")} onToggle={() => toggleSection("manpower")}
+            badge={<span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{totalManpower(manpower)}</span>}>
+            {manpower.length === 0 && <p className="text-white/30 text-[12px]">{t("manpower.noEntriesForDay")}</p>}
+            <div className="flex flex-col gap-1.5">
+              {manpower.map((row, index) => (
+                <div key={index} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+                  <button type="button" className="flex-1 min-w-0 text-left" onClick={() => setManpowerSheet({ editIndex: index })} disabled={saving}>
+                    <p className="text-[12px] text-white/80 truncate">{row.trade}{row.company ? ` — ${row.company}` : ""}</p>
+                    <p className="text-[10px] text-white/30 truncate">
+                      {[row.category ? t(`workerCategory.${row.category}`) : null, row.location_id ? locationLabelById.get(row.location_id) : null, row.activity].filter(Boolean).join(" · ")}
+                    </p>
+                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button type="button" onClick={() => adjustManpowerCount(index, -1)} disabled={saving} className="w-7 h-7 rounded-lg bg-white/5 text-white/50 flex items-center justify-center text-[14px]" aria-label="decrease">−</button>
+                    <span className="font-mono text-[13px] w-7 text-center">{row.count}</span>
+                    <button type="button" onClick={() => adjustManpowerCount(index, 1)} disabled={saving} className="w-7 h-7 rounded-lg bg-white/5 text-white/50 flex items-center justify-center text-[14px]" aria-label="increase">+</button>
+                  </div>
+                  {manpowerDeleteIndex === index ? (
+                    <button type="button" onClick={() => removeManpowerRow(index)} className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-red-400 px-1.5">{t("common.delete")}</button>
+                  ) : (
+                    <button type="button" onClick={() => setManpowerDeleteIndex(index)} className="shrink-0 w-6 h-6 rounded-full text-white/20 hover:text-red-400 flex items-center justify-center">×</button>
+                  )}
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={() => setManpowerSheet({ editIndex: null })} disabled={saving}
+              className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("siteDiary.addManpower")}</button>
+          </AccordionSection>
+        </div>
+
+        <div ref={(el) => { sectionRefs.current.deliveries = el; }}>
+          <AccordionSection title={t("siteDiary.deliveries")} open={openSections.has("deliveries")} onToggle={() => toggleSection("deliveries")}
+            badge={deliveries.length > 0 ? <span className="font-mono text-[10px] text-white/35">{deliveries.length}</span> : undefined}>
+            <RepeatingRows
+              label={t("siteDiary.deliveries")}
+              addLabel={t("siteDiary.addDelivery")}
+              rows={deliveries}
+              onChange={setDeliveries}
+              emptyRow={EMPTY_DELIVERY}
+              renderRow={(row, update) => (
+                <div className="flex flex-col gap-2">
+                  <FieldSelect
+                    value={row.boq_item_id ?? ""}
+                    onChange={(id) => {
+                      if (!id) { update({ boq_item_id: null }); return; }
+                      const item = (boqItems ?? []).find((b) => b.id === id);
+                      update({ boq_item_id: id, material: item?.description ?? row.material, unit: item?.unit ?? row.unit });
+                    }}
+                    placeholder={t("siteDiary.customMaterial")}
+                    options={[{ value: "", label: t("siteDiary.customMaterial") }, ...(boqItems ?? []).map((b) => ({ value: b.id, label: b.description }))]}
+                    disabled={saving}
+                  />
+                  {!row.boq_item_id && (
+                    <input className={inputCls} placeholder={t("siteDiary.material")} value={row.material} onChange={(e) => update({ material: e.target.value })} disabled={saving} />
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className={inputCls} placeholder={t("siteDiary.quantity")} value={row.quantity} onChange={(e) => update({ quantity: e.target.value })} disabled={saving} />
+                    <input className={inputCls} placeholder={t("siteDiary.unit")} value={row.unit ?? ""} onChange={(e) => update({ unit: e.target.value || null })} disabled={saving} />
+                  </div>
+                  <input className={inputCls} placeholder={t("siteDiary.supplier")} value={row.supplier ?? ""} onChange={(e) => update({ supplier: e.target.value || null })} disabled={saving} />
+                  {(row.photos?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {row.photos!.map((url, i) => <img key={i} src={row.photo_thumbs?.[i] || url} alt="" className="w-12 h-12 rounded-lg object-cover" />)}
+                    </div>
+                  )}
+                  <PhotoPicker photos={row._pendingFiles ?? []} setPhotos={(fn) => update({ _pendingFiles: fn(row._pendingFiles ?? []) })} disabled={saving} />
                 </div>
               )}
-              <input type="number" min={0} className={inputCls} placeholder={t("siteDiary.headcount")} value={row.count || ""} onChange={(e) => update({ count: Number(e.target.value) || 0 })} disabled={saving} />
-            </div>
-          )}
-        />
-
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("siteDiary.activities")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={activities} onChange={(e) => setActivities(e.target.value)} placeholder={t("siteDiary.activitiesPlaceholder")} disabled={saving} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("siteDiary.materialsUsed")}</span>
-            <textarea className={`${inputCls} resize-y min-h-[48px]`} value={materials} onChange={(e) => setMaterials(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("siteDiary.equipmentUsed")}</span>
-            <textarea className={`${inputCls} resize-y min-h-[48px]`} value={equipment} onChange={(e) => setEquipment(e.target.value)} disabled={saving} />
-          </label>
+            />
+          </AccordionSection>
         </div>
-        <RepeatingRows
-          label={t("siteDiary.deliveries")}
-          addLabel={t("siteDiary.addDelivery")}
-          rows={deliveries}
-          onChange={setDeliveries}
-          emptyRow={EMPTY_DELIVERY}
-          renderRow={(row, update) => (
-            <div className="flex flex-col gap-2">
-              <FieldSelect
-                value={row.boq_item_id ?? ""}
-                onChange={(id) => {
-                  if (!id) { update({ boq_item_id: null }); return; }
-                  const item = (boqItems ?? []).find((b) => b.id === id);
-                  update({ boq_item_id: id, material: item?.description ?? row.material, unit: item?.unit ?? row.unit });
-                }}
-                placeholder={t("siteDiary.customMaterial")}
-                options={[{ value: "", label: t("siteDiary.customMaterial") }, ...(boqItems ?? []).map((b) => ({ value: b.id, label: b.description }))]}
-                disabled={saving}
-              />
-              {!row.boq_item_id && (
-                <input className={inputCls} placeholder={t("siteDiary.material")} value={row.material} onChange={(e) => update({ material: e.target.value })} disabled={saving} />
+
+        <div ref={(el) => { sectionRefs.current.visitors = el; }}>
+          <AccordionSection title={t("siteDiary.visitors")} open={openSections.has("visitors")} onToggle={() => toggleSection("visitors")}
+            badge={visitors.length > 0 ? <span className="font-mono text-[10px] text-white/35">{visitors.length}</span> : undefined}>
+            <RepeatingRows
+              label={t("siteDiary.visitors")}
+              addLabel={t("siteDiary.addVisitor")}
+              rows={visitors}
+              onChange={setVisitors}
+              emptyRow={EMPTY_VISITOR}
+              renderRow={(row, update) => (
+                <div className="flex flex-col gap-2">
+                  <SegmentedField value={row.kind} onChange={(v) => update({ kind: v })} disabled={saving}
+                    options={VISITOR_KIND_OPTIONS.map((k) => ({ value: k, label: t(`siteDiary.visitorKind.${k}`) }))} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className={inputCls} placeholder={t("siteDiary.visitorName")} value={row.name} onChange={(e) => update({ name: e.target.value })} disabled={saving} />
+                    <input className={inputCls} placeholder={t("siteDiary.organization")} value={row.organization ?? ""} onChange={(e) => update({ organization: e.target.value || null })} disabled={saving} />
+                  </div>
+                  <textarea className={`${inputCls} resize-y min-h-[40px]`} placeholder={t("siteDiary.note")} value={row.note} onChange={(e) => update({ note: e.target.value })} disabled={saving} />
+                  {(row.photos?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {row.photos!.map((url, i) => <img key={i} src={row.photo_thumbs?.[i] || url} alt="" className="w-12 h-12 rounded-lg object-cover" />)}
+                    </div>
+                  )}
+                  <PhotoPicker photos={row._pendingFiles ?? []} setPhotos={(fn) => update({ _pendingFiles: fn(row._pendingFiles ?? []) })} disabled={saving} />
+                </div>
               )}
-              <div className="grid grid-cols-2 gap-2">
-                <input className={inputCls} placeholder={t("siteDiary.quantity")} value={row.quantity} onChange={(e) => update({ quantity: e.target.value })} disabled={saving} />
-                <input className={inputCls} placeholder={t("siteDiary.unit")} value={row.unit ?? ""} onChange={(e) => update({ unit: e.target.value || null })} disabled={saving} />
-              </div>
-              <input className={inputCls} placeholder={t("siteDiary.supplier")} value={row.supplier ?? ""} onChange={(e) => update({ supplier: e.target.value || null })} disabled={saving} />
-              <RowPhotoPicker ownerId={ownerId} projectId={projectId} photos={row.photos ?? []} photoThumbs={row.photo_thumbs ?? []}
-                onChange={(photos, photo_thumbs) => update({ photos, photo_thumbs })} disabled={saving} />
-            </div>
-          )}
-        />
+            />
+          </AccordionSection>
+        </div>
 
-        <RepeatingRows
-          label={t("siteDiary.visitors")}
-          addLabel={t("siteDiary.addVisitor")}
-          rows={visitors}
-          onChange={setVisitors}
-          emptyRow={EMPTY_VISITOR}
-          renderRow={(row, update) => (
-            <div className="flex flex-col gap-2">
-              <FieldSelect value={row.kind} onChange={(v) => update({ kind: v })} disabled={saving}
-                options={VISITOR_KIND_OPTIONS.map((k) => ({ value: k, label: t(`siteDiary.visitorKind.${k}`) }))} />
-              <div className="grid grid-cols-2 gap-2">
-                <input className={inputCls} placeholder={t("siteDiary.visitorName")} value={row.name} onChange={(e) => update({ name: e.target.value })} disabled={saving} />
-                <input className={inputCls} placeholder={t("siteDiary.organization")} value={row.organization ?? ""} onChange={(e) => update({ organization: e.target.value || null })} disabled={saving} />
-              </div>
-              <textarea className={`${inputCls} resize-y min-h-[40px]`} placeholder={t("siteDiary.note")} value={row.note} onChange={(e) => update({ note: e.target.value })} disabled={saving} />
-              <RowPhotoPicker ownerId={ownerId} projectId={projectId} photos={row.photos ?? []} photoThumbs={row.photo_thumbs ?? []}
-                onChange={(photos, photo_thumbs) => update({ photos, photo_thumbs })} disabled={saving} />
-            </div>
-          )}
-        />
+        <div ref={(el) => { sectionRefs.current.delays = el; }}>
+          <AccordionSection title={t("siteDiary.delays")} open={openSections.has("delays")} onToggle={() => toggleSection("delays")}
+            badge={delays.length > 0 ? <span className="font-mono text-[10px] text-white/35">{delays.length}</span> : undefined}>
+            <RepeatingRows
+              label={t("siteDiary.delays")}
+              addLabel={t("siteDiary.addDelay")}
+              rows={delays}
+              onChange={setDelays}
+              emptyRow={EMPTY_DELAY}
+              renderRow={(row, update) => (
+                <div className="flex flex-col gap-2">
+                  <SegmentedField value={row.cause} onChange={(v) => update({ cause: v })} disabled={saving}
+                    options={DELAY_CAUSE_OPTIONS.map((c) => ({ value: c, label: t(`siteDiary.delayCause.${c}`) }))} />
+                  <input type="number" min={0} step="0.5" className={inputCls} placeholder={t("siteDiary.hoursLost")} value={row.hours_lost || ""} onChange={(e) => update({ hours_lost: Number(e.target.value) || 0 })} disabled={saving} />
+                  <textarea className={`${inputCls} resize-y min-h-[40px]`} placeholder={t("siteDiary.description")} value={row.description} onChange={(e) => update({ description: e.target.value })} disabled={saving} />
+                </div>
+              )}
+            />
+          </AccordionSection>
+        </div>
 
-        <RepeatingRows
-          label={t("siteDiary.delays")}
-          addLabel={t("siteDiary.addDelay")}
-          rows={delays}
-          onChange={setDelays}
-          emptyRow={EMPTY_DELAY}
-          renderRow={(row, update) => (
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-2 gap-2">
-                <FieldSelect value={row.cause} onChange={(v) => update({ cause: v })} disabled={saving}
-                  options={DELAY_CAUSE_OPTIONS.map((c) => ({ value: c, label: t(`siteDiary.delayCause.${c}`) }))} />
-                <input type="number" min={0} step="0.5" className={inputCls} placeholder={t("siteDiary.hoursLost")} value={row.hours_lost || ""} onChange={(e) => update({ hours_lost: Number(e.target.value) || 0 })} disabled={saving} />
-              </div>
-              <textarea className={`${inputCls} resize-y min-h-[40px]`} placeholder={t("siteDiary.description")} value={row.description} onChange={(e) => update({ description: e.target.value })} disabled={saving} />
+        <div ref={(el) => { sectionRefs.current.notes = el; }}>
+          <AccordionSection title={t("siteDiary.notes")} open={openSections.has("notes")} onToggle={() => toggleSection("notes")}>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("siteDiary.activities")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[56px]`} value={activities} onChange={(e) => setActivities(e.target.value)} placeholder={t("siteDiary.activitiesPlaceholder")} disabled={saving} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("siteDiary.materialsUsed")}</span>
+                <textarea className={`${inputCls} resize-y min-h-[48px]`} value={materials} onChange={(e) => setMaterials(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("siteDiary.equipmentUsed")}</span>
+                <textarea className={`${inputCls} resize-y min-h-[48px]`} value={equipment} onChange={(e) => setEquipment(e.target.value)} disabled={saving} />
+              </label>
             </div>
-          )}
-        />
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("siteDiary.issues")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[48px]`} value={issues} onChange={(e) => setIssues(e.target.value)} placeholder={t("siteDiary.issuesPlaceholder")} disabled={saving} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("siteDiary.notes")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[40px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
+            </label>
+          </AccordionSection>
+        </div>
 
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("siteDiary.issues")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[48px]`} value={issues} onChange={(e) => setIssues(e.target.value)} placeholder={t("siteDiary.issuesPlaceholder")} disabled={saving} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("siteDiary.notes")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[40px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
-        </label>
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving}
@@ -650,6 +746,16 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
           {saving ? t("siteDiary.saving") : t("siteDiary.saveEntry")}
         </button>
       </form>
+
+      {manpowerSheet && (
+        <ManpowerEntrySheet
+          ownerId={ownerId} projectId={projectId}
+          rows={manpower} editIndex={manpowerSheet.editIndex}
+          companyOptions={companyOptions} tradeOptions={tradeOptions}
+          onSave={async (next) => setManpower(next)}
+          onClose={() => setManpowerSheet(null)}
+        />
+      )}
     </Sheet>
   );
 }
@@ -1231,11 +1337,11 @@ function CMSiteDiaryPage() {
         )}
       </main>
 
-      {showNew && !viewAll && projectId && canCreate && <NewLogSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && !viewAll && projectId && canCreate && <NewLogSheet ownerId={user.id} projectId={projectId} logs={logs} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {showCapture && !viewAll && projectId && canCreate && (
         <CaptureSheet ownerId={user.id} projectId={projectId} disciplines={projectDisciplines}
-          onClose={() => setShowCapture(false)} onCreated={() => { invalidate(); setShowCapture(false); }} />
+          onClose={() => setShowCapture(false)} onSaved={invalidate} onCreated={() => { invalidate(); setShowCapture(false); }} />
       )}
 
       {lightbox && (

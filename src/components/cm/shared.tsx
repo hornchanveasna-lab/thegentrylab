@@ -12,6 +12,7 @@ import {
   useCMNotifications,
   useCMWorkflowSteps,
   type CMFileAttachment,
+  type CMManpowerRow, stampAndUploadCMPhotos, CM_WORKER_CATEGORIES,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
@@ -165,6 +166,38 @@ export function Card({ title, action, children }: { title: string; action?: Reac
   );
 }
 
+/** A collapsible card section — same visual shell as the accordion cards
+ *  used across Inspection/Safety/Punch List/Submittal list rows
+ *  (`rounded-2xl bg-[#0d0d0e]`, tappable header, collapsible body), reused
+ *  here as a generic building block for long forms that want jump-to-section
+ *  navigation instead of one uninterrupted scroll. `badge` renders on the
+ *  header's right side (e.g. a running total); the chevron always shows the
+ *  open/closed state. */
+export function AccordionSection({ title, badge, open, onToggle, children }: {
+  title: string; badge?: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden">
+      <button type="button" onClick={onToggle}
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
+        <span className="text-[13px] text-white/80 font-medium">{title}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          {badge}
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25 transition-transform"
+            style={{ transform: open ? "rotate(90deg)" : undefined }}>
+            <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      </button>
+      {open && (
+        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** A person's face photo, or an initials circle when none is set —
  *  reused everywhere a Directory contact appears (Directory itself,
  *  Subcontractors, Consultant people, project Team members). */
@@ -192,8 +225,10 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
   emptyRow: T;
   renderRow: (row: T, update: (patch: Partial<T>) => void) => React.ReactNode;
 }) {
+  const { t } = useCMLang();
+  const [confirmIndex, setConfirmIndex] = useState<number | null>(null);
   const updateRow = (i: number, patch: Partial<T>) => onChange(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
-  const removeRow = (i: number) => onChange(rows.filter((_, idx) => idx !== i));
+  const removeRow = (i: number) => { onChange(rows.filter((_, idx) => idx !== i)); setConfirmIndex(null); };
 
   return (
     <div className="flex flex-col gap-2">
@@ -201,8 +236,13 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
       {rows.map((row, i) => (
         <div key={i} className="relative rounded-xl bg-white/3 p-3 pr-9">
           {renderRow(row, (patch) => updateRow(i, patch))}
-          <button type="button" onClick={() => removeRow(i)}
-            className="absolute top-2 right-2 text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+          {confirmIndex === i ? (
+            <button type="button" onClick={() => removeRow(i)}
+              className="absolute top-2 right-2 font-mono text-[9px] uppercase tracking-widest text-red-400 px-1.5 py-1">{t("common.delete")}</button>
+          ) : (
+            <button type="button" onClick={() => setConfirmIndex(i)}
+              className="absolute top-1 right-1 text-white/25 hover:text-red-400 w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5 text-[15px]">×</button>
+          )}
         </div>
       ))}
       <button type="button" onClick={() => onChange([...rows, emptyRow])}
@@ -821,6 +861,195 @@ export function PhotoPicker({ photos, setPhotos, disabled }: { photos: File[]; s
   );
 }
 
+const manpowerSmallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
+
+/** Quick-entry sheet per the Manpower module's spec: company → trade →
+ *  category → workers → location → activity → hours. Also handles editing
+ *  an existing row and the duplicate check (same company + trade + location
+ *  must not be silently combined — the user chooses Edit Existing / Add New
+ *  / Cancel). Shared between the Manpower module's own page and Site
+ *  Diary's Manpower section so both use the same fast add/edit flow. */
+export function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, companyOptions, tradeOptions, onSave, onClose }: {
+  ownerId: string;
+  projectId: string;
+  rows: CMManpowerRow[];
+  editIndex: number | null;
+  companyOptions: string[];
+  tradeOptions: string[];
+  onSave: (next: CMManpowerRow[]) => Promise<void>;
+  onClose: () => void;
+}) {
+  const { t } = useCMLang();
+  // The duplicate prompt's "Edit Existing" can retarget the sheet at the
+  // clashing row mid-flight, so the effective edit target is local state
+  // seeded from the prop rather than the prop itself.
+  const [editTarget, setEditTarget] = useState<number | null>(editIndex);
+  const editing = editTarget != null ? rows[editTarget] : undefined;
+  const [company, setCompany] = useState(editing?.company ?? "");
+  const [trade, setTrade] = useState(editing?.trade ?? "");
+  const [category, setCategory] = useState(editing?.category ?? "");
+  const [count, setCount] = useState(editing ? String(editing.count) : "");
+  const [locationId, setLocationId] = useState<string | null>(editing?.location_id ?? null);
+  const [activity, setActivity] = useState(editing?.activity ?? "");
+  const [normalHours, setNormalHours] = useState(editing?.normal_hours != null ? String(editing.normal_hours) : "8");
+  const [otHours, setOtHours] = useState(editing?.ot_hours != null ? String(editing.ot_hours) : "0");
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [dupIndex, setDupIndex] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  // New workforce photos are appended to whatever the row already carries —
+  // there's no per-photo remove control here, same as the Site Diary sheet.
+  const buildRow = async (): Promise<CMManpowerRow> => {
+    const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, photoFiles);
+    return {
+      trade: trade.trim(),
+      company: company.trim() || null,
+      count: Math.max(0, parseInt(count, 10) || 0),
+      roster_item_id: editing?.roster_item_id ?? null,
+      category: category || null,
+      location_id: locationId,
+      activity: activity.trim() || null,
+      normal_hours: Math.max(0, Number(normalHours) || 0),
+      ot_hours: Math.max(0, Number(otHours) || 0),
+      photos: [...(editing?.photos ?? []), ...uploaded.map((u) => u.url)],
+      photo_thumbs: [...(editing?.photo_thumbs ?? []), ...uploaded.map((u) => u.thumbUrl)],
+    };
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving || !trade.trim()) return;
+    // Duplicate check runs before any photo upload so cancelling costs nothing.
+    if (editTarget == null) {
+      const dup = rows.findIndex((r) =>
+        r.trade.trim().toLowerCase() === trade.trim().toLowerCase()
+        && (r.company ?? "").trim().toLowerCase() === company.trim().toLowerCase()
+        && (r.location_id ?? null) === (locationId ?? null));
+      if (dup >= 0 && dupIndex == null) {
+        setDupIndex(dup);
+        return;
+      }
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const row = await buildRow();
+      const next = editTarget != null ? rows.map((r, i) => (i === editTarget ? row : r)) : [...rows, row];
+      await onSave(next);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setSaving(false);
+    }
+  };
+
+  const fieldLabel = "text-[10px] font-mono uppercase tracking-widest text-white/35";
+
+  return (
+    <Sheet title={editTarget != null ? t("manpower.editEntry") : t("manpower.addEntry")} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 px-6 pb-8 pt-2">
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("siteDiary.company")}</span>
+          <FieldSelect
+            value={company}
+            onChange={setCompany}
+            searchable allowCustom
+            placeholder={t("manpower.selectCompany")}
+            options={[{ value: "", label: t("common.none") }, ...companyOptions.map((c) => ({ value: c, label: c }))]}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("siteDiary.trade")}</span>
+          <FieldSelect
+            value={trade}
+            onChange={setTrade}
+            searchable allowCustom
+            placeholder={t("manpower.selectTrade")}
+            options={tradeOptions.map((tr) => ({ value: tr, label: tr }))}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.category")}</span>
+            <FieldSelect
+              value={category}
+              onChange={setCategory}
+              placeholder={t("common.none")}
+              options={[{ value: "", label: t("common.none") }, ...CM_WORKER_CATEGORIES.map((c) => ({ value: c, label: t(`workerCategory.${c}`) }))]}
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.workers")}</span>
+            <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder="0" required />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("manpower.location")}</span>
+          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className={fieldLabel}>{t("manpower.activity")}</span>
+          <input className={inputCls} value={activity} onChange={(e) => setActivity(e.target.value)} placeholder={t("manpower.activityPlaceholder")} />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.normalHours")}</span>
+            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={normalHours} onChange={(e) => setNormalHours(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className={fieldLabel}>{t("manpower.otHours")}</span>
+            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={otHours} onChange={(e) => setOtHours(e.target.value)} />
+          </div>
+        </div>
+
+        {(editing?.photos?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {editing!.photos!.map((url, i) => (
+              <img key={i} src={editing!.photo_thumbs?.[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+            ))}
+          </div>
+        )}
+        <PhotoPicker photos={photoFiles} setPhotos={setPhotoFiles} disabled={saving} />
+
+        {dupIndex != null && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col gap-2">
+            <p className="text-[12px] text-amber-200/90">{t("manpower.duplicateExists")}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={manpowerSmallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}
+                onClick={() => {
+                  const existing = rows[dupIndex];
+                  setCompany(existing.company ?? "");
+                  setTrade(existing.trade);
+                  setCategory(existing.category ?? "");
+                  setCount(String(existing.count));
+                  setLocationId(existing.location_id ?? null);
+                  setActivity(existing.activity ?? "");
+                  setNormalHours(existing.normal_hours != null ? String(existing.normal_hours) : "8");
+                  setOtHours(existing.ot_hours != null ? String(existing.ot_hours) : "0");
+                  // Switch the sheet into edit mode for that row — a submit
+                  // now replaces it instead of appending a twin.
+                  setDupIndex(null);
+                  setEditTarget(dupIndex);
+                }}>{t("manpower.editExisting")}</button>
+              <button type="submit" className={`${manpowerSmallBtn} bg-white/10 text-white/70`}>{t("manpower.addNew")}</button>
+              <button type="button" className={`${manpowerSmallBtn} text-white/40`} onClick={() => setDupIndex(null)}>{t("common.cancel")}</button>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-[12px] text-red-400">{error}</p>}
+        <div className="flex gap-2 mt-1">
+          <button type="submit" disabled={saving || !trade.trim()} className={`${manpowerSmallBtn} disabled:opacity-40 px-5 py-2.5`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+            {saving ? t("common.loading") : t("common.save")}
+          </button>
+          <button type="button" onClick={onClose} className={`${manpowerSmallBtn} px-5 py-2.5 text-white/40`}>{t("common.cancel")}</button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -1034,7 +1263,7 @@ export function setLastProject(projectId: string) {
   try { localStorage.setItem(LAST_PROJECT_KEY, projectId); } catch { /* */ }
 }
 
-export interface SegmentedOption<T extends string> { value: T; label: string; color?: string }
+export interface SegmentedOption<T extends string> { value: T; label: string; color?: string; icon?: React.ReactNode }
 
 /** A single-row, swipe-to-browse tap-to-select tab bar — the fast alternative
  *  to a native <select> (one tap instead of open-then-choose) for any small,
@@ -1048,7 +1277,7 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
         const active = value === opt.value;
         return (
           <button key={opt.value} type="button" disabled={disabled} onClick={() => onChange(opt.value)}
-            className={`shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors disabled:opacity-40 ${
+            className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors disabled:opacity-40 ${
               opt.color ? "bg-white/5" : active ? "" : "bg-white/5 text-white/70 hover:bg-white/10"
             }`}
             style={
@@ -1057,6 +1286,7 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
                 : active ? { backgroundColor: "#ff5100", color: "#000" } : undefined
             }
           >
+            {opt.icon}
             {opt.label}
           </button>
         );

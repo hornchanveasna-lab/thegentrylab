@@ -7,7 +7,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, labelCls, useCMTheme,
-  FieldSelect, LocationSelect, Sheet, PhotoPicker, SegmentedField, WeekCalendarStrip,
+  FieldSelect, Sheet, SegmentedField, WeekCalendarStrip, ManpowerEntrySheet,
 } from "@/components/cm/shared";
 import { parseWorkbookRows, type BoqSheet } from "@/lib/cm-boq-import";
 import {
@@ -17,8 +17,8 @@ import {
 import {
   useCMDailyLogs, useCMManpowerRoster, addCMManpowerRosterItem, removeCMManpowerRosterItem,
   useCMProjectSubcontractors, useCMProjectLocations, locationBreadcrumb,
-  findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity, stampAndUploadCMPhotos,
-  cmLaborHours, CM_WORKER_CATEGORIES,
+  findOrCreateCMDailyLog, updateCMDailyLog, logCMActivity,
+  cmLaborHours,
   useCMManpowerPlans, createCMManpowerPlan, updateCMManpowerPlan, deleteCMManpowerPlan,
   useCMWorkers, createCMWorker, deleteCMWorker, useCMWorkerAttendance, setCMWorkerAttendance,
   type CMDailyLog, type CMManpowerRow, type CMManpowerPlan, type CMAttendanceStatus,
@@ -99,191 +99,6 @@ function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
         ))}
       </div>
     </Card>
-  );
-}
-
-/** Quick-entry sheet per the spec: company → trade → category → workers →
- *  location → activity → hours. Also handles editing an existing row and the
- *  duplicate check (same company + trade + location must not be silently
- *  combined — the user chooses Edit Existing / Add New / Cancel). */
-function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, companyOptions, tradeOptions, onSave, onClose }: {
-  ownerId: string;
-  projectId: string;
-  rows: CMManpowerRow[];
-  editIndex: number | null;
-  companyOptions: string[];
-  tradeOptions: string[];
-  onSave: (next: CMManpowerRow[]) => Promise<void>;
-  onClose: () => void;
-}) {
-  const { t } = useCMLang();
-  // The duplicate prompt's "Edit Existing" can retarget the sheet at the
-  // clashing row mid-flight, so the effective edit target is local state
-  // seeded from the prop rather than the prop itself.
-  const [editTarget, setEditTarget] = useState<number | null>(editIndex);
-  const editing = editTarget != null ? rows[editTarget] : undefined;
-  const [company, setCompany] = useState(editing?.company ?? "");
-  const [trade, setTrade] = useState(editing?.trade ?? "");
-  const [category, setCategory] = useState(editing?.category ?? "");
-  const [count, setCount] = useState(editing ? String(editing.count) : "");
-  const [locationId, setLocationId] = useState<string | null>(editing?.location_id ?? null);
-  const [activity, setActivity] = useState(editing?.activity ?? "");
-  const [normalHours, setNormalHours] = useState(editing?.normal_hours != null ? String(editing.normal_hours) : "8");
-  const [otHours, setOtHours] = useState(editing?.ot_hours != null ? String(editing.ot_hours) : "0");
-  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [dupIndex, setDupIndex] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  // New workforce photos are appended to whatever the row already carries —
-  // there's no per-photo remove control here, same as the Site Diary sheet.
-  const buildRow = async (): Promise<CMManpowerRow> => {
-    const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, photoFiles);
-    return {
-      trade: trade.trim(),
-      company: company.trim() || null,
-      count: Math.max(0, parseInt(count, 10) || 0),
-      roster_item_id: editing?.roster_item_id ?? null,
-      category: category || null,
-      location_id: locationId,
-      activity: activity.trim() || null,
-      normal_hours: Math.max(0, Number(normalHours) || 0),
-      ot_hours: Math.max(0, Number(otHours) || 0),
-      photos: [...(editing?.photos ?? []), ...uploaded.map((u) => u.url)],
-      photo_thumbs: [...(editing?.photo_thumbs ?? []), ...uploaded.map((u) => u.thumbUrl)],
-    };
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (saving || !trade.trim()) return;
-    // Duplicate check runs before any photo upload so cancelling costs nothing.
-    if (editTarget == null) {
-      const dup = rows.findIndex((r) =>
-        r.trade.trim().toLowerCase() === trade.trim().toLowerCase()
-        && (r.company ?? "").trim().toLowerCase() === company.trim().toLowerCase()
-        && (r.location_id ?? null) === (locationId ?? null));
-      if (dup >= 0 && dupIndex == null) {
-        setDupIndex(dup);
-        return;
-      }
-    }
-    setSaving(true);
-    setError("");
-    try {
-      const row = await buildRow();
-      const next = editTarget != null ? rows.map((r, i) => (i === editTarget ? row : r)) : [...rows, row];
-      await onSave(next);
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setSaving(false);
-    }
-  };
-
-  const fieldLabel = "text-[10px] font-mono uppercase tracking-widest text-white/35";
-
-  return (
-    <Sheet title={editTarget != null ? t("manpower.editEntry") : t("manpower.addEntry")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <span className={fieldLabel}>{t("siteDiary.company")}</span>
-          <FieldSelect
-            value={company}
-            onChange={setCompany}
-            searchable allowCustom
-            placeholder={t("manpower.selectCompany")}
-            options={[{ value: "", label: t("common.none") }, ...companyOptions.map((c) => ({ value: c, label: c }))]}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className={fieldLabel}>{t("siteDiary.trade")}</span>
-          <FieldSelect
-            value={trade}
-            onChange={setTrade}
-            searchable allowCustom
-            placeholder={t("manpower.selectTrade")}
-            options={tradeOptions.map((tr) => ({ value: tr, label: tr }))}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.category")}</span>
-            <FieldSelect
-              value={category}
-              onChange={setCategory}
-              placeholder={t("common.none")}
-              options={[{ value: "", label: t("common.none") }, ...CM_WORKER_CATEGORIES.map((c) => ({ value: c, label: t(`workerCategory.${c}`) }))]}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.workers")}</span>
-            <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder="0" required />
-          </div>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className={fieldLabel}>{t("manpower.location")}</span>
-          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className={fieldLabel}>{t("manpower.activity")}</span>
-          <input className={inputCls} value={activity} onChange={(e) => setActivity(e.target.value)} placeholder={t("manpower.activityPlaceholder")} />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.normalHours")}</span>
-            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={normalHours} onChange={(e) => setNormalHours(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.otHours")}</span>
-            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={otHours} onChange={(e) => setOtHours(e.target.value)} />
-          </div>
-        </div>
-
-        {(editing?.photos?.length ?? 0) > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {editing!.photos!.map((url, i) => (
-              <img key={i} src={editing!.photo_thumbs?.[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
-            ))}
-          </div>
-        )}
-        <PhotoPicker photos={photoFiles} setPhotos={setPhotoFiles} disabled={saving} />
-
-        {dupIndex != null && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col gap-2">
-            <p className="text-[12px] text-amber-200/90">{t("manpower.duplicateExists")}</p>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}
-                onClick={() => {
-                  const existing = rows[dupIndex];
-                  setCompany(existing.company ?? "");
-                  setTrade(existing.trade);
-                  setCategory(existing.category ?? "");
-                  setCount(String(existing.count));
-                  setLocationId(existing.location_id ?? null);
-                  setActivity(existing.activity ?? "");
-                  setNormalHours(existing.normal_hours != null ? String(existing.normal_hours) : "8");
-                  setOtHours(existing.ot_hours != null ? String(existing.ot_hours) : "0");
-                  // Switch the sheet into edit mode for that row — a submit
-                  // now replaces it instead of appending a twin.
-                  setDupIndex(null);
-                  setEditTarget(dupIndex);
-                }}>{t("manpower.editExisting")}</button>
-              <button type="submit" className={`${smallBtn} bg-white/10 text-white/70`}>{t("manpower.addNew")}</button>
-              <button type="button" className={`${smallBtn} text-white/40`} onClick={() => setDupIndex(null)}>{t("common.cancel")}</button>
-            </div>
-          </div>
-        )}
-
-        {error && <p className="text-[12px] text-red-400">{error}</p>}
-        <div className="flex gap-2 mt-1">
-          <button type="submit" disabled={saving || !trade.trim()} className={`${smallBtn} disabled:opacity-40 px-5 py-2.5`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
-            {saving ? t("common.loading") : t("common.save")}
-          </button>
-          <button type="button" onClick={onClose} className={`${smallBtn} px-5 py-2.5 text-white/40`}>{t("common.cancel")}</button>
-        </div>
-      </form>
-    </Sheet>
   );
 }
 
