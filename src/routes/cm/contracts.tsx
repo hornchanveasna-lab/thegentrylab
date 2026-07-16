@@ -6,7 +6,8 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, CompanySelect, useSelectedProject, inputCls, labelCls,
-  EmptyState, ErrorState, StatusBadge, ConfirmationDialog,
+  EmptyState, ErrorState, StatusBadge, ConfirmationDialog, WeekCalendarStrip,
+  FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
 import {
   useCMContracts,
@@ -14,6 +15,7 @@ import {
   updateCMContract,
   deleteCMContract,
   useCMCompanies,
+  uploadCMFile,
   CONTRACT_TYPES,
   CONTRACT_STATUSES,
   type CMContract,
@@ -44,6 +46,7 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
   const [completionDate, setCompletionDate] = useState(existing?.completion_date ?? "");
   const [status, setStatus] = useState<ContractStatus>(existing?.status ?? "Active");
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -59,8 +62,12 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
         contract_value: contractValue.trim() ? Number(contractValue) : null,
         start_date: startDate || null, completion_date: completionDate || null, status, notes: notes.trim() || null,
       };
+      const item = existing ?? await createCMContract(ownerId, projectId, patch);
       if (existing) await updateCMContract(existing.id, patch);
-      else await createCMContract(ownerId, projectId, patch);
+      if (files.length > 0) {
+        const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
+        await updateCMContract(item.id, { files: [...item.files, ...uploaded] });
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : `Failed to ${existing ? "update" : "create"} contract`);
@@ -119,6 +126,8 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
           <span className={labelCls}>{t("contracts.notes")}</span>
           <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
         </label>
+        <FilePicker files={files} setFiles={setFiles} disabled={saving} />
+        {existing && existing.files.length > 0 && <FileAttachmentList files={existing.files} />}
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
@@ -168,6 +177,7 @@ function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
             {item.start_date && <span className="font-mono text-[10px] text-white/30">{item.start_date} → {item.completion_date ?? "—"}</span>}
           </div>
           {item.notes && <p className="text-[12px] text-white/45 whitespace-pre-wrap">{item.notes}</p>}
+          <FileAttachmentList files={item.files} />
           <div className="flex items-center gap-4">
             {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("contracts.edit")}</button>}
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
@@ -188,7 +198,7 @@ function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
 
 function CMContractsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
@@ -197,17 +207,22 @@ function CMContractsPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "contracts", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "contracts", "delete");
   const [showNew, setShowNew] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
+  const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const dateOf = (c: CMContract) => c.start_date ?? c.created_at.slice(0, 10);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_contracts", projectId] }); setShowNew(false); };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = items ?? [];
+    if (dateFilter) list = list.filter((c) => dateOf(c) === dateFilter);
     if (q) list = list.filter((c) => [c.title, c.contract_number].some((f) => f?.toLowerCase().includes(q)));
     return sortAsc ? [...list].reverse() : list;
-  }, [items, search, sortAsc]);
+  }, [items, search, sortAsc, dateFilter]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
@@ -225,6 +240,22 @@ function CMContractsPage() {
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("contracts.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {projectId && canCreate && (
+          <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
+        )}
+
+        {projectId && (
+          <WeekCalendarStrip items={items ?? []} dateOf={dateOf} lang={lang}
+            selected={dateFilter} onSelect={setDateFilter} />
+        )}
+
+        {dateFilter && (
+          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            {dateFilter} <span className="text-[13px] leading-none">×</span>
+          </button>
+        )}
 
         {projectId && (
           <>
@@ -247,6 +278,24 @@ function CMContractsPage() {
 
       {showNew && projectId && canCreate && (
         <NewContractSheet ownerId={ownerId} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />
+      )}
+
+      {showQuickUpload && projectId && (
+        <QuickUploadSheet
+          sheetTitle={t("contracts.new")}
+          titleLabel={t("contracts.titleField")}
+          titlePlaceholder={t("contracts.titlePlaceholder")}
+          initialFiles={quickUploadFiles}
+          onClose={() => setShowQuickUpload(false)}
+          onSubmit={async (title, files) => {
+            const item = await createCMContract(ownerId, projectId, { title });
+            if (files.length > 0) {
+              const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
+              await updateCMContract(item.id, { files: uploaded });
+            }
+            invalidate();
+          }}
+        />
       )}
     </div>
   );

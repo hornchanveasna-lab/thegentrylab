@@ -7,6 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect,
   useSelectedProject, inputCls, labelCls, EmptyState, ErrorState, StatusBadge, PriorityBadge, ConfirmationDialog, PhotoLightbox,
+  WeekCalendarStrip, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
 import {
   useCMInstructions,
@@ -99,7 +100,7 @@ function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("instructions.contract")}</span>
-          <FieldSelect value={selectedContractId} onChange={setSelectedContractId} disabled={saving || !!existing}
+          <FieldSelect value={selectedContractId} onChange={setSelectedContractId} disabled={saving}
             placeholder={t("instructions.selectContract")}
             options={(contracts ?? []).map((c) => ({ value: c.id, label: c.title }))} />
         </label>
@@ -299,7 +300,7 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
 
 function CMInstructionsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
-  const { t } = useCMLang();
+  const { t, lang } = useCMLang();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
@@ -309,18 +310,23 @@ function CMInstructionsPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "instructions", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "instructions", "delete");
   const [showNew, setShowNew] = useState(false);
+  const [showQuickUpload, setShowQuickUpload] = useState(false);
+  const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
+  const dateOf = (i: CMInstruction) => i.created_at.slice(0, 10);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] }); setShowNew(false); };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     let list = items ?? [];
+    if (dateFilter) list = list.filter((i) => dateOf(i) === dateFilter);
     if (q) list = list.filter((i) => [i.title, i.description].some((f) => f?.toLowerCase().includes(q)));
     return sortAsc ? [...list].reverse() : list;
-  }, [items, search, sortAsc]);
+  }, [items, search, sortAsc, dateFilter]);
 
   const today = new Date().toISOString().slice(0, 10);
   const openCount = (items ?? []).filter((i) => i.status !== "Closed").length;
@@ -343,6 +349,22 @@ function CMInstructionsPage() {
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+
+        {projectId && canCreate && contracts && contracts.length > 0 && (
+          <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
+        )}
+
+        {projectId && (
+          <WeekCalendarStrip items={items ?? []} dateOf={dateOf} lang={lang}
+            selected={dateFilter} onSelect={setDateFilter} />
+        )}
+
+        {dateFilter && (
+          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            {dateFilter} <span className="text-[13px] leading-none">×</span>
+          </button>
+        )}
 
         {projectId && items && items.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-4">
@@ -391,6 +413,24 @@ function CMInstructionsPage() {
 
       {showNew && projectId && canCreate && contracts && contracts.length > 0 && (
         <NewInstructionSheet ownerId={ownerId} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />
+      )}
+
+      {showQuickUpload && projectId && contracts && contracts.length > 0 && (
+        <QuickUploadSheet
+          sheetTitle={t("instructions.new")}
+          titleLabel={t("instructions.titleField")}
+          titlePlaceholder={t("instructions.titlePlaceholder")}
+          initialFiles={quickUploadFiles}
+          onClose={() => setShowQuickUpload(false)}
+          onSubmit={async (title, files) => {
+            const item = await createCMInstruction(ownerId, projectId, { title, contract_id: contracts[0].id });
+            if (files.length > 0) {
+              const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
+              await updateCMInstruction(item.id, { files: uploaded });
+            }
+            invalidate();
+          }}
+        />
       )}
 
       {lightbox && (
