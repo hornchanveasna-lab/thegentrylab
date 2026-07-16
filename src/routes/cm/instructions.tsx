@@ -112,12 +112,12 @@ function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("instructions.sourceType")}</span>
-            <FieldSelect value={sourceType} onChange={setSourceType} disabled={saving}
+            <SegmentedField value={sourceType} onChange={setSourceType} disabled={saving}
               options={INSTRUCTION_SOURCE_TYPES.map((s) => ({ value: s, label: t(`instructionSource.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("instructions.priority")}</span>
-            <FieldSelect value={priority} onChange={setPriority} disabled={saving}
+            <SegmentedField value={priority} onChange={setPriority} disabled={saving}
               options={INSTRUCTION_PRIORITIES.map((p) => ({ value: p, label: t(`instructionPriority.${p}`) }))} />
           </label>
         </div>
@@ -258,7 +258,7 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
           {item.status !== "Issued" && canEdit && (
             <div className="flex flex-col gap-2 pt-2 border-t border-white/6">
               <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("instructions.impactAssessment")}</span>
-              <FieldSelect value={impactType} onChange={setImpactType} disabled={busy}
+              <SegmentedField value={impactType} onChange={setImpactType} disabled={busy}
                 options={IMPACT_TYPES.map((i) => ({ value: i, label: t(`impactType.${i}`) }))} />
               <textarea className={`${inputCls} resize-y min-h-[44px]`} value={impactNotes} onChange={(e) => setImpactNotes(e.target.value)}
                 placeholder={t("instructions.impactNotes")} disabled={busy} />

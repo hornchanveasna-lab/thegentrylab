@@ -99,7 +99,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("inspection.status")}</span>
-            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`) }))} />
+            <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`) }))} />
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("inspection.date")}</span>

@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -87,7 +87,7 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("safety.severity")}</span>
-            <FieldSelect value={severity} onChange={setSeverity} disabled={saving} options={SEVERITY_OPTIONS.map((s) => ({ value: s, label: t(`safetySeverity.${s}`) }))} />
+            <SegmentedField value={severity} onChange={setSeverity} disabled={saving} options={SEVERITY_OPTIONS.map((s) => ({ value: s, label: t(`safetySeverity.${s}`) }))} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">

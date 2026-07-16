@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, CompanySelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, SegmentedField, CompanySelect, useSelectedProject, inputCls, labelCls,
   EmptyState, ErrorState, StatusBadge, ConfirmationDialog, WeekCalendarStrip,
   FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
@@ -90,7 +90,7 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("contracts.contractType")}</span>
-            <FieldSelect value={contractType} onChange={setContractType} disabled={saving}
+            <SegmentedField value={contractType} onChange={setContractType} disabled={saving}
               options={CONTRACT_TYPES.map((ct) => ({ value: ct, label: t(`contractType.${ct}`) }))} />
           </label>
         </div>
@@ -120,7 +120,7 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
         </div>
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("contracts.status")}</span>
-          <FieldSelect value={status} onChange={setStatus} disabled={saving}
+          <SegmentedField value={status} onChange={setStatus} disabled={saving}
             options={CONTRACT_STATUSES.map((s) => ({ value: s, label: t(`contractStatus.${s}`) }))} />
         </label>
         <label className="flex flex-col gap-1.5">

@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { FieldSelect, Card, Avatar, Sheet, PROJECT_STATUS_OPTIONS, ConfirmationDialog } from "@/components/cm/shared";
+import { FieldSelect, SegmentedField, Card, Avatar, Sheet, PROJECT_STATUS_OPTIONS, ConfirmationDialog } from "@/components/cm/shared";
 import {
   updateCMProject,
   uploadCMLogo,
@@ -613,7 +613,7 @@ function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("locations.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             <div className="grid grid-cols-2 gap-3">
-              <FieldSelect value={level} onChange={setLevel} options={LOCATION_LEVELS.map((lv) => ({ value: lv, label: t(`locationLevel.${lv}`) }))} />
+              <SegmentedField value={level} onChange={setLevel} options={LOCATION_LEVELS.map((lv) => ({ value: lv, label: t(`locationLevel.${lv}`) }))} />
               <FieldSelect
                 value={parentId}
                 onChange={setParentId}
@@ -798,7 +798,7 @@ function CompanySheet({ ownerId, company, onClose, onSaved }: {
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("companies.status")}</span>
-            <FieldSelect value={status} onChange={setStatus} disabled={saving}
+            <SegmentedField value={status} onChange={setStatus} disabled={saving}
               options={[{ value: "Active" as CompanyStatus, label: t("companies.active") }, { value: "Inactive" as CompanyStatus, label: t("companies.inactive") }]} />
           </label>
         </div>
@@ -1117,7 +1117,7 @@ function WorkflowsSection({ ownerId, projectId, canCreate, canDelete }: { ownerI
     <Card title={t("workflows.title")}>
       <p className="text-[12px] text-white/45 mb-3">{t("workflows.hint")}</p>
       <div className="mb-3">
-        <FieldSelect value={module} onChange={setModule}
+        <SegmentedField value={module} onChange={setModule}
           options={WORKFLOW_MODULES.map((m) => ({ value: m, label: t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`) }))} />
       </div>
       <div className="flex flex-col gap-2 mb-3">
@@ -1142,7 +1142,7 @@ function WorkflowsSection({ ownerId, projectId, canCreate, canDelete }: { ownerI
       {canCreate && (
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-2 gap-3">
-            <FieldSelect value={approverType} onChange={setApproverType} options={APPROVER_TYPES.map((a) => ({ value: a, label: t(`workflows.approverType.${a}`) }))} />
+            <SegmentedField value={approverType} onChange={setApproverType} options={APPROVER_TYPES.map((a) => ({ value: a, label: t(`workflows.approverType.${a}`) }))} />
             <input className={inputCls} placeholder={t("workflows.approverValuePlaceholder")} value={approverValue} onChange={(e) => setApproverValue(e.target.value)} />
           </div>
           <div className="flex items-center gap-4">
@@ -1254,7 +1254,7 @@ function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
         {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("templates.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-            <FieldSelect value={module} onChange={setModule}
+            <SegmentedField value={module} onChange={setModule}
               options={TEMPLATE_MODULES.map((m) => ({ value: m, label: t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`) }))} />
             <div className="flex gap-2">
               <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
@@ -1316,7 +1316,7 @@ function NotificationsSection({ ownerId, projectId, canCreate, canDelete }: { ow
         <div className="flex flex-col gap-2">
           <FieldSelect value={event} onChange={setEvent} options={NOTIFICATION_EVENTS.map((e) => ({ value: e, label: t(`notifications.event.${e}`) }))} />
           <div className="grid grid-cols-2 gap-3">
-            <FieldSelect value={recipientType} onChange={setRecipientType}
+            <SegmentedField value={recipientType} onChange={setRecipientType}
               options={(["role", "company", "user", "module"] as NotificationRecipientType[]).map((rt) => ({ value: rt, label: t(`notifications.recipientType.${rt}`) }))} />
             <input className={inputCls} placeholder={t("notifications.recipientPlaceholder")} value={recipientValue} onChange={(e) => setRecipientValue(e.target.value)} />
           </div>
@@ -1448,7 +1448,7 @@ function MemberRow({ member, companyOptions, allJobRoles, canEdit, canDelete, on
               allowCustom
               options={companyOptions.map((c) => ({ value: c, label: c }))}
             />
-            <FieldSelect value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
+            <SegmentedField value={member.role} onChange={(role) => updateCMMemberRole(member.id, role).then(onChanged)}
               options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
           </div>
           <FieldSelect
@@ -1675,7 +1675,7 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
           <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
             <span className={labelCls}>{t("team.inviteLink")}</span>
             <div className="flex gap-2">
-              <FieldSelect value={inviteRole} onChange={setInviteRole}
+              <SegmentedField value={inviteRole} onChange={setInviteRole}
                 options={MEMBER_ROLE_OPTIONS.map((r) => ({ value: r, label: t(`team.role.${r}`) }))} />
               <FieldSelect
                 value={inviteJobRole ?? ""}
