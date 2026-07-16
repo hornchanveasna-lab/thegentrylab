@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -7,7 +7,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, ProjectPicker, useSelectedProject, Card, inputCls, labelCls, useCMTheme,
-  FieldSelect, Sheet, SegmentedField, WeekCalendarStrip, ManpowerEntrySheet,
+  FieldSelect, Sheet, SegmentedField, WeekCalendarStrip,
 } from "@/components/cm/shared";
 import { parseWorkbookRows, type BoqSheet } from "@/lib/cm-boq-import";
 import {
@@ -33,7 +33,7 @@ const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase track
 
 /** Suggested trades per the Manpower spec — merged with whatever trades the
  *  project has actually used, so the picker never blocks a custom trade. */
-const DEFAULT_TRADES = [
+export const DEFAULT_TRADES = [
   "Civil", "Concrete", "Reinforcement", "Formwork", "Steel Erection", "Roofing",
   "Cladding", "Masonry", "Plastering", "Painting", "Electrical", "Mechanical",
   "Plumbing", "Fire Protection", "Infrastructure", "Landscaping", "Cleaning",
@@ -44,7 +44,7 @@ function dailyHeadcount(log: CMDailyLog) {
   return log.manpower.reduce((s, m) => s + m.count, 0);
 }
 
-function todayStr() {
+export function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
@@ -578,7 +578,7 @@ function CMManpowerPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [date, setDate] = useState(todayStr);
   const [view, setView] = useState<"company" | "trade" | "location">("company");
-  const [sheet, setSheet] = useState<{ editIndex: number | null } | null>(null);
+  const navigate = useNavigate();
   const [showImport, setShowImport] = useState(false);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
@@ -615,11 +615,6 @@ function CMManpowerPage() {
     setLocalRows(next);
     setDeleteIndex(null);
     await persistRows(next, "manpower_removed");
-  };
-
-  const handleSheetSave = async (next: CMManpowerRow[]) => {
-    setLocalRows(next);
-    await persistRows(next, sheet?.editIndex != null ? "manpower_updated" : "manpower_added");
   };
 
   // Copy Previous Day: latest earlier log that actually has manpower, copied
@@ -769,7 +764,7 @@ function CMManpowerPage() {
             {/* Actions */}
             <div className="flex flex-wrap gap-2 mb-4">
               {canCreate && (
-                <button onClick={() => setSheet({ editIndex: null })} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+                <button onClick={() => navigate({ to: "/cm/manpower/new", search: { date } })} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
                   {t("manpower.addEntry")}
                 </button>
               )}
@@ -827,7 +822,7 @@ function CMManpowerPage() {
                     <div className="flex flex-col gap-1.5">
                       {items.map(({ index, row }) => (
                         <div key={index} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
-                          <button className="flex-1 min-w-0 text-left" onClick={() => canEdit && setSheet({ editIndex: index })} disabled={!canEdit}>
+                          <button className="flex-1 min-w-0 text-left" onClick={() => canEdit && navigate({ to: "/cm/manpower/edit", search: { date, index } })} disabled={!canEdit}>
                             <p className="text-[12px] text-white/80 truncate">
                               {view === "company" ? row.trade : (row.company || row.trade)}
                               {row.category ? <span className="text-white/35"> · {t(`workerCategory.${row.category}`)}</span> : null}
@@ -947,19 +942,6 @@ function CMManpowerPage() {
             await persistRows(next, "manpower_imported");
           }}
           onClose={() => setShowImport(false)}
-        />
-      )}
-
-      {sheet && projectId && (
-        <ManpowerEntrySheet
-          ownerId={user.id}
-          projectId={projectId}
-          rows={rows}
-          editIndex={sheet.editIndex}
-          companyOptions={companyOptions}
-          tradeOptions={tradeOptions}
-          onSave={handleSheetSave}
-          onClose={() => setSheet(null)}
         />
       )}
     </div>

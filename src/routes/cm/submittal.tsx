@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -46,8 +46,8 @@ const SUBMITTAL_TYPE_KEY: Record<SubmittalType, string> = {
   "O&M Manual": "omManual", Warranty: "warranty", "Closeout Document": "closeoutDocument",
 };
 
-function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplines, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; disciplines: Discipline[]; onClose: () => void; onCreated: () => void;
+export function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplines, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; disciplines: Discipline[]; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === existing?.status);
@@ -98,8 +98,8 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
   };
 
   return (
-    <Sheet title={t(existing ? "submittal.edit" : "submittal.new")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+    <FormPage title={t(existing ? "submittal.edit" : "submittal.new")} backTo={backTo}>
+      <form onSubmit={handleSubmit} className="pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("submittal.titleField")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("submittal.titlePlaceholder")} required autoFocus disabled={saving} />
@@ -175,7 +175,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
           {existing ? (saving ? t("submittal.saving") : t("submittal.saveChanges")) : (saving ? t("submittal.creating") : t("submittal.create"))}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -188,7 +188,6 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id, () => setOpen(true));
   const sc = STATUS_COLOR[item.status];
@@ -251,15 +250,11 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
           )}
           <FileAttachmentList files={item.files} />
           <div className="flex items-center gap-4">
-            {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("submittal.edit")}</button>}
+            {canEdit && <Link to="/cm/submittal/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("submittal.edit")}</Link>}
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
           </div>
           <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
         </div>
-      )}
-      {editing && (
-        <NewSubmittalSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove} disciplines={disciplines}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
         <ConfirmationDialog message={t("submittal.confirmDelete")} confirmLabel={t("common.delete")}
@@ -272,6 +267,7 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
 function CMSubmittalPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
@@ -281,7 +277,6 @@ function CMSubmittalPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "submittal", "edit");
   const canApprove = usePermission(projectId || undefined, user?.id, "submittal", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "submittal", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
@@ -290,7 +285,7 @@ function CMSubmittalPage() {
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateOf = (s: CMSubmittal) => s.submitted_date ?? s.created_at.slice(0, 10);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); };
 
   const visibleSubmittals = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -344,12 +339,10 @@ function CMSubmittalPage() {
                 {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
               </div>
             </>
-            {canCreate && <FAB label={t("submittal.newBtn")} onClick={() => setShowNew(true)} />}
+            {canCreate && <FAB label={t("submittal.newBtn")} onClick={() => navigate({ to: "/cm/submittal/new" })} />}
           </>
         )}
       </main>
-
-      {showNew && projectId && <NewSubmittalSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {showQuickUpload && projectId && (
         <QuickUploadSheet

@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls,
   FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet,
   EQUIPMENT_STATUS_OPTIONS, EQUIPMENT_STATUS_COLOR, EmptyState, ErrorState, StatusBadge, ConfirmationDialog,
 } from "@/components/cm/shared";
@@ -24,13 +24,13 @@ export const Route = createFileRoute("/cm/equipment")({
   component: CMEquipmentPage,
 });
 
-function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
-  ownerId: string; projectId: string; onClose: () => void; onCreated: () => void;
+export function NewEquipmentSheet({ ownerId, projectId, existing, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMEquipment; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
-  const [quantity, setQuantity] = useState("1");
+  const [name, setName] = useState(existing?.name ?? "");
+  const [type, setType] = useState(existing?.type ?? "");
+  const [quantity, setQuantity] = useState(existing ? String(existing.quantity) : "1");
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -41,10 +41,18 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const item = await createCMEquipment(ownerId, projectId, { name: name.trim(), type: type.trim() || null, quantity: Number(quantity) || 1 });
-      if (files.length > 0) {
-        const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
-        await updateCMEquipment(item.id, { files: uploaded });
+      if (existing) {
+        const uploaded = files.length > 0 ? await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : [];
+        await updateCMEquipment(existing.id, {
+          name: name.trim(), type: type.trim() || null, quantity: Number(quantity) || 1,
+          files: uploaded.length > 0 ? [...existing.files, ...uploaded] : existing.files,
+        });
+      } else {
+        const item = await createCMEquipment(ownerId, projectId, { name: name.trim(), type: type.trim() || null, quantity: Number(quantity) || 1 });
+        if (files.length > 0) {
+          const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
+          await updateCMEquipment(item.id, { files: uploaded });
+        }
       }
       onCreated();
     } catch (err) {
@@ -54,8 +62,8 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title={t("equipment.new")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+    <FormPage title={t(existing ? "equipment.edit" : "equipment.new")} backTo={backTo}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("equipment.name")}</span>
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} required autoFocus disabled={saving} />
@@ -78,7 +86,7 @@ function NewEquipmentSheet({ ownerId, projectId, onClose, onCreated }: {
           {saving ? t("equipment.adding") : t("equipment.addItem")}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -113,6 +121,14 @@ function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; 
           ) : (
             <StatusBadge label={t(`equipmentStatus.${eq.status}`)} color={EQUIPMENT_STATUS_COLOR[eq.status]} />
           )}
+          {canEdit && (
+            <Link to="/cm/equipment/$id/edit" params={{ id: eq.id }}
+              className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+            </Link>
+          )}
           {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>}
         </div>
       </div>
@@ -128,19 +144,19 @@ function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; 
 function CMEquipmentPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading, isError, refetch } = useCMEquipment(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "equipment", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "equipment", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "equipment", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_equipment", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_equipment", projectId] }); };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -181,12 +197,10 @@ function CMEquipmentPage() {
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("equipment.newBtn")} onClick={() => setShowNew(true)} />}
+            {canCreate && <FAB label={t("equipment.newBtn")} onClick={() => navigate({ to: "/cm/equipment/new" })} />}
           </>
         )}
       </main>
-
-      {showNew && projectId && canCreate && <NewEquipmentSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {showQuickUpload && projectId && (
         <QuickUploadSheet

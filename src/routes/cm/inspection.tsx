@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -37,8 +37,8 @@ const STATUS_COLOR: Record<InspectionStatus, string> = {
 };
 const STATUS_OPTIONS: InspectionStatus[] = ["Scheduled", "Passed", "Failed", "Not Applicable"];
 
-function NewInspectionSheet({ ownerId, projectId, existing, canApprove, disciplines, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMInspection; canApprove: boolean; disciplines: Discipline[]; onClose: () => void; onCreated: () => void;
+export function NewInspectionSheet({ ownerId, projectId, existing, canApprove, disciplines, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMInspection; canApprove: boolean; disciplines: Discipline[]; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Passed" && s !== "Failed") || s === existing?.status);
@@ -91,7 +91,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
   };
 
   return (
-    <Sheet title={t(existing ? "inspection.edit" : "inspection.new")} onClose={onClose}>
+    <FormPage title={t(existing ? "inspection.edit" : "inspection.new")} backTo={backTo}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("inspection.titleField")}</span>
@@ -176,7 +176,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
           {saving ? t("inspection.saving") : t("inspection.save")}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -188,7 +188,6 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, use
 }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("inspection", item.id, () => setOpen(true));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -248,15 +247,11 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, use
           )}
           <FileAttachmentList files={item.files} />
           <div className="flex items-center gap-4">
-            {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</button>}
+            {canEdit && <Link to="/cm/inspection/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</Link>}
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>}
           </div>
           <RecordDetailExtras projectId={item.project_id} entityType="inspection" module="inspection" entityId={item.id} userId={userId} locationId={item.location_id} discipline={item.discipline} />
         </div>
-      )}
-      {editing && (
-        <NewInspectionSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove} disciplines={disciplines}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
         <ConfirmationDialog message={t("inspection.confirmDelete")} confirmLabel={t("inspection.delete")}
@@ -269,6 +264,7 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, use
 function CMInspectionPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
@@ -278,7 +274,6 @@ function CMInspectionPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "inspection", "edit");
   const canApprove = usePermission(projectId || undefined, user?.id, "inspection", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "inspection", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
@@ -286,7 +281,7 @@ function CMInspectionPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_inspections", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_inspections", projectId] }); };
 
   const visibleInspections = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -339,12 +334,10 @@ function CMInspectionPage() {
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("inspection.newBtn")} onClick={() => setShowNew(true)} />}
+            {canCreate && <FAB label={t("inspection.newBtn")} onClick={() => navigate({ to: "/cm/inspection/new" })} />}
           </>
         )}
       </main>
-
-      {showNew && projectId && <NewInspectionSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {showQuickUpload && projectId && (
         <QuickUploadSheet
