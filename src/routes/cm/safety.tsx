@@ -46,6 +46,7 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "record">("details");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,34 +81,51 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
   return (
     <Sheet title={t(existing ? "safety.edit" : "safety.new")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("safety.type")}</span>
-            <FieldSelect value={recordType} onChange={setRecordType} disabled={saving} options={TYPE_OPTIONS.map((rt) => ({ value: rt, label: t(`safetyType.${rt}`) }))} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("safety.severity")}</span>
-            <SegmentedField value={severity} onChange={setSeverity} disabled={saving} options={SEVERITY_OPTIONS.map((s) => ({ value: s, label: t(`safetySeverity.${s}`) }))} />
-          </label>
-        </div>
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("safety.titleField")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("safety.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("safety.description")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("safety.date")}</span>
-            <input type="date" className={inputCls} value={recordDate} onChange={(e) => setRecordDate(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("safety.involved")}</span>
-            <input className={inputCls} value={involved} onChange={(e) => setInvolved(e.target.value)} placeholder={t("safety.involvedPlaceholder")} disabled={saving} />
-          </label>
-        </div>
+
+        <SegmentedField value={tab} onChange={setTab} disabled={saving}
+          options={[
+            { value: "details" as const, label: t("safety.detailsTab") },
+            { value: "record" as const, label: t("safety.recordTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("safety.type")}</span>
+                <FieldSelect value={recordType} onChange={setRecordType} disabled={saving} options={TYPE_OPTIONS.map((rt) => ({ value: rt, label: t(`safetyType.${rt}`) }))} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("safety.severity")}</span>
+                <SegmentedField value={severity} onChange={setSeverity} disabled={saving} options={SEVERITY_OPTIONS.map((s) => ({ value: s, label: t(`safetySeverity.${s}`) }))} />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {tab === "record" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("safety.description")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("safety.date")}</span>
+                <input type="date" className={inputCls} value={recordDate} onChange={(e) => setRecordDate(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("safety.involved")}</span>
+                <input className={inputCls} value={involved} onChange={(e) => setInvolved(e.target.value)} placeholder={t("safety.involvedPlaceholder")} disabled={saving} />
+              </label>
+            </div>
+          </div>
+        )}
+
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {existing && existing.files.length > 0 && (
           <div className="flex flex-col gap-1.5">

@@ -64,6 +64,7 @@ function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "routing">("details");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,38 +110,54 @@ function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose
           <span className={labelCls}>{t("instructions.titleField")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("instructions.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("instructions.sourceType")}</span>
-            <SegmentedField value={sourceType} onChange={setSourceType} disabled={saving}
-              options={INSTRUCTION_SOURCE_TYPES.map((s) => ({ value: s, label: t(`instructionSource.${s}`) }))} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("instructions.priority")}</span>
-            <SegmentedField value={priority} onChange={setPriority} disabled={saving}
-              options={INSTRUCTION_PRIORITIES.map((p) => ({ value: p, label: t(`instructionPriority.${p}`) }))} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("instructions.sourceCompany")}</span>
-          <CompanySelect ownerId={ownerId} value={sourceCompanyId} onChange={(id) => setSourceCompanyId(id)} disabled={saving} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("instructions.recipientCompany")}</span>
-          <CompanySelect ownerId={ownerId} value={recipientCompanyId} onChange={(id) => setRecipientCompanyId(id)} disabled={saving} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("instructions.recipientNote")}</span>
-          <input className={inputCls} value={recipientNote} onChange={(e) => setRecipientNote(e.target.value)} disabled={saving} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("instructions.description")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("instructions.dueDate")}</span>
-          <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
-        </label>
+        <SegmentedField value={tab} onChange={setTab} disabled={saving}
+          options={[
+            { value: "details" as const, label: t("instructions.detailsTab") },
+            { value: "routing" as const, label: t("instructions.routingTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("instructions.sourceType")}</span>
+                <SegmentedField value={sourceType} onChange={setSourceType} disabled={saving}
+                  options={INSTRUCTION_SOURCE_TYPES.map((s) => ({ value: s, label: t(`instructionSource.${s}`) }))} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("instructions.priority")}</span>
+                <SegmentedField value={priority} onChange={setPriority} disabled={saving}
+                  options={INSTRUCTION_PRIORITIES.map((p) => ({ value: p, label: t(`instructionPriority.${p}`) }))} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("instructions.description")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("instructions.dueDate")}</span>
+              <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
+            </label>
+          </div>
+        )}
+
+        {tab === "routing" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("instructions.sourceCompany")}</span>
+              <CompanySelect ownerId={ownerId} value={sourceCompanyId} onChange={(id) => setSourceCompanyId(id)} disabled={saving} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("instructions.recipientCompany")}</span>
+              <CompanySelect ownerId={ownerId} value={recipientCompanyId} onChange={(id) => setRecipientCompanyId(id)} disabled={saving} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("instructions.recipientNote")}</span>
+              <input className={inputCls} value={recipientNote} onChange={(e) => setRecipientNote(e.target.value)} disabled={saving} />
+            </label>
+          </div>
+        )}
+
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {existing && existing.files.length > 0 && (
           <div className="flex flex-col gap-1.5">

@@ -64,6 +64,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "review">("details");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,46 +104,62 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
           <span className={labelCls}>{t("submittal.titleField")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("submittal.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("submittal.type")}</span>
-          <FieldSelect value={submittalType} onChange={setSubmittalType} disabled={saving} placeholder={t("submittal.typePlaceholder")}
-            options={[{ value: "", label: t("submittal.typePlaceholder") }, ...SUBMITTAL_TYPES.map((s) => ({ value: s, label: t(`submittalType.${SUBMITTAL_TYPE_KEY[s]}`) }))]} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("submittal.specSection")}</span>
-            <input className={inputCls} value={specSection} onChange={(e) => setSpecSection(e.target.value)} placeholder={t("submittal.specSectionPlaceholder")} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("submittal.status")}</span>
-            <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`) }))} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("common.discipline")}</span>
-          <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
-        </label>
-        {canApprove && (
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("submittal.approvalCode")}</span>
-            <SegmentedField value={approvalCode} onChange={setApprovalCode} disabled={saving}
-              options={[{ value: "", label: t("submittal.approvalCodePlaceholder") }, ...APPROVAL_CODES.map((c) => ({ value: c, label: t(`approvalCode.${c}`) }))]} />
-          </label>
+        <SegmentedField value={tab} onChange={setTab} disabled={saving}
+          options={[
+            { value: "details" as const, label: t("submittal.detailsTab") },
+            { value: "review" as const, label: t("submittal.reviewTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("submittal.type")}</span>
+              <FieldSelect value={submittalType} onChange={setSubmittalType} disabled={saving} placeholder={t("submittal.typePlaceholder")}
+                options={[{ value: "", label: t("submittal.typePlaceholder") }, ...SUBMITTAL_TYPES.map((s) => ({ value: s, label: t(`submittalType.${SUBMITTAL_TYPE_KEY[s]}`) }))]} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("submittal.specSection")}</span>
+                <input className={inputCls} value={specSection} onChange={(e) => setSpecSection(e.target.value)} placeholder={t("submittal.specSectionPlaceholder")} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("submittal.status")}</span>
+                <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`) }))} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("common.discipline")}</span>
+              <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
+            </label>
+          </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("submittal.dueDate")}</span>
-            <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("submittal.reviewer")}</span>
-            <input className={inputCls} value={reviewer} onChange={(e) => setReviewer(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("submittal.notes")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[48px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
-        </label>
+
+        {tab === "review" && (
+          <div className="flex flex-col gap-4">
+            {canApprove && (
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("submittal.approvalCode")}</span>
+                <SegmentedField value={approvalCode} onChange={setApprovalCode} disabled={saving}
+                  options={[{ value: "", label: t("submittal.approvalCodePlaceholder") }, ...APPROVAL_CODES.map((c) => ({ value: c, label: t(`approvalCode.${c}`) }))]} />
+              </label>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("submittal.dueDate")}</span>
+                <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("submittal.reviewer")}</span>
+                <input className={inputCls} value={reviewer} onChange={(e) => setReviewer(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("submittal.notes")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[48px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
+            </label>
+          </div>
+        )}
+
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {existing && existing.files.length > 0 && (
           <div className="flex flex-col gap-1.5">
