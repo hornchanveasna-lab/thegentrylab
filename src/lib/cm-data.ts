@@ -801,6 +801,37 @@ export async function uploadCMPhotoWithThumb(ownerId: string, projectId: string,
   return { url, thumbUrl };
 }
 
+/** Burns the account's company/client/consultant stamp (same as the Photos
+ *  module's capture flow) onto every captured photo before upload, then
+ *  uploads each at full quality plus a thumbnail. This is the one place
+ *  every module's camera capture should route through so the stamp stays
+ *  consistent everywhere instead of only on Photos-module captures. */
+export async function stampAndUploadCMPhotos(ownerId: string, projectId: string, files: File[]): Promise<{ url: string; thumbUrl: string }[]> {
+  if (files.length === 0) return [];
+  const [{ data: account }, { data: project }, { data: consultants }] = await Promise.all([
+    db().from("cm_account_settings").select("*").eq("owner_id", ownerId).maybeSingle(),
+    db().from("cm_projects").select("*").eq("id", projectId).maybeSingle(),
+    db().from("cm_project_consultants").select("*").eq("project_id", projectId),
+  ]);
+  const acc = account as CMAccountSettings | null;
+  const proj = project as CMProject | null;
+  const stampOpts: StampPhotoOptions = {
+    showCompanyLogo: acc?.photo_show_company_logo ?? true,
+    showProjectInfo: acc?.photo_show_project_info ?? true,
+    showConsultantLogos: acc?.photo_show_consultant_logos ?? true,
+    monotoneLogos: acc?.photo_monotone_logos ?? false,
+    timestamp: acc?.photo_timestamp ?? true,
+    companyLogoUrl: acc?.company_logo_url ?? null,
+    clientLogoUrl: proj?.client_logo_url ?? null,
+    consultantLogoUrls: ((consultants ?? []) as CMProjectConsultant[]).map((c) => c.logo_url).filter((u): u is string => !!u),
+    projectName: proj?.name ?? null,
+    projectCode: proj?.project_code ?? null,
+    location: proj?.location ?? null,
+  };
+  const stamped = await Promise.all(files.map((f) => stampPhoto(f, stampOpts)));
+  return Promise.all(stamped.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+}
+
 const PHOTO_MODULE_TABLE: Record<CMPhotoModule, string> = {
   siteDiary: "cm_daily_logs",
   inspection: "cm_inspections",

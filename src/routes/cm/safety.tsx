@@ -14,7 +14,7 @@ import {
   createCMSafetyRecord,
   updateCMSafetyRecord,
   deleteCMSafetyRecord,
-  uploadCMPhotoWithThumb,
+  stampAndUploadCMPhotos,
   uploadCMFile,
   type CMSafetyRecord,
   type SafetyRecordType,
@@ -60,7 +60,7 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
       if (existing) await updateCMSafetyRecord(existing.id, patch);
       if (photos.length > 0 || files.length > 0) {
         const [uploadedPhotos, uploadedFiles] = await Promise.all([
-          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          stampAndUploadCMPhotos(ownerId, projectId, photos),
           files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
         ]);
         await updateCMSafetyRecord(record.id, {

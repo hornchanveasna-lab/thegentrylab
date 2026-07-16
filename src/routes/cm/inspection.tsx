@@ -14,7 +14,7 @@ import {
   createCMInspection,
   updateCMInspection,
   deleteCMInspection,
-  uploadCMPhotoWithThumb,
+  stampAndUploadCMPhotos,
   uploadCMFile,
   useCMProjectLocations,
   locationBreadcrumb,
@@ -72,7 +72,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
       if (existing) await updateCMInspection(existing.id, patch);
       if (photos.length > 0 || files.length > 0) {
         const [uploadedPhotos, uploadedFiles] = await Promise.all([
-          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          stampAndUploadCMPhotos(ownerId, projectId, photos),
           files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
         ]);
         await updateCMInspection(inspection.id, {

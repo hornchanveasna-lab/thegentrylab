@@ -21,7 +21,7 @@ import {
   flattenCMDailyActivityPhotos,
   updateCMDailyLog,
   deleteCMDailyLog,
-  uploadCMPhotoWithThumb,
+  stampAndUploadCMPhotos,
   useActiveCMBOQItems,
   useCMManpowerRoster,
   useCMProjectSubcontractors,
@@ -125,7 +125,7 @@ function RowPhotoPicker({ ownerId, projectId, photos, photoThumbs, onChange, dis
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const uploaded = await Promise.all(Array.from(files).map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, Array.from(files));
       onChange([...photos, ...uploaded.map((u) => u.url)], [...photoThumbs, ...uploaded.map((u) => u.thumbUrl)]);
     } finally {
       setUploading(false);
@@ -202,7 +202,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onCreated }: {
     setError("");
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const uploaded = await Promise.all(files.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
+      const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, files);
       const urls = uploaded.map((u) => u.url);
       const thumbs = uploaded.map((u) => u.thumbUrl);
       const log = await findOrCreateCMDailyLog(ownerId, projectId, today);
@@ -420,7 +420,7 @@ function NewLogSheet({ ownerId, projectId, existing, onClose, onCreated }: {
     setSaving(true);
     setError("");
     try {
-      const uploaded = photos.length > 0 ? await Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : [];
+      const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, photos);
       if (existing) {
         // Editing replaces the field values outright — the form was
         // preloaded with the entry's current contents, so what's on screen

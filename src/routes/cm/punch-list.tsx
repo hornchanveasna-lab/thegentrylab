@@ -14,7 +14,7 @@ import {
   createCMTask,
   updateCMTask,
   deleteCMTask,
-  uploadCMPhotoWithThumb,
+  stampAndUploadCMPhotos,
   uploadCMFile,
   useCMProjectLocations,
   useCMProjectMembers,
@@ -69,7 +69,7 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
       if (existing) await updateCMTask(existing.id, patch);
       if (photos.length > 0 || files.length > 0) {
         const [uploadedPhotos, uploadedFiles] = await Promise.all([
-          photos.length > 0 ? Promise.all(photos.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f))) : Promise.resolve([]),
+          stampAndUploadCMPhotos(ownerId, projectId, photos),
           files.length > 0 ? Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f))) : Promise.resolve([]),
         ]);
         await updateCMTask(item.id, {
@@ -183,7 +183,7 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
     if (afterPhotos.length === 0) return;
     setBusy(true);
     try {
-      const uploaded = await Promise.all(afterPhotos.map((f) => uploadCMPhotoWithThumb(item.owner_id, item.project_id, f)));
+      const uploaded = await stampAndUploadCMPhotos(item.owner_id, item.project_id, afterPhotos);
       await updateCMTask(item.id, {
         after_photos: [...item.after_photos, ...uploaded.map((u) => u.url)],
         after_photo_thumbs: [...item.after_photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
