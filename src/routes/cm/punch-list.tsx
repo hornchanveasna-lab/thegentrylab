@@ -55,6 +55,7 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "assignment">("details");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,34 +94,50 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
           <span className={labelCls}>{t("punchList.whatNeedsDone")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("punchList.whatNeedsDonePlaceholder")} required autoFocus disabled={saving} />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("punchList.details")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("punchList.status")}</span>
-            <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`) }))} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("punchList.priority")}</span>
-            <SegmentedField value={priority} onChange={setPriority} disabled={saving} options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("common.location")}</span>
-          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("punchList.assignedTo")}</span>
-            <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("punchList.dueDate")}</span>
-            <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
-          </label>
-        </div>
+        <SegmentedField value={tab} onChange={setTab} disabled={saving}
+          options={[
+            { value: "details" as const, label: t("punchList.detailsTab") },
+            { value: "assignment" as const, label: t("punchList.assignmentTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("punchList.details")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[56px]`} value={description} onChange={(e) => setDescription(e.target.value)} disabled={saving} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("punchList.status")}</span>
+                <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`) }))} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("punchList.priority")}</span>
+                <SegmentedField value={priority} onChange={setPriority} disabled={saving} options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))} />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {tab === "assignment" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("common.location")}</span>
+              <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("punchList.assignedTo")}</span>
+                <input className={inputCls} value={assignee} onChange={(e) => setAssignee(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("punchList.dueDate")}</span>
+                <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+          </div>
+        )}
+
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {existing && existing.files.length > 0 && (
           <div className="flex flex-col gap-1.5">

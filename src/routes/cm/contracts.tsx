@@ -50,6 +50,7 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "commercial">("details");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,50 +84,66 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
           <span className={labelCls}>{t("contracts.titleField")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("contracts.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("contracts.contractNumber")}</span>
-            <input className={inputCls} value={contractNumber} onChange={(e) => setContractNumber(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("contracts.contractType")}</span>
-            <SegmentedField value={contractType} onChange={setContractType} disabled={saving}
-              options={CONTRACT_TYPES.map((ct) => ({ value: ct, label: t(`contractType.${ct}`) }))} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("contracts.counterparty")}</span>
-          <CompanySelect ownerId={ownerId} value={counterpartyId} onChange={(id) => setCounterpartyId(id)} disabled={saving} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("contracts.currency")}</span>
-            <input className={inputCls} value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="USD" disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("contracts.contractValue")}</span>
-            <input type="number" step="0.01" className={inputCls} value={contractValue} onChange={(e) => setContractValue(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("contracts.startDate")}</span>
-            <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("contracts.completionDate")}</span>
-            <input type="date" className={inputCls} value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("contracts.status")}</span>
-          <SegmentedField value={status} onChange={setStatus} disabled={saving}
-            options={CONTRACT_STATUSES.map((s) => ({ value: s, label: t(`contractStatus.${s}`) }))} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("contracts.notes")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
-        </label>
+        <SegmentedField value={tab} onChange={setTab} disabled={saving}
+          options={[
+            { value: "details" as const, label: t("contracts.detailsTab") },
+            { value: "commercial" as const, label: t("contracts.commercialTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("contracts.contractNumber")}</span>
+                <input className={inputCls} value={contractNumber} onChange={(e) => setContractNumber(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("contracts.contractType")}</span>
+                <SegmentedField value={contractType} onChange={setContractType} disabled={saving}
+                  options={CONTRACT_TYPES.map((ct) => ({ value: ct, label: t(`contractType.${ct}`) }))} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("contracts.counterparty")}</span>
+              <CompanySelect ownerId={ownerId} value={counterpartyId} onChange={(id) => setCounterpartyId(id)} disabled={saving} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("contracts.status")}</span>
+              <SegmentedField value={status} onChange={setStatus} disabled={saving}
+                options={CONTRACT_STATUSES.map((s) => ({ value: s, label: t(`contractStatus.${s}`) }))} />
+            </label>
+          </div>
+        )}
+
+        {tab === "commercial" && (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("contracts.currency")}</span>
+                <input className={inputCls} value={currency} onChange={(e) => setCurrency(e.target.value)} placeholder="USD" disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("contracts.contractValue")}</span>
+                <input type="number" step="0.01" className={inputCls} value={contractValue} onChange={(e) => setContractValue(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("contracts.startDate")}</span>
+                <input type="date" className={inputCls} value={startDate} onChange={(e) => setStartDate(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("contracts.completionDate")}</span>
+                <input type="date" className={inputCls} value={completionDate} onChange={(e) => setCompletionDate(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("contracts.notes")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
+            </label>
+          </div>
+        )}
+
         <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {existing && existing.files.length > 0 && <FileAttachmentList files={existing.files} />}
         {error && <p className="text-[12px] text-red-400">{error}</p>}

@@ -909,6 +909,7 @@ export function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, compan
   const [dupIndex, setDupIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "hours">("details");
 
   // New workforce photos are appended to whatever the row already carries —
   // there's no per-photo remove control here, same as the Site Diary sheet.
@@ -981,39 +982,54 @@ export function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, compan
             options={tradeOptions.map((tr) => ({ value: tr, label: tr }))}
           />
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.category")}</span>
-            <FieldSelect
-              value={category}
-              onChange={setCategory}
-              placeholder={t("common.none")}
-              options={[{ value: "", label: t("common.none") }, ...CM_WORKER_CATEGORIES.map((c) => ({ value: c, label: t(`workerCategory.${c}`) }))]}
-            />
+        <SegmentedField value={tab} onChange={setTab}
+          options={[
+            { value: "details" as const, label: t("manpower.detailsTab") },
+            { value: "hours" as const, label: t("manpower.hoursTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <span className={fieldLabel}>{t("manpower.category")}</span>
+                <FieldSelect
+                  value={category}
+                  onChange={setCategory}
+                  placeholder={t("common.none")}
+                  options={[{ value: "", label: t("common.none") }, ...CM_WORKER_CATEGORIES.map((c) => ({ value: c, label: t(`workerCategory.${c}`) }))]}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={fieldLabel}>{t("manpower.workers")}</span>
+                <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder="0" required />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className={fieldLabel}>{t("manpower.location")}</span>
+              <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} />
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.workers")}</span>
-            <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder="0" required />
+        )}
+
+        {tab === "hours" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <span className={fieldLabel}>{t("manpower.activity")}</span>
+              <input className={inputCls} value={activity} onChange={(e) => setActivity(e.target.value)} placeholder={t("manpower.activityPlaceholder")} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <span className={fieldLabel}>{t("manpower.normalHours")}</span>
+                <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={normalHours} onChange={(e) => setNormalHours(e.target.value)} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={fieldLabel}>{t("manpower.otHours")}</span>
+                <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={otHours} onChange={(e) => setOtHours(e.target.value)} />
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className={fieldLabel}>{t("manpower.location")}</span>
-          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <span className={fieldLabel}>{t("manpower.activity")}</span>
-          <input className={inputCls} value={activity} onChange={(e) => setActivity(e.target.value)} placeholder={t("manpower.activityPlaceholder")} />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.normalHours")}</span>
-            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={normalHours} onChange={(e) => setNormalHours(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className={fieldLabel}>{t("manpower.otHours")}</span>
-            <input className={inputCls} type="number" min={0} step="0.5" inputMode="decimal" value={otHours} onChange={(e) => setOtHours(e.target.value)} />
-          </div>
-        </div>
+        )}
 
         {(editing?.photos?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -1275,7 +1291,10 @@ export function setLastProject(projectId: string) {
   try { localStorage.setItem(LAST_PROJECT_KEY, projectId); } catch { /* */ }
 }
 
-export interface SegmentedOption<T extends string> { value: T; label: string; color?: string; icon?: React.ReactNode }
+export interface SegmentedOption<T extends string> {
+  value: T; label: string; color?: string; icon?: React.ReactNode;
+  badge?: string | number;
+}
 
 /** A single-row, swipe-to-browse tap-to-select tab bar — the fast alternative
  *  to a native <select> (one tap instead of open-then-choose) for any small,
@@ -1300,6 +1319,12 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
           >
             {opt.icon}
             {opt.label}
+            {opt.badge != null && opt.badge !== "" && (
+              <span className="px-1.5 rounded-full font-mono text-[10px] leading-[15px]"
+                style={{ backgroundColor: active ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.12)" }}>
+                {opt.badge}
+              </span>
+            )}
           </button>
         );
       })}

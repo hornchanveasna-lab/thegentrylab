@@ -57,6 +57,7 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "references">("details");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,54 +97,70 @@ function NewInspectionSheet({ ownerId, projectId, existing, canApprove, discipli
           <span className={labelCls}>{t("inspection.titleField")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("inspection.titlePlaceholder")} required autoFocus disabled={saving} />
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("inspection.status")}</span>
-            <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`) }))} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("inspection.date")}</span>
-            <input type="date" className={inputCls} value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("inspection.type")}</span>
-          <FieldSelect value={inspectionType ?? ""} onChange={(v) => setInspectionType((v || null) as InspectionType | null)} disabled={saving}
-            placeholder={t("inspection.typePlaceholder")}
-            options={[{ value: "", label: t("inspection.typePlaceholder") }, ...INSPECTION_TYPES.map((it) => ({ value: it, label: t(`inspectionType.${it}`) }))]} />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("common.discipline")}</span>
-            <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("inspection.inspector")}</span>
-            <input className={inputCls} value={inspector} onChange={(e) => setInspector(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("common.location")}</span>
-          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
-        </label>
-        <div className="grid grid-cols-3 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("inspection.drawingRef")}</span>
-            <input className={inputCls} value={drawingRef} onChange={(e) => setDrawingRef(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("inspection.methodStatementRef")}</span>
-            <input className={inputCls} value={methodStatementRef} onChange={(e) => setMethodStatementRef(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("inspection.itpRef")}</span>
-            <input className={inputCls} value={itpRef} onChange={(e) => setItpRef(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("inspection.notes")}</span>
-          <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
-        </label>
+        <SegmentedField value={tab} onChange={setTab} disabled={saving}
+          options={[
+            { value: "details" as const, label: t("inspection.detailsTab") },
+            { value: "references" as const, label: t("inspection.referencesTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("inspection.status")}</span>
+                <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`) }))} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("inspection.date")}</span>
+                <input type="date" className={inputCls} value={inspectionDate} onChange={(e) => setInspectionDate(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("inspection.type")}</span>
+              <FieldSelect value={inspectionType ?? ""} onChange={(v) => setInspectionType((v || null) as InspectionType | null)} disabled={saving}
+                placeholder={t("inspection.typePlaceholder")}
+                options={[{ value: "", label: t("inspection.typePlaceholder") }, ...INSPECTION_TYPES.map((it) => ({ value: it, label: t(`inspectionType.${it}`) }))]} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("common.discipline")}</span>
+                <DisciplineSelect value={discipline} onChange={setDiscipline} disabled={saving} disciplines={disciplines} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("inspection.inspector")}</span>
+                <input className={inputCls} value={inspector} onChange={(e) => setInspector(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+          </div>
+        )}
+
+        {tab === "references" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("common.location")}</span>
+              <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("inspection.drawingRef")}</span>
+                <input className={inputCls} value={drawingRef} onChange={(e) => setDrawingRef(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("inspection.methodStatementRef")}</span>
+                <input className={inputCls} value={methodStatementRef} onChange={(e) => setMethodStatementRef(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("inspection.itpRef")}</span>
+                <input className={inputCls} value={itpRef} onChange={(e) => setItpRef(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("inspection.notes")}</span>
+              <textarea className={`${inputCls} resize-y min-h-[56px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
+            </label>
+          </div>
+        )}
+
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {existing && existing.files.length > 0 && (
           <div className="flex flex-col gap-1.5">

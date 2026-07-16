@@ -8,7 +8,7 @@ import {
   ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
   WeekCalendarStrip, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
-  AccordionSection, ManpowerEntrySheet,
+  ManpowerEntrySheet,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -462,39 +462,17 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
     setManpower((prev) => prev.map((r, i) => (i === index ? { ...r, count: Math.max(0, r.count + delta) } : r)));
   const removeManpowerRow = (index: number) => { setManpower((prev) => prev.filter((_, i) => i !== index)); setManpowerDeleteIndex(null); };
 
-  // Sections default open if they already carry data (so reopening a day
-  // shows what's there without any scrolling), collapsed otherwise — the
-  // sticky jump-nav chip row below always lets a single tap open any
-  // section regardless, so nothing is ever more than one tap away.
-  const sectionRefs = useRef<Partial<Record<LogSectionKey, HTMLDivElement | null>>>({});
-  const [openSections, setOpenSections] = useState<Set<LogSectionKey>>(() => {
-    const set = new Set<LogSectionKey>();
-    const hasWeatherData = !!existing?.weather || existing?.temperature_c != null || !!existing?.rain_start_time || !!existing?.rain_end_time;
-    if (hasWeatherData || !existing) set.add("weather");
-    if ((existing?.manpower?.length ?? 0) > 0) set.add("manpower");
-    if ((existing?.deliveries?.length ?? 0) > 0) set.add("deliveries");
-    if ((existing?.visitors?.length ?? 0) > 0) set.add("visitors");
-    if ((existing?.delays?.length ?? 0) > 0) set.add("delays");
-    if (existing?.activities || existing?.materials_used || existing?.equipment_used || existing?.issues || existing?.notes) set.add("notes");
-    return set;
-  });
-  const toggleSection = (key: LogSectionKey) => setOpenSections((prev) => {
-    const next = new Set(prev);
-    if (next.has(key)) next.delete(key); else next.add(key);
-    return next;
-  });
-  const jumpToSection = (key: LogSectionKey) => {
-    setOpenSections((prev) => new Set(prev).add(key));
-    requestAnimationFrame(() => sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  };
-
-  const SECTIONS: { key: LogSectionKey; label: string }[] = [
-    { key: "weather", label: t("siteDiary.weather") },
-    { key: "manpower", label: t("siteDiary.manpower") },
-    { key: "deliveries", label: t("siteDiary.deliveries") },
-    { key: "visitors", label: t("siteDiary.visitors") },
-    { key: "delays", label: t("siteDiary.delays") },
-    { key: "notes", label: t("siteDiary.notes") },
+  // True tabs: exactly one section visible at a time, one tap away via the
+  // chip row below. Always starts on Weather regardless of which sections
+  // already carry data — every section is one tap away either way.
+  const [activeTab, setActiveTab] = useState<LogSectionKey>("weather");
+  const TAB_OPTIONS = [
+    { value: "weather" as const, label: t("siteDiary.weather"), badge: weather ? t(`weather.${weather}`) : undefined },
+    { value: "manpower" as const, label: t("siteDiary.manpower"), badge: totalManpower(manpower) || undefined },
+    { value: "deliveries" as const, label: t("siteDiary.deliveries"), badge: deliveries.length || undefined },
+    { value: "visitors" as const, label: t("siteDiary.visitors"), badge: visitors.length || undefined },
+    { value: "delays" as const, label: t("siteDiary.delays"), badge: delays.length || undefined },
+    { value: "notes" as const, label: t("siteDiary.notes") },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -540,13 +518,8 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
 
   return (
     <Sheet title={t(existing ? "siteDiary.editEntry" : "siteDiary.newEntry")} onClose={onClose}>
-      <div className="sticky top-0 z-10 bg-[#0d0d0e] px-6 pb-2 pt-1 flex gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-        {SECTIONS.map((s) => (
-          <button key={s.key} type="button" onClick={() => jumpToSection(s.key)}
-            className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium bg-white/5 text-white/60 hover:bg-white/10 transition-colors whitespace-nowrap">
-            {s.label}
-          </button>
-        ))}
+      <div className="sticky top-0 z-10 bg-[#0d0d0e] px-6 pb-2 pt-1">
+        <SegmentedField options={TAB_OPTIONS} value={activeTab} onChange={setActiveTab} disabled={saving} />
       </div>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-3 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
@@ -560,9 +533,8 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
           </label>
         </div>
 
-        <div ref={(el) => { sectionRefs.current.weather = el; }}>
-          <AccordionSection title={t("siteDiary.weather")} open={openSections.has("weather")} onToggle={() => toggleSection("weather")}
-            badge={weather ? <span className="font-mono text-[10px] text-white/35">{t(`weather.${weather}`)}</span> : undefined}>
+        {activeTab === "weather" && (
+          <div className="flex flex-col gap-4">
             <SegmentedField value={weather} onChange={setWeather} disabled={saving}
               options={WEATHER_OPTIONS.map((w) => ({ value: w, label: t(`weather.${w}`), icon: WEATHER_ICON[w] }))} />
             <label className="flex flex-col gap-1.5">
@@ -584,12 +556,11 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
                 )}
               </div>
             )}
-          </AccordionSection>
-        </div>
+          </div>
+        )}
 
-        <div ref={(el) => { sectionRefs.current.manpower = el; }}>
-          <AccordionSection title={t("siteDiary.manpower")} open={openSections.has("manpower")} onToggle={() => toggleSection("manpower")}
-            badge={<span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{totalManpower(manpower)}</span>}>
+        {activeTab === "manpower" && (
+          <div className="flex flex-col gap-4">
             {manpower.length === 0 && <p className="text-white/30 text-[12px]">{t("manpower.noEntriesForDay")}</p>}
             <div className="flex flex-col gap-1.5">
               {manpower.map((row, index) => (
@@ -615,12 +586,11 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
             </div>
             <button type="button" onClick={() => setManpowerSheet({ editIndex: null })} disabled={saving}
               className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("siteDiary.addManpower")}</button>
-          </AccordionSection>
-        </div>
+          </div>
+        )}
 
-        <div ref={(el) => { sectionRefs.current.deliveries = el; }}>
-          <AccordionSection title={t("siteDiary.deliveries")} open={openSections.has("deliveries")} onToggle={() => toggleSection("deliveries")}
-            badge={deliveries.length > 0 ? <span className="font-mono text-[10px] text-white/35">{deliveries.length}</span> : undefined}>
+        {activeTab === "deliveries" && (
+          <div className="flex flex-col gap-4">
             <RepeatingRows
               label={t("siteDiary.deliveries")}
               addLabel={t("siteDiary.addDelivery")}
@@ -657,12 +627,11 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
                 </div>
               )}
             />
-          </AccordionSection>
-        </div>
+          </div>
+        )}
 
-        <div ref={(el) => { sectionRefs.current.visitors = el; }}>
-          <AccordionSection title={t("siteDiary.visitors")} open={openSections.has("visitors")} onToggle={() => toggleSection("visitors")}
-            badge={visitors.length > 0 ? <span className="font-mono text-[10px] text-white/35">{visitors.length}</span> : undefined}>
+        {activeTab === "visitors" && (
+          <div className="flex flex-col gap-4">
             <RepeatingRows
               label={t("siteDiary.visitors")}
               addLabel={t("siteDiary.addVisitor")}
@@ -687,12 +656,11 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
                 </div>
               )}
             />
-          </AccordionSection>
-        </div>
+          </div>
+        )}
 
-        <div ref={(el) => { sectionRefs.current.delays = el; }}>
-          <AccordionSection title={t("siteDiary.delays")} open={openSections.has("delays")} onToggle={() => toggleSection("delays")}
-            badge={delays.length > 0 ? <span className="font-mono text-[10px] text-white/35">{delays.length}</span> : undefined}>
+        {activeTab === "delays" && (
+          <div className="flex flex-col gap-4">
             <RepeatingRows
               label={t("siteDiary.delays")}
               addLabel={t("siteDiary.addDelay")}
@@ -708,11 +676,11 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
                 </div>
               )}
             />
-          </AccordionSection>
-        </div>
+          </div>
+        )}
 
-        <div ref={(el) => { sectionRefs.current.notes = el; }}>
-          <AccordionSection title={t("siteDiary.notes")} open={openSections.has("notes")} onToggle={() => toggleSection("notes")}>
+        {activeTab === "notes" && (
+          <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("siteDiary.activities")}</span>
               <textarea className={`${inputCls} resize-y min-h-[56px]`} value={activities} onChange={(e) => setActivities(e.target.value)} placeholder={t("siteDiary.activitiesPlaceholder")} disabled={saving} />
@@ -735,8 +703,8 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
               <span className={labelCls}>{t("siteDiary.notes")}</span>
               <textarea className={`${inputCls} resize-y min-h-[40px]`} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={saving} />
             </label>
-          </AccordionSection>
-        </div>
+          </div>
+        )}
 
         <PhotoPicker photos={photos} setPhotos={setPhotos} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}

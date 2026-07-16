@@ -65,6 +65,7 @@ function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions
   const [weight, setWeight] = useState("1");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState<"details" | "planning">("details");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,38 +102,54 @@ function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions
           <span className={labelCls}>{t("schedule.activityTitle")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} required disabled={saving} />
         </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("schedule.activityCode")}</span>
-          <input className={inputCls} value={code} onChange={(e) => setCode(e.target.value)} placeholder="SCH-021" disabled={saving} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("manpower.location")}</span>
-          <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("schedule.boqCategory")}</span>
-          <FieldSelect
-            value={boqCategory}
-            onChange={setBoqCategory}
-            disabled={saving}
-            placeholder={t("projectSettings.none")}
-            options={[{ value: "", label: t("projectSettings.none") }, ...boqCategoryOptions.map((c) => ({ value: c, label: c }))]}
-          />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("schedule.planStart")}</span>
-            <input type="date" className={inputCls} value={planStart} onChange={(e) => setPlanStart(e.target.value)} disabled={saving} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className={labelCls}>{t("schedule.planFinish")}</span>
-            <input type="date" className={inputCls} value={planFinish} onChange={(e) => setPlanFinish(e.target.value)} disabled={saving} />
-          </label>
-        </div>
-        <label className="flex flex-col gap-1.5">
-          <span className={labelCls}>{t("schedule.weight")}</span>
-          <input type="number" min={0} step="0.1" className={inputCls} value={weight} onChange={(e) => setWeight(e.target.value)} disabled={saving} />
-        </label>
+        <SegmentedField value={tab} onChange={setTab} disabled={saving}
+          options={[
+            { value: "details" as const, label: t("schedule.newActivityDetailsTab") },
+            { value: "planning" as const, label: t("schedule.planningTab") },
+          ]} />
+
+        {tab === "details" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("schedule.activityCode")}</span>
+              <input className={inputCls} value={code} onChange={(e) => setCode(e.target.value)} placeholder="SCH-021" disabled={saving} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("schedule.boqCategory")}</span>
+              <FieldSelect
+                value={boqCategory}
+                onChange={setBoqCategory}
+                disabled={saving}
+                placeholder={t("projectSettings.none")}
+                options={[{ value: "", label: t("projectSettings.none") }, ...boqCategoryOptions.map((c) => ({ value: c, label: c }))]}
+              />
+            </label>
+          </div>
+        )}
+
+        {tab === "planning" && (
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("manpower.location")}</span>
+              <LocationSelect projectId={projectId} value={locationId} onChange={setLocationId} disabled={saving} />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("schedule.planStart")}</span>
+                <input type="date" className={inputCls} value={planStart} onChange={(e) => setPlanStart(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("schedule.planFinish")}</span>
+                <input type="date" className={inputCls} value={planFinish} onChange={(e) => setPlanFinish(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("schedule.weight")}</span>
+              <input type="number" min={0} step="0.1" className={inputCls} value={weight} onChange={(e) => setWeight(e.target.value)} disabled={saving} />
+            </label>
+          </div>
+        )}
+
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !groupLabel.trim() || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
