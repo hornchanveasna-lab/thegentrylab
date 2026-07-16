@@ -115,7 +115,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("submittal.status")}</span>
-            <FieldSelect value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`) }))} />
+            <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`) }))} />
           </label>
         </div>
         <label className="flex flex-col gap-1.5">
@@ -125,7 +125,7 @@ function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplin
         {canApprove && (
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("submittal.approvalCode")}</span>
-            <FieldSelect value={approvalCode} onChange={setApprovalCode} disabled={saving} placeholder={t("submittal.approvalCodePlaceholder")}
+            <SegmentedField value={approvalCode} onChange={setApprovalCode} disabled={saving}
               options={[{ value: "", label: t("submittal.approvalCodePlaceholder") }, ...APPROVAL_CODES.map((c) => ({ value: c, label: t(`approvalCode.${c}`) }))]} />
           </label>
         )}

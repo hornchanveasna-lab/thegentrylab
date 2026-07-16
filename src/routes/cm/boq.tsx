@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, useSelectedProject, inputCls, labelCls, ConfirmationDialog } from "@/components/cm/shared";
+import { ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls, ConfirmationDialog } from "@/components/cm/shared";
 import {
   useCMBOQItems,
   createCMBOQItem,
@@ -250,7 +250,7 @@ function DeliveryStatusRow({ logId, logDate, index, row, unit, canEdit, busy, on
         <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{row.quantity} {unit ?? ""}</span>
       </div>
       {canEdit ? (
-        <FieldSelect
+        <SegmentedField
           value={status}
           onChange={(v) => onStatusChange(logId, index, v as CMQuantityStatus)}
           options={QUANTITY_STATUS_ORDER.map((s) => ({ value: s, label: t(`boq.status.${s.toLowerCase()}`) }))}
