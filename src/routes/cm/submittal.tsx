@@ -15,6 +15,7 @@ import {
   deleteCMSubmittal,
   stampAndUploadCMPhotos,
   uploadCMFile,
+  uploadCMQuickCaptureFiles,
   enabledDisciplines,
   SUBMITTAL_TYPES,
   APPROVAL_CODES,
@@ -343,8 +344,8 @@ function CMSubmittalPage() {
           onSubmit={async (title, files) => {
             const item = await createCMSubmittal(user.id, projectId, { title });
             if (files.length > 0) {
-              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
-              await updateCMSubmittal(item.id, { files: uploaded });
+              const { images, otherFiles } = await uploadCMQuickCaptureFiles(user.id, projectId, files);
+              await updateCMSubmittal(item.id, { photos: images.map((i) => i.url), photo_thumbs: images.map((i) => i.thumbUrl), files: otherFiles });
             }
             invalidate();
           }}

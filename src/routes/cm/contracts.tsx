@@ -16,6 +16,7 @@ import {
   deleteCMContract,
   useCMCompanies,
   uploadCMFile,
+  uploadCMQuickCaptureFiles,
   CONTRACT_TYPES,
   CONTRACT_STATUSES,
   type CMContract,
@@ -290,8 +291,8 @@ function CMContractsPage() {
           onSubmit={async (title, files) => {
             const item = await createCMContract(ownerId, projectId, { title });
             if (files.length > 0) {
-              const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
-              await updateCMContract(item.id, { files: uploaded });
+              const { images, otherFiles } = await uploadCMQuickCaptureFiles(ownerId, projectId, files);
+              await updateCMContract(item.id, { files: [...images.map(({ thumbUrl, ...f }) => f), ...otherFiles] });
             }
             invalidate();
           }}

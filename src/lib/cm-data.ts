@@ -832,6 +832,29 @@ export async function stampAndUploadCMPhotos(ownerId: string, projectId: string,
   return Promise.all(stamped.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
 }
 
+export interface CMStampedImageUpload extends CMFileAttachment {
+  thumbUrl: string;
+}
+
+/** The quick-upload "Upload or Capture" action accepts any file, mixing real
+ *  photos (from the device camera) with documents (PDFs, DWG, XLSX). Only
+ *  the photos should get the branding stamp — burning today's date onto a
+ *  scanned document would misrepresent it as captured today. Splits the
+ *  picked files by MIME type, stamps and uploads the images through the same
+ *  pipeline as every other camera capture, and uploads the rest untouched. */
+export async function uploadCMQuickCaptureFiles(ownerId: string, projectId: string, files: File[]): Promise<{ images: CMStampedImageUpload[]; otherFiles: CMFileAttachment[] }> {
+  const imageFiles = files.filter((f) => f.type.startsWith("image/"));
+  const otherFiles = files.filter((f) => !f.type.startsWith("image/"));
+  const [uploadedImages, uploadedOther] = await Promise.all([
+    stampAndUploadCMPhotos(ownerId, projectId, imageFiles),
+    Promise.all(otherFiles.map((f) => uploadCMFile(ownerId, projectId, f))),
+  ]);
+  const images = uploadedImages.map((u, i) => ({
+    name: imageFiles[i].name, url: u.url, size: imageFiles[i].size, type: imageFiles[i].type, thumbUrl: u.thumbUrl,
+  }));
+  return { images, otherFiles: uploadedOther };
+}
+
 const PHOTO_MODULE_TABLE: Record<CMPhotoModule, string> = {
   siteDiary: "cm_daily_logs",
   inspection: "cm_inspections",

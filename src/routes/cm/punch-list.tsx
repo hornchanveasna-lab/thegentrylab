@@ -16,6 +16,7 @@ import {
   deleteCMTask,
   stampAndUploadCMPhotos,
   uploadCMFile,
+  uploadCMQuickCaptureFiles,
   useCMProjectLocations,
   useCMProjectMembers,
   addCMComment,
@@ -476,8 +477,8 @@ function CMPunchListPage() {
           onSubmit={async (title, files) => {
             const item = await createCMTask(user.id, projectId, { title });
             if (files.length > 0) {
-              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
-              await updateCMTask(item.id, { files: uploaded });
+              const { images, otherFiles } = await uploadCMQuickCaptureFiles(user.id, projectId, files);
+              await updateCMTask(item.id, { photos: images.map((i) => i.url), photo_thumbs: images.map((i) => i.thumbUrl), files: otherFiles });
             }
             invalidate();
           }}

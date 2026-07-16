@@ -19,6 +19,7 @@ import {
   useCMCompanies,
   stampAndUploadCMPhotos,
   uploadCMFile,
+  uploadCMQuickCaptureFiles,
   INSTRUCTION_SOURCE_TYPES,
   INSTRUCTION_STATUSES,
   INSTRUCTION_PRIORITIES,
@@ -425,8 +426,8 @@ function CMInstructionsPage() {
           onSubmit={async (title, files) => {
             const item = await createCMInstruction(ownerId, projectId, { title, contract_id: contracts[0].id });
             if (files.length > 0) {
-              const uploaded = await Promise.all(files.map((f) => uploadCMFile(ownerId, projectId, f)));
-              await updateCMInstruction(item.id, { files: uploaded });
+              const { images, otherFiles } = await uploadCMQuickCaptureFiles(ownerId, projectId, files);
+              await updateCMInstruction(item.id, { photos: images.map((i) => i.url), photo_thumbs: images.map((i) => i.thumbUrl), files: otherFiles });
             }
             invalidate();
           }}
