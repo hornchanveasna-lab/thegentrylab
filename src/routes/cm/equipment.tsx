@@ -15,6 +15,7 @@ import {
   updateCMEquipment,
   deleteCMEquipment,
   uploadCMFile,
+  uploadCMQuickCaptureFiles,
   type CMEquipment,
 } from "@/lib/cm-data";
 
@@ -196,8 +197,8 @@ function CMEquipmentPage() {
           onSubmit={async (title, files) => {
             const item = await createCMEquipment(user.id, projectId, { name: title });
             if (files.length > 0) {
-              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
-              await updateCMEquipment(item.id, { files: uploaded });
+              const { images, otherFiles } = await uploadCMQuickCaptureFiles(user.id, projectId, files);
+              await updateCMEquipment(item.id, { files: [...images.map(({ thumbUrl, ...f }) => f), ...otherFiles] });
             }
             invalidate();
           }}

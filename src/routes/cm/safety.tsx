@@ -16,6 +16,7 @@ import {
   deleteCMSafetyRecord,
   stampAndUploadCMPhotos,
   uploadCMFile,
+  uploadCMQuickCaptureFiles,
   type CMSafetyRecord,
   type SafetyRecordType,
   type SafetySeverity,
@@ -294,8 +295,8 @@ function CMSafetyPage() {
           onSubmit={async (title, files) => {
             const record = await createCMSafetyRecord(user.id, projectId, { title, record_date: new Date().toISOString().slice(0, 10) });
             if (files.length > 0) {
-              const uploaded = await Promise.all(files.map((f) => uploadCMFile(user.id, projectId, f)));
-              await updateCMSafetyRecord(record.id, { files: uploaded });
+              const { images, otherFiles } = await uploadCMQuickCaptureFiles(user.id, projectId, files);
+              await updateCMSafetyRecord(record.id, { photos: images.map((i) => i.url), photo_thumbs: images.map((i) => i.thumbUrl), files: otherFiles });
             }
             invalidate();
           }}
