@@ -18,7 +18,7 @@ import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
-const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white disabled:opacity-40 transition-colors";
+const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 hover:bg-white/[0.08] rounded-xl border border-white/15 px-3.5 py-3 text-[13px] text-white disabled:opacity-40 transition-colors";
 
 export interface FieldSelectOption<T extends string> {
   value: T;
@@ -286,8 +286,20 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
 }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useClickOutside<HTMLDivElement>(open, () => { setOpen(false); setSearch(""); });
+  // A trigger near the bottom of a bottom-sheet form (very common in this
+  // app) can otherwise push the panel off-screen with no way to reach the
+  // options below the fold — flip it to open upward whenever there isn't
+  // reasonably enough room below, so it always lands somewhere tappable.
+  const toggleOpen = () => {
+    if (!open) {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) setOpenUpward(window.innerHeight - rect.bottom < 320 && rect.top > window.innerHeight - rect.bottom);
+    }
+    setOpen((v) => !v);
+  };
   const selected = options.find((o) => o.value === value);
   const q = search.trim().toLowerCase();
   const visibleOptions = searchable && q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
@@ -303,7 +315,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
 
   return (
     <div ref={containerRef} className={`relative ${className ?? ""}`}>
-      <button type="button" disabled={disabled} onClick={() => setOpen((v) => !v)}
+      <button type="button" disabled={disabled} onClick={toggleOpen}
         className={triggerClassName ?? fieldSelectTriggerCls} style={triggerStyle}>
         {triggerIcon ?? (
           <>
@@ -315,7 +327,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
         )}
       </button>
       {open && (
-        <div className={`absolute top-[calc(100%+6px)] z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl ${menuClassName ?? "left-0 right-0"}`}>
+        <div className={`absolute z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl ${openUpward ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} ${menuClassName ?? "left-0 right-0"}`}>
             {searchable && (
               <div className="p-2 border-b border-white/6">
                 <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder}
