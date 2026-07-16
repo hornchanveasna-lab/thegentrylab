@@ -2004,7 +2004,7 @@ export type CMMemberRole = "admin" | "member" | "visitor";
 export type CMJobRole = string;
 
 export const CM_JOB_ROLES: CMJobRole[] = [
-  "project_manager", "construction_manager", "site_engineer", "site_supervisor", "qa_qc_engineer",
+  "project_manager", "construction_manager", "contract_administrator", "site_engineer", "site_supervisor", "qa_qc_engineer",
   "safety_officer", "architect", "structural_engineer", "mep_engineer",
   "surveyor", "planning_engineer", "document_controller", "store_keeper",
   "procurement_officer", "subcontractor", "consultant",
@@ -2059,7 +2059,8 @@ export function jobRoleLabel(role: CMJobRole, t: (key: string) => string): strin
  *  fallback in cm_role_permission() so client and server never disagree. */
 export type CMModuleKey =
   | "site_diary" | "punch_list" | "inspection" | "safety" | "submittal"
-  | "equipment" | "boq" | "schedule" | "manpower" | "people" | "settings";
+  | "equipment" | "boq" | "schedule" | "manpower" | "people" | "settings"
+  | "contracts" | "instructions";
 export type CMPermissionAction = "view" | "create" | "edit" | "approve" | "delete";
 
 /** `owner_id === null` rows are the shared global default matrix (seeded
@@ -2973,6 +2974,157 @@ export async function updateCMSubmittal(id: string, patch: Partial<CMSubmittal>)
 
 export async function deleteCMSubmittal(id: string) {
   const { error } = await db().from("cm_submittals").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Contracts (Contract Administration — a project can have multiple:
+ *  main contract, subcontractor packages, supply contracts...) ──────── */
+export const CONTRACT_TYPES = ["Main Contract", "Subcontract", "Supply Contract", "Consultancy Contract", "Other"] as const;
+export type ContractType = typeof CONTRACT_TYPES[number];
+export const CONTRACT_STATUSES = ["Active", "Completed", "Terminated", "Closed"] as const;
+export type ContractStatus = typeof CONTRACT_STATUSES[number];
+
+export interface CMContract {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  contract_number: string | null;
+  title: string;
+  contract_type: ContractType;
+  counterparty_company_id: string | null;
+  currency: string | null;
+  contract_value: number | null;
+  start_date: string | null;
+  completion_date: string | null;
+  status: ContractStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMContracts(projectId: string | undefined) {
+  return useQuery<CMContract[]>({
+    queryKey: ["cm_contracts", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_contracts").select("*").eq("project_id", projectId).order("created_at");
+      if (error) throw error;
+      return data as CMContract[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMContract(
+  ownerId: string, projectId: string,
+  input: Pick<CMContract, "title"> & Partial<Pick<CMContract, "contract_number" | "contract_type" | "counterparty_company_id" | "currency" | "contract_value" | "start_date" | "completion_date" | "status" | "notes">>,
+) {
+  const { data, error } = await db().from("cm_contracts").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  logCMActivity(projectId, ownerId, "created", "contract", data.id, { title: data.title });
+  return data as CMContract;
+}
+
+export async function updateCMContract(id: string, patch: Partial<CMContract>) {
+  const { error } = await db().from("cm_contracts").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMContract(id: string) {
+  const { error } = await db().from("cm_contracts").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/* ── Instructions (Contract Administration — formal instructions issued
+ *  under a specific contract; acknowledged by the recipient, then carried
+ *  through impact assessment and execution to closure) ─────────────── */
+export const INSTRUCTION_SOURCE_TYPES = ["Client", "Consultant", "Contractor", "Internal"] as const;
+export type InstructionSourceType = typeof INSTRUCTION_SOURCE_TYPES[number];
+export const INSTRUCTION_STATUSES = ["Issued", "Acknowledged", "Impact Assessment", "Executing", "Completed", "Closed"] as const;
+export type InstructionStatus = typeof INSTRUCTION_STATUSES[number];
+export const INSTRUCTION_PRIORITIES = ["Low", "Medium", "High", "Critical"] as const;
+export type InstructionPriority = typeof INSTRUCTION_PRIORITIES[number];
+export const ACK_RESPONSES = ["Acknowledged", "Clarification Requested", "Rejected"] as const;
+export type AckResponse = typeof ACK_RESPONSES[number];
+export const IMPACT_TYPES = ["Cost", "Time", "Both", "No Impact"] as const;
+export type ImpactType = typeof IMPACT_TYPES[number];
+
+export interface CMInstruction {
+  id: string;
+  project_id: string;
+  contract_id: string;
+  owner_id: string;
+  doc_number: string | null;
+  source_type: InstructionSourceType;
+  source_company_id: string | null;
+  recipient_company_id: string | null;
+  recipient_note: string | null;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  priority: InstructionPriority;
+  status: InstructionStatus;
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
+  ack_response: AckResponse | null;
+  ack_comments: string | null;
+  impact_type: ImpactType | null;
+  impact_notes: string | null;
+  photos: string[];
+  photo_thumbs: string[];
+  files: CMFileAttachment[];
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMInstructions(projectId: string | undefined) {
+  return useQuery<CMInstruction[]>({
+    queryKey: ["cm_instructions", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_instructions").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as CMInstruction[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMInstruction(
+  ownerId: string, projectId: string,
+  input: Pick<CMInstruction, "title" | "contract_id"> & Partial<Pick<CMInstruction, "source_type" | "source_company_id" | "recipient_company_id" | "recipient_note" | "description" | "due_date" | "priority">>,
+) {
+  const docNumber = await generateCMDocNumber(projectId, "instruction", "INS");
+  const { data, error } = await db().from("cm_instructions").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
+  if (error) throw error;
+  logCMActivity(projectId, ownerId, "created", "instruction", data.id, { title: data.title });
+  const { data: proj } = await db().from("cm_projects").select("owner_id").eq("id", projectId).maybeSingle();
+  if (proj?.owner_id) notifyCMUser(projectId, proj.owner_id, "new_assignment", data.title, data.doc_number, "instruction", data.id);
+  return data as CMInstruction;
+}
+
+export async function updateCMInstruction(id: string, patch: Partial<CMInstruction>) {
+  const { error } = await db().from("cm_instructions").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+/** Records the receiving party's response (Acknowledge / Request
+ *  Clarification / Reject) and advances the workflow to "Acknowledged" —
+ *  the instruction still needs a separate Impact Assessment step before
+ *  execution, matching the spec's stage sequence. */
+export async function acknowledgeCMInstruction(
+  id: string, projectId: string, actorId: string, response: AckResponse, comments: string,
+) {
+  const { error } = await db().from("cm_instructions").update({
+    status: "Acknowledged", acknowledged_by: actorId, acknowledged_at: new Date().toISOString(),
+    ack_response: response, ack_comments: comments || null,
+  }).eq("id", id);
+  if (error) throw error;
+  logCMActivity(projectId, actorId, "acknowledged", "instruction", id, { response });
+}
+
+export async function deleteCMInstruction(id: string) {
+  const { error } = await db().from("cm_instructions").delete().eq("id", id);
   if (error) throw error;
 }
 

@@ -42,10 +42,12 @@ import { Route as CmProfileRouteImport } from './routes/cm/profile'
 import { Route as CmPhotosRouteImport } from './routes/cm/photos'
 import { Route as CmNotificationsRouteImport } from './routes/cm/notifications'
 import { Route as CmManpowerRouteImport } from './routes/cm/manpower'
+import { Route as CmInstructionsRouteImport } from './routes/cm/instructions'
 import { Route as CmInspectionRouteImport } from './routes/cm/inspection'
 import { Route as CmEquipmentRouteImport } from './routes/cm/equipment'
 import { Route as CmDirectoryRouteImport } from './routes/cm/directory'
 import { Route as CmDashboardRouteImport } from './routes/cm/dashboard'
+import { Route as CmContractsRouteImport } from './routes/cm/contracts'
 import { Route as CmBoqRouteImport } from './routes/cm/boq'
 import { Route as CmProjectIdRouteImport } from './routes/cm/$projectId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
@@ -221,6 +223,11 @@ const CmManpowerRoute = CmManpowerRouteImport.update({
   path: '/manpower',
   getParentRoute: () => CmRoute,
 } as any)
+const CmInstructionsRoute = CmInstructionsRouteImport.update({
+  id: '/instructions',
+  path: '/instructions',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmInspectionRoute = CmInspectionRouteImport.update({
   id: '/inspection',
   path: '/inspection',
@@ -239,6 +246,11 @@ const CmDirectoryRoute = CmDirectoryRouteImport.update({
 const CmDashboardRoute = CmDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmContractsRoute = CmContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
   getParentRoute: () => CmRoute,
 } as any)
 const CmBoqRoute = CmBoqRouteImport.update({
@@ -303,10 +315,12 @@ export interface FileRoutesByFullPath {
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
   '/cm/boq': typeof CmBoqRoute
+  '/cm/contracts': typeof CmContractsRoute
   '/cm/dashboard': typeof CmDashboardRoute
   '/cm/directory': typeof CmDirectoryRoute
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
+  '/cm/instructions': typeof CmInstructionsRoute
   '/cm/manpower': typeof CmManpowerRoute
   '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
@@ -348,10 +362,12 @@ export interface FileRoutesByTo {
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
   '/cm/boq': typeof CmBoqRoute
+  '/cm/contracts': typeof CmContractsRoute
   '/cm/dashboard': typeof CmDashboardRoute
   '/cm/directory': typeof CmDirectoryRoute
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
+  '/cm/instructions': typeof CmInstructionsRoute
   '/cm/manpower': typeof CmManpowerRoute
   '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
@@ -396,10 +412,12 @@ export interface FileRoutesById {
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
   '/cm/boq': typeof CmBoqRoute
+  '/cm/contracts': typeof CmContractsRoute
   '/cm/dashboard': typeof CmDashboardRoute
   '/cm/directory': typeof CmDirectoryRoute
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
+  '/cm/instructions': typeof CmInstructionsRoute
   '/cm/manpower': typeof CmManpowerRoute
   '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
@@ -445,10 +463,12 @@ export interface FileRouteTypes {
     | '/auth/start'
     | '/cm/$projectId'
     | '/cm/boq'
+    | '/cm/contracts'
     | '/cm/dashboard'
     | '/cm/directory'
     | '/cm/equipment'
     | '/cm/inspection'
+    | '/cm/instructions'
     | '/cm/manpower'
     | '/cm/notifications'
     | '/cm/photos'
@@ -490,10 +510,12 @@ export interface FileRouteTypes {
     | '/auth/start'
     | '/cm/$projectId'
     | '/cm/boq'
+    | '/cm/contracts'
     | '/cm/dashboard'
     | '/cm/directory'
     | '/cm/equipment'
     | '/cm/inspection'
+    | '/cm/instructions'
     | '/cm/manpower'
     | '/cm/notifications'
     | '/cm/photos'
@@ -537,10 +559,12 @@ export interface FileRouteTypes {
     | '/auth/start'
     | '/cm/$projectId'
     | '/cm/boq'
+    | '/cm/contracts'
     | '/cm/dashboard'
     | '/cm/directory'
     | '/cm/equipment'
     | '/cm/inspection'
+    | '/cm/instructions'
     | '/cm/manpower'
     | '/cm/notifications'
     | '/cm/photos'
@@ -819,6 +843,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmManpowerRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/instructions': {
+      id: '/cm/instructions'
+      path: '/instructions'
+      fullPath: '/cm/instructions'
+      preLoaderRoute: typeof CmInstructionsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/inspection': {
       id: '/cm/inspection'
       path: '/inspection'
@@ -845,6 +876,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/cm/dashboard'
       preLoaderRoute: typeof CmDashboardRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/contracts': {
+      id: '/cm/contracts'
+      path: '/contracts'
+      fullPath: '/cm/contracts'
+      preLoaderRoute: typeof CmContractsRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/boq': {
@@ -919,10 +957,12 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 interface CmRouteChildren {
   CmProjectIdRoute: typeof CmProjectIdRoute
   CmBoqRoute: typeof CmBoqRoute
+  CmContractsRoute: typeof CmContractsRoute
   CmDashboardRoute: typeof CmDashboardRoute
   CmDirectoryRoute: typeof CmDirectoryRoute
   CmEquipmentRoute: typeof CmEquipmentRoute
   CmInspectionRoute: typeof CmInspectionRoute
+  CmInstructionsRoute: typeof CmInstructionsRoute
   CmManpowerRoute: typeof CmManpowerRoute
   CmNotificationsRoute: typeof CmNotificationsRoute
   CmPhotosRoute: typeof CmPhotosRoute
@@ -945,10 +985,12 @@ interface CmRouteChildren {
 const CmRouteChildren: CmRouteChildren = {
   CmProjectIdRoute: CmProjectIdRoute,
   CmBoqRoute: CmBoqRoute,
+  CmContractsRoute: CmContractsRoute,
   CmDashboardRoute: CmDashboardRoute,
   CmDirectoryRoute: CmDirectoryRoute,
   CmEquipmentRoute: CmEquipmentRoute,
   CmInspectionRoute: CmInspectionRoute,
+  CmInstructionsRoute: CmInstructionsRoute,
   CmManpowerRoute: CmManpowerRoute,
   CmNotificationsRoute: CmNotificationsRoute,
   CmPhotosRoute: CmPhotosRoute,

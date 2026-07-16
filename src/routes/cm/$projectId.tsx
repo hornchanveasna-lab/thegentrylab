@@ -47,6 +47,8 @@ const MODULE_SHORTCUTS: { to: string; labelKey: string; icon: React.ReactNode }[
   { to: "/cm/boq", labelKey: "tile.boq", icon: <svg {...iconProps}><path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" /></svg> },
   { to: "/cm/manpower", labelKey: "tile.manpower", icon: <svg {...iconProps}><path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" /><path d="M12 3v3" /></svg> },
   { to: "/cm/equipment", labelKey: "tile.equipment", icon: <svg {...iconProps}><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" /></svg> },
+  { to: "/cm/contracts", labelKey: "tile.contracts", icon: <svg {...iconProps}><path d="M8 3h8l3 3v15H5V6z" /><path d="M15 3v4h4" /><path d="M8 12h8M8 16h5" /></svg> },
+  { to: "/cm/instructions", labelKey: "tile.instructions", icon: <svg {...iconProps}><path d="M4 4h16v13H8l-4 4z" /><path d="M8 9h8M8 12.5h5" /></svg> },
   { to: "/cm/photos", labelKey: "tile.photo", icon: <svg {...iconProps}><path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.4" /><circle cx="17.6" cy="10.4" r="0.6" fill="currentColor" stroke="none" /></svg> },
   { to: "/cm/directory", labelKey: "tile.directory", icon: <svg {...iconProps}><circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.2" r="2.1" /><path d="M3.3 20c0-3.3 2.5-5.6 5.7-5.6s5.7 2.3 5.7 5.6" /><path d="M14.8 14.9c2.5.4 4.4 2.5 4.4 5.1" /></svg> },
 ];

@@ -230,6 +230,24 @@ export function CMIndexPage() {
               </svg>
             }
           />
+          <AppTile
+            label={t("tile.contracts")}
+            to="/cm/contracts"
+            icon={
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3h8l3 3v15H5V6z" /><path d="M15 3v4h4" /><path d="M8 12h8M8 16h5" />
+              </svg>
+            }
+          />
+          <AppTile
+            label={t("tile.instructions")}
+            to="/cm/instructions"
+            icon={
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4h16v13H8l-4 4z" /><path d="M8 9h8M8 12.5h5" />
+              </svg>
+            }
+          />
         </div>
       </main>
     </div>
