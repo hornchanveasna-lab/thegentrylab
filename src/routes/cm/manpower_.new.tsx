@@ -26,7 +26,8 @@ function NewManpowerEntryPage() {
   const { user, loading: authLoading } = useAuthCM();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { projectId } = useSelectedProject(user?.id);
+  const { projects, projectId } = useSelectedProject(user?.id);
+  const activeProject = projects?.find((p) => p.id === projectId);
   const { data: logs } = useCMDailyLogs(projectId || undefined);
   const { data: roster } = useCMManpowerRoster(projectId || undefined);
   const { data: subcontractors } = useCMProjectSubcontractors(projectId || undefined);
@@ -43,12 +44,12 @@ function NewManpowerEntryPage() {
   }, [roster, subcontractors, logs]);
 
   const tradeOptions = useMemo(() => {
-    const set = new Set<string>(DEFAULT_TRADES);
+    const set = new Set<string>([...DEFAULT_TRADES, ...(activeProject?.manpower_default_trades ?? [])]);
     for (const r of roster ?? []) set.add(r.trade);
     for (const s of subcontractors ?? []) if (s.contact.trade) set.add(s.contact.trade);
     for (const l of logs ?? []) for (const m of l.manpower) if (m.trade) set.add(m.trade);
     return [...set].sort();
-  }, [roster, subcontractors, logs]);
+  }, [roster, subcontractors, logs, activeProject]);
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user || !projectId) return null;

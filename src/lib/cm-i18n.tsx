@@ -28,6 +28,7 @@ const EN: Dict = {
   "common.clearFilter": "Clear filter",
   "common.newestFirst": "Newest first",
   "common.oldestFirst": "Oldest first",
+  "common.settings": "Settings",
   "common.error": "Something went wrong.",
   "common.retry": "Retry",
   "common.confirm": "Confirm",
@@ -569,6 +570,8 @@ const EN: Dict = {
   "dashboard.viewEquipment": "View Equipment →",
 
   "schedule.title": "Schedule",
+  "schedule.settingsThreshold": "Delay threshold (%)",
+  "schedule.settingsThresholdHint": "An activity is marked Delayed once planned progress runs this many percentage points ahead of actual.",
   "schedule.subtitle": "Plan vs Actual, by activity",
   "schedule.new": "New Activity",
   "schedule.edit": "Edit Activity",
@@ -612,6 +615,8 @@ const EN: Dict = {
   "schedule.confirmDelete": "Remove this activity? This cannot be undone.",
 
   "boq.title": "Bill of Quantities",
+  "boq.settingsCategories": "Suggested categories",
+  "boq.settingsCategoriesHint": "Shown as quick suggestions when entering a BOQ item's category.",
   "boq.subtitle": "Contract value by category",
   "boq.new": "New BOQ Item",
   "boq.edit": "Edit BOQ Item",
@@ -680,6 +685,8 @@ const EN: Dict = {
   "boq.version.confirmRevision": "Create an editable revision copied from this version?",
 
   "manpower.title": "Manpower Record",
+  "manpower.settingsTrades": "Default trades",
+  "manpower.settingsTradesHint": "Added to the trade suggestion list when entering manpower on this project.",
   "manpower.subtitle": "Daily headcount by trade",
   "manpower.headcount": "Headcount",
   "manpower.total": "Total",
@@ -1300,6 +1307,7 @@ const KM: Dict = {
   "common.clearFilter": "សម្អាតតម្រង",
   "common.newestFirst": "ថ្មីបំផុតមុន",
   "common.oldestFirst": "ចាស់បំផុតមុន",
+  "common.settings": "ការកំណត់",
   "common.error": "មានបញ្ហាកើតឡើង។",
   "common.retry": "ព្យាយាមម្តងទៀត",
   "common.confirm": "បញ្ជាក់",
@@ -1841,6 +1849,8 @@ const KM: Dict = {
   "dashboard.viewEquipment": "មើលគ្រឿងឧបករណ៍ →",
 
   "schedule.title": "កាលវិភាគ",
+  "schedule.settingsThreshold": "កម្រិតពន្យារពេល (%)",
+  "schedule.settingsThresholdHint": "សកម្មភាពនឹងត្រូវសម្គាល់ថាពន្យារពេល នៅពេលដែលដំណើរការគម្រោងយឺតជាងផែនការតាមភាគរយនេះ។",
   "schedule.subtitle": "ផែនការធៀបនឹងការពិត តាមសកម្មភាព",
   "schedule.new": "សកម្មភាពថ្មី",
   "schedule.edit": "កែសម្រួលសកម្មភាព",
@@ -1884,6 +1894,8 @@ const KM: Dict = {
   "schedule.confirmDelete": "លុបសកម្មភាពនេះ? សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។",
 
   "boq.title": "តារាងបរិមាណការងារ (BOQ)",
+  "boq.settingsCategories": "ប្រភេទដែលបានស្នើ",
+  "boq.settingsCategoriesHint": "បង្ហាញជាការណែនាំរហ័ស នៅពេលបញ្ចូលប្រភេទធាតុ BOQ។",
   "boq.subtitle": "តម្លៃកិច្ចសន្យាតាមប្រភេទ",
   "boq.new": "ធាតុ BOQ ថ្មី",
   "boq.edit": "កែសម្រួលធាតុ BOQ",
@@ -1952,6 +1964,8 @@ const KM: Dict = {
   "boq.version.confirmRevision": "បង្កើតការកែសម្រួលដែលអាចកែសម្រួលបាន ចម្លងពីកំណែនេះ?",
 
   "manpower.title": "កំណត់ត្រាកម្លាំងពលកម្ម",
+  "manpower.settingsTrades": "វិជ្ជាជីវៈលំនាំដើម",
+  "manpower.settingsTradesHint": "បន្ថែមទៅក្នុងបញ្ជីណែនាំវិជ្ជាជីវៈ នៅពេលបញ្ចូលកម្លាំងពលកម្មលើគម្រោងនេះ។",
   "manpower.subtitle": "ចំនួនកម្មករប្រចាំថ្ងៃតាមចំណាត់ថ្នាក់",
   "manpower.headcount": "ចំនួនកម្មករ",
   "manpower.total": "សរុប",
@@ -2572,6 +2586,7 @@ const ZH: Dict = {
   "common.clearFilter": "清除筛选",
   "common.newestFirst": "最新优先",
   "common.oldestFirst": "最早优先",
+  "common.settings": "设置",
   "common.error": "出现问题。",
   "common.retry": "重试",
   "common.confirm": "确认",
@@ -3113,6 +3128,8 @@ const ZH: Dict = {
   "dashboard.viewEquipment": "查看设备 →",
 
   "schedule.title": "进度计划",
+  "schedule.settingsThreshold": "延误阈值 (%)",
+  "schedule.settingsThresholdHint": "当计划进度超前实际进度达到此百分比时，该活动将标记为延误。",
   "schedule.subtitle": "按活动划分的计划与实际对比",
   "schedule.new": "新建活动",
   "schedule.edit": "编辑活动",
@@ -3156,6 +3173,8 @@ const ZH: Dict = {
   "schedule.confirmDelete": "删除此活动？此操作无法撤销。",
 
   "boq.title": "工程量清单 (BOQ)",
+  "boq.settingsCategories": "建议类别",
+  "boq.settingsCategoriesHint": "在输入工程量清单项目类别时作为快速建议显示。",
   "boq.subtitle": "按类别划分的合同金额",
   "boq.new": "新建清单项目",
   "boq.edit": "编辑清单项目",
@@ -3224,6 +3243,8 @@ const ZH: Dict = {
   "boq.version.confirmRevision": "创建一份复制自此版本的可编辑修订版？",
 
   "manpower.title": "劳动力记录",
+  "manpower.settingsTrades": "默认工种",
+  "manpower.settingsTradesHint": "在本项目录入劳动力时加入工种建议列表。",
   "manpower.subtitle": "按工种划分的每日人数",
   "manpower.headcount": "人数",
   "manpower.total": "总计",

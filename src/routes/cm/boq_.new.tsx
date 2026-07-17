@@ -14,7 +14,8 @@ function NewBoqItemPage() {
   const { user, loading: authLoading } = useAuthCM();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { projectId } = useSelectedProject(user?.id);
+  const { projects, projectId } = useSelectedProject(user?.id);
+  const activeProject = projects?.find((p) => p.id === projectId);
   const { data: versions } = useCMBOQVersions(projectId || undefined);
   const defaultVersion = useMemo(() => activeCMBOQVersion(versions), [versions]);
 
@@ -23,7 +24,8 @@ function NewBoqItemPage() {
 
   return (
     <NewBoqItemSheet
-      ownerId={user.id} projectId={projectId} versionId={defaultVersion?.id ?? null} backTo="/cm/boq"
+      ownerId={user.id} projectId={projectId} versionId={defaultVersion?.id ?? null}
+      categoryOptions={activeProject?.boq_default_categories ?? []} backTo="/cm/boq"
       onCreated={() => {
         queryClient.invalidateQueries({ queryKey: ["cm_boq_items", projectId] });
         queryClient.invalidateQueries({ queryKey: ["cm_boq_versions", projectId] });

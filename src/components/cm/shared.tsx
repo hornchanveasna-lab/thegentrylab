@@ -166,6 +166,54 @@ export function Card({ title, action, children }: { title: string; action?: Reac
   );
 }
 
+/** Small editable string list — chips with a × remove, plus an add row —
+ *  used by per-module Settings pages to let a project admin extend a
+ *  suggestion list (e.g. Manpower's default trades, BOQ's category list)
+ *  without touching code. Not for enums with fixed business meaning. */
+export function StringListEditor({ label, hint, values, onChange, canEdit }: {
+  label: string; hint?: string; values: string[]; onChange: (next: string[]) => void; canEdit: boolean;
+}) {
+  const [draft, setDraft] = useState("");
+  const { t } = useCMLang();
+
+  const add = () => {
+    const v = draft.trim();
+    if (!v || values.includes(v)) return;
+    onChange([...values, v]);
+    setDraft("");
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className={labelCls}>{label}</span>
+      {hint && <p className="text-[12px] text-white/45">{hint}</p>}
+      <div className="flex flex-wrap gap-1.5">
+        {values.map((v) => (
+          <span key={v} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[10px] bg-white/5 text-white/60">
+            {v}
+            {canEdit && (
+              <button type="button" onClick={() => onChange(values.filter((x) => x !== v))}
+                className="text-white/25 hover:text-red-400 w-4 h-4 rounded-full flex items-center justify-center">×</button>
+            )}
+          </span>
+        ))}
+        {values.length === 0 && <p className="text-white/30 text-[12px]">{t("projectSettings.none")}</p>}
+      </div>
+      {canEdit && (
+        <div className="flex gap-2">
+          <input className={inputCls} value={draft} onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
+          <button type="button" onClick={add} disabled={!draft.trim()}
+            className="px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest shrink-0 disabled:opacity-40"
+            style={{ backgroundColor: "#ff5100", color: "#000" }}>
+            {t("common.add")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** A collapsible card section — same visual shell as the accordion cards
  *  used across Inspection/Safety/Punch List/Submittal list rows
  *  (`rounded-2xl bg-[#0d0d0e]`, tappable header, collapsible body), reused
@@ -554,13 +602,14 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
  *  button, a title that swaps for a search input, and a "⋮" menu — all
  *  pinned (`sticky`) so they stay visible while the list scrolls beneath
  *  them, matching the Telegram reference the design follows. */
-export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort }: {
+export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort, settingsTo }: {
   title: string;
   search: string;
   onSearchChange: (v: string) => void;
   searchPlaceholder?: string;
   sortAsc: boolean;
   onToggleSort: (v: boolean) => void;
+  settingsTo?: string;
 }) {
   const { t } = useCMLang();
   const [showSearch, setShowSearch] = useState(false);
@@ -608,6 +657,15 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
                 )}
               </button>
             ))}
+            {settingsTo && (
+              <Link to={settingsTo} onClick={() => setShowMenu(false)}
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/5 transition-colors border-t border-white/6">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/50 shrink-0">
+                  <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                </svg>
+                <span className="text-[13px] text-white/85">{t("common.settings")}</span>
+              </Link>
+            )}
           </div>
         )}
       </div>
@@ -850,6 +908,23 @@ export function FormPage({ title, backTo, children }: { title: string; backTo: s
           <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
         </div>
         {children}
+      </main>
+    </div>
+  );
+}
+
+/** Full-page shell for a single module's own Settings screen (reached from
+ *  that module's ⋮ menu) — same header pattern as `FormPage`, but its
+ *  children are a vertical stack of `Card`s rather than a form. */
+export function ModuleSettingsPage({ title, backTo, children }: { title: string; backTo: string; children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
+        <div className="flex items-center gap-3 mb-6">
+          <BackButton to={backTo} />
+          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
+        </div>
+        <div className="flex flex-col gap-4">{children}</div>
       </main>
     </div>
   );

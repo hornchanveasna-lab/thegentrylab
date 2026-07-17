@@ -46,6 +46,14 @@ export interface CMProject {
   doc_module_codes: Record<string, string>;
   revision_format: string;
   doc_footer: string | null;
+  /** Per-project override of the Equipment status list; null = use EQUIPMENT_STATUS_OPTIONS. */
+  equipment_status_options: string[] | null;
+  /** % variance (plan - actual) at which cmScheduleStatus reports "Delayed". Defaults to 10. */
+  schedule_delay_threshold_pct: number;
+  /** Per-project override/addition to Manpower's DEFAULT_TRADES suggestion list. */
+  manpower_default_trades: string[] | null;
+  /** Suggested BOQ category list (BOQ has no built-in list; free text otherwise). */
+  boq_default_categories: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -2622,12 +2630,12 @@ export interface CMScheduleItem {
  *  are deliberately not modeled yet. */
 export type CMScheduleStatus = "Not Started" | "In Progress" | "Completed" | "Delayed";
 
-export function cmScheduleStatus(item: CMScheduleItem, date: string): CMScheduleStatus {
+export function cmScheduleStatus(item: CMScheduleItem, date: string, delayThresholdPct = 10): CMScheduleStatus {
   if (item.actual_percent >= 100) return "Completed";
   if (item.plan_finish < date) return "Delayed";
   const plan = scheduleItemPlanPercent(item, date);
   if (item.actual_percent === 0 && plan === 0) return "Not Started";
-  if (plan - item.actual_percent > 10) return "Delayed";
+  if (plan - item.actual_percent > delayThresholdPct) return "Delayed";
   return item.actual_percent === 0 ? "Not Started" : "In Progress";
 }
 

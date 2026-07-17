@@ -43,8 +43,8 @@ export const Route = createFileRoute("/cm/boq")({
   component: CMBoqPage,
 });
 
-export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, backTo, onCreated }: {
-  ownerId: string; projectId: string; versionId: string | null; existing?: CMBOQItem; backTo: string; onCreated: () => void;
+export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categoryOptions, backTo, onCreated }: {
+  ownerId: string; projectId: string; versionId: string | null; existing?: CMBOQItem; categoryOptions?: string[]; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const [description, setDescription] = useState(existing?.description ?? "");
@@ -87,7 +87,10 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, backT
         </label>
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("boq.category")}</span>
-          <input className={inputCls} value={category} onChange={(e) => setCategory(e.target.value)} disabled={saving} />
+          <input className={inputCls} list="boq-category-options" value={category} onChange={(e) => setCategory(e.target.value)} disabled={saving} />
+          <datalist id="boq-category-options">
+            {(categoryOptions ?? []).map((c) => <option key={c} value={c} />)}
+          </datalist>
         </label>
         <div className="grid grid-cols-3 gap-2">
           <label className="flex flex-col gap-1.5">
@@ -721,7 +724,7 @@ function CMBoqPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("boq.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+        <ModuleHeader title={t("boq.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/boq/settings" />
         <p className="text-[12px] text-white/35 mb-5">{t("boq.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 

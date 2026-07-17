@@ -642,13 +642,14 @@ function CMManpowerPage() {
     return [...set].sort();
   }, [roster, subcontractors, logs]);
 
+  const activeProject = projects?.find((p) => p.id === projectId);
   const tradeOptions = useMemo(() => {
-    const set = new Set<string>(DEFAULT_TRADES);
+    const set = new Set<string>([...DEFAULT_TRADES, ...(activeProject?.manpower_default_trades ?? [])]);
     for (const r of roster ?? []) set.add(r.trade);
     for (const s of subcontractors ?? []) if (s.contact.trade) set.add(s.contact.trade);
     for (const l of logs ?? []) for (const m of l.manpower) if (m.trade) set.add(m.trade);
     return [...set].sort();
-  }, [roster, subcontractors, logs]);
+  }, [roster, subcontractors, logs, activeProject]);
 
   const locationLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -735,7 +736,7 @@ function CMManpowerPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("manpower.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+        <ModuleHeader title={t("manpower.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/manpower/settings" />
         <p className="text-[12px] text-white/35 mb-5">{t("manpower.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
