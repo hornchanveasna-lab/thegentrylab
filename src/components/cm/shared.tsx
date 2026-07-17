@@ -1500,6 +1500,14 @@ export const MODULE_ROUTES: Record<CMPhotoModule, "/cm/site-diary" | "/cm/inspec
   submittal: "/cm/submittal",
 };
 
+/** Jumps straight to a record's own full page instead of its module's list
+ *  page — used by every "show in report"/deep-link caller (Photos gallery,
+ *  Reports' Today's Activity, Site Diary's own activity rows) now that each
+ *  record has a dedicated view. */
+export function moduleDetailRoute(module: CMPhotoModule, recordId: string) {
+  return { to: `${MODULE_ROUTES[module]}/$id` as const, params: { id: recordId } };
+}
+
 export const MODULE_COLOR: Record<CMPhotoModule, string> = {
   siteDiary: "#3b82f6",
   inspection: "#22c55e",

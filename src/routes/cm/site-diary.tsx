@@ -6,7 +6,7 @@ import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FormPage, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
+  setLastProject, moduleDetailRoute, MODULE_COLOR, MODULE_ICON,
   WeekCalendarStrip, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
   ManpowerEntrySheet,
 } from "@/components/cm/shared";
@@ -730,40 +730,30 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function LogCard({ log, projectName, onSelect }: {
-  log: CMDailyLog; projectName?: string; onSelect: (log: CMDailyLog, flashPhotoUrl?: string) => void;
-}) {
+function LogCard({ log, projectName }: { log: CMDailyLog; projectName?: string }) {
   const { t } = useCMLang();
-  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", log.id);
-
-  useEffect(() => {
-    if (flash) onSelect(log, matchedPhotoUrl ?? undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flash]);
-
   return (
-    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-      <button onClick={() => onSelect(log)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
-        <div className="flex items-center gap-4 min-w-0">
-          <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
-          {log.doc_number && <span className="font-mono text-[10px] text-white/30 shrink-0">{log.doc_number}</span>}
-          {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-          {log.weather && (
-            <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">
-              {WEATHER_ICON[log.weather]}
-              {t(`weather.${log.weather}`)}
-            </span>
-          )}
-          {log.activities && <span className="text-[12px] text-white/45 truncate">{log.activities}</span>}
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          {log.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{log.progress_pct}%</span>}
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25">
-            <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-      </button>
-    </div>
+    <Link to="/cm/site-diary/$id" params={{ id: log.id }}
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      <div className="flex items-center gap-4 min-w-0">
+        <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
+        {log.doc_number && <span className="font-mono text-[10px] text-white/30 shrink-0">{log.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
+        {log.weather && (
+          <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">
+            {WEATHER_ICON[log.weather]}
+            {t(`weather.${log.weather}`)}
+          </span>
+        )}
+        {log.activities && <span className="text-[12px] text-white/45 truncate">{log.activities}</span>}
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        {log.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{log.progress_pct}%</span>}
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25">
+          <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+    </Link>
   );
 }
 
@@ -850,10 +840,11 @@ function toActivityRows<T extends { id: string; title: string; status: string; p
   return rows.map((r) => ({ module, recordId: r.id, title: r.title, status: r.status, photos: r.photos, photo_thumbs: r.photo_thumbs }));
 }
 
-/** One row inside Today's Activities / HSE: tap navigates into the real
- *  module (deep-linked via the same setPendingHighlight/MODULE_ROUTES
- *  pattern as CMDailyActivityList), with that record's own photos shown
- *  directly beneath it instead of everything pooled into one gallery. */
+/** One row inside Today's Activities / HSE: tap navigates straight into
+ *  the record's own full page (via `moduleDetailRoute`, the same helper
+ *  CMDailyActivityList's consumers use), with that record's own photos
+ *  shown directly beneath it instead of everything pooled into one
+ *  gallery. */
 function ModuleActivityRow({ row, onOpenItem, onOpenPhoto, flashPhotoUrl }: {
   row: ActivityRow;
   onOpenItem: (module: CMPhotoModule, recordId: string) => void;
@@ -932,7 +923,7 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
  *  week-strip of its own since the page already provides those via
  *  CalendarStrip; a project name label is shown only in "all projects"
  *  mode, where more than one project can share the same selected date. */
-function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashPhotoUrl, onChanged, onOpenPhoto }: {
+export function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashPhotoUrl, onChanged, onOpenPhoto }: {
   log: CMDailyLog | CMDailyLogWithProject;
   projectName?: string;
   canEdit: boolean;
@@ -980,8 +971,7 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashP
     navigate({ to: "/cm/reports", search: { project: log.project_id, from: log.log_date, to: log.log_date } });
   };
   const openModuleItem = (module: CMPhotoModule, recordId: string) => {
-    setPendingHighlight(module, recordId, log.project_id, "");
-    navigate({ to: MODULE_ROUTES[module] });
+    navigate(moduleDetailRoute(module, recordId));
   };
   const rainH = rainHours(log.rain_start_time, log.rain_end_time);
 
@@ -1136,8 +1126,6 @@ function CMSiteDiaryPage() {
   const activeProject = projects.find((p) => p.id === projectId);
   const projectDisciplines = enabledDisciplines(activeProject);
   const canCreate = usePermission(projectId || undefined, user?.id, "site_diary", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "site_diary", "edit");
-  const canDelete = usePermission(projectId || undefined, user?.id, "site_diary", "delete");
   const [viewAll, setViewAll] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const { data: singleLogs, isLoading: singleLoading } = useCMDailyLogs(!viewAll ? (projectId || undefined) : undefined);
@@ -1145,29 +1133,22 @@ function CMSiteDiaryPage() {
   const logs: (CMDailyLog | CMDailyLogWithProject)[] | undefined = viewAll ? allLogs : singleLogs;
   const isLoading = viewAll ? allLoading : singleLoading;
   const [showCapture, setShowCapture] = useState(false);
-  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
-  const [flashPhotoUrl, setFlashPhotoUrl] = useState<string | null>(null);
-  // Which specific log (by id) to show full detail for. Only meaningful
-  // when a date has more than one entry — i.e. "All projects" and several
-  // projects reported the same day — where the date alone doesn't say
-  // which one to open. Left null when picking a date from the calendar
-  // (unknown which project yet); set together with dateFilter whenever a
-  // specific card is tapped, so that always jumps straight to its detail.
-  const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
 
-  const selectDay = (log: CMDailyLog | CMDailyLogWithProject, photoUrl?: string) => {
-    setDateFilter(log.log_date);
-    setSelectedLogId(log.id);
-    setFlashPhotoUrl(photoUrl ?? null);
-  };
+  // Picking a date jumps straight to that day's full page when it's
+  // unambiguous (the common single-project case — one log per day).
+  // When several projects reported the same date ("All projects"), the
+  // date alone doesn't say which one to open, so just filter the list
+  // and let the user tap the specific report's card.
   const selectDate = (date: string | null) => {
     setDateFilter(date);
-    setSelectedLogId(null);
-    setFlashPhotoUrl(null);
+    if (date) {
+      const matches = (logs ?? []).filter((l) => l.log_date === date);
+      if (matches.length === 1) navigate({ to: "/cm/site-diary/$id", params: { id: matches[0].id } });
+    }
   };
-  const clearDateFilter = () => { setDateFilter(null); setSelectedLogId(null); setFlashPhotoUrl(null); };
+  const clearDateFilter = () => setDateFilter(null);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
@@ -1256,43 +1237,11 @@ function CMSiteDiaryPage() {
               </div>
             )}
             {visibleLogs.length > 0 && (
-              dateFilter ? (
-                visibleLogs.length === 1 || selectedLogId ? (
-                  (() => {
-                    const log = (selectedLogId && visibleLogs.find((l) => l.id === selectedLogId)) || visibleLogs[0];
-                    return (
-                      <div className="flex flex-col gap-3">
-                        {visibleLogs.length > 1 && (
-                          <button onClick={() => setSelectedLogId(null)}
-                            className="self-start flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
-                            <svg width="10" height="10" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            {t("siteDiary.backToProjects")}
-                          </button>
-                        )}
-                        <DayDetailContent log={log} projectName={viewAll ? (log as CMDailyLogWithProject).projectName : undefined}
-                          canEdit={canEdit} canDelete={canDelete} userId={user.id}
-                          flashPhotoUrl={flashPhotoUrl} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />
-                      </div>
-                    );
-                  })()
-                ) : (
-                  // Several projects reported this same date ("All projects") —
-                  // show who has a report first, so it's easy to scan, then
-                  // drill into one to see its full content.
-                  <div className="flex flex-col gap-3">
-                    {visibleLogs.map((l) => (
-                      <LogCard key={l.id} log={l} projectName={(l as CMDailyLogWithProject).projectName} onSelect={selectDay} />
-                    ))}
-                  </div>
-                )
-              ) : (
-                <div className="flex flex-col gap-3">
-                  {visibleLogs.map((l) => (
-                    <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined}
-                      onSelect={selectDay} />
-                  ))}
-                </div>
-              )
+              <div className="flex flex-col gap-3">
+                {visibleLogs.map((l) => (
+                  <LogCard key={l.id} log={l} projectName={viewAll ? (l as CMDailyLogWithProject).projectName : undefined} />
+                ))}
+              </div>
             )}
             {!viewAll && canCreate && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => navigate({ to: "/cm/site-diary/new" })} />}
           </>
@@ -1302,15 +1251,6 @@ function CMSiteDiaryPage() {
       {showCapture && !viewAll && projectId && canCreate && (
         <CaptureSheet ownerId={user.id} projectId={projectId} disciplines={projectDisciplines}
           onClose={() => setShowCapture(false)} onSaved={invalidate} onCreated={() => { invalidate(); setShowCapture(false); }} />
-      )}
-
-      {lightbox && (
-        <PhotoLightbox
-          items={lightbox.items}
-          index={lightbox.index}
-          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
-          onClose={() => setLightbox(null)}
-        />
       )}
     </div>
   );

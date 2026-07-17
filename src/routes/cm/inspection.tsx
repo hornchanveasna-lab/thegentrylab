@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
+  WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -19,7 +19,6 @@ import {
   uploadCMQuickCaptureFiles,
   useCMProjectLocations,
   locationBreadcrumb,
-  enabledDisciplines,
   INSPECTION_TYPES,
   type CMInspection,
   type InspectionStatus,
@@ -182,14 +181,30 @@ export function NewInspectionSheet({ ownerId, projectId, existing, canApprove, d
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, userId, onChanged, onOpenPhoto }: {
-  item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[]; userId: string;
+function InspectionCard({ item }: { item: CMInspection }) {
+  const { t } = useCMLang();
+  const sc = STATUS_COLOR[item.status];
+  return (
+    <Link to="/cm/inspection/$id" params={{ id: item.id }}
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      <div className="flex items-center gap-4 min-w-0">
+        <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
+        {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`inspectionType.${item.inspection_type}`)}</span>}
+        {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+      </div>
+      <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
+    </Link>
+  );
+}
+
+export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto }: {
+  item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
+  flash?: boolean; matchedPhotoUrl?: string | null;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("inspection", item.id, () => setOpen(true));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { data: locations } = useCMProjectLocations(item.project_id);
   const location = locations?.find((l) => l.id === item.location_id);
@@ -207,52 +222,45 @@ function InspectionCard({ item, canEdit, canApprove, canDelete, disciplines, use
   };
 
   return (
-    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
-        <div className="flex items-center gap-4 min-w-0">
-          <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
-          {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`inspectionType.${item.inspection_type}`)}</span>}
-          {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-          <span className="text-[12px] text-white/70 truncate">{item.title}</span>
-        </div>
+    <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="font-mono text-[12px] text-white/70">{item.inspection_date}</span>
+        {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t(`inspectionType.${item.inspection_type}`)}</span>}
+        {item.doc_number && <span className="font-mono text-[9px] text-white/25">{item.doc_number}</span>}
+      </div>
+      <p className="text-[14px] text-white/85">{item.title}</p>
+      {canEdit ? (
+        <SegmentedField
+          options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`), color: STATUS_COLOR[s] }))}
+          value={item.status} disabled={busy} onChange={handleStatusChange}
+        />
+      ) : (
         <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
-      </button>
-      {open && (
-        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
-          {canEdit ? (
-            <SegmentedField
-              options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`), color: STATUS_COLOR[s] }))}
-              value={item.status} disabled={busy} onChange={handleStatusChange}
-            />
-          ) : (
-            <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
-          )}
-          {item.discipline && <p className="text-[12px] text-white/60">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
-          {location && <p className="text-[12px] text-white/60">{t("common.location")}: {locationBreadcrumb(location, locations ?? [])}</p>}
-          {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
-          {item.drawing_ref && <p className="text-[12px] text-white/60">{t("inspection.drawingRef")}: {item.drawing_ref}</p>}
-          {item.method_statement_ref && <p className="text-[12px] text-white/60">{t("inspection.methodStatementRef")}: {item.method_statement_ref}</p>}
-          {item.itp_ref && <p className="text-[12px] text-white/60">{t("inspection.itpRef")}: {item.itp_ref}</p>}
-          {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
-          {item.photos.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {item.photos.map((url, i) => (
-                <button key={url} type="button" data-photo-url={url}
-                  onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
-                  className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                  <img src={item.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-          <FileAttachmentList files={item.files} />
-          <div className="flex items-center gap-4">
-            {canEdit && <Link to="/cm/inspection/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</Link>}
-            {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>}
-          </div>
-          <RecordDetailExtras projectId={item.project_id} entityType="inspection" module="inspection" entityId={item.id} userId={userId} locationId={item.location_id} discipline={item.discipline} />
+      )}
+      {item.discipline && <p className="text-[12px] text-white/60">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
+      {location && <p className="text-[12px] text-white/60">{t("common.location")}: {locationBreadcrumb(location, locations ?? [])}</p>}
+      {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
+      {item.drawing_ref && <p className="text-[12px] text-white/60">{t("inspection.drawingRef")}: {item.drawing_ref}</p>}
+      {item.method_statement_ref && <p className="text-[12px] text-white/60">{t("inspection.methodStatementRef")}: {item.method_statement_ref}</p>}
+      {item.itp_ref && <p className="text-[12px] text-white/60">{t("inspection.itpRef")}: {item.itp_ref}</p>}
+      {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
+      {item.photos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {item.photos.map((url, i) => (
+            <button key={url} type="button" data-photo-url={url}
+              onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
+              className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+              <img src={item.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
+            </button>
+          ))}
         </div>
       )}
+      <FileAttachmentList files={item.files} />
+      <div className="flex items-center gap-4">
+        {canEdit && <Link to="/cm/inspection/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</Link>}
+        {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>}
+      </div>
+      <RecordDetailExtras projectId={item.project_id} entityType="inspection" module="inspection" entityId={item.id} userId={userId} locationId={item.location_id} discipline={item.discipline} />
       {confirmingDelete && (
         <ConfirmationDialog message={t("inspection.confirmDelete")} confirmLabel={t("inspection.delete")}
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
@@ -267,16 +275,10 @@ function CMInspectionPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const activeProject = projects?.find((p) => p.id === projectId);
-  const projectDisciplines = enabledDisciplines(activeProject);
   const { data: inspections, isLoading, isError, refetch } = useCMInspections(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "inspection", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "inspection", "edit");
-  const canApprove = usePermission(projectId || undefined, user?.id, "inspection", "approve");
-  const canDelete = usePermission(projectId || undefined, user?.id, "inspection", "delete");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
-  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
@@ -330,7 +332,7 @@ function CMInspectionPage() {
               <>
                 {!isLoading && visibleInspections.length === 0 && <EmptyState message={t("inspection.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} />)}
                 </div>
               </>
             )}
@@ -354,15 +356,6 @@ function CMInspectionPage() {
             }
             invalidate();
           }}
-        />
-      )}
-
-      {lightbox && (
-        <PhotoLightbox
-          items={lightbox.items}
-          index={lightbox.index}
-          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
-          onClose={() => setLightbox(null)}
         />
       )}
     </div>

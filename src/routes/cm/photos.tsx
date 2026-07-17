@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, MiniCalendar,
+  PhotoLightbox, moduleDetailRoute, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, MiniCalendar,
   ConfirmationDialog, useClickOutside,
 } from "@/components/cm/shared";
 import {
@@ -674,7 +674,7 @@ function CMPhotosPage() {
             if (!item.module || !item.recordId || !item.projectId) return;
             setPendingHighlight(item.module, item.recordId, item.projectId, item.url);
             setLightbox(null);
-            navigate({ to: MODULE_ROUTES[item.module] });
+            navigate(moduleDetailRoute(item.module, item.recordId));
           }}
           onDelete={async (item) => {
             if (!item.module || !item.recordId) return;

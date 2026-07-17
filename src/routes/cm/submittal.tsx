@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
+  WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -16,7 +16,6 @@ import {
   stampAndUploadCMPhotos,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
-  enabledDisciplines,
   SUBMITTAL_TYPES,
   APPROVAL_CODES,
   type CMSubmittal,
@@ -181,16 +180,31 @@ export function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, di
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, userId, onChanged, onOpenPhoto }: {
-  item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean; disciplines: Discipline[]; userId: string;
+function SubmittalCard({ item }: { item: CMSubmittal }) {
+  const { t } = useCMLang();
+  const sc = STATUS_COLOR[item.status];
+  return (
+    <Link to="/cm/submittal/$id" params={{ id: item.id }}
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      <div className="flex items-center gap-4 min-w-0">
+        <span className="font-mono text-[12px] text-white/70 shrink-0">{item.submitted_date ?? item.created_at.slice(0, 10)}</span>
+        {item.submittal_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`)}</span>}
+        {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+      </div>
+      <StatusBadge label={t(`submittalStatus.${item.status}`)} color={sc} />
+    </Link>
+  );
+}
+
+export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto }: {
+  item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
+  flash?: boolean; matchedPhotoUrl?: string | null;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("submittal", item.id, () => setOpen(true));
-  const sc = STATUS_COLOR[item.status];
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === item.status);
 
   const handleStatusChange = async (status: SubmittalStatus) => {
@@ -209,53 +223,40 @@ function SubmittalCard({ item, canEdit, canApprove, canDelete, disciplines, user
   };
 
   return (
-    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
-        <div className="flex items-center gap-4 min-w-0">
-          <span className="font-mono text-[12px] text-white/70 shrink-0">{item.submitted_date ?? item.created_at.slice(0, 10)}</span>
-          {item.submittal_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`)}</span>}
-          {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-          <span className="text-[12px] text-white/70 truncate">{item.title}</span>
-        </div>
-        <StatusBadge label={t(`submittalStatus.${item.status}`)} color={sc} />
-      </button>
-      {open && (
-        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
-          <p className="font-mono text-[10px] text-white/30">
-            {[item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
-          </p>
-          {canEdit && (
-            <SegmentedField
-              options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
-              value={item.status} disabled={busy} onChange={handleStatusChange}
-            />
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            {item.approval_code && (
-              <span className="px-2 py-0.5 rounded-full bg-white/5 font-mono text-[10px] text-white/60" title={t(`approvalCode.${item.approval_code}`)}>{item.approval_code}</span>
-            )}
-            {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
-            {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
-          </div>
-          {item.photos.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {item.photos.map((url, i) => (
-                <button key={url} type="button" data-photo-url={url}
-                  onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
-                  className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                  <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-          <FileAttachmentList files={item.files} />
-          <div className="flex items-center gap-4">
-            {canEdit && <Link to="/cm/submittal/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("submittal.edit")}</Link>}
-            {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
-          </div>
-          <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
+    <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
+      <p className="font-mono text-[10px] text-white/30">
+        {[item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
+      </p>
+      {canEdit && (
+        <SegmentedField
+          options={statusOptions.map((s) => ({ value: s, label: t(`submittalStatus.${s}`), color: STATUS_COLOR[s] }))}
+          value={item.status} disabled={busy} onChange={handleStatusChange}
+        />
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {item.approval_code && (
+          <span className="px-2 py-0.5 rounded-full bg-white/5 font-mono text-[10px] text-white/60" title={t(`approvalCode.${item.approval_code}`)}>{item.approval_code}</span>
+        )}
+        {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
+        {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
+      </div>
+      {item.photos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {item.photos.map((url, i) => (
+            <button key={url} type="button" data-photo-url={url}
+              onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
+              className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+              <img src={item.photo_thumbs[i] || url} alt="" className="w-16 h-16 rounded-xl object-cover" />
+            </button>
+          ))}
         </div>
       )}
+      <FileAttachmentList files={item.files} />
+      <div className="flex items-center gap-4">
+        {canEdit && <Link to="/cm/submittal/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("submittal.edit")}</Link>}
+        {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
+      </div>
+      <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
       {confirmingDelete && (
         <ConfirmationDialog message={t("submittal.confirmDelete")} confirmLabel={t("common.delete")}
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
@@ -270,16 +271,10 @@ function CMSubmittalPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const activeProject = projects?.find((p) => p.id === projectId);
-  const projectDisciplines = enabledDisciplines(activeProject);
   const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "submittal", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "submittal", "edit");
-  const canApprove = usePermission(projectId || undefined, user?.id, "submittal", "approve");
-  const canDelete = usePermission(projectId || undefined, user?.id, "submittal", "delete");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
-  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
@@ -336,7 +331,7 @@ function CMSubmittalPage() {
                 </div>
               )}
               <div className="flex flex-col gap-3">
-                {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} disciplines={projectDisciplines} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} />)}
               </div>
             </>
             {canCreate && <FAB label={t("submittal.newBtn")} onClick={() => navigate({ to: "/cm/submittal/new" })} />}
@@ -359,15 +354,6 @@ function CMSubmittalPage() {
             }
             invalidate();
           }}
-        />
-      )}
-
-      {lightbox && (
-        <PhotoLightbox
-          items={lightbox.items}
-          index={lightbox.index}
-          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
-          onClose={() => setLightbox(null)}
         />
       )}
     </div>
