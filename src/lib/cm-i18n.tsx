@@ -773,6 +773,8 @@ const EN: Dict = {
   "workerCategory.Other": "Other",
 
   "equipment.title": "Equipment Record",
+  "equipment.settingsTypes": "Suggested equipment types",
+  "equipment.settingsTypesHint": "Shown as quick suggestions when entering an equipment item's type.",
   "equipment.subtitle": "Project equipment inventory",
   "equipment.new": "New Equipment",
   "equipment.edit": "Edit Equipment",
@@ -881,6 +883,9 @@ const EN: Dict = {
   "weather.Storm": "Storm",
 
   "punchList.title": "Punch List",
+  "punchList.settingsDefaults": "Defaults",
+  "punchList.settingsDefaultPriority": "Default priority for new items",
+  "punchList.settingsRequireAfterPhoto": "Require an after-photo before submitting for check",
   "punchList.subtitle": "The work that isn't finished yet.",
   "punchList.new": "New Work Item",
   "punchList.edit": "Edit Work Item",
@@ -927,6 +932,8 @@ const EN: Dict = {
   "taskPriority.High": "High",
 
   "inspection.title": "Inspection",
+  "inspection.settingsDefaults": "Defaults",
+  "inspection.settingsDefaultType": "Default inspection type for new records",
   "inspection.new": "New Inspection",
   "inspection.edit": "Edit inspection",
   "inspection.detailsTab": "Details",
@@ -966,6 +973,9 @@ const EN: Dict = {
   "inspectionStatus.Not Applicable": "Not Applicable",
 
   "safety.title": "Safety",
+  "safety.settingsDefaults": "Defaults",
+  "safety.settingsDefaultRecordType": "Default record type for new records",
+  "safety.settingsDefaultSeverity": "Default severity for new records",
   "safety.new": "New Safety Record",
   "safety.edit": "Edit",
   "safety.detailsTab": "Details",
@@ -1006,6 +1016,8 @@ const EN: Dict = {
   "safetySeverity.Critical": "Critical",
 
   "submittal.title": "Submittal",
+  "submittal.settingsDefaults": "Defaults",
+  "submittal.settingsDefaultType": "Default submittal type for new records",
   "submittal.new": "New Submittal",
   "submittal.edit": "Edit Submittal",
   "submittal.detailsTab": "Details",
@@ -1183,6 +1195,9 @@ const EN: Dict = {
   "tile.instructions": "Instructions",
 
   "contracts.title": "Contracts",
+  "contracts.settingsDefaults": "Defaults",
+  "contracts.settingsDefaultType": "Default contract type for new contracts",
+  "contracts.settingsDefaultCurrency": "Default currency for new contracts",
   "contracts.new": "New Contract",
   "contracts.edit": "Edit Contract",
   "contracts.detailsTab": "Details",
@@ -1217,6 +1232,9 @@ const EN: Dict = {
   "contractStatus.Closed": "Closed",
 
   "instructions.title": "Instructions",
+  "instructions.settingsDefaults": "Defaults",
+  "instructions.settingsDefaultSourceType": "Default source for new instructions",
+  "instructions.settingsDefaultPriority": "Default priority for new instructions",
   "instructions.new": "Issue Instruction",
   "instructions.edit": "Edit Instruction",
   "instructions.detailsTab": "Details",
@@ -2052,6 +2070,8 @@ const KM: Dict = {
   "workerCategory.Other": "ផ្សេងៗ",
 
   "equipment.title": "កំណត់ត្រាគ្រឿងឧបករណ៍",
+  "equipment.settingsTypes": "ប្រភេទគ្រឿងឧបករណ៍ដែលបានស្នើ",
+  "equipment.settingsTypesHint": "បង្ហាញជាការស្នើផ្ដល់រហ័សនៅពេលបញ្ចូលប្រភេទរបស់ធាតុគ្រឿងឧបករណ៍។",
   "equipment.subtitle": "សារពើភ័ណ្ឌគ្រឿងឧបករណ៍គម្រោង",
   "equipment.new": "គ្រឿងឧបករណ៍ថ្មី",
   "equipment.edit": "កែសម្រួលគ្រឿងឧបករណ៍",
@@ -2160,6 +2180,9 @@ const KM: Dict = {
   "weather.Storm": "ព្យុះ",
 
   "punchList.title": "បញ្ជីការងារនៅសល់",
+  "punchList.settingsDefaults": "លំនាំដើម",
+  "punchList.settingsDefaultPriority": "អាទិភាពលំនាំដើមសម្រាប់ធាតុថ្មី",
+  "punchList.settingsRequireAfterPhoto": "តម្រូវឱ្យមានរូបថតក្រោយពេលមុនពេលដាក់ស្នើត្រួតពិនិត្យ",
   "punchList.subtitle": "ការងារដែលនៅមិនទាន់ចប់។",
   "punchList.new": "ធាតុការងារថ្មី",
   "punchList.edit": "កែសម្រួលធាតុការងារ",
@@ -2206,6 +2229,8 @@ const KM: Dict = {
   "taskPriority.High": "ខ្ពស់",
 
   "inspection.title": "ការត្រួតពិនិត្យ",
+  "inspection.settingsDefaults": "លំនាំដើម",
+  "inspection.settingsDefaultType": "ប្រភេទត្រួតពិនិត្យលំនាំដើមសម្រាប់កំណត់ត្រាថ្មី",
   "inspection.new": "ការត្រួតពិនិត្យថ្មី",
   "inspection.edit": "កែសម្រួលការត្រួតពិនិត្យ",
   "inspection.detailsTab": "ព័ត៌មានលម្អិត",
@@ -2245,6 +2270,9 @@ const KM: Dict = {
   "inspectionStatus.Not Applicable": "មិនពាក់ព័ន្ធ",
 
   "safety.title": "សុវត្ថិភាព",
+  "safety.settingsDefaults": "លំនាំដើម",
+  "safety.settingsDefaultRecordType": "ប្រភេទកំណត់ត្រាលំនាំដើមសម្រាប់កំណត់ត្រាថ្មី",
+  "safety.settingsDefaultSeverity": "កម្រិតធ្ងន់ធ្ងរលំនាំដើមសម្រាប់កំណត់ត្រាថ្មី",
   "safety.new": "កំណត់ត្រាសុវត្ថិភាពថ្មី",
   "safety.edit": "កែសម្រួល",
   "safety.detailsTab": "ព័ត៌មានលម្អិត",
@@ -2285,6 +2313,8 @@ const KM: Dict = {
   "safetySeverity.Critical": "គ្រោះថ្នាក់ធ្ងន់ធ្ងរ",
 
   "submittal.title": "ឯកសារដាក់ស្នើ",
+  "submittal.settingsDefaults": "លំនាំដើម",
+  "submittal.settingsDefaultType": "ប្រភេទឯកសារដាក់ស្នើលំនាំដើមសម្រាប់កំណត់ត្រាថ្មី",
   "submittal.new": "ឯកសារដាក់ស្នើថ្មី",
   "submittal.edit": "កែសម្រួលឯកសារដាក់ស្នើ",
   "submittal.detailsTab": "ព័ត៌មានលម្អិត",
@@ -2462,6 +2492,9 @@ const KM: Dict = {
   "tile.instructions": "សេចក្តីណែនាំ",
 
   "contracts.title": "កិច្ចសន្យា",
+  "contracts.settingsDefaults": "លំនាំដើម",
+  "contracts.settingsDefaultType": "ប្រភេទកិច្ចសន្យាលំនាំដើមសម្រាប់កិច្ចសន្យាថ្មី",
+  "contracts.settingsDefaultCurrency": "រូបិយប័ណ្ណលំនាំដើមសម្រាប់កិច្ចសន្យាថ្មី",
   "contracts.new": "កិច្ចសន្យាថ្មី",
   "contracts.edit": "កែសម្រួលកិច្ចសន្យា",
   "contracts.detailsTab": "ព័ត៌មានលម្អិត",
@@ -2496,6 +2529,9 @@ const KM: Dict = {
   "contractStatus.Closed": "បានបិទ",
 
   "instructions.title": "សេចក្តីណែនាំ",
+  "instructions.settingsDefaults": "លំនាំដើម",
+  "instructions.settingsDefaultSourceType": "ប្រភពលំនាំដើមសម្រាប់សេចក្តីណែនាំថ្មី",
+  "instructions.settingsDefaultPriority": "អាទិភាពលំនាំដើមសម្រាប់សេចក្តីណែនាំថ្មី",
   "instructions.new": "ចេញសេចក្តីណែនាំ",
   "instructions.edit": "កែសម្រួលសេចក្តីណែនាំ",
   "instructions.detailsTab": "ព័ត៌មានលម្អិត",
@@ -3331,6 +3367,8 @@ const ZH: Dict = {
   "workerCategory.Other": "其他",
 
   "equipment.title": "设备记录",
+  "equipment.settingsTypes": "建议的设备类型",
+  "equipment.settingsTypesHint": "在输入设备项目的类型时显示为快速建议。",
   "equipment.subtitle": "项目设备清单",
   "equipment.new": "新建设备",
   "equipment.edit": "编辑设备",
@@ -3439,6 +3477,9 @@ const ZH: Dict = {
   "weather.Storm": "暴风雨",
 
   "punchList.title": "问题清单",
+  "punchList.settingsDefaults": "默认设置",
+  "punchList.settingsDefaultPriority": "新建项目的默认优先级",
+  "punchList.settingsRequireAfterPhoto": "提交检查前要求上传后置照片",
   "punchList.subtitle": "尚未完成的工作。",
   "punchList.new": "新建工作项",
   "punchList.edit": "编辑工作项",
@@ -3485,6 +3526,8 @@ const ZH: Dict = {
   "taskPriority.High": "高",
 
   "inspection.title": "检查",
+  "inspection.settingsDefaults": "默认设置",
+  "inspection.settingsDefaultType": "新建记录的默认检查类型",
   "inspection.new": "新建检查",
   "inspection.edit": "编辑检查",
   "inspection.detailsTab": "详情",
@@ -3524,6 +3567,9 @@ const ZH: Dict = {
   "inspectionStatus.Not Applicable": "不适用",
 
   "safety.title": "安全",
+  "safety.settingsDefaults": "默认设置",
+  "safety.settingsDefaultRecordType": "新建记录的默认记录类型",
+  "safety.settingsDefaultSeverity": "新建记录的默认严重程度",
   "safety.new": "新建安全记录",
   "safety.edit": "编辑",
   "safety.detailsTab": "详情",
@@ -3564,6 +3610,8 @@ const ZH: Dict = {
   "safetySeverity.Critical": "严重",
 
   "submittal.title": "报审",
+  "submittal.settingsDefaults": "默认设置",
+  "submittal.settingsDefaultType": "新建记录的默认报审类型",
   "submittal.new": "新建报审",
   "submittal.edit": "编辑报审",
   "submittal.detailsTab": "详情",
@@ -3741,6 +3789,9 @@ const ZH: Dict = {
   "tile.instructions": "指令",
 
   "contracts.title": "合同",
+  "contracts.settingsDefaults": "默认设置",
+  "contracts.settingsDefaultType": "新建合同的默认合同类型",
+  "contracts.settingsDefaultCurrency": "新建合同的默认货币",
   "contracts.new": "新建合同",
   "contracts.edit": "编辑合同",
   "contracts.detailsTab": "详情",
@@ -3775,6 +3826,9 @@ const ZH: Dict = {
   "contractStatus.Closed": "已关闭",
 
   "instructions.title": "指令",
+  "instructions.settingsDefaults": "默认设置",
+  "instructions.settingsDefaultSourceType": "新建指令的默认来源",
+  "instructions.settingsDefaultPriority": "新建指令的默认优先级",
   "instructions.new": "发出指令",
   "instructions.edit": "编辑指令",
   "instructions.detailsTab": "详情",

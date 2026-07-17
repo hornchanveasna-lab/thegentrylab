@@ -39,15 +39,15 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "
 const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Ready for Check", "Done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 
-export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, backTo, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMTask; canApprove: boolean; backTo: string; onCreated: () => void;
+export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, defaultPriority, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMTask; canApprove: boolean; defaultPriority?: TaskPriority; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Done" && s !== "Ready for Check") || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
   const [status, setStatus] = useState<TaskStatus>(existing?.status ?? "To Do");
-  const [priority, setPriority] = useState<TaskPriority>(existing?.priority ?? "Medium");
+  const [priority, setPriority] = useState<TaskPriority>(existing?.priority ?? defaultPriority ?? "Medium");
   const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
   const [assignee, setAssignee] = useState(existing?.assignee ?? "");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
@@ -159,8 +159,8 @@ export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, ba
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged, onOpenPhoto }: {
-  item: CMTask; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
+function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, requireAfterPhoto, onChanged, onOpenPhoto }: {
+  item: CMTask; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string; requireAfterPhoto: boolean;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
@@ -197,10 +197,10 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
     try { await deleteCMTask(item.id); onChanged(); } finally { setBusy(false); }
   };
   const handleSubmitForCheck = async () => {
-    if (afterPhotos.length === 0) return;
+    if (requireAfterPhoto && afterPhotos.length === 0) return;
     setBusy(true);
     try {
-      const uploaded = await stampAndUploadCMPhotos(item.owner_id, item.project_id, afterPhotos);
+      const uploaded = afterPhotos.length > 0 ? await stampAndUploadCMPhotos(item.owner_id, item.project_id, afterPhotos) : [];
       await updateCMTask(item.id, {
         after_photos: [...item.after_photos, ...uploaded.map((u) => u.url)],
         after_photo_thumbs: [...item.after_photo_thumbs, ...uploaded.map((u) => u.thumbUrl)],
@@ -309,7 +309,7 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
                 <>
                   <PhotoPicker photos={afterPhotos} setPhotos={setAfterPhotos} disabled={busy} />
                   <div className="flex gap-2">
-                    <button type="button" onClick={handleSubmitForCheck} disabled={busy || afterPhotos.length === 0}
+                    <button type="button" onClick={handleSubmitForCheck} disabled={busy || (requireAfterPhoto && afterPhotos.length === 0)}
                       className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-black disabled:opacity-40" style={{ backgroundColor: "#a78bfa" }}>
                       {t("punchList.submitForCheck")}
                     </button>
@@ -385,6 +385,8 @@ function CMPunchListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const activeProject = projects?.find((p) => p.id === projectId);
+  const requireAfterPhoto = (activeProject?.module_defaults?.punch_list as { requireAfterPhoto?: boolean } | undefined)?.requireAfterPhoto ?? true;
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "punch_list", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "punch_list", "edit");
@@ -455,7 +457,7 @@ function CMPunchListPage() {
                   <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
                 )}
                 <div className="flex flex-col gap-3">
-                  {open.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {open.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} requireAfterPhoto={requireAfterPhoto} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                 </div>
 
                 {done.length > 0 && (
@@ -465,7 +467,7 @@ function CMPunchListPage() {
                     </button>
                     {showCompleted && (
                       <div className="flex flex-col gap-3 mt-3">
-                        {done.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                        {done.map((t) => <PunchItemCard key={t.id} item={t} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} requireAfterPhoto={requireAfterPhoto} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
                       </div>
                     )}
                   </div>

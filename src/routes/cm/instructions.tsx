@@ -46,20 +46,20 @@ const PRIORITY_COLOR: Record<InstructionPriority, string> = {
   Low: "#94a3b8", Medium: "#fbbf24", High: "#f97316", Critical: "#f43f5e",
 };
 
-export function NewInstructionSheet({ ownerId, projectId, contractId, existing, backTo, onCreated }: {
-  ownerId: string; projectId: string; contractId?: string; existing?: CMInstruction; backTo: string; onCreated: () => void;
+export function NewInstructionSheet({ ownerId, projectId, contractId, existing, defaultSourceType, defaultPriority, backTo, onCreated }: {
+  ownerId: string; projectId: string; contractId?: string; existing?: CMInstruction; defaultSourceType?: InstructionSourceType; defaultPriority?: InstructionPriority; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const { data: contracts } = useCMContracts(projectId);
   const [selectedContractId, setSelectedContractId] = useState(existing?.contract_id ?? contractId ?? "");
   const [title, setTitle] = useState(existing?.title ?? "");
-  const [sourceType, setSourceType] = useState<InstructionSourceType>(existing?.source_type ?? "Consultant");
+  const [sourceType, setSourceType] = useState<InstructionSourceType>(existing?.source_type ?? defaultSourceType ?? "Consultant");
   const [sourceCompanyId, setSourceCompanyId] = useState<string | null>(existing?.source_company_id ?? null);
   const [recipientCompanyId, setRecipientCompanyId] = useState<string | null>(existing?.recipient_company_id ?? null);
   const [recipientNote, setRecipientNote] = useState(existing?.recipient_note ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
   const [dueDate, setDueDate] = useState(existing?.due_date ?? "");
-  const [priority, setPriority] = useState<InstructionPriority>(existing?.priority ?? "Medium");
+  const [priority, setPriority] = useState<InstructionPriority>(existing?.priority ?? defaultPriority ?? "Medium");
   const [photos, setPhotos] = useState<File[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);

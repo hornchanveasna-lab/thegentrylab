@@ -39,20 +39,20 @@ const STATUS_OPTIONS: SubmittalStatus[] = ["Draft", "Submitted", "Under Review",
 const APPROVAL_STATUSES: SubmittalStatus[] = ["Approved", "Approved as Noted", "Revise & Resubmit", "Rejected"];
 /** i18n key suffixes for SUBMITTAL_TYPES — a few of those values (e.g.
  *  "O&M Manual") aren't safe to use directly as translation keys. */
-const SUBMITTAL_TYPE_KEY: Record<SubmittalType, string> = {
+export const SUBMITTAL_TYPE_KEY: Record<SubmittalType, string> = {
   "Shop Drawing": "shopDrawing", "Material Submittal": "materialSubmittal", "Method Statement": "methodStatement",
   "Material Sample": "materialSample", "Technical Datasheet": "technicalDatasheet", Calculation: "calculation",
   RFI: "rfi", ITP: "itp", "Test Report": "testReport", "As-Built Drawing": "asBuiltDrawing",
   "O&M Manual": "omManual", Warranty: "warranty", "Closeout Document": "closeoutDocument",
 };
 
-export function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplines, backTo, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; disciplines: Discipline[]; backTo: string; onCreated: () => void;
+export function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, disciplines, defaultType, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSubmittal; canApprove: boolean; disciplines: Discipline[]; defaultType?: SubmittalType; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
-  const [submittalType, setSubmittalType] = useState<SubmittalType | "">(existing?.submittal_type ?? "");
+  const [submittalType, setSubmittalType] = useState<SubmittalType | "">(existing?.submittal_type ?? defaultType ?? "");
   const [specSection, setSpecSection] = useState(existing?.spec_section ?? "");
   const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
   const [status, setStatus] = useState<SubmittalStatus>(existing?.status ?? "Draft");

@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useSelectedProject } from "@/components/cm/shared";
+import type { InstructionSourceType, InstructionPriority } from "@/lib/cm-data";
 import { NewInstructionSheet } from "./instructions";
 
 export const Route = createFileRoute("/cm/instructions_/new")({
@@ -14,6 +15,7 @@ function NewInstructionPage() {
   const queryClient = useQueryClient();
   const { projects, projectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
+  const instructionDefaults = activeProject?.module_defaults?.instructions as { sourceType?: InstructionSourceType; priority?: InstructionPriority } | undefined;
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user || !projectId) return null;
@@ -22,7 +24,7 @@ function NewInstructionPage() {
 
   return (
     <NewInstructionSheet
-      ownerId={ownerId} projectId={projectId} backTo="/cm/instructions"
+      ownerId={ownerId} projectId={projectId} defaultSourceType={instructionDefaults?.sourceType} defaultPriority={instructionDefaults?.priority} backTo="/cm/instructions"
       onCreated={() => {
         queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] });
         navigate({ to: "/cm/instructions" });

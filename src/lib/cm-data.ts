@@ -54,6 +54,10 @@ export interface CMProject {
   manpower_default_trades: string[] | null;
   /** Suggested BOQ category list (BOQ has no built-in list; free text otherwise). */
   boq_default_categories: string[] | null;
+  /** Per-module New-entry defaults and behavior toggles, e.g.
+   *  { punch_list: { priority: "High", requireAfterPhoto: true }, safety: { recordType: "...", severity: "Low" } }.
+   *  Generic JSON so new modules/fields don't need their own migration. */
+  module_defaults: Record<string, Record<string, unknown>> | null;
   created_at: string;
   updated_at: string;
 }

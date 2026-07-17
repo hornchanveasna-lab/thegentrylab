@@ -37,14 +37,14 @@ const STATUS_COLOR: Record<InspectionStatus, string> = {
 };
 const STATUS_OPTIONS: InspectionStatus[] = ["Scheduled", "Passed", "Failed", "Not Applicable"];
 
-export function NewInspectionSheet({ ownerId, projectId, existing, canApprove, disciplines, backTo, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMInspection; canApprove: boolean; disciplines: Discipline[]; backTo: string; onCreated: () => void;
+export function NewInspectionSheet({ ownerId, projectId, existing, canApprove, disciplines, defaultType, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMInspection; canApprove: boolean; disciplines: Discipline[]; defaultType?: InspectionType | null; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Passed" && s !== "Failed") || s === existing?.status);
   const [title, setTitle] = useState(existing?.title ?? "");
   const [status, setStatus] = useState<InspectionStatus>(existing?.status ?? "Scheduled");
-  const [inspectionType, setInspectionType] = useState<InspectionType | null>(existing?.inspection_type ?? null);
+  const [inspectionType, setInspectionType] = useState<InspectionType | null>(existing?.inspection_type ?? defaultType ?? null);
   const [discipline, setDiscipline] = useState<Discipline | null>(existing?.discipline ?? null);
   const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
   const [inspector, setInspector] = useState(existing?.inspector ?? "");

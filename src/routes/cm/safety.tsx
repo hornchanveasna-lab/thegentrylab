@@ -32,14 +32,14 @@ const SEVERITY_COLOR: Record<SafetySeverity, string> = { Low: "#94a3b8", Medium:
 const TYPE_OPTIONS: SafetyRecordType[] = [...SAFETY_RECORD_TYPES];
 const SEVERITY_OPTIONS: SafetySeverity[] = ["Low", "Medium", "High", "Critical"];
 
-export function NewSafetySheet({ ownerId, projectId, existing, backTo, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMSafetyRecord; backTo: string; onCreated: () => void;
+export function NewSafetySheet({ ownerId, projectId, existing, defaultRecordType, defaultSeverity, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSafetyRecord; defaultRecordType?: SafetyRecordType; defaultSeverity?: SafetySeverity; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [recordType, setRecordType] = useState<SafetyRecordType>(existing?.record_type ?? "Toolbox Talk");
+  const [recordType, setRecordType] = useState<SafetyRecordType>(existing?.record_type ?? defaultRecordType ?? "Toolbox Talk");
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
-  const [severity, setSeverity] = useState<SafetySeverity>(existing?.severity ?? "Low");
+  const [severity, setSeverity] = useState<SafetySeverity>(existing?.severity ?? defaultSeverity ?? "Low");
   const [recordDate, setRecordDate] = useState(() => existing?.record_date ?? new Date().toISOString().slice(0, 10));
   const [involved, setInvolved] = useState(existing?.involved ?? "");
   const [photos, setPhotos] = useState<File[]>([]);

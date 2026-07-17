@@ -33,15 +33,15 @@ const STATUS_COLOR: Record<ContractStatus, string> = {
   Active: "#34d399", Completed: "#94a3b8", Terminated: "#f43f5e", Closed: "#94a3b8",
 };
 
-export function NewContractSheet({ ownerId, projectId, existing, backTo, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMContract; backTo: string; onCreated: () => void;
+export function NewContractSheet({ ownerId, projectId, existing, defaultContractType, defaultCurrency, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMContract; defaultContractType?: ContractType; defaultCurrency?: string; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const [title, setTitle] = useState(existing?.title ?? "");
   const [contractNumber, setContractNumber] = useState(existing?.contract_number ?? "");
-  const [contractType, setContractType] = useState<ContractType>(existing?.contract_type ?? "Main Contract");
+  const [contractType, setContractType] = useState<ContractType>(existing?.contract_type ?? defaultContractType ?? "Main Contract");
   const [counterpartyId, setCounterpartyId] = useState<string | null>(existing?.counterparty_company_id ?? null);
-  const [currency, setCurrency] = useState(existing?.currency ?? "");
+  const [currency, setCurrency] = useState(existing?.currency ?? defaultCurrency ?? "");
   const [contractValue, setContractValue] = useState(existing?.contract_value != null ? String(existing.contract_value) : "");
   const [startDate, setStartDate] = useState(existing?.start_date ?? "");
   const [completionDate, setCompletionDate] = useState(existing?.completion_date ?? "");
