@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, Sheet, FormPage, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, setPendingHighlight, setLastProject, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON,
   WeekCalendarStrip, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
   ManpowerEntrySheet,
@@ -380,9 +380,9 @@ async function resolveDraftRowPhotos<T extends { photos?: string[] | null; photo
 
 type LogSectionKey = "weather" | "manpower" | "deliveries" | "visitors" | "delays" | "notes";
 
-function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }: {
+export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCreated }: {
   ownerId: string; projectId: string; existing?: CMDailyLog; logs?: (CMDailyLog | CMDailyLogWithProject)[];
-  onClose: () => void; onCreated: () => void;
+  backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const { data: boqItems } = useActiveCMBOQItems(projectId);
@@ -517,11 +517,11 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
   };
 
   return (
-    <Sheet title={t(existing ? "siteDiary.editEntry" : "siteDiary.newEntry")} onClose={onClose}>
-      <div className="sticky top-0 z-10 bg-[#0d0d0e] px-6 pb-2 pt-1">
+    <FormPage title={t(existing ? "siteDiary.editEntry" : "siteDiary.newEntry")} backTo={backTo}>
+      <div className="sticky top-0 z-10 bg-[#0a0a0b] pb-2 pt-1 -mx-4 px-4">
         <SegmentedField options={TAB_OPTIONS} value={activeTab} onChange={setActiveTab} disabled={saving} />
       </div>
-      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-3 flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="pt-3 flex flex-col gap-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("siteDiary.date")}</span>
@@ -724,7 +724,7 @@ function NewLogSheet({ ownerId, projectId, existing, logs, onClose, onCreated }:
           onClose={() => setManpowerSheet(null)}
         />
       )}
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -944,7 +944,6 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashP
 }) {
   const { t } = useCMLang();
   const navigate = useNavigate();
-  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [resourceTab, setResourceTab] = useState<"manpower" | "equipment">("manpower");
@@ -1108,9 +1107,9 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashP
 
       <div className="flex items-center gap-4 pt-1">
         {canEdit && (
-          <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+          <Link to="/cm/site-diary/$id/edit" params={{ id: log.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
             {t("siteDiary.editEntry")}
-          </button>
+          </Link>
         )}
         {canDelete && (
           <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
@@ -1123,10 +1122,6 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashP
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
       )}
 
-      {editing && canEdit && (
-        <NewLogSheet ownerId={log.owner_id} projectId={log.project_id} existing={log}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
-      )}
       <RecordDetailExtras projectId={log.project_id} entityType="site_diary" module="siteDiary" entityId={log.id} userId={userId} />
     </div>
   );
@@ -1135,6 +1130,7 @@ function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashP
 function CMSiteDiaryPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects.find((p) => p.id === projectId);
@@ -1148,7 +1144,6 @@ function CMSiteDiaryPage() {
   const { data: allLogs, isLoading: allLoading } = useAllCMDailyLogs(viewAll ? user?.id : undefined);
   const logs: (CMDailyLog | CMDailyLogWithProject)[] | undefined = viewAll ? allLogs : singleLogs;
   const isLoading = viewAll ? allLoading : singleLoading;
-  const [showNew, setShowNew] = useState(false);
   const [showCapture, setShowCapture] = useState(false);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -1177,7 +1172,6 @@ function CMSiteDiaryPage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
     queryClient.invalidateQueries({ queryKey: ["cm_all_daily_logs", user?.id] });
-    setShowNew(false);
   };
 
   const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
@@ -1300,12 +1294,10 @@ function CMSiteDiaryPage() {
                 </div>
               )
             )}
-            {!viewAll && canCreate && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => setShowNew(true)} />}
+            {!viewAll && canCreate && <FAB label={t("siteDiary.newEntryBtn")} onClick={() => navigate({ to: "/cm/site-diary/new" })} />}
           </>
         )}
       </main>
-
-      {showNew && !viewAll && projectId && canCreate && <NewLogSheet ownerId={user.id} projectId={projectId} logs={logs} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {showCapture && !viewAll && projectId && canCreate && (
         <CaptureSheet ownerId={user.id} projectId={projectId} disciplines={projectDisciplines}

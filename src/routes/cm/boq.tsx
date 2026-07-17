@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls, ConfirmationDialog } from "@/components/cm/shared";
+import { ModuleHeader, Sheet, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls, ConfirmationDialog } from "@/components/cm/shared";
 import {
   useCMBOQItems,
   createCMBOQItem,
@@ -43,15 +43,15 @@ export const Route = createFileRoute("/cm/boq")({
   component: CMBoqPage,
 });
 
-function NewBoqItemSheet({ ownerId, projectId, versionId, onClose, onCreated }: {
-  ownerId: string; projectId: string; versionId: string | null; onClose: () => void; onCreated: () => void;
+export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, backTo, onCreated }: {
+  ownerId: string; projectId: string; versionId: string | null; existing?: CMBOQItem; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [description, setDescription] = useState("");
-  const [unit, setUnit] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unitCost, setUnitCost] = useState("");
-  const [category, setCategory] = useState("");
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [unit, setUnit] = useState(existing?.unit ?? "");
+  const [quantity, setQuantity] = useState(existing ? String(existing.quantity) : "");
+  const [unitCost, setUnitCost] = useState(existing ? String(existing.unit_cost) : "");
+  const [category, setCategory] = useState(existing?.category ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -61,11 +61,16 @@ function NewBoqItemSheet({ ownerId, projectId, versionId, onClose, onCreated }: 
     setSaving(true);
     setError("");
     try {
-      await createCMBOQItem(ownerId, projectId, {
+      const patch = {
         description: description.trim(), unit: unit.trim() || null,
         quantity: quantity ? Number(quantity) : 0, unit_cost: unitCost ? Number(unitCost) : 0,
-        category: category.trim() || null, version_id: versionId,
-      });
+        category: category.trim() || null,
+      };
+      if (existing) {
+        await updateCMBOQItem(existing.id, patch);
+      } else {
+        await createCMBOQItem(ownerId, projectId, { ...patch, version_id: versionId });
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add BOQ item");
@@ -74,8 +79,8 @@ function NewBoqItemSheet({ ownerId, projectId, versionId, onClose, onCreated }: 
   };
 
   return (
-    <Sheet title={t("boq.new")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+    <FormPage title={t(existing ? "boq.edit" : "boq.new")} backTo={backTo}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("boq.description")}</span>
           <input className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} required autoFocus disabled={saving} />
@@ -105,7 +110,7 @@ function NewBoqItemSheet({ ownerId, projectId, versionId, onClose, onCreated }: 
           {saving ? t("boq.adding") : t("boq.addItem")}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -159,6 +164,14 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged, onOpenDeta
         <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>
           {(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </span>
+        {canEdit && (
+          <Link to="/cm/boq/$id/edit" params={{ id: item.id }}
+            className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+            </svg>
+          </Link>
+        )}
         {canDelete && (
           <button onClick={() => setConfirmingDelete(true)} disabled={busy}
             className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
@@ -581,6 +594,7 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
 function CMBoqPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMBOQItems(projectId || undefined);
@@ -591,7 +605,6 @@ function CMBoqPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "boq", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "boq", "delete");
   const canApprove = usePermission(projectId || undefined, user?.id, "boq", "approve");
-  const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [detailItem, setDetailItem] = useState<CMBOQItem | null>(null);
   const [search, setSearch] = useState("");
@@ -604,7 +617,6 @@ function CMBoqPage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_boq_items", projectId] });
     queryClient.invalidateQueries({ queryKey: ["cm_boq_versions", projectId] });
-    setShowNew(false);
     setShowImport(false);
   };
 
@@ -791,14 +803,11 @@ function CMBoqPage() {
                 </svg>
               </button>
             )}
-            {effectiveCanCreate && <FAB label={t("boq.newBtn")} onClick={() => setShowNew(true)} />}
+            {effectiveCanCreate && <FAB label={t("boq.newBtn")} onClick={() => navigate({ to: "/cm/boq/new" })} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && effectiveCanCreate && (
-        <NewBoqItemSheet ownerId={user.id} projectId={projectId} versionId={selectedVersion?.id ?? null} onClose={() => setShowNew(false)} onCreated={invalidate} />
-      )}
       {showImport && projectId && canCreate && (
         <ImportBoqSheet ownerId={user.id} projectId={projectId} versions={versions ?? []} defaultVersionId={selectedVersion?.id ?? null}
           onClose={() => setShowImport(false)} onImported={invalidate} />

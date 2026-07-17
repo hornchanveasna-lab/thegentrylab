@@ -1,11 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect,
   useSelectedProject, inputCls, labelCls, EmptyState, ErrorState, StatusBadge, PriorityBadge, ConfirmationDialog, PhotoLightbox,
   WeekCalendarStrip, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
@@ -46,8 +46,8 @@ const PRIORITY_COLOR: Record<InstructionPriority, string> = {
   Low: "#94a3b8", Medium: "#fbbf24", High: "#f97316", Critical: "#f43f5e",
 };
 
-function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose, onCreated }: {
-  ownerId: string; projectId: string; contractId?: string; existing?: CMInstruction; onClose: () => void; onCreated: () => void;
+export function NewInstructionSheet({ ownerId, projectId, contractId, existing, backTo, onCreated }: {
+  ownerId: string; projectId: string; contractId?: string; existing?: CMInstruction; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const { data: contracts } = useCMContracts(projectId);
@@ -98,7 +98,7 @@ function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose
   };
 
   return (
-    <Sheet title={t(existing ? "instructions.edit" : "instructions.new")} onClose={onClose}>
+    <FormPage title={t(existing ? "instructions.edit" : "instructions.new")} backTo={backTo}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("instructions.contract")}</span>
@@ -173,7 +173,7 @@ function NewInstructionSheet({ ownerId, projectId, contractId, existing, onClose
           {existing ? (saving ? t("instructions.saving") : t("instructions.save")) : (saving ? t("instructions.creating") : t("instructions.create"))}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -185,7 +185,6 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
 }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [ackComments, setAckComments] = useState("");
@@ -299,14 +298,14 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
           <FileAttachmentList files={item.files} />
 
           <div className="flex items-center gap-4">
-            {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("instructions.edit")}</button>}
+            {canEdit && (
+              <Link to="/cm/instructions/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+                {t("instructions.edit")}
+              </Link>
+            )}
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("instructions.delete")}</button>}
           </div>
         </div>
-      )}
-      {editing && (
-        <NewInstructionSheet ownerId={ownerId} projectId={item.project_id} existing={item}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
         <ConfirmationDialog message={t("instructions.confirmDelete")} confirmLabel={t("instructions.delete")}
@@ -319,6 +318,7 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
 function CMInstructionsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
@@ -327,7 +327,6 @@ function CMInstructionsPage() {
   const canCreate = usePermission(projectId || undefined, user?.id, "instructions", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "instructions", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "instructions", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
@@ -336,7 +335,7 @@ function CMInstructionsPage() {
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateOf = (i: CMInstruction) => i.created_at.slice(0, 10);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] }); };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -422,16 +421,12 @@ function CMInstructionsPage() {
                       onChanged={invalidate} onOpenPhoto={(its, index) => setLightbox({ items: its, index })} />
                   ))}
                 </div>
-                {canCreate && <FAB label={t("instructions.new")} onClick={() => setShowNew(true)} />}
+                {canCreate && <FAB label={t("instructions.new")} onClick={() => navigate({ to: "/cm/instructions/new" })} />}
               </>
             )}
           </>
         )}
       </main>
-
-      {showNew && projectId && canCreate && contracts && contracts.length > 0 && (
-        <NewInstructionSheet ownerId={ownerId} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />
-      )}
 
       {showQuickUpload && projectId && contracts && contracts.length > 0 && (
         <QuickUploadSheet

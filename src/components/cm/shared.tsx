@@ -837,6 +837,24 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   );
 }
 
+/** Full-page shell for New/Edit forms — replaces `Sheet` for record-creating
+ *  forms so the user gets a whole screen to work with instead of a cramped
+ *  overlay panel. Styled like every other full CM page (BackButton + title
+ *  inside a centered max-width main). */
+export function FormPage({ title, backTo, children }: { title: string; backTo: string; children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+      <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
+        <div className="flex items-center gap-3 mb-6">
+          <BackButton to={backTo} />
+          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
+        </div>
+        {children}
+      </main>
+    </div>
+  );
+}
+
 export function FAB({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
@@ -881,7 +899,7 @@ const manpowerSmallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono upperca
  *  must not be silently combined — the user chooses Edit Existing / Add New
  *  / Cancel). Shared between the Manpower module's own page and Site
  *  Diary's Manpower section so both use the same fast add/edit flow. */
-export function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, companyOptions, tradeOptions, onSave, onClose }: {
+function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptions, tradeOptions, onSave, onClose, renderShell }: {
   ownerId: string;
   projectId: string;
   rows: CMManpowerRow[];
@@ -890,6 +908,7 @@ export function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, compan
   tradeOptions: string[];
   onSave: (next: CMManpowerRow[]) => Promise<void>;
   onClose: () => void;
+  renderShell: (title: string, content: React.ReactNode) => React.ReactNode;
 }) {
   const { t } = useCMLang();
   // The duplicate prompt's "Edit Existing" can retarget the sheet at the
@@ -959,8 +978,7 @@ export function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, compan
 
   const fieldLabel = "text-[10px] font-mono uppercase tracking-widest text-white/35";
 
-  return (
-    <Sheet title={editTarget != null ? t("manpower.editEntry") : t("manpower.addEntry")} onClose={onClose}>
+  return renderShell(editTarget != null ? t("manpower.editEntry") : t("manpower.addEntry"), (
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 px-6 pb-8 pt-2">
         <div className="flex flex-col gap-1">
           <span className={fieldLabel}>{t("siteDiary.company")}</span>
@@ -1074,7 +1092,43 @@ export function ManpowerEntrySheet({ ownerId, projectId, rows, editIndex, compan
           <button type="button" onClick={onClose} className={`${manpowerSmallBtn} px-5 py-2.5 text-white/40`}>{t("common.cancel")}</button>
         </div>
       </form>
-    </Sheet>
+  ));
+}
+
+export function ManpowerEntrySheet(props: {
+  ownerId: string;
+  projectId: string;
+  rows: CMManpowerRow[];
+  editIndex: number | null;
+  companyOptions: string[];
+  tradeOptions: string[];
+  onSave: (next: CMManpowerRow[]) => Promise<void>;
+  onClose: () => void;
+}) {
+  return (
+    <ManpowerEntryFields {...props}
+      renderShell={(title, content) => <Sheet title={title} onClose={props.onClose}>{content}</Sheet>} />
+  );
+}
+
+/** Full-page counterpart to `ManpowerEntrySheet`, used by /cm/manpower's own
+ *  standalone New/Edit routes (Site Diary's embedded manpower-row editor
+ *  stays a Sheet — see ManpowerEntrySheet — since it's a sub-form within an
+ *  already-a-page Edit Entry flow). */
+export function ManpowerEntryFormPage(props: {
+  ownerId: string;
+  projectId: string;
+  rows: CMManpowerRow[];
+  editIndex: number | null;
+  companyOptions: string[];
+  tradeOptions: string[];
+  onSave: (next: CMManpowerRow[]) => Promise<void>;
+  onClose: () => void;
+  backTo: string;
+}) {
+  return (
+    <ManpowerEntryFields {...props}
+      renderShell={(title, content) => <FormPage title={title} backTo={props.backTo}>{content}</FormPage>} />
   );
 }
 

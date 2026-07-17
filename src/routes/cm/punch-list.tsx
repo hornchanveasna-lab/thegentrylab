@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   PriorityBadge, StatusBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -39,8 +39,8 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "
 const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Ready for Check", "Done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 
-function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMTask; canApprove: boolean; onClose: () => void; onCreated: () => void;
+export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMTask; canApprove: boolean; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || (s !== "Done" && s !== "Ready for Check") || s === existing?.status);
@@ -88,8 +88,8 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
   };
 
   return (
-    <Sheet title={t(existing ? "punchList.edit" : "punchList.new")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+    <FormPage title={t(existing ? "punchList.edit" : "punchList.new")} backTo={backTo}>
+      <form onSubmit={handleSubmit} className="pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("punchList.whatNeedsDone")}</span>
           <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("punchList.whatNeedsDonePlaceholder")} required autoFocus disabled={saving} />
@@ -153,7 +153,7 @@ function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, onClose, 
           {existing ? (saving ? t("punchList.saving") : t("punchList.saveChanges")) : (saving ? t("punchList.adding") : t("punchList.addToPunchList"))}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -166,7 +166,6 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("punchList", item.id, () => setOpen(true));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [afterPhotos, setAfterPhotos] = useState<File[]>([]);
@@ -365,16 +364,12 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
           )}
 
           <div className="flex items-center gap-4">
-            {editableNow && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("punchList.edit")}</button>}
+            {editableNow && <Link to="/cm/punch-list/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("punchList.edit")}</Link>}
             {deletableNow && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
           </div>
 
           <RecordDetailExtras projectId={item.project_id} entityType="punch_list" module="punchList" entityId={item.id} userId={userId} locationId={item.location_id} />
         </div>
-      )}
-      {editing && (
-        <NewPunchItemSheet ownerId={item.owner_id} projectId={item.project_id} existing={item} canApprove={canApprove}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
         <ConfirmationDialog message={t("punchList.confirmRemove")} confirmLabel={t("common.delete")}
@@ -387,6 +382,7 @@ function PunchItemCard({ item, canEdit, canApprove, canDelete, userId, onChanged
 function CMPunchListPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMTasks(projectId || undefined);
@@ -394,7 +390,6 @@ function CMPunchListPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "punch_list", "edit");
   const canApprove = usePermission(projectId || undefined, user?.id, "punch_list", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "punch_list", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -403,7 +398,7 @@ function CMPunchListPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -477,12 +472,10 @@ function CMPunchListPage() {
                 )}
             </>
 
-            {canCreate && <FAB label={t("punchList.newBtn")} onClick={() => setShowNew(true)} />}
+            {canCreate && <FAB label={t("punchList.newBtn")} onClick={() => navigate({ to: "/cm/punch-list/new" })} />}
           </>
         )}
       </main>
-
-      {showNew && projectId && <NewPunchItemSheet ownerId={user.id} projectId={projectId} canApprove={canApprove} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {showQuickUpload && projectId && (
         <QuickUploadSheet

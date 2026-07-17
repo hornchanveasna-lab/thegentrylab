@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, ProjectPicker, FieldSelect, SegmentedField, CompanySelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, CompanySelect, useSelectedProject, inputCls, labelCls,
   EmptyState, ErrorState, StatusBadge, ConfirmationDialog, WeekCalendarStrip,
   FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
@@ -33,8 +33,8 @@ const STATUS_COLOR: Record<ContractStatus, string> = {
   Active: "#34d399", Completed: "#94a3b8", Terminated: "#f43f5e", Closed: "#94a3b8",
 };
 
-function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMContract; onClose: () => void; onCreated: () => void;
+export function NewContractSheet({ ownerId, projectId, existing, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMContract; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const [title, setTitle] = useState(existing?.title ?? "");
@@ -78,7 +78,7 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
   };
 
   return (
-    <Sheet title={t(existing ? "contracts.edit" : "contracts.new")} onClose={onClose}>
+    <FormPage title={t(existing ? "contracts.edit" : "contracts.new")} backTo={backTo}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("contracts.titleField")}</span>
@@ -153,7 +153,7 @@ function NewContractSheet({ ownerId, projectId, existing, onClose, onCreated }: 
           {existing ? (saving ? t("contracts.saving") : t("contracts.save")) : (saving ? t("contracts.creating") : t("contracts.create"))}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -162,7 +162,6 @@ function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
 }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { data: companies } = useCMCompanies(ownerId);
@@ -197,14 +196,14 @@ function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
           {item.notes && <p className="text-[12px] text-white/45 whitespace-pre-wrap">{item.notes}</p>}
           <FileAttachmentList files={item.files} />
           <div className="flex items-center gap-4">
-            {canEdit && <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("contracts.edit")}</button>}
+            {canEdit && (
+              <Link to="/cm/contracts/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+                {t("contracts.edit")}
+              </Link>
+            )}
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
           </div>
         </div>
-      )}
-      {editing && (
-        <NewContractSheet ownerId={ownerId} projectId={item.project_id} existing={item}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
         <ConfirmationDialog message={t("contracts.confirmDelete")} confirmLabel={t("common.delete")}
@@ -217,6 +216,7 @@ function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
 function CMContractsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
@@ -224,7 +224,6 @@ function CMContractsPage() {
   const canCreate = usePermission(projectId || undefined, user?.id, "contracts", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "contracts", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "contracts", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
@@ -232,7 +231,7 @@ function CMContractsPage() {
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateOf = (c: CMContract) => c.start_date ?? c.created_at.slice(0, 10);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_contracts", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_contracts", projectId] }); };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -289,14 +288,10 @@ function CMContractsPage() {
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("contracts.new")} onClick={() => setShowNew(true)} />}
+            {canCreate && <FAB label={t("contracts.new")} onClick={() => navigate({ to: "/cm/contracts/new" })} />}
           </>
         )}
       </main>
-
-      {showNew && projectId && canCreate && (
-        <NewContractSheet ownerId={ownerId} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />
-      )}
 
       {showQuickUpload && projectId && (
         <QuickUploadSheet

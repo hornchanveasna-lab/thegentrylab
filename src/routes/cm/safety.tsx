@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -32,8 +32,8 @@ const SEVERITY_COLOR: Record<SafetySeverity, string> = { Low: "#94a3b8", Medium:
 const TYPE_OPTIONS: SafetyRecordType[] = [...SAFETY_RECORD_TYPES];
 const SEVERITY_OPTIONS: SafetySeverity[] = ["Low", "Medium", "High", "Critical"];
 
-function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMSafetyRecord; onClose: () => void; onCreated: () => void;
+export function NewSafetySheet({ ownerId, projectId, existing, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSafetyRecord; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const [recordType, setRecordType] = useState<SafetyRecordType>(existing?.record_type ?? "Toolbox Talk");
@@ -79,7 +79,7 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
   };
 
   return (
-    <Sheet title={t(existing ? "safety.edit" : "safety.new")} onClose={onClose}>
+    <FormPage title={t(existing ? "safety.edit" : "safety.new")} backTo={backTo}>
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("safety.titleField")}</span>
@@ -141,7 +141,7 @@ function NewSafetySheet({ ownerId, projectId, existing, onClose, onCreated }: {
           {saving ? t("safety.saving") : t("safety.save")}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -153,7 +153,6 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, o
 }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { ref, flash, matchedPhotoUrl } = usePendingHighlight("safety", item.id, () => setOpen(true));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -204,7 +203,7 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, o
               </button>
             )}
             {canEdit && (
-              <button onClick={() => setEditing(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</button>
+              <Link to="/cm/safety/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</Link>
             )}
             {canDelete && (
               <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
@@ -212,10 +211,6 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, o
           </div>
           <RecordDetailExtras projectId={item.project_id} entityType="safety" module="safety" entityId={item.id} userId={userId} />
         </div>
-      )}
-      {editing && (
-        <NewSafetySheet ownerId={item.owner_id} projectId={item.project_id} existing={item}
-          onClose={() => setEditing(false)} onCreated={() => { onChanged(); setEditing(false); }} />
       )}
       {confirmingDelete && (
         <ConfirmationDialog message={t("safety.confirmDelete")} confirmLabel={t("safety.delete")}
@@ -228,6 +223,7 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, o
 function CMSafetyPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: records, isLoading, isError, refetch } = useCMSafetyRecords(projectId || undefined);
@@ -235,7 +231,6 @@ function CMSafetyPage() {
   const canEdit = usePermission(projectId || undefined, user?.id, "safety", "edit");
   const canApprove = usePermission(projectId || undefined, user?.id, "safety", "approve");
   const canDelete = usePermission(projectId || undefined, user?.id, "safety", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
@@ -243,7 +238,7 @@ function CMSafetyPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_safety_records", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_safety_records", projectId] }); };
 
   const visibleRecords = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -296,12 +291,10 @@ function CMSafetyPage() {
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("safety.newBtn")} onClick={() => setShowNew(true)} />}
+            {canCreate && <FAB label={t("safety.newBtn")} onClick={() => navigate({ to: "/cm/safety/new" })} />}
           </>
         )}
       </main>
-
-      {showNew && projectId && <NewSafetySheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
 
       {showQuickUpload && projectId && (
         <QuickUploadSheet

@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FAB, Card, ProjectPicker, FieldSelect, LocationSelect, SegmentedField,
+  ModuleHeader, Sheet, FormPage, FAB, Card, ProjectPicker, FieldSelect, LocationSelect, SegmentedField,
   useSelectedProject, inputCls, labelCls, ConfirmationDialog,
 } from "@/components/cm/shared";
 import {
@@ -50,19 +50,19 @@ function varianceColor(actual: number, plan: number): string {
   return "#f43f5e";
 }
 
-function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions, onClose, onCreated }: {
+export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions, existing, backTo, onCreated }: {
   ownerId: string; projectId: string; groupOptions: string[]; boqCategoryOptions: string[];
-  onClose: () => void; onCreated: () => void;
+  existing?: CMScheduleItem; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [groupLabel, setGroupLabel] = useState("");
-  const [title, setTitle] = useState("");
-  const [code, setCode] = useState("");
-  const [boqCategory, setBoqCategory] = useState("");
-  const [locationId, setLocationId] = useState<string | null>(null);
-  const [planStart, setPlanStart] = useState(today());
-  const [planFinish, setPlanFinish] = useState(today());
-  const [weight, setWeight] = useState("1");
+  const [groupLabel, setGroupLabel] = useState(existing?.group_label ?? "");
+  const [title, setTitle] = useState(existing?.title ?? "");
+  const [code, setCode] = useState(existing?.activity_code ?? "");
+  const [boqCategory, setBoqCategory] = useState(existing?.boq_category ?? "");
+  const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
+  const [planStart, setPlanStart] = useState(existing?.plan_start ?? today());
+  const [planFinish, setPlanFinish] = useState(existing?.plan_finish ?? today());
+  const [weight, setWeight] = useState(existing ? String(existing.weight) : "1");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"details" | "planning">("details");
@@ -73,14 +73,19 @@ function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions
     setSaving(true);
     setError("");
     try {
-      await createCMScheduleItem(ownerId, projectId, {
+      const patch = {
         group_label: groupLabel.trim(), title: title.trim(),
         activity_code: code.trim() || null,
         boq_category: boqCategory || null,
         location_id: locationId,
         plan_start: planStart, plan_finish: planFinish,
         weight: Number(weight) || 1,
-      });
+      };
+      if (existing) {
+        await updateCMScheduleItem(existing.id, patch);
+      } else {
+        await createCMScheduleItem(ownerId, projectId, patch);
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add activity");
@@ -89,8 +94,8 @@ function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions
   };
 
   return (
-    <Sheet title={t("schedule.new")} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
+    <FormPage title={t(existing ? "schedule.edit" : "schedule.new")} backTo={backTo}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1.5">
           <span className={labelCls}>{t("schedule.groupLabel")}</span>
           <input className={inputCls} list="schedule-group-options" value={groupLabel} onChange={(e) => setGroupLabel(e.target.value)} required autoFocus disabled={saving} />
@@ -157,7 +162,7 @@ function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions
           {saving ? t("schedule.adding") : t("schedule.addActivity")}
         </button>
       </form>
-    </Sheet>
+    </FormPage>
   );
 }
 
@@ -365,6 +370,14 @@ function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, on
           <span className="font-mono text-[11px]" style={{ color: varianceColor(Number(actual) || 0, plan) }}>%</span>
         </div>
       </div>
+      {canEdit && (
+        <Link to="/cm/schedule/$id/edit" params={{ id: item.id }}
+          className="text-white/25 hover:text-white/70 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+          </svg>
+        </Link>
+      )}
       {canDelete && (
         <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
       )}
@@ -446,6 +459,7 @@ function GanttView({ groups }: { groups: [string, CMScheduleItem[]][] }) {
 function CMSchedulePage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: items, isLoading } = useCMScheduleItems(projectId || undefined);
@@ -455,7 +469,6 @@ function CMSchedulePage() {
   const canCreate = usePermission(projectId || undefined, user?.id, "schedule", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "schedule", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "schedule", "delete");
-  const [showNew, setShowNew] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [view, setView] = useState<"list" | "gantt">("list");
   const [search, setSearch] = useState("");
@@ -484,7 +497,7 @@ function CMSchedulePage() {
     return { planned, actual, variance: actual - planned, dueToday, overdue, delayed };
   }, [items]);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_schedule_items", projectId] }); setShowNew(false); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_schedule_items", projectId] }); };
 
   const groupOptions = useMemo(() => Array.from(new Set((items ?? []).map((i) => i.group_label))), [items]);
   const boqCategoryOptions = useMemo(
@@ -571,15 +584,11 @@ function CMSchedulePage() {
                 ))}
               </div>
             )}
-            {canCreate && <FAB label={t("schedule.newBtn")} onClick={() => setShowNew(true)} />}
+            {canCreate && <FAB label={t("schedule.newBtn")} onClick={() => navigate({ to: "/cm/schedule/new" })} />}
           </>
         )}
       </main>
 
-      {showNew && projectId && canCreate && (
-        <NewActivitySheet ownerId={user.id} projectId={projectId} groupOptions={groupOptions} boqCategoryOptions={boqCategoryOptions}
-          onClose={() => setShowNew(false)} onCreated={invalidate} />
-      )}
       {showImport && projectId && canCreate && (
         <ImportScheduleSheet ownerId={user.id} projectId={projectId} onImported={invalidate} onClose={() => setShowImport(false)} />
       )}
