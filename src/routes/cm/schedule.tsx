@@ -298,16 +298,16 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
   );
 }
 
-function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, onChanged }: {
+function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, delayThresholdPct, onChanged }: {
   item: CMScheduleItem; canEdit: boolean; canDelete: boolean;
-  locationLabel: string | null; suggestedPct: number | null; onChanged: () => void;
+  locationLabel: string | null; suggestedPct: number | null; delayThresholdPct: number; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const [actual, setActual] = useState(String(item.actual_percent));
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const plan = scheduleItemPlanPercent(item, today());
-  const status = cmScheduleStatus(item, today());
+  const status = cmScheduleStatus(item, today(), delayThresholdPct);
   // Only suggest forward movement — site records can't un-build work.
   const showSuggestion = canEdit && suggestedPct != null && suggestedPct > item.actual_percent;
 
@@ -389,9 +389,9 @@ function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, on
   );
 }
 
-function GroupSection({ groupLabel, items, canEdit, canDelete, locationLabelById, suggestions, onChanged }: {
+function GroupSection({ groupLabel, items, canEdit, canDelete, locationLabelById, suggestions, delayThresholdPct, onChanged }: {
   groupLabel: string; items: CMScheduleItem[]; canEdit: boolean; canDelete: boolean;
-  locationLabelById: Map<string, string>; suggestions: Map<string, number>; onChanged: () => void;
+  locationLabelById: Map<string, string>; suggestions: Map<string, number>; delayThresholdPct: number; onChanged: () => void;
 }) {
   const totalWeight = items.reduce((s, i) => s + i.weight, 0) || 1;
   const groupPlan = items.reduce((s, i) => s + i.weight * scheduleItemPlanPercent(i, today()), 0) / totalWeight;
@@ -407,7 +407,8 @@ function GroupSection({ groupLabel, items, canEdit, canDelete, locationLabelById
         {items.map((item) => (
           <ActivityRow key={item.id} item={item} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged}
             locationLabel={item.location_id ? locationLabelById.get(item.location_id) ?? null : null}
-            suggestedPct={item.boq_category ? suggestions.get(item.boq_category) ?? null : null} />
+            suggestedPct={item.boq_category ? suggestions.get(item.boq_category) ?? null : null}
+            delayThresholdPct={delayThresholdPct} />
         ))}
       </div>
     </Card>
@@ -418,7 +419,7 @@ function GroupSection({ groupLabel, items, canEdit, canDelete, locationLabelById
  *  plan start to the latest plan finish, a plan bar per activity with an
  *  actual-progress fill, and a today line. No dependencies/critical path —
  *  this is deliberately not Primavera. */
-function GanttView({ groups }: { groups: [string, CMScheduleItem[]][] }) {
+function GanttView({ groups, delayThresholdPct }: { groups: [string, CMScheduleItem[]][]; delayThresholdPct: number }) {
   const all = groups.flatMap(([, items]) => items);
   const min = all.reduce((m, i) => (i.plan_start < m ? i.plan_start : m), all[0].plan_start);
   const max = all.reduce((m, i) => (i.plan_finish > m ? i.plan_finish : m), all[0].plan_finish);
@@ -436,7 +437,7 @@ function GanttView({ groups }: { groups: [string, CMScheduleItem[]][] }) {
             {items.map((item) => {
               const left = pct(item.plan_start);
               const width = Math.max(1.5, pct(item.plan_finish) - left);
-              const status = cmScheduleStatus(item, today());
+              const status = cmScheduleStatus(item, today(), delayThresholdPct);
               return (
                 <div key={item.id} className="flex items-center gap-2">
                   <p className="w-[38%] shrink-0 text-[10px] text-white/60 truncate">{item.title}</p>
@@ -462,6 +463,7 @@ function CMSchedulePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const delayThresholdPct = projects?.find((p) => p.id === projectId)?.schedule_delay_threshold_pct ?? 10;
   const { data: items, isLoading } = useCMScheduleItems(projectId || undefined);
   const { data: boqItems } = useActiveCMBOQItems(projectId || undefined);
   const { data: logs } = useCMDailyLogs(projectId || undefined);
@@ -493,9 +495,9 @@ function CMSchedulePage() {
     const actual = list.reduce((s, i) => s + i.weight * i.actual_percent, 0) / totalWeight;
     const dueToday = list.filter((i) => i.plan_start <= d && i.plan_finish >= d && i.actual_percent < 100).length;
     const overdue = list.filter((i) => i.plan_finish < d && i.actual_percent < 100).length;
-    const delayed = list.filter((i) => cmScheduleStatus(i, d) === "Delayed").length;
+    const delayed = list.filter((i) => cmScheduleStatus(i, d, delayThresholdPct) === "Delayed").length;
     return { planned, actual, variance: actual - planned, dueToday, overdue, delayed };
-  }, [items]);
+  }, [items, delayThresholdPct]);
 
   const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_schedule_items", projectId] }); };
 
@@ -530,7 +532,7 @@ function CMSchedulePage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("schedule.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} />
+        <ModuleHeader title={t("schedule.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/schedule/settings" />
         <p className="text-[12px] text-white/35 mb-5">{t("schedule.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
@@ -575,12 +577,12 @@ function CMSchedulePage() {
               </div>
             )}
             {view === "gantt" && groups.length > 0 ? (
-              <GanttView groups={groups} />
+              <GanttView groups={groups} delayThresholdPct={delayThresholdPct} />
             ) : (
               <div className="flex flex-col gap-3">
                 {groups.map(([groupLabel, groupItems]) => (
                   <GroupSection key={groupLabel} groupLabel={groupLabel} items={groupItems} canEdit={canEdit} canDelete={canDelete}
-                    locationLabelById={locationLabelById} suggestions={suggestions} onChanged={invalidate} />
+                    locationLabelById={locationLabelById} suggestions={suggestions} delayThresholdPct={delayThresholdPct} onChanged={invalidate} />
                 ))}
               </div>
             )}

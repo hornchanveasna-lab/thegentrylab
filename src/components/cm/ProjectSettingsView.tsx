@@ -1016,9 +1016,15 @@ function WorkPackagesSection({ ownerId, projectId, canCreate, canEdit, canDelete
 }
 
 /* ── Document Control ──────────────────────────────────── */
-const DOC_MODULES = ["site_diary", "inspection", "punch_list", "safety", "submittal"] as const;
+const DOC_MODULES = ["site_diary", "instructions", "contracts", "submittal", "punch_list", "inspection", "safety", "manpower", "schedule", "boq", "equipment"] as const;
 
-function DocumentControlSection({ project, canEdit, onChanged }: { project: CMProject; canEdit: boolean; onChanged: () => void }) {
+/** Shared i18n-prefix mapping for module keys — only two modules have an
+ *  irregular title-key casing (`site_diary`→`siteDiary`, `punch_list`→
+ *  `punchList`); every other module key already matches its `<key>.title`
+ *  i18n prefix verbatim. */
+export const moduleTitleKey = (m: string) => (m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m);
+
+export function DocumentControlSection({ project, canEdit, onChanged, onlyModule }: { project: CMProject; canEdit: boolean; onChanged: () => void; onlyModule?: string }) {
   const { t } = useCMLang();
   const { user } = useAuthCM();
   const [codes, setCodes] = useState<Record<string, string>>(project.doc_module_codes ?? {});
@@ -1029,7 +1035,10 @@ function DocumentControlSection({ project, canEdit, onChanged }: { project: CMPr
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateCMProject(project.id, { doc_module_codes: codes, revision_format: revisionFormat, doc_footer: footer.trim() || null });
+      const patch = onlyModule
+        ? { doc_module_codes: { ...(project.doc_module_codes ?? {}), [onlyModule]: codes[onlyModule] ?? "" } }
+        : { doc_module_codes: codes, revision_format: revisionFormat, doc_footer: footer.trim() || null };
+      await updateCMProject(project.id, patch);
       if (user) logCMActivity(project.id, user.id, "updated", "document_control");
       onChanged();
     } finally {
@@ -1037,7 +1046,8 @@ function DocumentControlSection({ project, canEdit, onChanged }: { project: CMPr
     }
   };
 
-  const preview = `${project.project_code ?? "PRJ"}-${codes.site_diary || "SD"}-${new Date().getFullYear()}-0001`;
+  const previewCode = onlyModule ? (codes[onlyModule] || "DOC") : (codes.site_diary || "SD");
+  const preview = `${project.project_code ?? "PRJ"}-${previewCode}-${new Date().getFullYear()}-0001`;
 
   return (
     <Card title={t("documentControl.title")}>
@@ -1045,23 +1055,27 @@ function DocumentControlSection({ project, canEdit, onChanged }: { project: CMPr
       <div className="flex flex-col gap-3 mb-3">
         <span className={labelCls}>{t("documentControl.moduleCodes")}</span>
         <div className="grid grid-cols-2 gap-3">
-          {DOC_MODULES.map((m) => (
+          {(onlyModule ? [onlyModule] : DOC_MODULES).map((m) => (
             <label key={m} className="flex flex-col gap-1.5">
-              <span className="text-[10px] text-white/40">{t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`)}</span>
+              <span className="text-[10px] text-white/40">{t(`${moduleTitleKey(m)}.title`)}</span>
               <input className={inputCls} disabled={!canEdit} value={codes[m] ?? ""} maxLength={6}
                 onChange={(e) => setCodes((prev) => ({ ...prev, [m]: e.target.value.toUpperCase() }))} />
             </label>
           ))}
         </div>
       </div>
-      <label className="flex flex-col gap-1.5 mb-3">
-        <span className={labelCls}>{t("documentControl.revisionFormat")}</span>
-        <input className={inputCls} disabled={!canEdit} value={revisionFormat} onChange={(e) => setRevisionFormat(e.target.value)} />
-      </label>
-      <label className="flex flex-col gap-1.5 mb-3">
-        <span className={labelCls}>{t("documentControl.footer")}</span>
-        <textarea className={`${inputCls} resize-y min-h-[56px]`} disabled={!canEdit} value={footer} onChange={(e) => setFooter(e.target.value)} />
-      </label>
+      {!onlyModule && (
+        <>
+          <label className="flex flex-col gap-1.5 mb-3">
+            <span className={labelCls}>{t("documentControl.revisionFormat")}</span>
+            <input className={inputCls} disabled={!canEdit} value={revisionFormat} onChange={(e) => setRevisionFormat(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5 mb-3">
+            <span className={labelCls}>{t("documentControl.footer")}</span>
+            <textarea className={`${inputCls} resize-y min-h-[56px]`} disabled={!canEdit} value={footer} onChange={(e) => setFooter(e.target.value)} />
+          </label>
+        </>
+      )}
       <div className="rounded-xl bg-white/3 px-3 py-2.5 mb-3">
         <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("documentControl.preview")}</p>
         <p className="font-mono text-[12px] text-white/70">{preview}</p>
@@ -1078,15 +1092,15 @@ function DocumentControlSection({ project, canEdit, onChanged }: { project: CMPr
 }
 
 /* ── Workflows ──────────────────────────────────────────── */
-const WORKFLOW_MODULES = ["site_diary", "inspection", "punch_list", "safety", "submittal"] as const;
+const WORKFLOW_MODULES = ["site_diary", "instructions", "contracts", "submittal", "punch_list", "inspection", "safety", "manpower", "schedule", "boq", "equipment"] as const;
 const APPROVER_TYPES: WorkflowApproverType[] = ["role", "company", "user"];
 
-function WorkflowsSection({ ownerId, projectId, canCreate, canDelete }: { ownerId: string; projectId: string; canCreate: boolean; canDelete: boolean }) {
+export function WorkflowsSection({ ownerId, projectId, canCreate, canDelete, lockModule }: { ownerId: string; projectId: string; canCreate: boolean; canDelete: boolean; lockModule?: typeof WORKFLOW_MODULES[number] }) {
   const { t } = useCMLang();
   const { user } = useAuthCM();
   const qc = useQueryClient();
   const { data: steps } = useCMWorkflowSteps(projectId);
-  const [module, setModule] = useState<typeof WORKFLOW_MODULES[number]>("site_diary");
+  const [module, setModule] = useState<typeof WORKFLOW_MODULES[number]>(lockModule ?? "site_diary");
   const [approverType, setApproverType] = useState<WorkflowApproverType>("role");
   const [approverValue, setApproverValue] = useState("");
   const [requiredComment, setRequiredComment] = useState(false);
@@ -1116,10 +1130,12 @@ function WorkflowsSection({ ownerId, projectId, canCreate, canDelete }: { ownerI
   return (
     <Card title={t("workflows.title")}>
       <p className="text-[12px] text-white/45 mb-3">{t("workflows.hint")}</p>
-      <div className="mb-3">
-        <SegmentedField value={module} onChange={setModule}
-          options={WORKFLOW_MODULES.map((m) => ({ value: m, label: t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`) }))} />
-      </div>
+      {!lockModule && (
+        <div className="mb-3">
+          <SegmentedField value={module} onChange={setModule}
+            options={WORKFLOW_MODULES.map((m) => ({ value: m, label: t(`${moduleTitleKey(m)}.title`) }))} />
+        </div>
+      )}
       <div className="flex flex-col gap-2 mb-3">
         {moduleSteps.map((s, i) => (
           <div key={s.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
@@ -1163,7 +1179,7 @@ function WorkflowsSection({ ownerId, projectId, canCreate, canDelete }: { ownerI
 }
 
 /* ── Forms and Templates ───────────────────────────────── */
-const TEMPLATE_MODULES = ["site_diary", "inspection", "punch_list", "safety", "submittal"] as const;
+const TEMPLATE_MODULES = ["site_diary", "instructions", "contracts", "submittal", "punch_list", "inspection", "safety", "manpower", "schedule", "boq", "equipment"] as const;
 
 function ChecklistTemplateRow({ template, canEdit, canDelete, onDeleted }: {
   template: CMChecklistTemplate; canEdit: boolean; canDelete: boolean; onDeleted: () => void;
@@ -1223,8 +1239,8 @@ function ChecklistTemplateRow({ template, canEdit, canDelete, onDeleted }: {
   );
 }
 
-function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
-  ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+export function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDelete, lockModule }: {
+  ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean; lockModule?: typeof TEMPLATE_MODULES[number];
 }) {
   const { t } = useCMLang();
   const { user } = useAuthCM();
@@ -1232,8 +1248,9 @@ function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
   const { data: templates } = useCMChecklistTemplates(projectId);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
-  const [module, setModule] = useState<typeof TEMPLATE_MODULES[number]>("inspection");
+  const [module, setModule] = useState<typeof TEMPLATE_MODULES[number]>(lockModule ?? "inspection");
   const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_checklist_templates", projectId] });
+  const visibleTemplates = lockModule ? (templates ?? []).filter((tpl) => tpl.module_key === lockModule) : (templates ?? []);
 
   const handleAdd = async () => {
     if (!name.trim()) return;
@@ -1247,15 +1264,17 @@ function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
     <Card title={t("templates.title")}>
       <p className="text-[12px] text-white/45 mb-3">{t("templates.hint")}</p>
       <div className="flex flex-col gap-2">
-        {(templates ?? []).map((tpl) => (
+        {visibleTemplates.map((tpl) => (
           <ChecklistTemplateRow key={tpl.id} template={tpl} canEdit={canEdit} canDelete={canDelete} onDeleted={invalidate} />
         ))}
-        {(templates?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("templates.none")}</p>}
+        {visibleTemplates.length === 0 && !adding && <p className="text-white/30 text-[12px]">{t("templates.none")}</p>}
         {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("templates.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-            <SegmentedField value={module} onChange={setModule}
-              options={TEMPLATE_MODULES.map((m) => ({ value: m, label: t(`${m === "site_diary" ? "siteDiary" : m === "punch_list" ? "punchList" : m}.title`) }))} />
+            {!lockModule && (
+              <SegmentedField value={module} onChange={setModule}
+                options={TEMPLATE_MODULES.map((m) => ({ value: m, label: t(`${moduleTitleKey(m)}.title`) }))} />
+            )}
             <div className="flex gap-2">
               <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>

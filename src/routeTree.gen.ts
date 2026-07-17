@@ -54,18 +54,29 @@ import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminStagesRouteImport } from './routes/admin.stages'
 import { Route as CmProjectsIndexRouteImport } from './routes/cm/projects/index'
+import { Route as CmSubmittalSettingsRouteImport } from './routes/cm/submittal_.settings'
 import { Route as CmSubmittalNewRouteImport } from './routes/cm/submittal_.new'
+import { Route as CmSiteDiarySettingsRouteImport } from './routes/cm/site-diary_.settings'
 import { Route as CmSiteDiaryNewRouteImport } from './routes/cm/site-diary_.new'
+import { Route as CmScheduleSettingsRouteImport } from './routes/cm/schedule_.settings'
 import { Route as CmScheduleNewRouteImport } from './routes/cm/schedule_.new'
+import { Route as CmSafetySettingsRouteImport } from './routes/cm/safety_.settings'
 import { Route as CmSafetyNewRouteImport } from './routes/cm/safety_.new'
+import { Route as CmPunchListSettingsRouteImport } from './routes/cm/punch-list_.settings'
 import { Route as CmPunchListNewRouteImport } from './routes/cm/punch-list_.new'
+import { Route as CmManpowerSettingsRouteImport } from './routes/cm/manpower_.settings'
 import { Route as CmManpowerNewRouteImport } from './routes/cm/manpower_.new'
 import { Route as CmManpowerEditRouteImport } from './routes/cm/manpower_.edit'
 import { Route as CmJoinTokenRouteImport } from './routes/cm/join/$token'
+import { Route as CmInstructionsSettingsRouteImport } from './routes/cm/instructions_.settings'
 import { Route as CmInstructionsNewRouteImport } from './routes/cm/instructions_.new'
+import { Route as CmInspectionSettingsRouteImport } from './routes/cm/inspection_.settings'
 import { Route as CmInspectionNewRouteImport } from './routes/cm/inspection_.new'
+import { Route as CmEquipmentSettingsRouteImport } from './routes/cm/equipment_.settings'
 import { Route as CmEquipmentNewRouteImport } from './routes/cm/equipment_.new'
+import { Route as CmContractsSettingsRouteImport } from './routes/cm/contracts_.settings'
 import { Route as CmContractsNewRouteImport } from './routes/cm/contracts_.new'
+import { Route as CmBoqSettingsRouteImport } from './routes/cm/boq_.settings'
 import { Route as CmBoqNewRouteImport } from './routes/cm/boq_.new'
 import { Route as CmAuthCallbackRouteImport } from './routes/cm/auth/callback'
 import { Route as CmSubmittalIdEditRouteImport } from './routes/cm/submittal_.$id.edit'
@@ -305,9 +316,19 @@ const CmProjectsIndexRoute = CmProjectsIndexRouteImport.update({
   path: '/projects/',
   getParentRoute: () => CmRoute,
 } as any)
+const CmSubmittalSettingsRoute = CmSubmittalSettingsRouteImport.update({
+  id: '/submittal_/settings',
+  path: '/submittal/settings',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmSubmittalNewRoute = CmSubmittalNewRouteImport.update({
   id: '/submittal_/new',
   path: '/submittal/new',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmSiteDiarySettingsRoute = CmSiteDiarySettingsRouteImport.update({
+  id: '/site-diary_/settings',
+  path: '/site-diary/settings',
   getParentRoute: () => CmRoute,
 } as any)
 const CmSiteDiaryNewRoute = CmSiteDiaryNewRouteImport.update({
@@ -315,9 +336,19 @@ const CmSiteDiaryNewRoute = CmSiteDiaryNewRouteImport.update({
   path: '/site-diary/new',
   getParentRoute: () => CmRoute,
 } as any)
+const CmScheduleSettingsRoute = CmScheduleSettingsRouteImport.update({
+  id: '/schedule_/settings',
+  path: '/schedule/settings',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmScheduleNewRoute = CmScheduleNewRouteImport.update({
   id: '/schedule_/new',
   path: '/schedule/new',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmSafetySettingsRoute = CmSafetySettingsRouteImport.update({
+  id: '/safety_/settings',
+  path: '/safety/settings',
   getParentRoute: () => CmRoute,
 } as any)
 const CmSafetyNewRoute = CmSafetyNewRouteImport.update({
@@ -325,9 +356,19 @@ const CmSafetyNewRoute = CmSafetyNewRouteImport.update({
   path: '/safety/new',
   getParentRoute: () => CmRoute,
 } as any)
+const CmPunchListSettingsRoute = CmPunchListSettingsRouteImport.update({
+  id: '/punch-list_/settings',
+  path: '/punch-list/settings',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmPunchListNewRoute = CmPunchListNewRouteImport.update({
   id: '/punch-list_/new',
   path: '/punch-list/new',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmManpowerSettingsRoute = CmManpowerSettingsRouteImport.update({
+  id: '/manpower_/settings',
+  path: '/manpower/settings',
   getParentRoute: () => CmRoute,
 } as any)
 const CmManpowerNewRoute = CmManpowerNewRouteImport.update({
@@ -345,9 +386,19 @@ const CmJoinTokenRoute = CmJoinTokenRouteImport.update({
   path: '/join/$token',
   getParentRoute: () => CmRoute,
 } as any)
+const CmInstructionsSettingsRoute = CmInstructionsSettingsRouteImport.update({
+  id: '/instructions_/settings',
+  path: '/instructions/settings',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmInstructionsNewRoute = CmInstructionsNewRouteImport.update({
   id: '/instructions_/new',
   path: '/instructions/new',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmInspectionSettingsRoute = CmInspectionSettingsRouteImport.update({
+  id: '/inspection_/settings',
+  path: '/inspection/settings',
   getParentRoute: () => CmRoute,
 } as any)
 const CmInspectionNewRoute = CmInspectionNewRouteImport.update({
@@ -355,14 +406,29 @@ const CmInspectionNewRoute = CmInspectionNewRouteImport.update({
   path: '/inspection/new',
   getParentRoute: () => CmRoute,
 } as any)
+const CmEquipmentSettingsRoute = CmEquipmentSettingsRouteImport.update({
+  id: '/equipment_/settings',
+  path: '/equipment/settings',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmEquipmentNewRoute = CmEquipmentNewRouteImport.update({
   id: '/equipment_/new',
   path: '/equipment/new',
   getParentRoute: () => CmRoute,
 } as any)
+const CmContractsSettingsRoute = CmContractsSettingsRouteImport.update({
+  id: '/contracts_/settings',
+  path: '/contracts/settings',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmContractsNewRoute = CmContractsNewRouteImport.update({
   id: '/contracts_/new',
   path: '/contracts/new',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmBoqSettingsRoute = CmBoqSettingsRouteImport.update({
+  id: '/boq_/settings',
+  path: '/boq/settings',
   getParentRoute: () => CmRoute,
 } as any)
 const CmBoqNewRoute = CmBoqNewRouteImport.update({
@@ -473,18 +539,29 @@ export interface FileRoutesByFullPath {
   '/research/': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
   '/cm/boq/new': typeof CmBoqNewRoute
+  '/cm/boq/settings': typeof CmBoqSettingsRoute
   '/cm/contracts/new': typeof CmContractsNewRoute
+  '/cm/contracts/settings': typeof CmContractsSettingsRoute
   '/cm/equipment/new': typeof CmEquipmentNewRoute
+  '/cm/equipment/settings': typeof CmEquipmentSettingsRoute
   '/cm/inspection/new': typeof CmInspectionNewRoute
+  '/cm/inspection/settings': typeof CmInspectionSettingsRoute
   '/cm/instructions/new': typeof CmInstructionsNewRoute
+  '/cm/instructions/settings': typeof CmInstructionsSettingsRoute
   '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/manpower/edit': typeof CmManpowerEditRoute
   '/cm/manpower/new': typeof CmManpowerNewRoute
+  '/cm/manpower/settings': typeof CmManpowerSettingsRoute
   '/cm/punch-list/new': typeof CmPunchListNewRoute
+  '/cm/punch-list/settings': typeof CmPunchListSettingsRoute
   '/cm/safety/new': typeof CmSafetyNewRoute
+  '/cm/safety/settings': typeof CmSafetySettingsRoute
   '/cm/schedule/new': typeof CmScheduleNewRoute
+  '/cm/schedule/settings': typeof CmScheduleSettingsRoute
   '/cm/site-diary/new': typeof CmSiteDiaryNewRoute
+  '/cm/site-diary/settings': typeof CmSiteDiarySettingsRoute
   '/cm/submittal/new': typeof CmSubmittalNewRoute
+  '/cm/submittal/settings': typeof CmSubmittalSettingsRoute
   '/cm/projects/': typeof CmProjectsIndexRoute
   '/cm/boq/$id/edit': typeof CmBoqIdEditRoute
   '/cm/contracts/$id/edit': typeof CmContractsIdEditRoute
@@ -542,18 +619,29 @@ export interface FileRoutesByTo {
   '/research': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
   '/cm/boq/new': typeof CmBoqNewRoute
+  '/cm/boq/settings': typeof CmBoqSettingsRoute
   '/cm/contracts/new': typeof CmContractsNewRoute
+  '/cm/contracts/settings': typeof CmContractsSettingsRoute
   '/cm/equipment/new': typeof CmEquipmentNewRoute
+  '/cm/equipment/settings': typeof CmEquipmentSettingsRoute
   '/cm/inspection/new': typeof CmInspectionNewRoute
+  '/cm/inspection/settings': typeof CmInspectionSettingsRoute
   '/cm/instructions/new': typeof CmInstructionsNewRoute
+  '/cm/instructions/settings': typeof CmInstructionsSettingsRoute
   '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/manpower/edit': typeof CmManpowerEditRoute
   '/cm/manpower/new': typeof CmManpowerNewRoute
+  '/cm/manpower/settings': typeof CmManpowerSettingsRoute
   '/cm/punch-list/new': typeof CmPunchListNewRoute
+  '/cm/punch-list/settings': typeof CmPunchListSettingsRoute
   '/cm/safety/new': typeof CmSafetyNewRoute
+  '/cm/safety/settings': typeof CmSafetySettingsRoute
   '/cm/schedule/new': typeof CmScheduleNewRoute
+  '/cm/schedule/settings': typeof CmScheduleSettingsRoute
   '/cm/site-diary/new': typeof CmSiteDiaryNewRoute
+  '/cm/site-diary/settings': typeof CmSiteDiarySettingsRoute
   '/cm/submittal/new': typeof CmSubmittalNewRoute
+  '/cm/submittal/settings': typeof CmSubmittalSettingsRoute
   '/cm/projects': typeof CmProjectsIndexRoute
   '/cm/boq/$id/edit': typeof CmBoqIdEditRoute
   '/cm/contracts/$id/edit': typeof CmContractsIdEditRoute
@@ -614,18 +702,29 @@ export interface FileRoutesById {
   '/research/': typeof ResearchIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
   '/cm/boq_/new': typeof CmBoqNewRoute
+  '/cm/boq_/settings': typeof CmBoqSettingsRoute
   '/cm/contracts_/new': typeof CmContractsNewRoute
+  '/cm/contracts_/settings': typeof CmContractsSettingsRoute
   '/cm/equipment_/new': typeof CmEquipmentNewRoute
+  '/cm/equipment_/settings': typeof CmEquipmentSettingsRoute
   '/cm/inspection_/new': typeof CmInspectionNewRoute
+  '/cm/inspection_/settings': typeof CmInspectionSettingsRoute
   '/cm/instructions_/new': typeof CmInstructionsNewRoute
+  '/cm/instructions_/settings': typeof CmInstructionsSettingsRoute
   '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/manpower_/edit': typeof CmManpowerEditRoute
   '/cm/manpower_/new': typeof CmManpowerNewRoute
+  '/cm/manpower_/settings': typeof CmManpowerSettingsRoute
   '/cm/punch-list_/new': typeof CmPunchListNewRoute
+  '/cm/punch-list_/settings': typeof CmPunchListSettingsRoute
   '/cm/safety_/new': typeof CmSafetyNewRoute
+  '/cm/safety_/settings': typeof CmSafetySettingsRoute
   '/cm/schedule_/new': typeof CmScheduleNewRoute
+  '/cm/schedule_/settings': typeof CmScheduleSettingsRoute
   '/cm/site-diary_/new': typeof CmSiteDiaryNewRoute
+  '/cm/site-diary_/settings': typeof CmSiteDiarySettingsRoute
   '/cm/submittal_/new': typeof CmSubmittalNewRoute
+  '/cm/submittal_/settings': typeof CmSubmittalSettingsRoute
   '/cm/projects/': typeof CmProjectsIndexRoute
   '/cm/boq_/$id/edit': typeof CmBoqIdEditRoute
   '/cm/contracts_/$id/edit': typeof CmContractsIdEditRoute
@@ -687,18 +786,29 @@ export interface FileRouteTypes {
     | '/research/'
     | '/cm/auth/callback'
     | '/cm/boq/new'
+    | '/cm/boq/settings'
     | '/cm/contracts/new'
+    | '/cm/contracts/settings'
     | '/cm/equipment/new'
+    | '/cm/equipment/settings'
     | '/cm/inspection/new'
+    | '/cm/inspection/settings'
     | '/cm/instructions/new'
+    | '/cm/instructions/settings'
     | '/cm/join/$token'
     | '/cm/manpower/edit'
     | '/cm/manpower/new'
+    | '/cm/manpower/settings'
     | '/cm/punch-list/new'
+    | '/cm/punch-list/settings'
     | '/cm/safety/new'
+    | '/cm/safety/settings'
     | '/cm/schedule/new'
+    | '/cm/schedule/settings'
     | '/cm/site-diary/new'
+    | '/cm/site-diary/settings'
     | '/cm/submittal/new'
+    | '/cm/submittal/settings'
     | '/cm/projects/'
     | '/cm/boq/$id/edit'
     | '/cm/contracts/$id/edit'
@@ -756,18 +866,29 @@ export interface FileRouteTypes {
     | '/research'
     | '/cm/auth/callback'
     | '/cm/boq/new'
+    | '/cm/boq/settings'
     | '/cm/contracts/new'
+    | '/cm/contracts/settings'
     | '/cm/equipment/new'
+    | '/cm/equipment/settings'
     | '/cm/inspection/new'
+    | '/cm/inspection/settings'
     | '/cm/instructions/new'
+    | '/cm/instructions/settings'
     | '/cm/join/$token'
     | '/cm/manpower/edit'
     | '/cm/manpower/new'
+    | '/cm/manpower/settings'
     | '/cm/punch-list/new'
+    | '/cm/punch-list/settings'
     | '/cm/safety/new'
+    | '/cm/safety/settings'
     | '/cm/schedule/new'
+    | '/cm/schedule/settings'
     | '/cm/site-diary/new'
+    | '/cm/site-diary/settings'
     | '/cm/submittal/new'
+    | '/cm/submittal/settings'
     | '/cm/projects'
     | '/cm/boq/$id/edit'
     | '/cm/contracts/$id/edit'
@@ -827,18 +948,29 @@ export interface FileRouteTypes {
     | '/research/'
     | '/cm/auth/callback'
     | '/cm/boq_/new'
+    | '/cm/boq_/settings'
     | '/cm/contracts_/new'
+    | '/cm/contracts_/settings'
     | '/cm/equipment_/new'
+    | '/cm/equipment_/settings'
     | '/cm/inspection_/new'
+    | '/cm/inspection_/settings'
     | '/cm/instructions_/new'
+    | '/cm/instructions_/settings'
     | '/cm/join/$token'
     | '/cm/manpower_/edit'
     | '/cm/manpower_/new'
+    | '/cm/manpower_/settings'
     | '/cm/punch-list_/new'
+    | '/cm/punch-list_/settings'
     | '/cm/safety_/new'
+    | '/cm/safety_/settings'
     | '/cm/schedule_/new'
+    | '/cm/schedule_/settings'
     | '/cm/site-diary_/new'
+    | '/cm/site-diary_/settings'
     | '/cm/submittal_/new'
+    | '/cm/submittal_/settings'
     | '/cm/projects/'
     | '/cm/boq_/$id/edit'
     | '/cm/contracts_/$id/edit'
@@ -1191,11 +1323,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmProjectsIndexRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/submittal_/settings': {
+      id: '/cm/submittal_/settings'
+      path: '/submittal/settings'
+      fullPath: '/cm/submittal/settings'
+      preLoaderRoute: typeof CmSubmittalSettingsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/submittal_/new': {
       id: '/cm/submittal_/new'
       path: '/submittal/new'
       fullPath: '/cm/submittal/new'
       preLoaderRoute: typeof CmSubmittalNewRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/site-diary_/settings': {
+      id: '/cm/site-diary_/settings'
+      path: '/site-diary/settings'
+      fullPath: '/cm/site-diary/settings'
+      preLoaderRoute: typeof CmSiteDiarySettingsRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/site-diary_/new': {
@@ -1205,11 +1351,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmSiteDiaryNewRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/schedule_/settings': {
+      id: '/cm/schedule_/settings'
+      path: '/schedule/settings'
+      fullPath: '/cm/schedule/settings'
+      preLoaderRoute: typeof CmScheduleSettingsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/schedule_/new': {
       id: '/cm/schedule_/new'
       path: '/schedule/new'
       fullPath: '/cm/schedule/new'
       preLoaderRoute: typeof CmScheduleNewRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/safety_/settings': {
+      id: '/cm/safety_/settings'
+      path: '/safety/settings'
+      fullPath: '/cm/safety/settings'
+      preLoaderRoute: typeof CmSafetySettingsRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/safety_/new': {
@@ -1219,11 +1379,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmSafetyNewRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/punch-list_/settings': {
+      id: '/cm/punch-list_/settings'
+      path: '/punch-list/settings'
+      fullPath: '/cm/punch-list/settings'
+      preLoaderRoute: typeof CmPunchListSettingsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/punch-list_/new': {
       id: '/cm/punch-list_/new'
       path: '/punch-list/new'
       fullPath: '/cm/punch-list/new'
       preLoaderRoute: typeof CmPunchListNewRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/manpower_/settings': {
+      id: '/cm/manpower_/settings'
+      path: '/manpower/settings'
+      fullPath: '/cm/manpower/settings'
+      preLoaderRoute: typeof CmManpowerSettingsRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/manpower_/new': {
@@ -1247,11 +1421,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmJoinTokenRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/instructions_/settings': {
+      id: '/cm/instructions_/settings'
+      path: '/instructions/settings'
+      fullPath: '/cm/instructions/settings'
+      preLoaderRoute: typeof CmInstructionsSettingsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/instructions_/new': {
       id: '/cm/instructions_/new'
       path: '/instructions/new'
       fullPath: '/cm/instructions/new'
       preLoaderRoute: typeof CmInstructionsNewRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/inspection_/settings': {
+      id: '/cm/inspection_/settings'
+      path: '/inspection/settings'
+      fullPath: '/cm/inspection/settings'
+      preLoaderRoute: typeof CmInspectionSettingsRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/inspection_/new': {
@@ -1261,6 +1449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmInspectionNewRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/equipment_/settings': {
+      id: '/cm/equipment_/settings'
+      path: '/equipment/settings'
+      fullPath: '/cm/equipment/settings'
+      preLoaderRoute: typeof CmEquipmentSettingsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/equipment_/new': {
       id: '/cm/equipment_/new'
       path: '/equipment/new'
@@ -1268,11 +1463,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmEquipmentNewRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/contracts_/settings': {
+      id: '/cm/contracts_/settings'
+      path: '/contracts/settings'
+      fullPath: '/cm/contracts/settings'
+      preLoaderRoute: typeof CmContractsSettingsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/contracts_/new': {
       id: '/cm/contracts_/new'
       path: '/contracts/new'
       fullPath: '/cm/contracts/new'
       preLoaderRoute: typeof CmContractsNewRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/boq_/settings': {
+      id: '/cm/boq_/settings'
+      path: '/boq/settings'
+      fullPath: '/cm/boq/settings'
+      preLoaderRoute: typeof CmBoqSettingsRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/boq_/new': {
@@ -1397,18 +1606,29 @@ interface CmRouteChildren {
   CmIndexRoute: typeof CmIndexRoute
   CmAuthCallbackRoute: typeof CmAuthCallbackRoute
   CmBoqNewRoute: typeof CmBoqNewRoute
+  CmBoqSettingsRoute: typeof CmBoqSettingsRoute
   CmContractsNewRoute: typeof CmContractsNewRoute
+  CmContractsSettingsRoute: typeof CmContractsSettingsRoute
   CmEquipmentNewRoute: typeof CmEquipmentNewRoute
+  CmEquipmentSettingsRoute: typeof CmEquipmentSettingsRoute
   CmInspectionNewRoute: typeof CmInspectionNewRoute
+  CmInspectionSettingsRoute: typeof CmInspectionSettingsRoute
   CmInstructionsNewRoute: typeof CmInstructionsNewRoute
+  CmInstructionsSettingsRoute: typeof CmInstructionsSettingsRoute
   CmJoinTokenRoute: typeof CmJoinTokenRoute
   CmManpowerEditRoute: typeof CmManpowerEditRoute
   CmManpowerNewRoute: typeof CmManpowerNewRoute
+  CmManpowerSettingsRoute: typeof CmManpowerSettingsRoute
   CmPunchListNewRoute: typeof CmPunchListNewRoute
+  CmPunchListSettingsRoute: typeof CmPunchListSettingsRoute
   CmSafetyNewRoute: typeof CmSafetyNewRoute
+  CmSafetySettingsRoute: typeof CmSafetySettingsRoute
   CmScheduleNewRoute: typeof CmScheduleNewRoute
+  CmScheduleSettingsRoute: typeof CmScheduleSettingsRoute
   CmSiteDiaryNewRoute: typeof CmSiteDiaryNewRoute
+  CmSiteDiarySettingsRoute: typeof CmSiteDiarySettingsRoute
   CmSubmittalNewRoute: typeof CmSubmittalNewRoute
+  CmSubmittalSettingsRoute: typeof CmSubmittalSettingsRoute
   CmProjectsIndexRoute: typeof CmProjectsIndexRoute
   CmBoqIdEditRoute: typeof CmBoqIdEditRoute
   CmContractsIdEditRoute: typeof CmContractsIdEditRoute
@@ -1447,18 +1667,29 @@ const CmRouteChildren: CmRouteChildren = {
   CmIndexRoute: CmIndexRoute,
   CmAuthCallbackRoute: CmAuthCallbackRoute,
   CmBoqNewRoute: CmBoqNewRoute,
+  CmBoqSettingsRoute: CmBoqSettingsRoute,
   CmContractsNewRoute: CmContractsNewRoute,
+  CmContractsSettingsRoute: CmContractsSettingsRoute,
   CmEquipmentNewRoute: CmEquipmentNewRoute,
+  CmEquipmentSettingsRoute: CmEquipmentSettingsRoute,
   CmInspectionNewRoute: CmInspectionNewRoute,
+  CmInspectionSettingsRoute: CmInspectionSettingsRoute,
   CmInstructionsNewRoute: CmInstructionsNewRoute,
+  CmInstructionsSettingsRoute: CmInstructionsSettingsRoute,
   CmJoinTokenRoute: CmJoinTokenRoute,
   CmManpowerEditRoute: CmManpowerEditRoute,
   CmManpowerNewRoute: CmManpowerNewRoute,
+  CmManpowerSettingsRoute: CmManpowerSettingsRoute,
   CmPunchListNewRoute: CmPunchListNewRoute,
+  CmPunchListSettingsRoute: CmPunchListSettingsRoute,
   CmSafetyNewRoute: CmSafetyNewRoute,
+  CmSafetySettingsRoute: CmSafetySettingsRoute,
   CmScheduleNewRoute: CmScheduleNewRoute,
+  CmScheduleSettingsRoute: CmScheduleSettingsRoute,
   CmSiteDiaryNewRoute: CmSiteDiaryNewRoute,
+  CmSiteDiarySettingsRoute: CmSiteDiarySettingsRoute,
   CmSubmittalNewRoute: CmSubmittalNewRoute,
+  CmSubmittalSettingsRoute: CmSubmittalSettingsRoute,
   CmProjectsIndexRoute: CmProjectsIndexRoute,
   CmBoqIdEditRoute: CmBoqIdEditRoute,
   CmContractsIdEditRoute: CmContractsIdEditRoute,
