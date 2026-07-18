@@ -1121,8 +1121,6 @@ const EN: Dict = {
   "photos.deleteConfirm": "Delete this photo? This can't be undone.",
   "photos.deleteFailed": "Couldn't delete this photo",
   "photos.showInReport": "Show in report",
-  "photos.viewGrid": "Grid view",
-  "photos.viewCalendar": "Calendar view",
 
   "directory.title": "Contacts",
   "directory.linkedBadge": "Member",
@@ -2418,8 +2416,6 @@ const KM: Dict = {
   "photos.deleteConfirm": "លុបរូបភាពនេះ? សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។",
   "photos.deleteFailed": "មិនអាចលុបរូបភាពនេះបានទេ",
   "photos.showInReport": "បង្ហាញនៅក្នុងរបាយការណ៍",
-  "photos.viewGrid": "ទិដ្ឋភាពក្រឡាចត្រង្គ",
-  "photos.viewCalendar": "ទិដ្ឋភាពប្រតិទិន",
 
   "directory.title": "បញ្ជីទំនាក់ទំនង",
   "directory.linkedBadge": "សមាជិក",
@@ -3715,8 +3711,6 @@ const ZH: Dict = {
   "photos.deleteConfirm": "删除这张照片？此操作无法撤销。",
   "photos.deleteFailed": "无法删除此照片",
   "photos.showInReport": "在报告中查看",
-  "photos.viewGrid": "网格视图",
-  "photos.viewCalendar": "日历视图",
 
   "directory.title": "通讯录",
   "directory.linkedBadge": "成员",
