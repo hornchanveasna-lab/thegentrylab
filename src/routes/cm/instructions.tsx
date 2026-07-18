@@ -422,10 +422,10 @@ function CMInstructionsPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/instructions/settings"
-          quickSettings={!viewAll && projectId ? <InstructionsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+          quickSettings={projectId ? <InstructionsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {!viewAll && projectId && canCreate && contracts && contracts.length > 0 && (
+        {projectId && canCreate && contracts && contracts.length > 0 && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
@@ -480,7 +480,7 @@ function CMInstructionsPage() {
                       onChanged={invalidate} onOpenPhoto={(its, index) => setLightbox({ items: its, index })} />
                   ))}
                 </div>
-                {!viewAll && canCreate && <FAB label={t("instructions.new")} onClick={() => navigate({ to: "/cm/instructions/new" })} />}
+                {canCreate && contracts && contracts.length > 0 && <FAB label={t("instructions.new")} onClick={() => navigate({ to: "/cm/instructions/new" })} />}
               </>
             )}
           </>

@@ -205,7 +205,7 @@ function CMEquipmentPage() {
         <p className="text-[12px] text-white/35 mb-5">{t("equipment.subtitle")}</p>
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {!viewAll && projectId && canCreate && (
+        {projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
@@ -225,7 +225,7 @@ function CMEquipmentPage() {
                 </div>
               </>
             )}
-            {!viewAll && canCreate && <FAB label={t("equipment.newBtn")} onClick={() => navigate({ to: "/cm/equipment/new" })} />}
+            {canCreate && <FAB label={t("equipment.newBtn")} onClick={() => navigate({ to: "/cm/equipment/new" })} />}
           </>
         )}
       </main>
