@@ -68,6 +68,7 @@ import { Route as CmSafetyIdRouteImport } from './routes/cm/safety_.$id'
 import { Route as CmPunchListSettingsRouteImport } from './routes/cm/punch-list_.settings'
 import { Route as CmPunchListNewRouteImport } from './routes/cm/punch-list_.new'
 import { Route as CmPunchListIdRouteImport } from './routes/cm/punch-list_.$id'
+import { Route as CmPhotosSettingsRouteImport } from './routes/cm/photos_.settings'
 import { Route as CmManpowerSettingsRouteImport } from './routes/cm/manpower_.settings'
 import { Route as CmManpowerNewRouteImport } from './routes/cm/manpower_.new'
 import { Route as CmManpowerEditRouteImport } from './routes/cm/manpower_.edit'
@@ -391,6 +392,11 @@ const CmPunchListIdRoute = CmPunchListIdRouteImport.update({
   path: '/punch-list/$id',
   getParentRoute: () => CmRoute,
 } as any)
+const CmPhotosSettingsRoute = CmPhotosSettingsRouteImport.update({
+  id: '/photos_/settings',
+  path: '/photos/settings',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmManpowerSettingsRoute = CmManpowerSettingsRouteImport.update({
   id: '/manpower_/settings',
   path: '/manpower/settings',
@@ -583,6 +589,7 @@ export interface FileRoutesByFullPath {
   '/cm/manpower/edit': typeof CmManpowerEditRoute
   '/cm/manpower/new': typeof CmManpowerNewRoute
   '/cm/manpower/settings': typeof CmManpowerSettingsRoute
+  '/cm/photos/settings': typeof CmPhotosSettingsRoute
   '/cm/punch-list/$id': typeof CmPunchListIdRouteWithChildren
   '/cm/punch-list/new': typeof CmPunchListNewRoute
   '/cm/punch-list/settings': typeof CmPunchListSettingsRoute
@@ -668,6 +675,7 @@ export interface FileRoutesByTo {
   '/cm/manpower/edit': typeof CmManpowerEditRoute
   '/cm/manpower/new': typeof CmManpowerNewRoute
   '/cm/manpower/settings': typeof CmManpowerSettingsRoute
+  '/cm/photos/settings': typeof CmPhotosSettingsRoute
   '/cm/punch-list/$id': typeof CmPunchListIdRouteWithChildren
   '/cm/punch-list/new': typeof CmPunchListNewRoute
   '/cm/punch-list/settings': typeof CmPunchListSettingsRoute
@@ -756,6 +764,7 @@ export interface FileRoutesById {
   '/cm/manpower_/edit': typeof CmManpowerEditRoute
   '/cm/manpower_/new': typeof CmManpowerNewRoute
   '/cm/manpower_/settings': typeof CmManpowerSettingsRoute
+  '/cm/photos_/settings': typeof CmPhotosSettingsRoute
   '/cm/punch-list_/$id': typeof CmPunchListIdRouteWithChildren
   '/cm/punch-list_/new': typeof CmPunchListNewRoute
   '/cm/punch-list_/settings': typeof CmPunchListSettingsRoute
@@ -845,6 +854,7 @@ export interface FileRouteTypes {
     | '/cm/manpower/edit'
     | '/cm/manpower/new'
     | '/cm/manpower/settings'
+    | '/cm/photos/settings'
     | '/cm/punch-list/$id'
     | '/cm/punch-list/new'
     | '/cm/punch-list/settings'
@@ -930,6 +940,7 @@ export interface FileRouteTypes {
     | '/cm/manpower/edit'
     | '/cm/manpower/new'
     | '/cm/manpower/settings'
+    | '/cm/photos/settings'
     | '/cm/punch-list/$id'
     | '/cm/punch-list/new'
     | '/cm/punch-list/settings'
@@ -1017,6 +1028,7 @@ export interface FileRouteTypes {
     | '/cm/manpower_/edit'
     | '/cm/manpower_/new'
     | '/cm/manpower_/settings'
+    | '/cm/photos_/settings'
     | '/cm/punch-list_/$id'
     | '/cm/punch-list_/new'
     | '/cm/punch-list_/settings'
@@ -1481,6 +1493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CmPunchListIdRouteImport
       parentRoute: typeof CmRoute
     }
+    '/cm/photos_/settings': {
+      id: '/cm/photos_/settings'
+      path: '/photos/settings'
+      fullPath: '/cm/photos/settings'
+      preLoaderRoute: typeof CmPhotosSettingsRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/manpower_/settings': {
       id: '/cm/manpower_/settings'
       path: '/manpower/settings'
@@ -1775,6 +1794,7 @@ interface CmRouteChildren {
   CmManpowerEditRoute: typeof CmManpowerEditRoute
   CmManpowerNewRoute: typeof CmManpowerNewRoute
   CmManpowerSettingsRoute: typeof CmManpowerSettingsRoute
+  CmPhotosSettingsRoute: typeof CmPhotosSettingsRoute
   CmPunchListIdRoute: typeof CmPunchListIdRouteWithChildren
   CmPunchListNewRoute: typeof CmPunchListNewRoute
   CmPunchListSettingsRoute: typeof CmPunchListSettingsRoute
@@ -1836,6 +1856,7 @@ const CmRouteChildren: CmRouteChildren = {
   CmManpowerEditRoute: CmManpowerEditRoute,
   CmManpowerNewRoute: CmManpowerNewRoute,
   CmManpowerSettingsRoute: CmManpowerSettingsRoute,
+  CmPhotosSettingsRoute: CmPhotosSettingsRoute,
   CmPunchListIdRoute: CmPunchListIdRouteWithChildren,
   CmPunchListNewRoute: CmPunchListNewRoute,
   CmPunchListSettingsRoute: CmPunchListSettingsRoute,
