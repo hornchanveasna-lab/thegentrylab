@@ -3,7 +3,6 @@ import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
 import { GoogleMapsOverlay } from "@deck.gl/google-maps";
 import { GeoJsonLayer, BitmapLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
-import { MapClouds } from "@/components/site/MapClouds";
 import { useLang } from "@/lib/i18n";
 import { resolveAdminUnits } from "@/lib/geoLookup";
 import { useMapSites, useNews, useProjects, useResearch, useSiteImages } from "@/lib/data";
@@ -1624,7 +1623,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             <FlyController target={pinTarget} />
             <ZoomLabelController />
             <ZoomClassController wrapperRef={wrapperRef} />
-            <MapClouds />
 
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
 
