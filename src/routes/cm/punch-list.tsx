@@ -11,6 +11,7 @@ import {
 } from "@/components/cm/shared";
 import {
   useCMTasks,
+  useAllCMTasks,
   createCMTask,
   updateCMTask,
   deleteCMTask,
@@ -23,6 +24,7 @@ import {
   logCMActivity,
   locationBreadcrumb,
   type CMTask,
+  type CMTaskWithProject,
   type TaskStatus,
   type TaskPriority,
 } from "@/lib/cm-data";
@@ -159,7 +161,7 @@ export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, de
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function PunchItemCard({ item }: { item: CMTask }) {
+function PunchItemCard({ item, projectName }: { item: CMTask; projectName?: string }) {
   const { t } = useCMLang();
   const sc = STATUS_COLOR[item.status];
   return (
@@ -168,6 +170,7 @@ function PunchItemCard({ item }: { item: CMTask }) {
       <div className="flex items-center gap-4 min-w-0">
         <span className="font-mono text-[12px] text-white/70 shrink-0">{item.created_at.slice(0, 10)}</span>
         {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
         <span className={`text-[12px] truncate ${item.status === "Done" ? "text-white/40 line-through" : "text-white/70"}`}>{item.title}</span>
       </div>
       <StatusBadge label={t(`taskStatus.${item.status}`)} color={sc} />
@@ -395,7 +398,11 @@ function CMPunchListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: items, isLoading } = useCMTasks(projectId || undefined);
+  const [viewAll, setViewAll] = useState(true);
+  const { data: singleItems, isLoading: singleLoading } = useCMTasks(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allItems, isLoading: allLoading } = useAllCMTasks(viewAll ? user?.id : undefined);
+  const items: (CMTask | CMTaskWithProject)[] | undefined = viewAll ? allItems : singleItems;
+  const isLoading = viewAll ? allLoading : singleLoading;
   const canCreate = usePermission(projectId || undefined, user?.id, "punch_list", "create");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
@@ -404,7 +411,17 @@ function CMPunchListPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_tasks", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -430,13 +447,13 @@ function CMPunchListPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/punch-list/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && (
+        {!viewAll && projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <WeekCalendarStrip items={items ?? []} dateOf={(it) => it.created_at.slice(0, 10)} lang={lang}
             selected={dateFilter} onSelect={setDateFilter} />
         )}
@@ -448,7 +465,7 @@ function CMPunchListPage() {
           </button>
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             <>
@@ -461,7 +478,7 @@ function CMPunchListPage() {
                   <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
                 )}
                 <div className="flex flex-col gap-3">
-                  {open.map((t) => <PunchItemCard key={t.id} item={t} />)}
+                  {open.map((t) => <PunchItemCard key={t.id} item={t} projectName={viewAll ? (t as CMTaskWithProject).projectName : undefined} />)}
                 </div>
 
                 {done.length > 0 && (
@@ -471,14 +488,14 @@ function CMPunchListPage() {
                     </button>
                     {showCompleted && (
                       <div className="flex flex-col gap-3 mt-3">
-                        {done.map((t) => <PunchItemCard key={t.id} item={t} />)}
+                        {done.map((t) => <PunchItemCard key={t.id} item={t} projectName={viewAll ? (t as CMTaskWithProject).projectName : undefined} />)}
                       </div>
                     )}
                   </div>
                 )}
             </>
 
-            {canCreate && <FAB label={t("punchList.newBtn")} onClick={() => navigate({ to: "/cm/punch-list/new" })} />}
+            {!viewAll && canCreate && <FAB label={t("punchList.newBtn")} onClick={() => navigate({ to: "/cm/punch-list/new" })} />}
           </>
         )}
       </main>

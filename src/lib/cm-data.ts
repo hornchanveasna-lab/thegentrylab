@@ -455,6 +455,28 @@ export function useCMTasks(projectId: string | undefined) {
   });
 }
 
+export interface CMTaskWithProject extends CMTask {
+  projectName: string;
+}
+
+/** Punch List's "All Projects" filter — same cross-project pattern as
+ *  useAllCMDailyLogs, joined with the project name for display. */
+export function useAllCMTasks(userId: string | undefined) {
+  return useQuery<CMTaskWithProject[]>({
+    queryKey: ["cm_all_tasks", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_tasks").select("*, cm_projects(name)").order("sort_order").order("created_at");
+      if (error) throw error;
+      return (data as unknown as (CMTask & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...rec } = r;
+        return { ...rec, projectName: cm_projects?.name ?? "Untitled project" };
+      });
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 export async function createCMTask(
   ownerId: string,
   projectId: string,
@@ -1188,6 +1210,28 @@ export function useCMEquipment(projectId: string | undefined) {
       const { data, error } = await db().from("cm_equipment").select("*").eq("project_id", projectId).order("created_at");
       if (error) throw error;
       return data as CMEquipment[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export interface CMEquipmentWithProject extends CMEquipment {
+  projectName: string;
+}
+
+/** Equipment's "All Projects" filter — same cross-project pattern as
+ *  useAllCMDailyLogs, joined with the project name for display. */
+export function useAllCMEquipment(userId: string | undefined) {
+  return useQuery<CMEquipmentWithProject[]>({
+    queryKey: ["cm_all_equipment", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_equipment").select("*, cm_projects(name)").order("created_at");
+      if (error) throw error;
+      return (data as unknown as (CMEquipment & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...rec } = r;
+        return { ...rec, projectName: cm_projects?.name ?? "Untitled project" };
+      });
     },
     staleTime: STALE_TIME,
   });
@@ -2862,6 +2906,28 @@ export function useCMInspections(projectId: string | undefined) {
   });
 }
 
+export interface CMInspectionWithProject extends CMInspection {
+  projectName: string;
+}
+
+/** Inspection's "All Projects" filter — same cross-project pattern as
+ *  useAllCMDailyLogs, joined with the project name for display. */
+export function useAllCMInspections(userId: string | undefined) {
+  return useQuery<CMInspectionWithProject[]>({
+    queryKey: ["cm_all_inspections", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_inspections").select("*, cm_projects(name)").order("inspection_date", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as (CMInspection & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...rec } = r;
+        return { ...rec, projectName: cm_projects?.name ?? "Untitled project" };
+      });
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 export async function createCMInspection(
   ownerId: string,
   projectId: string,
@@ -2925,6 +2991,28 @@ export function useCMSafetyRecords(projectId: string | undefined) {
       const { data, error } = await db().from("cm_safety_records").select("*").eq("project_id", projectId).order("record_date", { ascending: false });
       if (error) throw error;
       return data as CMSafetyRecord[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export interface CMSafetyRecordWithProject extends CMSafetyRecord {
+  projectName: string;
+}
+
+/** Safety's "All Projects" filter — same cross-project pattern as
+ *  useAllCMDailyLogs, joined with the project name for display. */
+export function useAllCMSafetyRecords(userId: string | undefined) {
+  return useQuery<CMSafetyRecordWithProject[]>({
+    queryKey: ["cm_all_safety_records", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_safety_records").select("*, cm_projects(name)").order("record_date", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as (CMSafetyRecord & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...rec } = r;
+        return { ...rec, projectName: cm_projects?.name ?? "Untitled project" };
+      });
     },
     staleTime: STALE_TIME,
   });
@@ -3009,6 +3097,28 @@ export function useCMSubmittals(projectId: string | undefined) {
   });
 }
 
+export interface CMSubmittalWithProject extends CMSubmittal {
+  projectName: string;
+}
+
+/** Submittal's "All Projects" filter — same cross-project pattern as
+ *  useAllCMDailyLogs, joined with the project name for display. */
+export function useAllCMSubmittals(userId: string | undefined) {
+  return useQuery<CMSubmittalWithProject[]>({
+    queryKey: ["cm_all_submittals", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_submittals").select("*, cm_projects(name)").order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as (CMSubmittal & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...rec } = r;
+        return { ...rec, projectName: cm_projects?.name ?? "Untitled project" };
+      });
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 export async function createCMSubmittal(
   ownerId: string,
   projectId: string,
@@ -3077,6 +3187,28 @@ export function useCMContracts(projectId: string | undefined) {
       const { data, error } = await db().from("cm_contracts").select("*").eq("project_id", projectId).order("created_at");
       if (error) throw error;
       return data as CMContract[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export interface CMContractWithProject extends CMContract {
+  projectName: string;
+}
+
+/** Contracts' "All Projects" filter — same cross-project pattern as
+ *  useAllCMDailyLogs, joined with the project name for display. */
+export function useAllCMContracts(userId: string | undefined) {
+  return useQuery<CMContractWithProject[]>({
+    queryKey: ["cm_all_contracts", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_contracts").select("*, cm_projects(name)").order("created_at");
+      if (error) throw error;
+      return (data as unknown as (CMContract & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...rec } = r;
+        return { ...rec, projectName: cm_projects?.name ?? "Untitled project" };
+      });
     },
     staleTime: STALE_TIME,
   });
@@ -3152,6 +3284,28 @@ export function useCMInstructions(projectId: string | undefined) {
       const { data, error } = await db().from("cm_instructions").select("*").eq("project_id", projectId).order("created_at", { ascending: false });
       if (error) throw error;
       return data as CMInstruction[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export interface CMInstructionWithProject extends CMInstruction {
+  projectName: string;
+}
+
+/** Instructions' "All Projects" filter — same cross-project pattern as
+ *  useAllCMDailyLogs, joined with the project name for display. */
+export function useAllCMInstructions(userId: string | undefined) {
+  return useQuery<CMInstructionWithProject[]>({
+    queryKey: ["cm_all_instructions", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_instructions").select("*, cm_projects(name)").order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as (CMInstruction & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...rec } = r;
+        return { ...rec, projectName: cm_projects?.name ?? "Untitled project" };
+      });
     },
     staleTime: STALE_TIME,
   });

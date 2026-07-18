@@ -11,6 +11,7 @@ import {
 } from "@/components/cm/shared";
 import {
   useCMSafetyRecords,
+  useAllCMSafetyRecords,
   createCMSafetyRecord,
   updateCMSafetyRecord,
   deleteCMSafetyRecord,
@@ -18,6 +19,7 @@ import {
   uploadCMFile,
   uploadCMQuickCaptureFiles,
   type CMSafetyRecord,
+  type CMSafetyRecordWithProject,
   type SafetyRecordType,
   type SafetySeverity,
   SAFETY_RECORD_TYPES,
@@ -147,7 +149,7 @@ export function NewSafetySheet({ ownerId, projectId, existing, defaultRecordType
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SafetyCard({ item }: { item: CMSafetyRecord }) {
+function SafetyCard({ item, projectName }: { item: CMSafetyRecord; projectName?: string }) {
   const { t } = useCMLang();
   const sc = SEVERITY_COLOR[item.severity];
   return (
@@ -157,6 +159,7 @@ function SafetyCard({ item }: { item: CMSafetyRecord }) {
         <span className="font-mono text-[12px] text-white/70 shrink-0">{item.record_date}</span>
         <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`safetyType.${item.record_type}`)}</span>
         {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
         <span className="text-[12px] text-white/70 truncate">{item.title}</span>
       </div>
       <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />
@@ -236,7 +239,13 @@ function CMSafetyPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: records, isLoading, isError, refetch } = useCMSafetyRecords(projectId || undefined);
+  const [viewAll, setViewAll] = useState(true);
+  const { data: singleRecords, isLoading: singleLoading, isError: singleIsError, refetch: singleRefetch } = useCMSafetyRecords(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allRecords, isLoading: allLoading, isError: allIsError, refetch: allRefetch } = useAllCMSafetyRecords(viewAll ? user?.id : undefined);
+  const records: (CMSafetyRecord | CMSafetyRecordWithProject)[] | undefined = viewAll ? allRecords : singleRecords;
+  const isLoading = viewAll ? allLoading : singleLoading;
+  const isError = viewAll ? allIsError : singleIsError;
+  const refetch = viewAll ? allRefetch : singleRefetch;
   const canCreate = usePermission(projectId || undefined, user?.id, "safety", "create");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
@@ -244,7 +253,17 @@ function CMSafetyPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_safety_records", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_safety_records", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_safety_records", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleRecords = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -267,13 +286,13 @@ function CMSafetyPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("safety.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/safety/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && (
+        {!viewAll && projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <WeekCalendarStrip items={records ?? []} dateOf={(r) => r.record_date} lang={lang}
             selected={dateFilter} onSelect={setDateFilter} />
         )}
@@ -285,7 +304,7 @@ function CMSafetyPage() {
           </button>
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
@@ -293,11 +312,11 @@ function CMSafetyPage() {
               <>
                 {!isLoading && visibleRecords.length === 0 && <EmptyState message={t("safety.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} />)}
+                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} projectName={viewAll ? (s as CMSafetyRecordWithProject).projectName : undefined} />)}
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("safety.newBtn")} onClick={() => navigate({ to: "/cm/safety/new" })} />}
+            {!viewAll && canCreate && <FAB label={t("safety.newBtn")} onClick={() => navigate({ to: "/cm/safety/new" })} />}
           </>
         )}
       </main>

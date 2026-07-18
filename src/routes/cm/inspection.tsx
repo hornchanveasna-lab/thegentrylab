@@ -11,6 +11,7 @@ import {
 } from "@/components/cm/shared";
 import {
   useCMInspections,
+  useAllCMInspections,
   createCMInspection,
   updateCMInspection,
   deleteCMInspection,
@@ -21,6 +22,7 @@ import {
   locationBreadcrumb,
   INSPECTION_TYPES,
   type CMInspection,
+  type CMInspectionWithProject,
   type InspectionStatus,
   type InspectionType,
   type Discipline,
@@ -181,7 +183,7 @@ export function NewInspectionSheet({ ownerId, projectId, existing, canApprove, d
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function InspectionCard({ item }: { item: CMInspection }) {
+function InspectionCard({ item, projectName }: { item: CMInspection; projectName?: string }) {
   const { t } = useCMLang();
   const sc = STATUS_COLOR[item.status];
   return (
@@ -191,6 +193,7 @@ function InspectionCard({ item }: { item: CMInspection }) {
         <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
         {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`inspectionType.${item.inspection_type}`)}</span>}
         {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
         <span className="text-[12px] text-white/70 truncate">{item.title}</span>
       </div>
       <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
@@ -275,7 +278,13 @@ function CMInspectionPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: inspections, isLoading, isError, refetch } = useCMInspections(projectId || undefined);
+  const [viewAll, setViewAll] = useState(true);
+  const { data: singleInspections, isLoading: singleLoading, isError: singleIsError, refetch: singleRefetch } = useCMInspections(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allInspections, isLoading: allLoading, isError: allIsError, refetch: allRefetch } = useAllCMInspections(viewAll ? user?.id : undefined);
+  const inspections: (CMInspection | CMInspectionWithProject)[] | undefined = viewAll ? allInspections : singleInspections;
+  const isLoading = viewAll ? allLoading : singleLoading;
+  const isError = viewAll ? allIsError : singleIsError;
+  const refetch = viewAll ? allRefetch : singleRefetch;
   const canCreate = usePermission(projectId || undefined, user?.id, "inspection", "create");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
@@ -283,7 +292,17 @@ function CMInspectionPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_inspections", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_inspections", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_inspections", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleInspections = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -306,37 +325,35 @@ function CMInspectionPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/inspection/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && (
+        {!viewAll && projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
-          <WeekCalendarStrip items={inspections ?? []} dateOf={(i) => i.inspection_date} lang={lang}
-            selected={dateFilter} onSelect={setDateFilter} />
-        )}
-
-        {dateFilter && (
-          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
-            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
-            {dateFilter} <span className="text-[13px] leading-none">×</span>
-          </button>
-        )}
-
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
+            <WeekCalendarStrip items={inspections ?? []} dateOf={(i) => i.inspection_date} lang={lang}
+              selected={dateFilter} onSelect={setDateFilter} />
+
+            {dateFilter && (
+              <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+                className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+                {dateFilter} <span className="text-[13px] leading-none">×</span>
+              </button>
+            )}
+
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
             {!isError && (
               <>
                 {!isLoading && visibleInspections.length === 0 && <EmptyState message={t("inspection.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} />)}
+                  {visibleInspections.map((i) => <InspectionCard key={i.id} item={i} projectName={viewAll ? (i as CMInspectionWithProject).projectName : undefined} />)}
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("inspection.newBtn")} onClick={() => navigate({ to: "/cm/inspection/new" })} />}
+            {!viewAll && canCreate && <FAB label={t("inspection.newBtn")} onClick={() => navigate({ to: "/cm/inspection/new" })} />}
           </>
         )}
       </main>
