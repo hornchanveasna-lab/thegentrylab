@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { lazy, Suspense, useState, useRef, useCallback } from "react";
 import { TopNav } from "@/components/site/TopNav";
-import { Counter, useReveal, useSnapScroll } from "@/components/site/Counter";
+import { Counter, useReveal, useSmoothScroll } from "@/components/site/Counter";
 import { useConfig } from "@/lib/siteConfig";
 import { useLang } from "@/lib/i18n";
 
@@ -204,7 +204,7 @@ function useTilt3D() {
 
 export function IndustrialHomePage() {
   useReveal();
-  useSnapScroll();
+  useSmoothScroll();
   const cfg = useConfig();
   const tilt = useTilt3D();
   const [openStage, setOpenStage] = useState<string | null>(null);
