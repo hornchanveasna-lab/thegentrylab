@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
-  useCMProjectLocations, locationBreadcrumb, useCMCompanies, createCMCompany,
+  useCMProjectLocations, locationBreadcrumb, useCMCompanies, createCMCompany, createCMProjectLocation,
   type ProjectStatus, type CMComputedHealth,
   useCMComments, addCMComment, deleteCMComment,
   useCMProjectMembers,
@@ -436,22 +436,34 @@ export function DisciplineSelect({ value, onChange, disabled, disciplines }: {
 
 /** Location picker — per-project (unlike DisciplineSelect's fixed global
  *  list), so it fetches this project's hierarchy and flattens it into
- *  breadcrumb-labeled options ("Building B1 › Ground Floor › Zone A"). */
+ *  breadcrumb-labeled options ("Building B1 › Ground Floor › Zone A").
+ *  Typing a name that doesn't exist yet offers an inline "+ Create" (like
+ *  `CompanySelect`) that writes a real `cm_project_locations` row — so a
+ *  location added from any form shows up in Project Settings > Locations
+ *  automatically, instead of being a one-off value nobody else can reuse. */
 export function LocationSelect({ projectId, value, onChange, disabled }: {
   projectId: string; value: string | null; onChange: (v: string | null) => void; disabled?: boolean;
 }) {
   const { t } = useCMLang();
+  const qc = useQueryClient();
   const { data: locations } = useCMProjectLocations(projectId);
   const options = useMemo(
     () => (locations ?? []).map((l) => ({ value: l.id, label: locationBreadcrumb(l, locations ?? []) })),
     [locations],
   );
+  const handleCreate = async (name: string) => {
+    const created = await createCMProjectLocation(projectId, null, name, "area");
+    qc.invalidateQueries({ queryKey: ["cm_project_locations", projectId] });
+    onChange(created.id);
+  };
   return (
     <FieldSelect
       value={value ?? ""}
       onChange={(v) => onChange(v || null)}
+      onCreateCustom={handleCreate}
       disabled={disabled}
       searchable
+      allowCustom
       placeholder={t("common.selectLocation")}
       options={[{ value: "", label: t("common.none") }, ...options]}
     />
@@ -1132,6 +1144,13 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
   const [editTarget, setEditTarget] = useState<number | null>(editIndex);
   const editing = editTarget != null ? rows[editTarget] : undefined;
   const [company, setCompany] = useState(editing?.company ?? "");
+  // Resolve the stored company *name* (all this row keeps) back to an id
+  // for CompanySelect's controlled value — it's owner-scoped like Contracts/
+  // Instructions use, so "+ Create" here writes a real cm_companies row
+  // (visible in Project Settings > Companies) instead of a one-off string
+  // only this row remembers.
+  const { data: companies } = useCMCompanies(ownerId);
+  const companyId = useMemo(() => companies?.find((c) => c.name === company)?.id ?? null, [companies, company]);
   const [trade, setTrade] = useState(editing?.trade ?? "");
   const [category, setCategory] = useState(editing?.category ?? "");
   const [count, setCount] = useState(editing ? String(editing.count) : "");
@@ -1197,13 +1216,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 px-6 pb-8 pt-2">
         <div className="flex flex-col gap-1">
           <span className={fieldLabel}>{t("siteDiary.company")}</span>
-          <FieldSelect
-            value={company}
-            onChange={setCompany}
-            searchable allowCustom
-            placeholder={t("manpower.selectCompany")}
-            options={[{ value: "", label: t("common.none") }, ...companyOptions.map((c) => ({ value: c, label: c }))]}
-          />
+          <CompanySelect ownerId={ownerId} value={companyId} onChange={(_id, name) => setCompany(name)} disabled={saving} />
         </div>
         <div className="flex flex-col gap-1">
           <span className={fieldLabel}>{t("siteDiary.trade")}</span>
