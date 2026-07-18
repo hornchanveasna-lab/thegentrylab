@@ -2,10 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
-import { useCMLang, type CMLang } from "@/lib/cm-i18n";
+import { useCMLang } from "@/lib/cm-i18n";
 import {
   BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, MODULE_ROUTES, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, MiniCalendar,
+  PhotoLightbox, moduleDetailRoute, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, WeekCalendarStrip,
   ConfirmationDialog, useClickOutside,
 } from "@/components/cm/shared";
 import {
@@ -353,27 +353,6 @@ function dateLabel(date: string, t: (k: string) => string) {
   return date;
 }
 
-/** A month-by-month calendar of thumbnails — one representative photo per day
- *  — so a site engineer can "track back" to a date instead of scrolling a
- *  long grid, then jump into whichever report that day's photo belongs to.
- *  Thin wrapper around the shared `MiniCalendar` grid, passing a photo
- *  thumbnail as each marked day's cover. */
-function CalendarView({ photos, lang, onOpenDay }: {
-  photos: CMPhotoWithContext[]; lang: CMLang; onOpenDay: (dayPhotos: CMPhotoWithContext[]) => void;
-}) {
-  return (
-    <MiniCalendar
-      items={photos}
-      dateOf={(p) => p.date}
-      lang={lang}
-      onOpenDay={onOpenDay}
-      renderCover={(dayPhotos) => <img src={dayPhotos[0].thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-    />
-  );
-}
-
-type View = "grid" | "calendar";
-
 function CMPhotosPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -388,7 +367,7 @@ function CMPhotosPage() {
   const [groupBy, setGroupBy] = useState<GroupBy>("date");
   const [groupMenuOpen, setGroupMenuOpen] = useState(false);
   const groupMenuRef = useClickOutside<HTMLDivElement>(groupMenuOpen, () => setGroupMenuOpen(false));
-  const [view, setView] = useState<View>("grid");
+  const [dateFilter, setDateFilter] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<{ items: CMPhotoWithContext[]; index: number } | null>(null);
   const [showNew, setShowNew] = useState(false);
 
@@ -451,6 +430,7 @@ function CMPhotosPage() {
   const filtered = (photos ?? []).filter((p) =>
     (projectFilter === "all" || p.projectId === projectFilter) &&
     (typeFilter === "all" || p.module === typeFilter) &&
+    (!dateFilter || p.date === dateFilter) &&
     (!searchQuery || [p.caption, p.projectName].some((f) => f?.toLowerCase().includes(searchQuery))));
 
   const filterSubtitle = useMemo(() => {
@@ -555,59 +535,49 @@ function CMPhotosPage() {
           />
         </div>
 
+        <WeekCalendarStrip items={filtered} dateOf={(p) => p.date} lang={lang} selected={dateFilter} onSelect={setDateFilter} />
+
+        {dateFilter && (
+          <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            {dateFilter} <span className="text-[13px] leading-none">×</span>
+          </button>
+        )}
+
         <div className="flex items-center justify-between gap-2 mb-5">
-          {view === "grid" ? (
-            <div ref={groupMenuRef} className="relative inline-block">
-              <button onClick={() => setGroupMenuOpen((v) => !v)}
-                className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white/75 hover:text-white transition-colors">
-                {GROUP_ICON[groupBy]}
-                <span className="text-[12px] font-medium">{t(`photos.group${groupBy === "date" ? "Date" : groupBy === "project" ? "Project" : "Type"}`)}</span>
-                <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className="transition-transform" style={{ transform: groupMenuOpen ? "rotate(180deg)" : "none" }}>
-                  <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-
-              {groupMenuOpen && (
-                <div className="absolute left-0 top-11 z-20 w-48 rounded-2xl bg-[#0d0d0e] border border-white/10 overflow-hidden shadow-xl">
-                  {GROUP_OPTIONS.map((g) => (
-                    <button key={g} onClick={() => { setGroupBy(g); setGroupMenuOpen(false); }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
-                      <span className="text-white/50 shrink-0">{GROUP_ICON[g]}</span>
-                      <span className="flex-1 text-[13px] text-white/85">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
-                      {groupBy === g && (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                          <path d="M4 12.5l5 5L20 6" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : <div />}
-
-          <div className="flex gap-1 rounded-xl bg-white/5 border border-white/10 p-1 shrink-0">
-            <button onClick={() => setView("grid")} aria-label={t("photos.viewGrid")}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "grid" ? "" : "text-white/50"}`}
-              style={view === "grid" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
-                <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
+          <div ref={groupMenuRef} className="relative inline-block">
+            <button onClick={() => setGroupMenuOpen((v) => !v)}
+              className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white/75 hover:text-white transition-colors">
+              {GROUP_ICON[groupBy]}
+              <span className="text-[12px] font-medium">{t(`photos.group${groupBy === "date" ? "Date" : groupBy === "project" ? "Project" : "Type"}`)}</span>
+              <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className="transition-transform" style={{ transform: groupMenuOpen ? "rotate(180deg)" : "none" }}>
+                <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
-            <button onClick={() => setView("calendar")} aria-label={t("photos.viewCalendar")}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "calendar" ? "" : "text-white/50"}`}
-              style={view === "calendar" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
-              {GROUP_ICON.date}
-            </button>
+
+            {groupMenuOpen && (
+              <div className="absolute left-0 top-11 z-20 w-48 rounded-2xl bg-[#0d0d0e] border border-white/10 overflow-hidden shadow-xl">
+                {GROUP_OPTIONS.map((g) => (
+                  <button key={g} onClick={() => { setGroupBy(g); setGroupMenuOpen(false); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
+                    <span className="text-white/50 shrink-0">{GROUP_ICON[g]}</span>
+                    <span className="flex-1 text-[13px] text-white/85">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
+                    {groupBy === g && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                        <path d="M4 12.5l5 5L20 6" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
         {!isLoading && filtered.length === 0 && <p className="text-white/30 text-sm">{t("photos.noneYet")}</p>}
 
-        {view === "grid" ? (
-          <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6">
             {groups.map((group, gi) => (
               <div key={gi}>
                 <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
@@ -639,10 +609,7 @@ function CMPhotosPage() {
                 </div>
               </div>
             ))}
-          </div>
-        ) : (
-          <CalendarView photos={filtered} lang={lang} onOpenDay={(dayPhotos) => setLightbox({ items: dayPhotos, index: 0 })} />
-        )}
+        </div>
 
         {!selectMode && <FAB label={t("photos.newBtn")} onClick={() => setShowNew(true)} />}
       </main>
@@ -674,7 +641,7 @@ function CMPhotosPage() {
             if (!item.module || !item.recordId || !item.projectId) return;
             setPendingHighlight(item.module, item.recordId, item.projectId, item.url);
             setLightbox(null);
-            navigate({ to: MODULE_ROUTES[item.module] });
+            navigate(moduleDetailRoute(item.module, item.recordId));
           }}
           onDelete={async (item) => {
             if (!item.module || !item.recordId) return;

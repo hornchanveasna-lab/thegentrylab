@@ -6,7 +6,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls,
-  PhotoLightbox, usePendingHighlight, WeekCalendarStrip,
+  WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -32,14 +32,14 @@ const SEVERITY_COLOR: Record<SafetySeverity, string> = { Low: "#94a3b8", Medium:
 const TYPE_OPTIONS: SafetyRecordType[] = [...SAFETY_RECORD_TYPES];
 const SEVERITY_OPTIONS: SafetySeverity[] = ["Low", "Medium", "High", "Critical"];
 
-export function NewSafetySheet({ ownerId, projectId, existing, backTo, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMSafetyRecord; backTo: string; onCreated: () => void;
+export function NewSafetySheet({ ownerId, projectId, existing, defaultRecordType, defaultSeverity, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMSafetyRecord; defaultRecordType?: SafetyRecordType; defaultSeverity?: SafetySeverity; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
-  const [recordType, setRecordType] = useState<SafetyRecordType>(existing?.record_type ?? "Toolbox Talk");
+  const [recordType, setRecordType] = useState<SafetyRecordType>(existing?.record_type ?? defaultRecordType ?? "Toolbox Talk");
   const [title, setTitle] = useState(existing?.title ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
-  const [severity, setSeverity] = useState<SafetySeverity>(existing?.severity ?? "Low");
+  const [severity, setSeverity] = useState<SafetySeverity>(existing?.severity ?? defaultSeverity ?? "Low");
   const [recordDate, setRecordDate] = useState(() => existing?.record_date ?? new Date().toISOString().slice(0, 10));
   const [involved, setInvolved] = useState(existing?.involved ?? "");
   const [photos, setPhotos] = useState<File[]>([]);
@@ -147,14 +147,30 @@ export function NewSafetySheet({ ownerId, projectId, existing, backTo, onCreated
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, onOpenPhoto }: {
+function SafetyCard({ item }: { item: CMSafetyRecord }) {
+  const { t } = useCMLang();
+  const sc = SEVERITY_COLOR[item.severity];
+  return (
+    <Link to="/cm/safety/$id" params={{ id: item.id }}
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      <div className="flex items-center gap-4 min-w-0">
+        <span className="font-mono text-[12px] text-white/70 shrink-0">{item.record_date}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`safetyType.${item.record_type}`)}</span>
+        {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+      </div>
+      <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />
+    </Link>
+  );
+}
+
+export function SafetyDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto }: {
   item: CMSafetyRecord; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
+  flash?: boolean; matchedPhotoUrl?: string | null;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
-  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const { ref, flash, matchedPhotoUrl } = usePendingHighlight("safety", item.id, () => setOpen(true));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const sc = SEVERITY_COLOR[item.severity];
 
@@ -169,49 +185,43 @@ function SafetyCard({ item, canEdit, canApprove, canDelete, userId, onChanged, o
   };
 
   return (
-    <div ref={ref} className={`rounded-2xl bg-[#0d0d0e] overflow-hidden transition-shadow duration-500 ${flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
-        <div className="flex items-center gap-4 min-w-0">
-          <span className="font-mono text-[12px] text-white/70 shrink-0">{item.record_date}</span>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`safetyType.${item.record_type}`)}</span>
-          {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-          <span className="text-[12px] text-white/70 truncate">{item.title}</span>
-        </div>
-        <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />
-      </button>
-      {open && (
-        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
-          {item.description && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.description}</p>}
-          {item.involved && <p className="text-[12px] text-white/50">{t("safety.involved")}: {item.involved}</p>}
-          {item.photos.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {item.photos.map((url, i) => (
-                <button key={url} type="button" data-photo-url={url}
-                  onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
-                  className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
-                  <img src={item.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-          <FileAttachmentList files={item.files} />
-          <div className="flex items-center gap-3">
-            {canApprove && (
-              <button onClick={handleResolve} disabled={busy} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest"
-                style={{ backgroundColor: item.status === "Open" ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", color: item.status === "Open" ? "#34d399" : "rgba(255,255,255,0.5)" }}>
-                {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
-              </button>
-            )}
-            {canEdit && (
-              <Link to="/cm/safety/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</Link>
-            )}
-            {canDelete && (
-              <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
-            )}
-          </div>
-          <RecordDetailExtras projectId={item.project_id} entityType="safety" module="safety" entityId={item.id} userId={userId} />
+    <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <span className="font-mono text-[12px] text-white/70">{item.record_date}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t(`safetyType.${item.record_type}`)}</span>
+        {item.doc_number && <span className="font-mono text-[9px] text-white/25">{item.doc_number}</span>}
+      </div>
+      <p className="text-[14px] text-white/85">{item.title}</p>
+      <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />
+      {item.description && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.description}</p>}
+      {item.involved && <p className="text-[12px] text-white/50">{t("safety.involved")}: {item.involved}</p>}
+      {item.photos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {item.photos.map((url, i) => (
+            <button key={url} type="button" data-photo-url={url}
+              onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
+              className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+              <img src={item.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
+            </button>
+          ))}
         </div>
       )}
+      <FileAttachmentList files={item.files} />
+      <div className="flex items-center gap-3">
+        {canApprove && (
+          <button onClick={handleResolve} disabled={busy} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest"
+            style={{ backgroundColor: item.status === "Open" ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", color: item.status === "Open" ? "#34d399" : "rgba(255,255,255,0.5)" }}>
+            {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
+          </button>
+        )}
+        {canEdit && (
+          <Link to="/cm/safety/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</Link>
+        )}
+        {canDelete && (
+          <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
+        )}
+      </div>
+      <RecordDetailExtras projectId={item.project_id} entityType="safety" module="safety" entityId={item.id} userId={userId} />
       {confirmingDelete && (
         <ConfirmationDialog message={t("safety.confirmDelete")} confirmLabel={t("safety.delete")}
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
@@ -228,12 +238,8 @@ function CMSafetyPage() {
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
   const { data: records, isLoading, isError, refetch } = useCMSafetyRecords(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "safety", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "safety", "edit");
-  const canApprove = usePermission(projectId || undefined, user?.id, "safety", "approve");
-  const canDelete = usePermission(projectId || undefined, user?.id, "safety", "delete");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
-  const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
@@ -287,7 +293,7 @@ function CMSafetyPage() {
               <>
                 {!isLoading && visibleRecords.length === 0 && <EmptyState message={t("safety.noneYet")} />}
                 <div className="flex flex-col gap-3">
-                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} onChanged={invalidate} onOpenPhoto={(items, index) => setLightbox({ items, index })} />)}
+                  {visibleRecords.map((s) => <SafetyCard key={s.id} item={s} />)}
                 </div>
               </>
             )}
@@ -311,15 +317,6 @@ function CMSafetyPage() {
             }
             invalidate();
           }}
-        />
-      )}
-
-      {lightbox && (
-        <PhotoLightbox
-          items={lightbox.items}
-          index={lightbox.index}
-          onIndexChange={(index) => setLightbox((lb) => lb && { ...lb, index })}
-          onClose={() => setLightbox(null)}
         />
       )}
     </div>

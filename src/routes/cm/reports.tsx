@@ -9,7 +9,7 @@ import {
   buildSCurveSeries, useCMManpowerPlans, cmLaborHours,
   type InspectionStatus, type TaskStatus, type SafetySeverity, type SubmittalStatus, type EquipmentStatus,
 } from "@/lib/cm-data";
-import { FieldSelect, CMDailyActivityList, MODULE_ROUTES, setPendingHighlight } from "@/components/cm/shared";
+import { FieldSelect, CMDailyActivityList, moduleDetailRoute } from "@/components/cm/shared";
 
 type ReportType = "daily" | "progress" | "inspection" | "punchList" | "safety" | "manpower" | "equipment" | "submittal" | "boq" | "dashboard" | "photo";
 const REPORT_TYPES: ReportType[] = ["daily", "progress", "inspection", "punchList", "safety", "manpower", "equipment", "submittal", "boq", "dashboard", "photo"];
@@ -301,7 +301,7 @@ function CMReportsPage() {
                       {l.issues && <p className="text-[11px] text-red-400/80 print:text-red-700 mt-1">{t("reports.issue")} {l.issues}</p>}
                       <div className="print:hidden mt-2">
                         <CMDailyActivityList activity={activityByDate?.get(l.log_date)} projectId={l.project_id}
-                          onOpenItem={(module, recordId, pid) => { setPendingHighlight(module, recordId, pid, ""); navigate({ to: MODULE_ROUTES[module] }); }} />
+                          onOpenItem={(module, recordId) => navigate(moduleDetailRoute(module, recordId))} />
                       </div>
                     </div>
                   ))}

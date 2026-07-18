@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { usePermission } from "@/lib/cm-permissions";
 import { useSelectedProject } from "@/components/cm/shared";
-import { enabledDisciplines } from "@/lib/cm-data";
+import { enabledDisciplines, type SubmittalType } from "@/lib/cm-data";
 import { NewSubmittalSheet } from "./submittal";
 
 export const Route = createFileRoute("/cm/submittal_/new")({
@@ -17,6 +17,7 @@ function NewSubmittalPage() {
   const { projects, projectId } = useSelectedProject(user?.id);
   const activeProject = projects?.find((p) => p.id === projectId);
   const projectDisciplines = enabledDisciplines(activeProject);
+  const defaultType = (activeProject?.module_defaults?.submittal as { type?: SubmittalType } | undefined)?.type;
   const canApprove = usePermission(projectId || undefined, user?.id, "submittal", "approve");
 
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
@@ -24,7 +25,7 @@ function NewSubmittalPage() {
 
   return (
     <NewSubmittalSheet
-      ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} backTo="/cm/submittal"
+      ownerId={user.id} projectId={projectId} canApprove={canApprove} disciplines={projectDisciplines} defaultType={defaultType} backTo="/cm/submittal"
       onCreated={() => {
         queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] });
         navigate({ to: "/cm/submittal" });

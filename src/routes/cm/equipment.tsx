@@ -24,8 +24,8 @@ export const Route = createFileRoute("/cm/equipment")({
   component: CMEquipmentPage,
 });
 
-export function NewEquipmentSheet({ ownerId, projectId, existing, backTo, onCreated }: {
-  ownerId: string; projectId: string; existing?: CMEquipment; backTo: string; onCreated: () => void;
+export function NewEquipmentSheet({ ownerId, projectId, existing, typeOptions, backTo, onCreated }: {
+  ownerId: string; projectId: string; existing?: CMEquipment; typeOptions?: string[]; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
   const [name, setName] = useState(existing?.name ?? "");
@@ -71,7 +71,10 @@ export function NewEquipmentSheet({ ownerId, projectId, existing, backTo, onCrea
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("equipment.type")}</span>
-            <input className={inputCls} value={type} onChange={(e) => setType(e.target.value)} disabled={saving} />
+            <input className={inputCls} list="equipment-type-options" value={type} onChange={(e) => setType(e.target.value)} disabled={saving} />
+            <datalist id="equipment-type-options">
+              {(typeOptions ?? []).map((v) => <option key={v} value={v} />)}
+            </datalist>
           </label>
           <label className="flex flex-col gap-1.5">
             <span className={labelCls}>{t("equipment.qty")}</span>
