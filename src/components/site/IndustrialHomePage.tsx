@@ -218,7 +218,7 @@ export function IndustrialHomePage() {
   const stageImplication = ta("stageImplication");
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans overflow-x-clip">
       <TopNav cfg={cfg} />
 
       {/* ═══════════════════════════════════════════════════

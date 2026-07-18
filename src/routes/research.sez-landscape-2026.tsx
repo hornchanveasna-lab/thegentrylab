@@ -64,7 +64,7 @@ function SezLandscapeBrief() {
   const pct = (n: number) => (stats.total ? Math.round((n / stats.total) * 100) : 0);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans overflow-x-hidden print:bg-white print:text-black">
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans overflow-x-clip print:bg-white print:text-black">
       <div className="print:hidden">
         <TopNav />
       </div>
