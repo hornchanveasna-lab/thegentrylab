@@ -326,10 +326,10 @@ function CMContractsPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("contracts.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/contracts/settings"
-          quickSettings={!viewAll && projectId ? <ContractsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+          quickSettings={projectId ? <ContractsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {!viewAll && projectId && canCreate && (
+        {projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
@@ -359,7 +359,7 @@ function CMContractsPage() {
                 </div>
               </>
             )}
-            {!viewAll && canCreate && <FAB label={t("contracts.new")} onClick={() => navigate({ to: "/cm/contracts/new" })} />}
+            {canCreate && <FAB label={t("contracts.new")} onClick={() => navigate({ to: "/cm/contracts/new" })} />}
           </>
         )}
       </main>

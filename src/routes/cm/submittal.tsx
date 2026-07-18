@@ -354,10 +354,10 @@ function CMSubmittalPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/submittal/settings"
-          quickSettings={!viewAll && projectId ? <SubmittalQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+          quickSettings={projectId ? <SubmittalQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {!viewAll && projectId && canCreate && (
+        {projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
@@ -386,7 +386,7 @@ function CMSubmittalPage() {
                 {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} projectName={viewAll ? (s as CMSubmittalWithProject).projectName : undefined} />)}
               </div>
             </>
-            {!viewAll && canCreate && <FAB label={t("submittal.newBtn")} onClick={() => navigate({ to: "/cm/submittal/new" })} />}
+            {canCreate && <FAB label={t("submittal.newBtn")} onClick={() => navigate({ to: "/cm/submittal/new" })} />}
           </>
         )}
       </main>

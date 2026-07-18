@@ -359,10 +359,10 @@ function CMInspectionPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/inspection/settings"
-          quickSettings={!viewAll && projectId ? <InspectionQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+          quickSettings={projectId ? <InspectionQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {!viewAll && projectId && canCreate && (
+        {projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
@@ -388,7 +388,7 @@ function CMInspectionPage() {
                 </div>
               </>
             )}
-            {!viewAll && canCreate && <FAB label={t("inspection.newBtn")} onClick={() => navigate({ to: "/cm/inspection/new" })} />}
+            {canCreate && <FAB label={t("inspection.newBtn")} onClick={() => navigate({ to: "/cm/inspection/new" })} />}
           </>
         )}
       </main>
