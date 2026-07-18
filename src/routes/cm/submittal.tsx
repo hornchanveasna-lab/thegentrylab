@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
@@ -7,6 +7,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
+  type RecordMenuItem,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
@@ -202,12 +203,14 @@ function SubmittalCard({ item, projectName }: { item: CMSubmittal; projectName?:
   );
 }
 
-export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto }: {
+export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto, onMenuItems }: {
   item: CMSubmittal; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
   flash?: boolean; matchedPhotoUrl?: string | null;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+  onMenuItems?: (items: RecordMenuItem[]) => void;
 }) {
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const statusOptions = STATUS_OPTIONS.filter((s) => canApprove || !APPROVAL_STATUSES.includes(s) || s === item.status);
@@ -226,6 +229,13 @@ export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, 
     setBusy(true);
     try { await deleteCMSubmittal(item.id); onChanged(); } finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    const items: RecordMenuItem[] = [];
+    if (canEdit) items.push({ label: t("submittal.edit"), onClick: () => navigate({ to: "/cm/submittal/$id/edit", params: { id: item.id } }) });
+    if (canDelete) items.push({ label: t("common.delete"), onClick: () => setConfirmingDelete(true), destructive: true, disabled: busy });
+    onMenuItems?.(items);
+  }, [canEdit, canDelete, busy, item.id]);
 
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
@@ -257,10 +267,6 @@ export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, 
         </div>
       )}
       <FileAttachmentList files={item.files} />
-      <div className="flex items-center gap-4">
-        {canEdit && <Link to="/cm/submittal/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("submittal.edit")}</Link>}
-        {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
-      </div>
       <RecordDetailExtras projectId={item.project_id} entityType="submittal" module="submittal" entityId={item.id} userId={userId} discipline={item.discipline} />
       {confirmingDelete && (
         <ConfirmationDialog message={t("submittal.confirmDelete")} confirmLabel={t("common.delete")}

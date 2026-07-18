@@ -974,14 +974,19 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
   );
 }
 
-export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+/** `menu` renders a "⋮" actions menu (see `RecordActionsMenu`) between
+ *  the title and the close button, for record-detail sheets that offer
+ *  Edit/Delete — same purpose as `FormPage`'s `menu` prop, for modules
+ *  whose record detail is a Sheet overlay rather than a full page. */
+export function Sheet({ title, onClose, menu, children }: { title: string; onClose: () => void; menu?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full sm:max-w-lg bg-[#0d0d0e] rounded-t-3xl sm:rounded-3xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mt-3 sm:hidden" />
-        <div className="flex items-center justify-between px-6 pt-4 pb-2 sticky top-0 bg-[#0d0d0e] z-10">
-          <h2 className="font-extrabold text-base tracking-tight text-white">{title}</h2>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors">×</button>
+        <div className="flex items-center gap-2 justify-between px-6 pt-4 pb-2 sticky top-0 bg-[#0d0d0e] z-10">
+          <h2 className="font-extrabold text-base tracking-tight text-white flex-1 truncate">{title}</h2>
+          {menu}
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors shrink-0">×</button>
         </div>
         {children}
       </div>
@@ -989,17 +994,58 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
   );
 }
 
+export interface RecordMenuItem {
+  label: string;
+  onClick: () => void;
+  destructive?: boolean;
+  disabled?: boolean;
+}
+
+/** The "⋮" action menu for a single record's detail page (Edit / Delete /
+ *  whatever else that record supports) — same visual language as
+ *  `ModuleHeader`'s "⋮" menu, but a plain list of actions rather than
+ *  sort/settings. Rendered via `FormPage`'s `menu` prop so every module's
+ *  record-detail page gets its actions out of the page body and into the
+ *  header, instead of bare text links at the bottom of the page. */
+export function RecordActionsMenu({ items }: { items: RecordMenuItem[] }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useClickOutside<HTMLDivElement>(showMenu, () => setShowMenu(false));
+  if (items.length === 0) return null;
+  return (
+    <div ref={menuRef} className="relative shrink-0">
+      <button type="button" aria-label="More actions" onClick={() => setShowMenu((v) => !v)}
+        className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
+      </button>
+      {showMenu && (
+        <div className="absolute right-0 top-11 z-50 w-52 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+          {items.map((item, i) => (
+            <button key={i} type="button" disabled={item.disabled}
+              onClick={() => { setShowMenu(false); item.onClick(); }}
+              className={`w-full flex items-center px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0 disabled:opacity-40 ${item.destructive ? "text-red-400/80 hover:text-red-400" : "text-white/85"}`}>
+              <span className="text-[13px]">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Full-page shell for New/Edit forms — replaces `Sheet` for record-creating
  *  forms so the user gets a whole screen to work with instead of a cramped
  *  overlay panel. Styled like every other full CM page (BackButton + title
- *  inside a centered max-width main). */
-export function FormPage({ title, backTo, children }: { title: string; backTo: string; children: React.ReactNode }) {
+ *  inside a centered max-width main). `menu` renders a "⋮" actions menu
+ *  (see `RecordActionsMenu`) at the right end of the header, for
+ *  record-detail pages that offer Edit/Delete. */
+export function FormPage({ title, backTo, menu, children }: { title: string; backTo: string; menu?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to={backTo} />
           <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
+          {menu}
         </div>
         {children}
       </main>

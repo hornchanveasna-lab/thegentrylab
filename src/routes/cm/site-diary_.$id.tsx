@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { usePermission } from "@/lib/cm-permissions";
 import { useCMLang } from "@/lib/cm-i18n";
-import { FormPage, PhotoLightbox, usePendingHighlight } from "@/components/cm/shared";
+import { FormPage, PhotoLightbox, usePendingHighlight, RecordActionsMenu, type RecordMenuItem } from "@/components/cm/shared";
 import { useAllCMDailyLogs } from "@/lib/cm-data";
 import { DayDetailContent } from "./site-diary";
 
@@ -25,12 +25,13 @@ function SiteDiaryDetailPage() {
   const canDelete = usePermission(existing?.project_id, user?.id, "site_diary", "delete");
   const { flash, matchedPhotoUrl } = usePendingHighlight("siteDiary", id);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [menuItems, setMenuItems] = useState<RecordMenuItem[]>([]);
 
   if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user || !existing) return null;
 
   return (
-    <FormPage title={t("siteDiary.title")} backTo="/cm/site-diary">
+    <FormPage title={t("siteDiary.title")} backTo="/cm/site-diary" menu={<RecordActionsMenu items={menuItems} />}>
       <DayDetailContent
         log={existing} projectName={existing.projectName} canEdit={canEdit} canDelete={canDelete} userId={user.id}
         flashPhotoUrl={flash ? matchedPhotoUrl : null}
@@ -39,6 +40,7 @@ function SiteDiaryDetailPage() {
           queryClient.invalidateQueries({ queryKey: ["cm_all_daily_logs", user.id] });
         }}
         onOpenPhoto={(items, index) => setLightbox({ items, index })}
+        onMenuItems={setMenuItems}
       />
       {lightbox && (
         <PhotoLightbox

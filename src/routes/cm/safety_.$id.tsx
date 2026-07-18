@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { usePermission } from "@/lib/cm-permissions";
 import { useCMLang } from "@/lib/cm-i18n";
-import { FormPage, PhotoLightbox, usePendingHighlight } from "@/components/cm/shared";
+import { FormPage, PhotoLightbox, usePendingHighlight, RecordActionsMenu, type RecordMenuItem } from "@/components/cm/shared";
 import { useAllCMSafetyRecords } from "@/lib/cm-data";
 import { SafetyDetail } from "./safety";
 
@@ -26,12 +26,13 @@ function SafetyDetailPage() {
   const canDelete = usePermission(existing?.project_id, user?.id, "safety", "delete");
   const { flash, matchedPhotoUrl } = usePendingHighlight("safety", id);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [menuItems, setMenuItems] = useState<RecordMenuItem[]>([]);
 
   if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user || !existing) return null;
 
   return (
-    <FormPage title={t("safety.title")} backTo="/cm/safety">
+    <FormPage title={t("safety.title")} backTo="/cm/safety" menu={<RecordActionsMenu items={menuItems} />}>
       <SafetyDetail
         item={existing} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id}
         flash={flash} matchedPhotoUrl={matchedPhotoUrl}
@@ -40,6 +41,7 @@ function SafetyDetailPage() {
           queryClient.invalidateQueries({ queryKey: ["cm_all_safety_records", user.id] });
         }}
         onOpenPhoto={(items, index) => setLightbox({ items, index })}
+        onMenuItems={setMenuItems}
       />
       {lightbox && (
         <PhotoLightbox

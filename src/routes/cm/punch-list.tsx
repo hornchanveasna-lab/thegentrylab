@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
@@ -8,6 +8,7 @@ import {
   ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   PriorityBadge, StatusBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
+  type RecordMenuItem,
 } from "@/components/cm/shared";
 import {
   useCMTasks,
@@ -180,12 +181,14 @@ function PunchItemCard({ item, projectName }: { item: CMTask; projectName?: stri
   );
 }
 
-export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, requireAfterPhoto, flash, matchedPhotoUrl, onChanged, onOpenPhoto }: {
+export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, requireAfterPhoto, flash, matchedPhotoUrl, onChanged, onOpenPhoto, onMenuItems }: {
   item: CMTask; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string; requireAfterPhoto: boolean;
   flash?: boolean; matchedPhotoUrl?: string | null;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+  onMenuItems?: (items: RecordMenuItem[]) => void;
 }) {
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [afterPhotos, setAfterPhotos] = useState<File[]>([]);
@@ -261,6 +264,13 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
   const sc = STATUS_COLOR[item.status];
   const pc = PRIORITY_COLOR[item.priority];
   const verifierName = memberLabel(item.verified_by);
+
+  useEffect(() => {
+    const items: RecordMenuItem[] = [];
+    if (editableNow) items.push({ label: t("punchList.edit"), onClick: () => navigate({ to: "/cm/punch-list/$id/edit", params: { id: item.id } }) });
+    if (deletableNow) items.push({ label: t("common.delete"), onClick: () => setConfirmingDelete(true), destructive: true, disabled: busy });
+    onMenuItems?.(items);
+  }, [editableNow, deletableNow, busy, item.id]);
 
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
@@ -379,11 +389,6 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
           {t("punchList.closedBy")} {verifierName ?? t("punchList.unknownUser")}{item.closed_at ? ` — ${item.closed_at.slice(0, 10)}` : ""}
         </p>
       )}
-
-      <div className="flex items-center gap-4">
-        {editableNow && <Link to="/cm/punch-list/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("punchList.edit")}</Link>}
-        {deletableNow && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
-      </div>
 
       <RecordDetailExtras projectId={item.project_id} entityType="punch_list" module="punchList" entityId={item.id} userId={userId} locationId={item.location_id} />
       {confirmingDelete && (

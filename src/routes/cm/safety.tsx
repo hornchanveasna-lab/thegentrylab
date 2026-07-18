@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
@@ -8,6 +8,7 @@ import {
   ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, SegmentedField, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
+  type RecordMenuItem,
 } from "@/components/cm/shared";
 import {
   useCMSafetyRecords,
@@ -169,12 +170,14 @@ function SafetyCard({ item, projectName }: { item: CMSafetyRecord; projectName?:
   );
 }
 
-export function SafetyDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto }: {
+export function SafetyDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto, onMenuItems }: {
   item: CMSafetyRecord; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
   flash?: boolean; matchedPhotoUrl?: string | null;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+  onMenuItems?: (items: RecordMenuItem[]) => void;
 }) {
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const sc = SEVERITY_COLOR[item.severity];
@@ -188,6 +191,13 @@ export function SafetyDetail({ item, canEdit, canApprove, canDelete, userId, fla
     setBusy(true);
     try { await deleteCMSafetyRecord(item.id); onChanged(); } finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    const items: RecordMenuItem[] = [];
+    if (canEdit) items.push({ label: t("safety.edit"), onClick: () => navigate({ to: "/cm/safety/$id/edit", params: { id: item.id } }) });
+    if (canDelete) items.push({ label: t("safety.delete"), onClick: () => setConfirmingDelete(true), destructive: true, disabled: busy });
+    onMenuItems?.(items);
+  }, [canEdit, canDelete, busy, item.id]);
 
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
@@ -212,20 +222,14 @@ export function SafetyDetail({ item, canEdit, canApprove, canDelete, userId, fla
         </div>
       )}
       <FileAttachmentList files={item.files} />
-      <div className="flex items-center gap-3">
-        {canApprove && (
+      {canApprove && (
+        <div className="flex items-center gap-3">
           <button onClick={handleResolve} disabled={busy} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest"
             style={{ backgroundColor: item.status === "Open" ? "rgba(52,211,153,0.12)" : "rgba(255,255,255,0.06)", color: item.status === "Open" ? "#34d399" : "rgba(255,255,255,0.5)" }}>
             {item.status === "Open" ? t("safety.markResolved") : t("safety.resolved")}
           </button>
-        )}
-        {canEdit && (
-          <Link to="/cm/safety/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("safety.edit")}</Link>
-        )}
-        {canDelete && (
-          <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("safety.delete")}</button>
-        )}
-      </div>
+        </div>
+      )}
       <RecordDetailExtras projectId={item.project_id} entityType="safety" module="safety" entityId={item.id} userId={userId} />
       {confirmingDelete && (
         <ConfirmationDialog message={t("safety.confirmDelete")} confirmLabel={t("safety.delete")}

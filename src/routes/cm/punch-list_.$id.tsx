@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { usePermission } from "@/lib/cm-permissions";
 import { useCMLang } from "@/lib/cm-i18n";
-import { FormPage, PhotoLightbox, usePendingHighlight, useSelectedProject } from "@/components/cm/shared";
+import { FormPage, PhotoLightbox, usePendingHighlight, useSelectedProject, RecordActionsMenu, type RecordMenuItem } from "@/components/cm/shared";
 import { useAllCMTasks } from "@/lib/cm-data";
 import { PunchListDetail } from "./punch-list";
 
@@ -29,12 +29,13 @@ function PunchListDetailPage() {
   const requireAfterPhoto = (activeProject?.module_defaults?.punch_list as { requireAfterPhoto?: boolean } | undefined)?.requireAfterPhoto ?? true;
   const { flash, matchedPhotoUrl } = usePendingHighlight("punchList", id);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [menuItems, setMenuItems] = useState<RecordMenuItem[]>([]);
 
   if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user || !existing) return null;
 
   return (
-    <FormPage title={t("punchList.title")} backTo="/cm/punch-list">
+    <FormPage title={t("punchList.title")} backTo="/cm/punch-list" menu={<RecordActionsMenu items={menuItems} />}>
       <PunchListDetail
         item={existing} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id} requireAfterPhoto={requireAfterPhoto}
         flash={flash} matchedPhotoUrl={matchedPhotoUrl}
@@ -43,6 +44,7 @@ function PunchListDetailPage() {
           queryClient.invalidateQueries({ queryKey: ["cm_all_tasks", user.id] });
         }}
         onOpenPhoto={(items, index) => setLightbox({ items, index })}
+        onMenuItems={setMenuItems}
       />
       {lightbox && (
         <PhotoLightbox

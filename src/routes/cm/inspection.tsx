@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
@@ -8,6 +8,7 @@ import {
   ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect, RecordDetailExtras,
+  type RecordMenuItem,
 } from "@/components/cm/shared";
 import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 import {
@@ -203,12 +204,14 @@ function InspectionCard({ item, projectName }: { item: CMInspection; projectName
   );
 }
 
-export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto }: {
+export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId, flash, matchedPhotoUrl, onChanged, onOpenPhoto, onMenuItems }: {
   item: CMInspection; canEdit: boolean; canApprove: boolean; canDelete: boolean; userId: string;
   flash?: boolean; matchedPhotoUrl?: string | null;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
+  onMenuItems?: (items: RecordMenuItem[]) => void;
 }) {
   const { t } = useCMLang();
+  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const { data: locations } = useCMProjectLocations(item.project_id);
@@ -225,6 +228,13 @@ export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId,
     setBusy(true);
     try { await deleteCMInspection(item.id); onChanged(); } finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    const items: RecordMenuItem[] = [];
+    if (canEdit) items.push({ label: t("inspection.edit"), onClick: () => navigate({ to: "/cm/inspection/$id/edit", params: { id: item.id } }) });
+    if (canDelete) items.push({ label: t("inspection.delete"), onClick: () => setConfirmingDelete(true), destructive: true, disabled: busy });
+    onMenuItems?.(items);
+  }, [canEdit, canDelete, busy, item.id]);
 
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
@@ -261,10 +271,6 @@ export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId,
         </div>
       )}
       <FileAttachmentList files={item.files} />
-      <div className="flex items-center gap-4">
-        {canEdit && <Link to="/cm/inspection/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">{t("inspection.edit")}</Link>}
-        {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("inspection.delete")}</button>}
-      </div>
       <RecordDetailExtras projectId={item.project_id} entityType="inspection" module="inspection" entityId={item.id} userId={userId} locationId={item.location_id} discipline={item.discipline} />
       {confirmingDelete && (
         <ConfirmationDialog message={t("inspection.confirmDelete")} confirmLabel={t("inspection.delete")}

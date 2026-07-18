@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { usePermission } from "@/lib/cm-permissions";
 import { useCMLang } from "@/lib/cm-i18n";
-import { FormPage, PhotoLightbox, usePendingHighlight } from "@/components/cm/shared";
+import { FormPage, PhotoLightbox, usePendingHighlight, RecordActionsMenu, type RecordMenuItem } from "@/components/cm/shared";
 import { useAllCMInspections } from "@/lib/cm-data";
 import { InspectionDetail } from "./inspection";
 
@@ -26,12 +26,13 @@ function InspectionDetailPage() {
   const canDelete = usePermission(existing?.project_id, user?.id, "inspection", "delete");
   const { flash, matchedPhotoUrl } = usePendingHighlight("inspection", id);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
+  const [menuItems, setMenuItems] = useState<RecordMenuItem[]>([]);
 
   if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user || !existing) return null;
 
   return (
-    <FormPage title={t("inspection.title")} backTo="/cm/inspection">
+    <FormPage title={t("inspection.title")} backTo="/cm/inspection" menu={<RecordActionsMenu items={menuItems} />}>
       <InspectionDetail
         item={existing} canEdit={canEdit} canApprove={canApprove} canDelete={canDelete} userId={user.id}
         flash={flash} matchedPhotoUrl={matchedPhotoUrl}
@@ -40,6 +41,7 @@ function InspectionDetailPage() {
           queryClient.invalidateQueries({ queryKey: ["cm_all_inspections", user.id] });
         }}
         onOpenPhoto={(items, index) => setLightbox({ items, index })}
+        onMenuItems={setMenuItems}
       />
       {lightbox && (
         <PhotoLightbox

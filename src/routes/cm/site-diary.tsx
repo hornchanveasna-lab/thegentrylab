@@ -8,7 +8,7 @@ import {
   ModuleHeader, Sheet, FormPage, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
   setLastProject, moduleDetailRoute, MODULE_COLOR, MODULE_ICON,
   WeekCalendarStrip, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
-  ManpowerEntrySheet,
+  ManpowerEntrySheet, type RecordMenuItem,
 } from "@/components/cm/shared";
 import {
   useCMDailyLogs,
@@ -923,7 +923,7 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
  *  week-strip of its own since the page already provides those via
  *  CalendarStrip; a project name label is shown only in "all projects"
  *  mode, where more than one project can share the same selected date. */
-export function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashPhotoUrl, onChanged, onOpenPhoto }: {
+export function DayDetailContent({ log, projectName, canEdit, canDelete, userId, flashPhotoUrl, onChanged, onOpenPhoto, onMenuItems }: {
   log: CMDailyLog | CMDailyLogWithProject;
   projectName?: string;
   canEdit: boolean;
@@ -932,6 +932,10 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
   flashPhotoUrl: string | null;
   onChanged: () => void;
   onOpenPhoto: (items: LightboxItem[], index: number) => void;
+  /** Reports this record's Edit/Delete actions up to the parent page so
+   *  they render in the page header's "⋮" menu (`RecordActionsMenu`)
+   *  instead of as text links at the bottom of the page. */
+  onMenuItems?: (items: RecordMenuItem[]) => void;
 }) {
   const { t } = useCMLang();
   const navigate = useNavigate();
@@ -964,6 +968,13 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
     setBusy(true);
     try { await deleteCMDailyLog(log.id); onChanged(); } finally { setBusy(false); }
   };
+
+  useEffect(() => {
+    const items: RecordMenuItem[] = [];
+    if (canEdit) items.push({ label: t("siteDiary.editEntry"), onClick: () => navigate({ to: "/cm/site-diary/$id/edit", params: { id: log.id } }) });
+    if (canDelete) items.push({ label: t("siteDiary.deleteEntry"), onClick: () => setConfirmingDelete(true), destructive: true, disabled: busy });
+    onMenuItems?.(items);
+  }, [canEdit, canDelete, busy, log.id]);
 
   const goTo = (to: "/cm/manpower" | "/cm/equipment" | "/cm/boq" | "/cm/photos") => { setLastProject(log.project_id); navigate({ to }); };
   const goToReport = () => {
@@ -1095,18 +1106,6 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
 
       <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotosCount} onClick={() => goTo("/cm/photos")} />
 
-      <div className="flex items-center gap-4 pt-1">
-        {canEdit && (
-          <Link to="/cm/site-diary/$id/edit" params={{ id: log.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
-            {t("siteDiary.editEntry")}
-          </Link>
-        )}
-        {canDelete && (
-          <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">
-            {t("siteDiary.deleteEntry")}
-          </button>
-        )}
-      </div>
       {confirmingDelete && (
         <ConfirmationDialog message={t("siteDiary.confirmDelete")} confirmLabel={t("common.delete")}
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
