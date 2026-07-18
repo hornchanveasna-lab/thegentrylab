@@ -11,6 +11,7 @@ import {
 } from "@/components/cm/shared";
 import {
   useCMInstructions,
+  useAllCMInstructions,
   createCMInstruction,
   updateCMInstruction,
   acknowledgeCMInstruction,
@@ -26,6 +27,7 @@ import {
   ACK_RESPONSES,
   IMPACT_TYPES,
   type CMInstruction,
+  type CMInstructionWithProject,
   type InstructionSourceType,
   type InstructionStatus,
   type InstructionPriority,
@@ -179,11 +181,13 @@ export function NewInstructionSheet({ ownerId, projectId, contractId, existing, 
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged, onOpenPhoto }: {
-  item: CMInstruction; ownerId: string; canEdit: boolean; canDelete: boolean; userId: string;
+function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpenPhoto }: {
+  item: CMInstruction; ownerId: string; userId: string; projectName?: string;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
+  const canEdit = usePermission(item.project_id, userId, "instructions", "edit");
+  const canDelete = usePermission(item.project_id, userId, "instructions", "delete");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -223,6 +227,7 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.created_at.slice(0, 10)}</span>
           {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+          {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
         <StatusBadge label={t(`instructionStatus.${item.status}`)} color={sc} />
@@ -321,21 +326,35 @@ function CMInstructionsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const [viewAll, setViewAll] = useState(true);
   const activeProject = projects?.find((p) => p.id === projectId);
   const { data: contracts } = useCMContracts(projectId || undefined);
-  const { data: items, isLoading, isError, refetch } = useCMInstructions(projectId || undefined);
+  const { data: singleItems, isLoading: singleLoading, isError: singleIsError, refetch: singleRefetch } = useCMInstructions(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allItems, isLoading: allLoading, isError: allIsError, refetch: allRefetch } = useAllCMInstructions(viewAll ? user?.id : undefined);
+  const items: (CMInstruction | CMInstructionWithProject)[] | undefined = viewAll ? allItems : singleItems;
+  const isLoading = viewAll ? allLoading : singleLoading;
+  const isError = viewAll ? allIsError : singleIsError;
+  const refetch = viewAll ? allRefetch : singleRefetch;
   const canCreate = usePermission(projectId || undefined, user?.id, "instructions", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "instructions", "edit");
-  const canDelete = usePermission(projectId || undefined, user?.id, "instructions", "delete");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
-  const dateOf = (i: CMInstruction) => i.created_at.slice(0, 10);
+  const dateOf = (i: CMInstruction | CMInstructionWithProject) => i.created_at.slice(0, 10);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_instructions", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -365,13 +384,13 @@ function CMInstructionsPage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/instructions/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && contracts && contracts.length > 0 && (
+        {!viewAll && projectId && canCreate && contracts && contracts.length > 0 && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <WeekCalendarStrip items={items ?? []} dateOf={dateOf} lang={lang}
             selected={dateFilter} onSelect={setDateFilter} />
         )}
@@ -383,7 +402,7 @@ function CMInstructionsPage() {
           </button>
         )}
 
-        {projectId && items && items.length > 0 && (
+        {(viewAll || projectId) && items && items.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="rounded-2xl bg-[#0d0d0e] py-3 text-center">
               <p className="text-[18px] font-bold text-white">{openCount}</p>
@@ -400,11 +419,11 @@ function CMInstructionsPage() {
           </div>
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
-            {!isError && !isLoading && contracts && contracts.length === 0 && (
+            {!isError && !viewAll && !isLoading && contracts && contracts.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex flex-col items-center justify-center text-center px-4 gap-3">
                 <p className="text-white/40 text-sm">{t("instructions.noContractsYet")}</p>
                 <Link to="/cm/contracts" className="text-[12px] font-bold px-4 py-2 rounded-full" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
@@ -412,16 +431,17 @@ function CMInstructionsPage() {
                 </Link>
               </div>
             )}
-            {!isError && contracts && contracts.length > 0 && (
+            {!isError && (viewAll || (contracts && contracts.length > 0)) && (
               <>
                 {!isLoading && visibleItems.length === 0 && <EmptyState message={t("instructions.noneYet")} />}
                 <div className="flex flex-col gap-3">
                   {visibleItems.map((i) => (
-                    <InstructionCard key={i.id} item={i} ownerId={ownerId} canEdit={canEdit} canDelete={canDelete} userId={user.id}
+                    <InstructionCard key={i.id} item={i} ownerId={ownerId} userId={user.id}
+                      projectName={viewAll ? (i as CMInstructionWithProject).projectName : undefined}
                       onChanged={invalidate} onOpenPhoto={(its, index) => setLightbox({ items: its, index })} />
                   ))}
                 </div>
-                {canCreate && <FAB label={t("instructions.new")} onClick={() => navigate({ to: "/cm/instructions/new" })} />}
+                {!viewAll && canCreate && <FAB label={t("instructions.new")} onClick={() => navigate({ to: "/cm/instructions/new" })} />}
               </>
             )}
           </>
