@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SelectRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -19,6 +19,8 @@ import {
   uploadCMFile,
   uploadCMQuickCaptureFiles,
   useCMProjectLocations,
+  useCMProject,
+  updateCMProject,
   locationBreadcrumb,
   INSPECTION_TYPES,
   type CMInspection,
@@ -272,6 +274,38 @@ export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId,
   );
 }
 
+function InspectionQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const defaults = (project.module_defaults?.inspection ?? {}) as { type?: InspectionType };
+  const type = defaults.type ?? "";
+
+  const save = async (patch: Partial<typeof defaults>) => {
+    const nextDefaults = { ...(project.module_defaults ?? {}), inspection: { ...defaults, ...patch } };
+    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+    setBusy(true);
+    try {
+      await updateCMProject(project.id, { module_defaults: nextDefaults });
+      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SelectRow
+      icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>}
+      label={t("inspection.settingsDefaultType")} value={type} disabled={!canEdit || busy}
+      options={[{ value: "", label: t("inspection.typePlaceholder") }, ...INSPECTION_TYPES.map((it) => ({ value: it, label: t(`inspectionType.${it}`) }))]}
+      onChange={(v) => save({ type: v || undefined })}
+    />
+  );
+}
+
 function CMInspectionPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -324,7 +358,8 @@ function CMInspectionPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/inspection/settings" />
+        <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/inspection/settings"
+          quickSettings={!viewAll && projectId ? <InspectionQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
         {!viewAll && projectId && canCreate && (

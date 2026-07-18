@@ -22,6 +22,8 @@ import {
   useCMProjectLocations,
   locationBreadcrumb,
   logCMActivity,
+  useCMProject,
+  updateCMProject,
   type CMScheduleItem,
   type CMScheduleStatus,
 } from "@/lib/cm-data";
@@ -457,6 +459,48 @@ function GanttView({ groups, delayThresholdPct }: { groups: [string, CMScheduleI
   );
 }
 
+function ScheduleQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  const [thresholdDraft, setThresholdDraft] = useState<string | null>(null);
+  if (!project) return null;
+  const thresholdValue = thresholdDraft ?? String(project.schedule_delay_threshold_pct);
+
+  const save = async (n: number) => {
+    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, schedule_delay_threshold_pct: n } : old));
+    setBusy(true);
+    try {
+      await updateCMProject(project.id, { schedule_delay_threshold_pct: n });
+      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const commit = () => {
+    if (thresholdDraft === null) return;
+    const n = Number(thresholdDraft);
+    if (Number.isFinite(n) && n >= 0) save(n);
+    setThresholdDraft(null);
+  };
+
+  return (
+    <div className="w-full flex items-center gap-3.5 px-4 py-3">
+      <span className="text-white/70 shrink-0">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><circle cx="12" cy="12" r="9" /></svg>
+      </span>
+      <span className="min-w-0 flex-1 text-[14px] text-white/90">{t("schedule.settingsThreshold")}</span>
+      <input type="number" min={0} step="1" value={thresholdValue} disabled={!canEdit || busy}
+        onChange={(e) => setThresholdDraft(e.target.value)}
+        onBlur={commit}
+        className="w-16 bg-white/8 rounded-full px-3 py-1.5 text-[11px] font-mono text-white/85 text-right focus:outline-none" />
+    </div>
+  );
+}
+
 function CMSchedulePage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
@@ -532,7 +576,8 @@ function CMSchedulePage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("schedule.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/schedule/settings" />
+        <ModuleHeader title={t("schedule.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/schedule/settings"
+          quickSettings={projectId ? <ScheduleQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <p className="text-[12px] text-white/35 mb-5">{t("schedule.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 

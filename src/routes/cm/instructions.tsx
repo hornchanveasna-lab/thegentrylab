@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect, SelectRow,
   useSelectedProject, inputCls, labelCls, EmptyState, ErrorState, StatusBadge, PriorityBadge, ConfirmationDialog, PhotoLightbox,
   WeekCalendarStrip, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
@@ -21,6 +21,8 @@ import {
   stampAndUploadCMPhotos,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
+  useCMProject,
+  updateCMProject,
   INSTRUCTION_SOURCE_TYPES,
   INSTRUCTION_STATUSES,
   INSTRUCTION_PRIORITIES,
@@ -320,6 +322,47 @@ function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpen
   );
 }
 
+function InstructionsQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const defaults = (project.module_defaults?.instructions ?? {}) as { sourceType?: InstructionSourceType; priority?: InstructionPriority };
+  const sourceType = defaults.sourceType ?? "Consultant";
+  const priority = defaults.priority ?? "Medium";
+
+  const save = async (patch: Partial<typeof defaults>) => {
+    const nextDefaults = { ...(project.module_defaults ?? {}), instructions: { ...defaults, ...patch } };
+    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+    setBusy(true);
+    try {
+      await updateCMProject(project.id, { module_defaults: nextDefaults });
+      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <SelectRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>}
+        label={t("instructions.settingsDefaultSourceType")} value={sourceType} disabled={!canEdit || busy}
+        options={INSTRUCTION_SOURCE_TYPES.map((s) => ({ value: s, label: t(`instructionSource.${s}`) }))}
+        onChange={(v) => save({ sourceType: v })}
+      />
+      <SelectRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
+        label={t("instructions.settingsDefaultPriority")} value={priority} disabled={!canEdit || busy}
+        options={INSTRUCTION_PRIORITIES.map((p) => ({ value: p, label: t(`instructionPriority.${p}`) }))}
+        onChange={(v) => save({ priority: v })}
+      />
+    </>
+  );
+}
+
 function CMInstructionsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -383,7 +426,8 @@ function CMInstructionsPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/instructions/settings" />
+        <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/instructions/settings"
+          quickSettings={!viewAll && projectId ? <InstructionsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
         {!viewAll && projectId && canCreate && contracts && contracts.length > 0 && (

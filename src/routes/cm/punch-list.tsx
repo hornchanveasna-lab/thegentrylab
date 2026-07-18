@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SelectRow, ToggleRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   PriorityBadge, StatusBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -20,6 +20,8 @@ import {
   uploadCMQuickCaptureFiles,
   useCMProjectLocations,
   useCMProjectMembers,
+  useCMProject,
+  updateCMProject,
   addCMComment,
   logCMActivity,
   locationBreadcrumb,
@@ -392,6 +394,46 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
   );
 }
 
+function PunchListQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const defaults = (project.module_defaults?.punch_list ?? {}) as { priority?: TaskPriority; requireAfterPhoto?: boolean };
+  const priority = defaults.priority ?? "Medium";
+  const requireAfterPhoto = defaults.requireAfterPhoto ?? true;
+
+  const save = async (patch: Partial<typeof defaults>) => {
+    const nextDefaults = { ...(project.module_defaults ?? {}), punch_list: { ...defaults, ...patch } };
+    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+    setBusy(true);
+    try {
+      await updateCMProject(project.id, { module_defaults: nextDefaults });
+      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <SelectRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
+        label={t("punchList.settingsDefaultPriority")} value={priority} disabled={!canEdit || busy}
+        options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))}
+        onChange={(v) => save({ priority: v })}
+      />
+      <ToggleRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>}
+        label={t("punchList.settingsRequireAfterPhoto")} checked={requireAfterPhoto} disabled={!canEdit || busy}
+        onChange={(v) => save({ requireAfterPhoto: v })}
+      />
+    </>
+  );
+}
+
 function CMPunchListPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -446,7 +488,8 @@ function CMPunchListPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/punch-list/settings" />
+        <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/punch-list/settings"
+          quickSettings={!viewAll && projectId ? <PunchListQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
         {!viewAll && projectId && canCreate && (

@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SelectRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -17,6 +17,8 @@ import {
   stampAndUploadCMPhotos,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
+  useCMProject,
+  updateCMProject,
   SUBMITTAL_TYPES,
   APPROVAL_CODES,
   type CMSubmittal,
@@ -268,6 +270,38 @@ export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, 
   );
 }
 
+function SubmittalQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const defaults = (project.module_defaults?.submittal ?? {}) as { type?: SubmittalType };
+  const type = defaults.type ?? "";
+
+  const save = async (patch: Partial<typeof defaults>) => {
+    const nextDefaults = { ...(project.module_defaults ?? {}), submittal: { ...defaults, ...patch } };
+    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+    setBusy(true);
+    try {
+      await updateCMProject(project.id, { module_defaults: nextDefaults });
+      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SelectRow
+      icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" /></svg>}
+      label={t("submittal.settingsDefaultType")} value={type} disabled={!canEdit || busy}
+      options={[{ value: "", label: t("submittal.typePlaceholder") }, ...SUBMITTAL_TYPES.map((s) => ({ value: s, label: t(`submittalType.${SUBMITTAL_TYPE_KEY[s]}`) }))]}
+      onChange={(v) => save({ type: v || undefined })}
+    />
+  );
+}
+
 function CMSubmittalPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -319,7 +353,8 @@ function CMSubmittalPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/submittal/settings" />
+        <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/submittal/settings"
+          quickSettings={!viewAll && projectId ? <SubmittalQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
         {!viewAll && projectId && canCreate && (

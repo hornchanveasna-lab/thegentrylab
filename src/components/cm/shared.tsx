@@ -598,11 +598,49 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
   );
 }
 
+/** A single toggle row inside a "⋮" quick-settings dropdown — icon, label,
+ *  and an iOS-style switch on the right. Lifted out of the Photos module's
+ *  settings dropdown so every module's quick-settings can share it. */
+export function ToggleRow({ icon, label, checked, disabled, onChange }: {
+  icon: React.ReactNode; label: string; checked: boolean; disabled: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <button type="button" onClick={() => onChange(!checked)} disabled={disabled}
+      className="w-full flex items-center gap-3.5 px-4 py-3 text-left hover:bg-white/5 transition-colors disabled:opacity-40">
+      <span className="text-white/70 shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1 text-[14px] text-white/90">{label}</span>
+      <span role="switch" aria-checked={checked} className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors ${checked ? "" : "menu-track-off"}`}
+        style={checked ? { backgroundColor: "#ff5100" } : undefined}>
+        <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
+          style={{ transform: checked ? "translateX(20px)" : "translateX(2px)" }} />
+      </span>
+    </button>
+  );
+}
+
+/** A single select row inside a "⋮" quick-settings dropdown — icon, label,
+ *  and a compact pill-style `FieldSelect` on the right. Sibling of
+ *  `ToggleRow` for module defaults that pick one of several options rather
+ *  than a boolean. */
+export function SelectRow<T extends string>({ icon, label, value, options, disabled, onChange }: {
+  icon: React.ReactNode; label: string; value: T; options: FieldSelectOption<T>[]; disabled: boolean; onChange: (v: T) => void;
+}) {
+  return (
+    <div className="w-full flex items-center gap-3.5 px-4 py-3">
+      <span className="text-white/70 shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1 text-[14px] text-white/90">{label}</span>
+      <FieldSelect value={value} onChange={onChange} options={options} disabled={disabled}
+        triggerClassName="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-white/85 bg-white/8 whitespace-nowrap"
+        menuClassName="left-auto right-0 w-44" />
+    </div>
+  );
+}
+
 /** The one page-header pattern every module list page shares: a back
  *  button, a title that swaps for a search input, and a "⋮" menu — all
  *  pinned (`sticky`) so they stay visible while the list scrolls beneath
  *  them, matching the Telegram reference the design follows. */
-export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort, settingsTo }: {
+export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort, settingsTo, quickSettings }: {
   title: string;
   search: string;
   onSearchChange: (v: string) => void;
@@ -610,6 +648,11 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
   sortAsc: boolean;
   onToggleSort: (v: boolean) => void;
   settingsTo?: string;
+  /** Instant-save module-defaults rows (`ToggleRow`/`SelectRow`) rendered
+   *  inline in the same "⋮" panel, between Sort and the Settings link —
+   *  the Photos-style quick-settings pattern. Omit for modules with no
+   *  quick-editable defaults; behavior is unchanged when absent. */
+  quickSettings?: React.ReactNode;
 }) {
   const { t } = useCMLang();
   const [showSearch, setShowSearch] = useState(false);
@@ -657,6 +700,7 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
                 )}
               </button>
             ))}
+            {quickSettings && <div className="border-t border-white/6">{quickSettings}</div>}
             {settingsTo && (
               <Link to={settingsTo} onClick={() => setShowMenu(false)}
                 className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/5 transition-colors border-t border-white/6">

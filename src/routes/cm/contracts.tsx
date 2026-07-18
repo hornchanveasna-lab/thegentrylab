@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, CompanySelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, SelectRow, CompanySelect, useSelectedProject, inputCls, labelCls,
   EmptyState, ErrorState, StatusBadge, ConfirmationDialog, WeekCalendarStrip,
   FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
@@ -18,6 +18,8 @@ import {
   useCMCompanies,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
+  useCMProject,
+  updateCMProject,
   CONTRACT_TYPES,
   CONTRACT_STATUSES,
   type CMContract,
@@ -218,6 +220,56 @@ function ContractCard({ item, userId, projectName, onChanged }: {
   );
 }
 
+function ContractsQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  const [currencyDraft, setCurrencyDraft] = useState<string | null>(null);
+  if (!project) return null;
+  const defaults = (project.module_defaults?.contracts ?? {}) as { contractType?: ContractType; currency?: string };
+  const contractType = defaults.contractType ?? "Main Contract";
+  const currency = currencyDraft ?? defaults.currency ?? "";
+
+  const save = async (patch: Partial<typeof defaults>) => {
+    const nextDefaults = { ...(project.module_defaults ?? {}), contracts: { ...defaults, ...patch } };
+    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+    setBusy(true);
+    try {
+      await updateCMProject(project.id, { module_defaults: nextDefaults });
+      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <SelectRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v5h5" /><path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /></svg>}
+        label={t("contracts.settingsDefaultType")} value={contractType} disabled={!canEdit || busy}
+        options={CONTRACT_TYPES.map((ct) => ({ value: ct, label: t(`contractType.${ct}`) }))}
+        onChange={(v) => save({ contractType: v })}
+      />
+      <div className="w-full flex items-center gap-3.5 px-4 py-3">
+        <span className="text-white/70 shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v10" /><path d="M15 9.5c0-1.4-1.3-2.5-3-2.5s-3 1.1-3 2.5 1.3 2 3 2.5 3 1.1 3 2.5-1.3 2.5-3 2.5-3-1.1-3-2.5" /></svg>
+        </span>
+        <span className="min-w-0 flex-1 text-[14px] text-white/90">{t("contracts.settingsDefaultCurrency")}</span>
+        <input
+          value={currency}
+          placeholder="USD"
+          disabled={!canEdit || busy}
+          onChange={(e) => setCurrencyDraft(e.target.value)}
+          onBlur={() => { if (currencyDraft !== null) { save({ currency: currencyDraft.trim() || undefined }); setCurrencyDraft(null); } }}
+          className="w-20 bg-white/8 rounded-full px-3 py-1.5 text-[11px] font-mono text-white/85 text-right focus:outline-none"
+        />
+      </div>
+    </>
+  );
+}
+
 function CMContractsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -274,7 +326,8 @@ function CMContractsPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("contracts.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/contracts/settings" />
+        <ModuleHeader title={t("contracts.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/contracts/settings"
+          quickSettings={!viewAll && projectId ? <ContractsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
         {!viewAll && projectId && canCreate && (

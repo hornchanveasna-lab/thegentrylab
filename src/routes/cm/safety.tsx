@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, FieldSelect, SegmentedField, SelectRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -18,6 +18,8 @@ import {
   stampAndUploadCMPhotos,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
+  useCMProject,
+  updateCMProject,
   type CMSafetyRecord,
   type CMSafetyRecordWithProject,
   type SafetyRecordType,
@@ -233,6 +235,47 @@ export function SafetyDetail({ item, canEdit, canApprove, canDelete, userId, fla
   );
 }
 
+function SafetyQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const defaults = (project.module_defaults?.safety ?? {}) as { recordType?: SafetyRecordType; severity?: SafetySeverity };
+  const recordType = defaults.recordType ?? "Toolbox Talk";
+  const severity = defaults.severity ?? "Low";
+
+  const save = async (patch: Partial<typeof defaults>) => {
+    const nextDefaults = { ...(project.module_defaults ?? {}), safety: { ...defaults, ...patch } };
+    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+    setBusy(true);
+    try {
+      await updateCMProject(project.id, { module_defaults: nextDefaults });
+      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <SelectRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>}
+        label={t("safety.settingsDefaultRecordType")} value={recordType} disabled={!canEdit || busy}
+        options={SAFETY_RECORD_TYPES.map((rt) => ({ value: rt, label: t(`safetyType.${rt}`) }))}
+        onChange={(v) => save({ recordType: v })}
+      />
+      <SelectRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
+        label={t("safety.settingsDefaultSeverity")} value={severity} disabled={!canEdit || busy}
+        options={(["Low", "Medium", "High", "Critical"] as SafetySeverity[]).map((s) => ({ value: s, label: t(`safetySeverity.${s}`) }))}
+        onChange={(v) => save({ severity: v })}
+      />
+    </>
+  );
+}
+
 function CMSafetyPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
@@ -285,7 +328,8 @@ function CMSafetyPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("safety.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/safety/settings" />
+        <ModuleHeader title={t("safety.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/safety/settings"
+          quickSettings={!viewAll && projectId ? <SafetyQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
         {!viewAll && projectId && canCreate && (
