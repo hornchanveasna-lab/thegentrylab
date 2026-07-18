@@ -4,14 +4,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import {
-  BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  BackButton, Sheet, FAB, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   PhotoLightbox, moduleDetailRoute, MODULE_COLOR, MODULE_ICON, setPendingHighlight, useLongPress, sharePhotoFiles, WeekCalendarStrip,
   ConfirmationDialog, useClickOutside,
 } from "@/components/cm/shared";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 import {
   useAllCMPhotos,
+  type CMAccountSettings,
   useCMAccountSettings,
-  upsertCMAccountSettings,
   useCMProjectConsultants,
   stampPhoto,
   uploadCMPhotoWithThumb,
@@ -65,91 +66,82 @@ const GROUP_ICON: Record<GroupBy, React.ReactNode> = {
   ),
 };
 
-function ToggleRow({ icon, label, checked, disabled, onChange }: {
-  icon: React.ReactNode; label: string; hint?: string; checked: boolean; disabled: boolean; onChange: (v: boolean) => void;
-}) {
-  return (
-    <button type="button" onClick={() => onChange(!checked)} disabled={disabled}
-      className="w-full flex items-center gap-3.5 px-4 py-3 text-left hover:bg-white/5 transition-colors disabled:opacity-40">
-      <span className="text-white/70 shrink-0">{icon}</span>
-      <span className="min-w-0 flex-1 text-[14px] text-white/90">{label}</span>
-      <span role="switch" aria-checked={checked} className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors ${checked ? "" : "menu-track-off"}`}
-        style={checked ? { backgroundColor: "#ff5100" } : undefined}>
-        <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
-          style={{ transform: checked ? "translateX(20px)" : "translateX(2px)" }} />
-      </span>
-    </button>
-  );
-}
-
-function PhotoSettingsDropdown({ ownerId, showCompanyLogo, showProjectInfo, showConsultantLogos, monotoneLogos, timestamp, onChanged }: {
-  ownerId: string; showCompanyLogo: boolean; showProjectInfo: boolean; showConsultantLogos: boolean; monotoneLogos: boolean; timestamp: boolean; onChanged: () => void;
+function PhotoSettingsDropdown({ ownerId, account, onChanged }: {
+  ownerId: string; account: CMAccountSettings | null | undefined; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
   const [busy, setBusy] = useState(false);
+  const ctx = { ownerId, actorId: ownerId };
 
-  const toggle = async (patch: { photo_show_company_logo?: boolean; photo_show_project_info?: boolean; photo_show_consultant_logos?: boolean; photo_monotone_logos?: boolean; photo_timestamp?: boolean }) => {
-    // Write straight into the cache first so the switch (and anything else
-    // reading these settings, like the New Photo sheet) reflects the change
-    // instantly instead of waiting on a refetch round-trip.
-    queryClient.setQueryData(["cm_account_settings", ownerId], (old: Record<string, unknown> | undefined) => old ? { ...old, ...patch } : old);
+  const showCompanyLogo = resolveSetting(SETTING_DEFINITIONS.photoShowCompanyLogo, { account });
+  const showProjectInfo = resolveSetting(SETTING_DEFINITIONS.photoShowProjectInfo, { account });
+  const showConsultantLogos = resolveSetting(SETTING_DEFINITIONS.photoShowConsultantLogos, { account });
+  const monotoneLogos = resolveSetting(SETTING_DEFINITIONS.photoMonotoneLogos, { account });
+  const timestamp = resolveSetting(SETTING_DEFINITIONS.photoTimestamp, { account });
+
+  const run = async (p: Promise<void>) => {
     setBusy(true);
-    try { await upsertCMAccountSettings(ownerId, patch); onChanged(); } finally { setBusy(false); }
+    try { await p; onChanged(); } finally { setBusy(false); }
   };
 
   return (
       <div className="absolute right-0 top-11 z-50 w-64 rounded-xl overflow-hidden shadow-xl backdrop-blur-xl menu-surface">
         <div className="py-1.5">
-          <ToggleRow
+          <SettingControlRow
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
               </svg>
             }
-            label={t("photos.showCompanyLogo")} checked={showCompanyLogo} disabled={busy}
-            onChange={(v) => toggle({ photo_show_company_logo: v })}
+            label={t("photos.showCompanyLogo")} resolved={showCompanyLogo} disabled={busy}
+            onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.photoShowCompanyLogo, v, ctx, queryClient))}
+            onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.photoShowCompanyLogo, SETTING_DEFINITIONS.photoShowCompanyLogo.defaultValue, ctx, queryClient))}
           />
-          <ToggleRow
+          <SettingControlRow
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 3l9 5-9 5-9-5 9-5z" /><path d="M3 13l9 5 9-5" />
               </svg>
             }
-            label={t("photos.showProjectInfo")} checked={showProjectInfo} disabled={busy}
-            onChange={(v) => toggle({ photo_show_project_info: v })}
+            label={t("photos.showProjectInfo")} resolved={showProjectInfo} disabled={busy}
+            onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.photoShowProjectInfo, v, ctx, queryClient))}
+            onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.photoShowProjectInfo, SETTING_DEFINITIONS.photoShowProjectInfo.defaultValue, ctx, queryClient))}
           />
-          <ToggleRow
+          <SettingControlRow
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.2" r="2.1" />
                 <path d="M3.3 20c0-3.3 2.5-5.6 5.7-5.6s5.7 2.3 5.7 5.6" /><path d="M14.8 14.9c2.5.4 4.4 2.5 4.4 5.1" />
               </svg>
             }
-            label={t("photos.showConsultantLogos")} checked={showConsultantLogos} disabled={busy}
-            onChange={(v) => toggle({ photo_show_consultant_logos: v })}
+            label={t("photos.showConsultantLogos")} resolved={showConsultantLogos} disabled={busy}
+            onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.photoShowConsultantLogos, v, ctx, queryClient))}
+            onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.photoShowConsultantLogos, SETTING_DEFINITIONS.photoShowConsultantLogos.defaultValue, ctx, queryClient))}
           />
         </div>
         <div className="border-t border-white/10 py-1.5">
-          <ToggleRow
+          <SettingControlRow
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="9" /><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor" stroke="none" />
               </svg>
             }
-            label={t("photos.monotoneLogos")} checked={monotoneLogos} disabled={busy}
-            onChange={(v) => toggle({ photo_monotone_logos: v })}
+            label={t("photos.monotoneLogos")} resolved={monotoneLogos} disabled={busy}
+            onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.photoMonotoneLogos, v, ctx, queryClient))}
+            onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.photoMonotoneLogos, SETTING_DEFINITIONS.photoMonotoneLogos.defaultValue, ctx, queryClient))}
           />
         </div>
         <div className="border-t border-white/10 py-1.5">
-          <ToggleRow
+          <SettingControlRow
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.2 2" />
               </svg>
             }
-            label={t("photos.timestamp")} checked={timestamp} disabled={busy}
-            onChange={(v) => toggle({ photo_timestamp: v })}
+            label={t("photos.timestamp")} resolved={timestamp} disabled={busy}
+            onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.photoTimestamp, v, ctx, queryClient))}
+            onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.photoTimestamp, SETTING_DEFINITIONS.photoTimestamp.defaultValue, ctx, queryClient))}
           />
         </div>
       </div>
@@ -505,11 +497,7 @@ function CMPhotosPage() {
             {showSettings && (
               <PhotoSettingsDropdown
                 ownerId={user.id}
-                showCompanyLogo={account?.photo_show_company_logo ?? true}
-                showProjectInfo={account?.photo_show_project_info ?? true}
-                showConsultantLogos={account?.photo_show_consultant_logos ?? true}
-                monotoneLogos={account?.photo_monotone_logos ?? false}
-                timestamp={account?.photo_timestamp ?? true}
+                account={account}
                 onChanged={invalidateAccount}
               />
             )}

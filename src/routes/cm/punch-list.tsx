@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SelectRow, ToggleRow, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   PriorityBadge, StatusBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
@@ -21,7 +21,6 @@ import {
   useCMProjectLocations,
   useCMProjectMembers,
   useCMProject,
-  updateCMProject,
   addCMComment,
   logCMActivity,
   locationBreadcrumb,
@@ -30,6 +29,7 @@ import {
   type TaskStatus,
   type TaskPriority,
 } from "@/lib/cm-data";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 
 export const Route = createFileRoute("/cm/punch-list")({
   head: () => ({ meta: [{ title: "Punch List — Construction Management App" }] }),
@@ -401,34 +401,29 @@ function PunchListQuickSettings({ projectId, userId }: { projectId: string; user
   const canEdit = usePermission(projectId, userId, "settings", "edit");
   const [busy, setBusy] = useState(false);
   if (!project) return null;
-  const defaults = (project.module_defaults?.punch_list ?? {}) as { priority?: TaskPriority; requireAfterPhoto?: boolean };
-  const priority = defaults.priority ?? "Medium";
-  const requireAfterPhoto = defaults.requireAfterPhoto ?? true;
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const priority = resolveSetting(SETTING_DEFINITIONS.punchListPriority, { project });
+  const requireAfterPhoto = resolveSetting(SETTING_DEFINITIONS.punchListRequireAfterPhoto, { project });
 
-  const save = async (patch: Partial<typeof defaults>) => {
-    const nextDefaults = { ...(project.module_defaults ?? {}), punch_list: { ...defaults, ...patch } };
-    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+  const run = async (p: Promise<void>) => {
     setBusy(true);
-    try {
-      await updateCMProject(project.id, { module_defaults: nextDefaults });
-      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
-    } finally {
-      setBusy(false);
-    }
+    try { await p; } finally { setBusy(false); }
   };
 
   return (
     <>
-      <SelectRow
+      <SettingControlRow
         icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
-        label={t("punchList.settingsDefaultPriority")} value={priority} disabled={!canEdit || busy}
+        label={t("punchList.settingsDefaultPriority")} resolved={priority} disabled={!canEdit || busy}
         options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))}
-        onChange={(v) => save({ priority: v })}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListPriority, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListPriority, SETTING_DEFINITIONS.punchListPriority.defaultValue, ctx, queryClient))}
       />
-      <ToggleRow
+      <SettingControlRow
         icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>}
-        label={t("punchList.settingsRequireAfterPhoto")} checked={requireAfterPhoto} disabled={!canEdit || busy}
-        onChange={(v) => save({ requireAfterPhoto: v })}
+        label={t("punchList.settingsRequireAfterPhoto")} resolved={requireAfterPhoto} disabled={!canEdit || busy}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListRequireAfterPhoto, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListRequireAfterPhoto, SETTING_DEFINITIONS.punchListRequireAfterPhoto.defaultValue, ctx, queryClient))}
       />
     </>
   );

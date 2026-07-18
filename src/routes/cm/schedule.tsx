@@ -23,10 +23,10 @@ import {
   locationBreadcrumb,
   logCMActivity,
   useCMProject,
-  updateCMProject,
   type CMScheduleItem,
   type CMScheduleStatus,
 } from "@/lib/cm-data";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 import { parseWorkbookRows, type BoqSheet } from "@/lib/cm-boq-import";
 import {
   detectScheduleHeaderRow, rowsToScheduleDraftActivities, SCHEDULE_IMPORT_FIELDS,
@@ -467,23 +467,18 @@ function ScheduleQuickSettings({ projectId, userId }: { projectId: string; userI
   const [busy, setBusy] = useState(false);
   const [thresholdDraft, setThresholdDraft] = useState<string | null>(null);
   if (!project) return null;
-  const thresholdValue = thresholdDraft ?? String(project.schedule_delay_threshold_pct);
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const thresholdValue = thresholdDraft ?? String(resolveSetting(SETTING_DEFINITIONS.scheduleDelayThresholdPct, { project }).value);
 
-  const save = async (n: number) => {
-    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, schedule_delay_threshold_pct: n } : old));
+  const run = async (p: Promise<void>) => {
     setBusy(true);
-    try {
-      await updateCMProject(project.id, { schedule_delay_threshold_pct: n });
-      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
-    } finally {
-      setBusy(false);
-    }
+    try { await p; } finally { setBusy(false); }
   };
 
   const commit = () => {
     if (thresholdDraft === null) return;
     const n = Number(thresholdDraft);
-    if (Number.isFinite(n) && n >= 0) save(n);
+    if (Number.isFinite(n) && n >= 0) run(writeSettingAndSync(SETTING_DEFINITIONS.scheduleDelayThresholdPct, n, ctx, queryClient));
     setThresholdDraft(null);
   };
 

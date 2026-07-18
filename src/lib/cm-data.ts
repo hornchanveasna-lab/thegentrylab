@@ -43,6 +43,10 @@ export interface CMProject {
   client_logo_url: string | null;
   project_code: string | null;
   disabled_disciplines: string[];
+  /** Which feature modules (of ACTIVE_MODULE_KEYS) are turned off for this
+   *  project — same shape/pattern as disabled_disciplines. Toggle only;
+   *  nothing yet hides nav tiles or routes based on this list. */
+  disabled_modules: string[];
   doc_module_codes: Record<string, string>;
   revision_format: string;
   doc_footer: string | null;
@@ -1123,6 +1127,25 @@ export async function setCMProjectDisciplineEnabled(project: CMProject, discipli
     ? project.disabled_disciplines.filter((d) => d !== discipline)
     : [...project.disabled_disciplines, discipline];
   await updateCMProject(project.id, { disabled_disciplines: next });
+}
+
+/** The 11 real feature modules a project can turn off — excludes "people"
+ *  and "settings", which are structural, not optional features. */
+export const ACTIVE_MODULE_KEYS: CMModuleKey[] = [
+  "site_diary", "punch_list", "inspection", "safety", "submittal",
+  "equipment", "boq", "schedule", "manpower", "contracts", "instructions",
+];
+
+export function enabledModules(project: Pick<CMProject, "disabled_modules"> | null | undefined): CMModuleKey[] {
+  const disabled = new Set(project?.disabled_modules ?? []);
+  return ACTIVE_MODULE_KEYS.filter((m) => !disabled.has(m));
+}
+
+export async function setCMProjectModuleEnabled(project: CMProject, moduleKey: CMModuleKey, enabled: boolean) {
+  const next = enabled
+    ? project.disabled_modules.filter((m) => m !== moduleKey)
+    : [...project.disabled_modules, moduleKey];
+  await updateCMProject(project.id, { disabled_modules: next });
 }
 
 /** Per-project location hierarchy (Building → Floor → Zone → Area), unlike

@@ -220,17 +220,20 @@ const EN: Dict = {
   "settingsNav.formsTemplates": "Forms and Templates",
   "settingsNav.notifications": "Notifications",
   "settingsNav.integrations": "Integrations",
-  "settingsNav.dataArchive": "Data and Archive",
+  "settingsNav.dataArchive": "Data, Handover and Archive",
+  "settingsNav.activeModules": "Active Modules",
   "settingsNav.notBuiltYet": "Not built yet",
+  "settingsNav.notApplicableSingleTenant": "Not applicable — this is a single-tenant account",
   "settingsNav.peopleRolesHint": "Manage who's on this project — invite members, assign job roles and companies — from the project's Team tab.",
-  "settingsNav.permissionsHint": "Configure what each job role can do across every module.",
+  "settingsNav.permissionsHint": "Configure what each job role can do across every module. Permission tiers are account-wide today — there's no separate override just for this project yet.",
   "settingsNav.workPackagesHint": "Define work packages (Earthworks, Structural Steel, MEP...) and link them to companies, disciplines, BOQ items and schedule activities.",
   "settingsNav.documentControlHint": "Configure document numbering format, revision codes, and PDF cover/footer rules for this project.",
   "settingsNav.workflowsHint": "Configure approval chains for Site Diary, Inspection, Submittal, and Punch List closures.",
   "settingsNav.formsTemplatesHint": "Customize required/optional fields, checklists, and report templates per module.",
   "settingsNav.notificationsHint": "Configure who gets notified for approvals, overdue actions, and critical safety issues.",
   "settingsNav.integrationsHint": "Connect external tools and services to this project.",
-  "settingsNav.dataArchiveHint": "Archive or close out this project once all punch items, inspections, and submittals are resolved.",
+  "settingsNav.dataArchiveHint": "Review handover readiness and archive or close out this project once all punch items, inspections, and submittals are resolved.",
+  "settingsNav.activeModulesHint": "Turn off modules this project doesn't use. Disabled modules stay reachable for now — this only tracks which ones are in use.",
 
   "insight.settingsChange": "Settings change",
 
@@ -1297,6 +1300,10 @@ const EN: Dict = {
   "impactType.No Impact": "No Impact",
 
   "team.jobRole.contract_administrator": "Contract Administrator",
+
+  "settingsEngine.sourceModule": "This project",
+  "settingsEngine.sourceGlobal": "Global default",
+  "settingsEngine.resetToDefault": "Reset to default",
 };
 
 const KM: Dict = {
@@ -1515,17 +1522,20 @@ const KM: Dict = {
   "settingsNav.formsTemplates": "ទម្រង់ និងគំរូ",
   "settingsNav.notifications": "ការជូនដំណឹង",
   "settingsNav.integrations": "ការភ្ជាប់ប្រព័ន្ធ",
-  "settingsNav.dataArchive": "ទិន្នន័យ និងបណ្ណសារ",
+  "settingsNav.dataArchive": "ទិន្នន័យ ការប្រគល់ និងបណ្ណសារ",
+  "settingsNav.activeModules": "កម្មវិធីរងសកម្ម",
   "settingsNav.notBuiltYet": "មិនទាន់បង្កើតទេ",
+  "settingsNav.notApplicableSingleTenant": "មិនអាចប្រើបានទេ — គណនីនេះជាគណនីម្ចាស់តែមួយ",
   "settingsNav.peopleRolesHint": "គ្រប់គ្រងអ្នកចូលរួមគម្រោង — អញ្ជើញសមាជិក កំណត់តួនាទីការងារ និងក្រុមហ៊ុន — ពីផ្ទាំង ក្រុមការងារ របស់គម្រោង។",
-  "settingsNav.permissionsHint": "កំណត់រចនាសម្ព័ន្ធអ្វីដែលតួនាទីការងារនីមួយៗអាចធ្វើបានលើគ្រប់កម្មវិធីរង។",
+  "settingsNav.permissionsHint": "កំណត់រចនាសម្ព័ន្ធអ្វីដែលតួនាទីការងារនីមួយៗអាចធ្វើបានលើគ្រប់កម្មវិធីរង។ កម្រិតសិទ្ធិសព្វថ្ងៃនេះអនុវត្តលើគណនីទាំងមូល — មិនទាន់មានការកំណត់ដាច់ដោយឡែកសម្រាប់គម្រោងនេះទេ។",
   "settingsNav.workPackagesHint": "កំណត់កញ្ចប់ការងារ (ការជីកលើក ដែកថែបរចនាសម្ព័ន្ធ MEP...) ហើយភ្ជាប់ជាមួយក្រុមហ៊ុន មុខជំនាញ ធាតុ BOQ និងសកម្មភាពគម្រោង។",
   "settingsNav.documentControlHint": "កំណត់រចនាសម្ព័ន្ធទម្រង់លេខរៀងឯកសារ លេខកំណែ និងច្បាប់គម្រប/បាតឯកសារ PDF សម្រាប់គម្រោងនេះ។",
   "settingsNav.workflowsHint": "កំណត់រចនាសម្ព័ន្ធលំដាប់ការអនុម័តសម្រាប់ Site Diary ការត្រួតពិនិត្យ ឯកសារបញ្ជូន និងការបិទបញ្ជីកែតម្រូវ។",
   "settingsNav.formsTemplatesHint": "កែសម្រួលវាលចាំបាច់/ស្រេចចិត្ត បញ្ជីត្រួតពិនិត្យ និងគំរូរបាយការណ៍សម្រាប់កម្មវិធីរងនីមួយៗ។",
   "settingsNav.notificationsHint": "កំណត់រចនាសម្ព័ន្ធអ្នកណាទទួលការជូនដំណឹងសម្រាប់ការអនុម័ត សកម្មភាពហួសកំណត់ និងបញ្ហាសុវត្ថិភាពធ្ងន់ធ្ងរ។",
   "settingsNav.integrationsHint": "ភ្ជាប់ឧបករណ៍ និងសេវាកម្មខាងក្រៅទៅគម្រោងនេះ។",
-  "settingsNav.dataArchiveHint": "ដាក់ក្នុងបណ្ណសារ ឬបិទគម្រោងនេះនៅពេលការងារកែតម្រូវ ការត្រួតពិនិត្យ និងឯកសារបញ្ជូនទាំងអស់ត្រូវបានដោះស្រាយ។",
+  "settingsNav.dataArchiveHint": "ពិនិត្យភាពត្រៀមខ្លួនប្រគល់ការងារ រួចដាក់ក្នុងបណ្ណសារ ឬបិទគម្រោងនេះនៅពេលការងារកែតម្រូវ ការត្រួតពិនិត្យ និងឯកសារបញ្ជូនទាំងអស់ត្រូវបានដោះស្រាយ។",
+  "settingsNav.activeModulesHint": "បិទកម្មវិធីរងណាដែលគម្រោងនេះមិនប្រើ។ កម្មវិធីរងដែលបិទនៅតែអាចចូលប្រើបានបច្ចុប្បន្ន — វាគ្រាន់តែតាមដានថាមួយណាកំពុងប្រើប្រាស់។",
 
   "insight.settingsChange": "ការផ្លាស់ប្តូរការកំណត់",
 
@@ -2592,6 +2602,10 @@ const KM: Dict = {
   "impactType.No Impact": "គ្មានផលប៉ះពាល់",
 
   "team.jobRole.contract_administrator": "អ្នកគ្រប់គ្រងកិច្ចសន្យា",
+
+  "settingsEngine.sourceModule": "គម្រោងនេះ",
+  "settingsEngine.sourceGlobal": "លំនាំដើមទូទៅ",
+  "settingsEngine.resetToDefault": "កំណត់ទៅលំនាំដើមវិញ",
 };
 
 const ZH: Dict = {
@@ -2810,17 +2824,20 @@ const ZH: Dict = {
   "settingsNav.formsTemplates": "表单与模板",
   "settingsNav.notifications": "通知",
   "settingsNav.integrations": "集成",
-  "settingsNav.dataArchive": "数据与归档",
+  "settingsNav.dataArchive": "数据、移交与归档",
+  "settingsNav.activeModules": "启用的模块",
   "settingsNav.notBuiltYet": "尚未开发",
+  "settingsNav.notApplicableSingleTenant": "不适用——此账户为单租户账户",
   "settingsNav.peopleRolesHint": "从项目的\"团队\"标签页管理项目成员——邀请成员、分配职能角色和公司。",
-  "settingsNav.permissionsHint": "配置每个职能角色在各功能模块中的操作权限。",
+  "settingsNav.permissionsHint": "配置每个职能角色在各功能模块中的操作权限。权限级别目前是账户级的——尚不支持针对本项目单独覆盖。",
   "settingsNav.workPackagesHint": "定义工作包(土方工程、钢结构、机电安装...)并关联到公司、专业、BOQ项目和进度活动。",
   "settingsNav.documentControlHint": "配置此项目的文档编号格式、版本代码以及PDF封面/页脚规则。",
   "settingsNav.workflowsHint": "配置施工日志、验收、报审文件和整改清单关闭的审批链。",
   "settingsNav.formsTemplatesHint": "自定义各模块的必填/选填字段、检查清单和报告模板。",
   "settingsNav.notificationsHint": "配置审批、逾期事项和重大安全问题的通知对象。",
   "settingsNav.integrationsHint": "将外部工具和服务连接到此项目。",
-  "settingsNav.dataArchiveHint": "在所有整改项、验收和报审文件都已解决后归档或关闭此项目。",
+  "settingsNav.dataArchiveHint": "查看移交准备情况，并在所有整改项、验收和报审文件都已解决后归档或关闭此项目。",
+  "settingsNav.activeModulesHint": "关闭此项目不使用的模块。已关闭的模块目前仍可访问——这仅用于记录哪些模块在使用中。",
 
   "insight.settingsChange": "设置变更",
 
@@ -3887,6 +3904,10 @@ const ZH: Dict = {
   "impactType.No Impact": "无影响",
 
   "team.jobRole.contract_administrator": "合同管理员",
+
+  "settingsEngine.sourceModule": "本项目",
+  "settingsEngine.sourceGlobal": "全局默认",
+  "settingsEngine.resetToDefault": "重置为默认",
 };
 
 const DICTS: Record<CMLang, Dict> = { en: EN, km: KM, zh: ZH };

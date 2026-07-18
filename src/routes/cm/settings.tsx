@@ -331,7 +331,9 @@ function CMSettingsPage() {
                 <Row key={k}>
                   <div className="min-w-0">
                     <p className="text-[13px] text-white/85">{t(`appSettingsNav.${k}`)}</p>
-                    <p className="text-[10px] text-white/30 mt-0.5">{t("settingsNav.notBuiltYet")}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">
+                      {k === "organizations" ? t("settingsNav.notApplicableSingleTenant") : t("settingsNav.notBuiltYet")}
+                    </p>
                   </div>
                 </Row>
               ))}
@@ -359,8 +361,8 @@ function CMSettingsPage() {
           <>
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2 px-1">{t("settings.currentProject")}</p>
             <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
-            {activeProject && (
-              <ProjectSettingsView project={activeProject} ownerId={activeProject.owner_id} onProjectChanged={invalidateProjects} />
+            {activeProject && user && (
+              <ProjectSettingsView project={activeProject} ownerId={activeProject.owner_id} currentUserId={user.id} onProjectChanged={invalidateProjects} />
             )}
           </>
         )}

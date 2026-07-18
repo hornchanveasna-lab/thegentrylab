@@ -5,10 +5,11 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect, SelectRow,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect, SettingControlRow,
   useSelectedProject, inputCls, labelCls, EmptyState, ErrorState, StatusBadge, PriorityBadge, ConfirmationDialog, PhotoLightbox,
   WeekCalendarStrip, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 import {
   useCMInstructions,
   useAllCMInstructions,
@@ -22,7 +23,6 @@ import {
   uploadCMFile,
   uploadCMQuickCaptureFiles,
   useCMProject,
-  updateCMProject,
   INSTRUCTION_SOURCE_TYPES,
   INSTRUCTION_STATUSES,
   INSTRUCTION_PRIORITIES,
@@ -329,35 +329,30 @@ function InstructionsQuickSettings({ projectId, userId }: { projectId: string; u
   const canEdit = usePermission(projectId, userId, "settings", "edit");
   const [busy, setBusy] = useState(false);
   if (!project) return null;
-  const defaults = (project.module_defaults?.instructions ?? {}) as { sourceType?: InstructionSourceType; priority?: InstructionPriority };
-  const sourceType = defaults.sourceType ?? "Consultant";
-  const priority = defaults.priority ?? "Medium";
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const sourceType = resolveSetting(SETTING_DEFINITIONS.instructionsSourceType, { project });
+  const priority = resolveSetting(SETTING_DEFINITIONS.instructionsPriority, { project });
 
-  const save = async (patch: Partial<typeof defaults>) => {
-    const nextDefaults = { ...(project.module_defaults ?? {}), instructions: { ...defaults, ...patch } };
-    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+  const run = async (p: Promise<void>) => {
     setBusy(true);
-    try {
-      await updateCMProject(project.id, { module_defaults: nextDefaults });
-      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
-    } finally {
-      setBusy(false);
-    }
+    try { await p; } finally { setBusy(false); }
   };
 
   return (
     <>
-      <SelectRow
+      <SettingControlRow
         icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>}
-        label={t("instructions.settingsDefaultSourceType")} value={sourceType} disabled={!canEdit || busy}
+        label={t("instructions.settingsDefaultSourceType")} resolved={sourceType} disabled={!canEdit || busy}
         options={INSTRUCTION_SOURCE_TYPES.map((s) => ({ value: s, label: t(`instructionSource.${s}`) }))}
-        onChange={(v) => save({ sourceType: v })}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsSourceType, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsSourceType, SETTING_DEFINITIONS.instructionsSourceType.defaultValue, ctx, queryClient))}
       />
-      <SelectRow
+      <SettingControlRow
         icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
-        label={t("instructions.settingsDefaultPriority")} value={priority} disabled={!canEdit || busy}
+        label={t("instructions.settingsDefaultPriority")} resolved={priority} disabled={!canEdit || busy}
         options={INSTRUCTION_PRIORITIES.map((p) => ({ value: p, label: t(`instructionPriority.${p}`) }))}
-        onChange={(v) => save({ priority: v })}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsPriority, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsPriority, SETTING_DEFINITIONS.instructionsPriority.defaultValue, ctx, queryClient))}
       />
     </>
   );

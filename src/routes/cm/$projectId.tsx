@@ -493,7 +493,7 @@ function CMProjectPage() {
         )}
 
         {tab === "settings" && (
-          <ProjectSettingsView project={project} ownerId={project.owner_id} onProjectChanged={invalidateProject} />
+          <ProjectSettingsView project={project} ownerId={project.owner_id} currentUserId={user.id} onProjectChanged={invalidateProject} />
         )}
       </main>
     </div>

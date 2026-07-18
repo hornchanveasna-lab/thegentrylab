@@ -5,10 +5,11 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SelectRow, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   StatusBadge, EmptyState, ErrorState, ConfirmationDialog, DisciplineSelect, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 import {
   useCMInspections,
   useAllCMInspections,
@@ -20,7 +21,6 @@ import {
   uploadCMQuickCaptureFiles,
   useCMProjectLocations,
   useCMProject,
-  updateCMProject,
   locationBreadcrumb,
   INSPECTION_TYPES,
   type CMInspection,
@@ -281,27 +281,21 @@ function InspectionQuickSettings({ projectId, userId }: { projectId: string; use
   const canEdit = usePermission(projectId, userId, "settings", "edit");
   const [busy, setBusy] = useState(false);
   if (!project) return null;
-  const defaults = (project.module_defaults?.inspection ?? {}) as { type?: InspectionType };
-  const type = defaults.type ?? "";
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const type = resolveSetting(SETTING_DEFINITIONS.inspectionType, { project });
 
-  const save = async (patch: Partial<typeof defaults>) => {
-    const nextDefaults = { ...(project.module_defaults ?? {}), inspection: { ...defaults, ...patch } };
-    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+  const run = async (p: Promise<void>) => {
     setBusy(true);
-    try {
-      await updateCMProject(project.id, { module_defaults: nextDefaults });
-      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
-    } finally {
-      setBusy(false);
-    }
+    try { await p; } finally { setBusy(false); }
   };
 
   return (
-    <SelectRow
+    <SettingControlRow
       icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>}
-      label={t("inspection.settingsDefaultType")} value={type} disabled={!canEdit || busy}
+      label={t("inspection.settingsDefaultType")} resolved={type} disabled={!canEdit || busy}
       options={[{ value: "", label: t("inspection.typePlaceholder") }, ...INSPECTION_TYPES.map((it) => ({ value: it, label: t(`inspectionType.${it}`) }))]}
-      onChange={(v) => save({ type: v || undefined })}
+      onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.inspectionType, v, ctx, queryClient))}
+      onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.inspectionType, SETTING_DEFINITIONS.inspectionType.defaultValue, ctx, queryClient))}
     />
   );
 }

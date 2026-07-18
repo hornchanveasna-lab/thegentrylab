@@ -5,7 +5,7 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SelectRow, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
@@ -18,7 +18,6 @@ import {
   uploadCMFile,
   uploadCMQuickCaptureFiles,
   useCMProject,
-  updateCMProject,
   SUBMITTAL_TYPES,
   APPROVAL_CODES,
   type CMSubmittal,
@@ -28,6 +27,7 @@ import {
   type ApprovalCode,
   type Discipline,
 } from "@/lib/cm-data";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 
 export const Route = createFileRoute("/cm/submittal")({
   head: () => ({ meta: [{ title: "Submittal — Construction Management App" }] }),
@@ -277,27 +277,21 @@ function SubmittalQuickSettings({ projectId, userId }: { projectId: string; user
   const canEdit = usePermission(projectId, userId, "settings", "edit");
   const [busy, setBusy] = useState(false);
   if (!project) return null;
-  const defaults = (project.module_defaults?.submittal ?? {}) as { type?: SubmittalType };
-  const type = defaults.type ?? "";
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const type = resolveSetting(SETTING_DEFINITIONS.submittalType, { project });
 
-  const save = async (patch: Partial<typeof defaults>) => {
-    const nextDefaults = { ...(project.module_defaults ?? {}), submittal: { ...defaults, ...patch } };
-    queryClient.setQueryData(["cm_project", projectId], (old: typeof project | null | undefined) => (old ? { ...old, module_defaults: nextDefaults } : old));
+  const run = async (p: Promise<void>) => {
     setBusy(true);
-    try {
-      await updateCMProject(project.id, { module_defaults: nextDefaults });
-      queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
-    } finally {
-      setBusy(false);
-    }
+    try { await p; } finally { setBusy(false); }
   };
 
   return (
-    <SelectRow
+    <SettingControlRow
       icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" /></svg>}
-      label={t("submittal.settingsDefaultType")} value={type} disabled={!canEdit || busy}
+      label={t("submittal.settingsDefaultType")} resolved={type} disabled={!canEdit || busy}
       options={[{ value: "", label: t("submittal.typePlaceholder") }, ...SUBMITTAL_TYPES.map((s) => ({ value: s, label: t(`submittalType.${SUBMITTAL_TYPE_KEY[s]}`) }))]}
-      onChange={(v) => save({ type: v || undefined })}
+      onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.submittalType, v, ctx, queryClient))}
+      onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.submittalType, SETTING_DEFINITIONS.submittalType.defaultValue, ctx, queryClient))}
     />
   );
 }

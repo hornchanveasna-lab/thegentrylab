@@ -17,6 +17,8 @@ import {
   CM_COMPANY_TYPES,
   DISCIPLINES,
   setCMProjectDisciplineEnabled,
+  ACTIVE_MODULE_KEYS,
+  setCMProjectModuleEnabled,
   useCMChecklistItems,
   createCMChecklistItem,
   updateCMChecklistItem,
@@ -932,6 +934,46 @@ function DisciplinesSection({ project, canEdit, onChanged }: { project: CMProjec
   );
 }
 
+const MODULE_TITLE_KEY: Record<string, string> = {
+  site_diary: "siteDiary.title", punch_list: "punchList.title", inspection: "inspection.title",
+  safety: "safety.title", submittal: "submittal.title", equipment: "equipment.title",
+  boq: "boq.title", schedule: "schedule.title", manpower: "manpower.title",
+  contracts: "contracts.title", instructions: "instructions.title",
+};
+
+function ActiveModulesSection({ project, canEdit, onChanged }: { project: CMProject; canEdit: boolean; onChanged: () => void }) {
+  const { t } = useCMLang();
+  const disabled = new Set(project.disabled_modules);
+
+  const toggle = async (m: (typeof ACTIVE_MODULE_KEYS)[number]) => {
+    if (!canEdit) return;
+    await setCMProjectModuleEnabled(project, m, disabled.has(m));
+    onChanged();
+  };
+
+  return (
+    <Card title={t("settingsNav.activeModules")}>
+      <p className="text-[12px] text-white/45 mb-3">{t("settingsNav.activeModulesHint")}</p>
+      <div className="flex flex-col gap-1">
+        {ACTIVE_MODULE_KEYS.map((m) => {
+          const enabled = !disabled.has(m);
+          return (
+            <button key={m} type="button" onClick={() => toggle(m)} disabled={!canEdit}
+              className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-white/5 transition-colors disabled:opacity-60">
+              <span className="text-[12px] text-white/70">{t(MODULE_TITLE_KEY[m])}</span>
+              <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-white/15"}`}
+                style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
+                <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
+                  style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 function PlaceholderSection({ title, description }: { title: string; description: string }) {
   const { t } = useCMLang();
   return (
@@ -1736,8 +1778,8 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
  *  project configuration only: info, branding, consultants, locations,
  *  checklist. No header of its own since the Insight page already has one. */
 type SettingsCategory =
-  | "general" | "branding" | "companies" | "peopleRoles" | "permissions"
-  | "locations" | "disciplines" | "consultants" | "checklist"
+  | "general" | "branding" | "peopleRoles" | "permissions"
+  | "locations" | "disciplines" | "activeModules" | "consultants" | "checklist"
   | "workPackages" | "documentControl" | "workflows" | "formsTemplates"
   | "notifications" | "integrations" | "dataArchive";
 
@@ -1745,9 +1787,12 @@ type SettingsCategory =
  *  rather than fabricated controls. Each is its own future project. */
 const PLACEHOLDER_CATEGORIES: SettingsCategory[] = ["integrations"];
 
+/** "companies" was removed from this project-level list — CompaniesSection
+ *  is owner-scoped data (no projectId), so it lives only on the Global App
+ *  Settings tab now, not duplicated here too. */
 const CATEGORY_ORDER: SettingsCategory[] = [
-  "general", "branding", "companies", "peopleRoles", "permissions",
-  "locations", "disciplines", "consultants", "checklist",
+  "general", "branding", "peopleRoles", "permissions",
+  "locations", "disciplines", "activeModules", "consultants", "checklist",
   "workPackages", "documentControl", "workflows", "formsTemplates",
   "notifications", "integrations", "dataArchive",
 ];
@@ -1764,15 +1809,21 @@ function SettingsCategoryRow({ label, subtitle, onClick }: { label: string; subt
   );
 }
 
-export function ProjectSettingsView({ project, ownerId, onProjectChanged }: {
-  project: CMProject; ownerId: string; onProjectChanged: () => void;
+export function ProjectSettingsView({ project, ownerId, currentUserId, onProjectChanged }: {
+  project: CMProject; ownerId: string;
+  /** The actually signed-in user viewing this screen — distinct from
+   *  `ownerId` (the project's owner, used for data-scoping uploads/queries).
+   *  Permission checks must resolve against whoever is really logged in,
+   *  not the project owner, or a non-owner member would incorrectly get
+   *  every permission via hasPermission's "tierRole === owner" shortcut. */
+  currentUserId: string; onProjectChanged: () => void;
 }) {
   const { t } = useCMLang();
   const [previewMonotone, setPreviewMonotone] = useState(false);
   const [category, setCategory] = useState<SettingsCategory | null>(null);
-  const settingsCanCreate = usePermission(project.id, ownerId, "settings", "create");
-  const settingsCanEdit = usePermission(project.id, ownerId, "settings", "edit");
-  const settingsCanDelete = usePermission(project.id, ownerId, "settings", "delete");
+  const settingsCanCreate = usePermission(project.id, currentUserId, "settings", "create");
+  const settingsCanEdit = usePermission(project.id, currentUserId, "settings", "edit");
+  const settingsCanDelete = usePermission(project.id, currentUserId, "settings", "delete");
 
   if (category === null) {
     return (
@@ -1797,7 +1848,6 @@ export function ProjectSettingsView({ project, ownerId, onProjectChanged }: {
       {category === "branding" && (
         <LogoSection project={project} ownerId={ownerId} canEdit={settingsCanEdit} onChanged={onProjectChanged} previewMonotone={previewMonotone} onTogglePreview={setPreviewMonotone} />
       )}
-      {category === "companies" && <CompaniesSection ownerId={ownerId} canCreate={settingsCanCreate} canEdit={settingsCanEdit} />}
       {category === "peopleRoles" && (
         <Card title={t("settingsNav.peopleRoles")}>
           <p className="text-[12px] text-white/45">{t("settingsNav.peopleRolesHint")}</p>
@@ -1811,6 +1861,7 @@ export function ProjectSettingsView({ project, ownerId, onProjectChanged }: {
       )}
       {category === "locations" && <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
       {category === "disciplines" && <DisciplinesSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}
+      {category === "activeModules" && <ActiveModulesSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}
       {category === "consultants" && (
         <ConsultantsSection ownerId={ownerId} projectId={project.id} previewMonotone={previewMonotone}
           canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />

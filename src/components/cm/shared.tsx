@@ -15,6 +15,7 @@ import {
   type CMManpowerRow, stampAndUploadCMPhotos, CM_WORKER_CATEGORIES,
 } from "@/lib/cm-data";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
+import { type ResolvedSetting } from "@/lib/cm-settings";
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
@@ -632,6 +633,55 @@ export function SelectRow<T extends string>({ icon, label, value, options, disab
       <FieldSelect value={value} onChange={onChange} options={options} disabled={disabled}
         triggerClassName="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-white/85 bg-white/8 whitespace-nowrap"
         menuClassName="left-auto right-0 w-44" />
+    </div>
+  );
+}
+
+/** A quick-settings row backed by the `cm-settings.ts` resolution engine —
+ *  same icon+label shell as `ToggleRow`/`SelectRow`, plus a small source
+ *  label ("This project" / "Global default") and a Reset-to-default button
+ *  shown only when the value is actually overridden from its coded default.
+ *  Renders a switch or a compact `FieldSelect` pill depending on whether
+ *  the resolved value is a boolean or a string. */
+export function SettingControlRow<T extends string | boolean>({ icon, label, resolved, options, disabled, onChange, onReset }: {
+  icon: React.ReactNode; label: string; resolved: ResolvedSetting<T>;
+  options?: FieldSelectOption<Extract<T, string>>[]; disabled: boolean;
+  onChange: (v: T) => void; onReset: () => void;
+}) {
+  const { t } = useCMLang();
+  const isBoolean = typeof resolved.value === "boolean";
+  return (
+    <div className="w-full flex items-center gap-3 px-4 py-3">
+      <span className="text-white/70 shrink-0">{icon}</span>
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+        <span className="text-[14px] text-white/90 truncate">{label}</span>
+        {resolved.isOverridden && (
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">
+            {resolved.source === "module" ? t("settingsEngine.sourceModule") : t("settingsEngine.sourceGlobal")}
+          </span>
+        )}
+      </div>
+      {resolved.isOverridden && (
+        <button type="button" onClick={onReset} disabled={disabled} aria-label={t("settingsEngine.resetToDefault")}
+          className="shrink-0 text-white/25 hover:text-white/60 disabled:opacity-40 transition-colors">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" />
+          </svg>
+        </button>
+      )}
+      {isBoolean ? (
+        <button type="button" role="switch" aria-checked={resolved.value as boolean} disabled={disabled}
+          onClick={() => onChange(!resolved.value as T)}
+          className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors disabled:opacity-40 ${resolved.value ? "" : "menu-track-off"}`}
+          style={resolved.value ? { backgroundColor: "#ff5100" } : undefined}>
+          <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
+            style={{ transform: resolved.value ? "translateX(20px)" : "translateX(2px)" }} />
+        </button>
+      ) : (
+        <FieldSelect value={resolved.value as Extract<T, string>} onChange={(v) => onChange(v as T)} options={options ?? []} disabled={disabled}
+          triggerClassName="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-white/85 bg-white/8 whitespace-nowrap"
+          menuClassName="left-auto right-0 w-44" />
+      )}
     </div>
   );
 }
