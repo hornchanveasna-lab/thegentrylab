@@ -11,12 +11,14 @@ import {
 } from "@/components/cm/shared";
 import {
   useCMEquipment,
+  useAllCMEquipment,
   createCMEquipment,
   updateCMEquipment,
   deleteCMEquipment,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
   type CMEquipment,
+  type CMEquipmentWithProject,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/equipment")({
@@ -93,8 +95,10 @@ export function NewEquipmentSheet({ ownerId, projectId, existing, typeOptions, b
   );
 }
 
-function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; canEdit: boolean; canDelete: boolean; onChanged: () => void }) {
+function EquipmentRow({ eq, userId, projectName, onChanged }: { eq: CMEquipment; userId: string; projectName?: string; onChanged: () => void }) {
   const { t } = useCMLang();
+  const canEdit = usePermission(eq.project_id, userId, "equipment", "edit");
+  const canDelete = usePermission(eq.project_id, userId, "equipment", "delete");
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -108,7 +112,10 @@ function EquipmentRow({ eq, canEdit, canDelete, onChanged }: { eq: CMEquipment; 
     <div className="flex flex-col gap-2 rounded-xl bg-white/3 px-3.5 py-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            {projectName && <span className="text-[11px] text-white/40 truncate shrink-0">{projectName}</span>}
+            <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
+          </div>
           <p className="font-mono text-[10px] text-white/30">{t("equipment.qty")} {eq.quantity}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -150,16 +157,30 @@ function CMEquipmentPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: items, isLoading, isError, refetch } = useCMEquipment(projectId || undefined);
+  const [viewAll, setViewAll] = useState(true);
+  const { data: singleItems, isLoading: singleLoading, isError: singleIsError, refetch: singleRefetch } = useCMEquipment(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allItems, isLoading: allLoading, isError: allIsError, refetch: allRefetch } = useAllCMEquipment(viewAll ? user?.id : undefined);
+  const items: (CMEquipment | CMEquipmentWithProject)[] | undefined = viewAll ? allItems : singleItems;
+  const isLoading = viewAll ? allLoading : singleLoading;
+  const isError = viewAll ? allIsError : singleIsError;
+  const refetch = viewAll ? allRefetch : singleRefetch;
   const canCreate = usePermission(projectId || undefined, user?.id, "equipment", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "equipment", "edit");
-  const canDelete = usePermission(projectId || undefined, user?.id, "equipment", "delete");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_equipment", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_equipment", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_equipment", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -182,13 +203,13 @@ function CMEquipmentPage() {
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("equipment.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/equipment/settings" />
         <p className="text-[12px] text-white/35 mb-5">{t("equipment.subtitle")}</p>
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && (
+        {!viewAll && projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
@@ -196,11 +217,15 @@ function CMEquipmentPage() {
               <>
                 {!isLoading && visibleItems.length === 0 && <EmptyState message={t("equipment.nothingYet")} />}
                 <div className="flex flex-col gap-2">
-                  {visibleItems.map((eq) => <EquipmentRow key={eq.id} eq={eq} canEdit={canEdit} canDelete={canDelete} onChanged={invalidate} />)}
+                  {visibleItems.map((eq) => (
+                    <EquipmentRow key={eq.id} eq={eq} userId={user.id}
+                      projectName={viewAll ? (eq as CMEquipmentWithProject).projectName : undefined}
+                      onChanged={invalidate} />
+                  ))}
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("equipment.newBtn")} onClick={() => navigate({ to: "/cm/equipment/new" })} />}
+            {!viewAll && canCreate && <FAB label={t("equipment.newBtn")} onClick={() => navigate({ to: "/cm/equipment/new" })} />}
           </>
         )}
       </main>

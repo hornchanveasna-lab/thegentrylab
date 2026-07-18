@@ -5,12 +5,14 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, ProjectPicker, SegmentedField, FieldSelect, CompanySelect, SettingControlRow,
   useSelectedProject, inputCls, labelCls, EmptyState, ErrorState, StatusBadge, PriorityBadge, ConfirmationDialog, PhotoLightbox,
   WeekCalendarStrip, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 import {
   useCMInstructions,
+  useAllCMInstructions,
   createCMInstruction,
   updateCMInstruction,
   acknowledgeCMInstruction,
@@ -20,12 +22,14 @@ import {
   stampAndUploadCMPhotos,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
+  useCMProject,
   INSTRUCTION_SOURCE_TYPES,
   INSTRUCTION_STATUSES,
   INSTRUCTION_PRIORITIES,
   ACK_RESPONSES,
   IMPACT_TYPES,
   type CMInstruction,
+  type CMInstructionWithProject,
   type InstructionSourceType,
   type InstructionStatus,
   type InstructionPriority,
@@ -179,11 +183,13 @@ export function NewInstructionSheet({ ownerId, projectId, contractId, existing, 
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged, onOpenPhoto }: {
-  item: CMInstruction; ownerId: string; canEdit: boolean; canDelete: boolean; userId: string;
+function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpenPhoto }: {
+  item: CMInstruction; ownerId: string; userId: string; projectName?: string;
   onChanged: () => void; onOpenPhoto: (items: LightboxItem[], index: number) => void;
 }) {
   const { t } = useCMLang();
+  const canEdit = usePermission(item.project_id, userId, "instructions", "edit");
+  const canDelete = usePermission(item.project_id, userId, "instructions", "delete");
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -223,6 +229,7 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[12px] text-white/70 shrink-0">{item.created_at.slice(0, 10)}</span>
           {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+          {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
         <StatusBadge label={t(`instructionStatus.${item.status}`)} color={sc} />
@@ -315,27 +322,77 @@ function InstructionCard({ item, ownerId, canEdit, canDelete, userId, onChanged,
   );
 }
 
+function InstructionsQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const sourceType = resolveSetting(SETTING_DEFINITIONS.instructionsSourceType, { project });
+  const priority = resolveSetting(SETTING_DEFINITIONS.instructionsPriority, { project });
+
+  const run = async (p: Promise<void>) => {
+    setBusy(true);
+    try { await p; } finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <SettingControlRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>}
+        label={t("instructions.settingsDefaultSourceType")} resolved={sourceType} disabled={!canEdit || busy}
+        options={INSTRUCTION_SOURCE_TYPES.map((s) => ({ value: s, label: t(`instructionSource.${s}`) }))}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsSourceType, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsSourceType, SETTING_DEFINITIONS.instructionsSourceType.defaultValue, ctx, queryClient))}
+      />
+      <SettingControlRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
+        label={t("instructions.settingsDefaultPriority")} resolved={priority} disabled={!canEdit || busy}
+        options={INSTRUCTION_PRIORITIES.map((p) => ({ value: p, label: t(`instructionPriority.${p}`) }))}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsPriority, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.instructionsPriority, SETTING_DEFINITIONS.instructionsPriority.defaultValue, ctx, queryClient))}
+      />
+    </>
+  );
+}
+
 function CMInstructionsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const [viewAll, setViewAll] = useState(true);
   const activeProject = projects?.find((p) => p.id === projectId);
   const { data: contracts } = useCMContracts(projectId || undefined);
-  const { data: items, isLoading, isError, refetch } = useCMInstructions(projectId || undefined);
+  const { data: singleItems, isLoading: singleLoading, isError: singleIsError, refetch: singleRefetch } = useCMInstructions(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allItems, isLoading: allLoading, isError: allIsError, refetch: allRefetch } = useAllCMInstructions(viewAll ? user?.id : undefined);
+  const items: (CMInstruction | CMInstructionWithProject)[] | undefined = viewAll ? allItems : singleItems;
+  const isLoading = viewAll ? allLoading : singleLoading;
+  const isError = viewAll ? allIsError : singleIsError;
+  const refetch = viewAll ? allRefetch : singleRefetch;
   const canCreate = usePermission(projectId || undefined, user?.id, "instructions", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "instructions", "edit");
-  const canDelete = usePermission(projectId || undefined, user?.id, "instructions", "delete");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ items: LightboxItem[]; index: number } | null>(null);
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
-  const dateOf = (i: CMInstruction) => i.created_at.slice(0, 10);
+  const dateOf = (i: CMInstruction | CMInstructionWithProject) => i.created_at.slice(0, 10);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_instructions", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_instructions", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -364,14 +421,15 @@ function CMInstructionsPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/instructions/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/instructions/settings"
+          quickSettings={!viewAll && projectId ? <InstructionsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && contracts && contracts.length > 0 && (
+        {!viewAll && projectId && canCreate && contracts && contracts.length > 0 && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <WeekCalendarStrip items={items ?? []} dateOf={dateOf} lang={lang}
             selected={dateFilter} onSelect={setDateFilter} />
         )}
@@ -383,7 +441,7 @@ function CMInstructionsPage() {
           </button>
         )}
 
-        {projectId && items && items.length > 0 && (
+        {(viewAll || projectId) && items && items.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="rounded-2xl bg-[#0d0d0e] py-3 text-center">
               <p className="text-[18px] font-bold text-white">{openCount}</p>
@@ -400,11 +458,11 @@ function CMInstructionsPage() {
           </div>
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
-            {!isError && !isLoading && contracts && contracts.length === 0 && (
+            {!isError && !viewAll && !isLoading && contracts && contracts.length === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex flex-col items-center justify-center text-center px-4 gap-3">
                 <p className="text-white/40 text-sm">{t("instructions.noContractsYet")}</p>
                 <Link to="/cm/contracts" className="text-[12px] font-bold px-4 py-2 rounded-full" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
@@ -412,16 +470,17 @@ function CMInstructionsPage() {
                 </Link>
               </div>
             )}
-            {!isError && contracts && contracts.length > 0 && (
+            {!isError && (viewAll || (contracts && contracts.length > 0)) && (
               <>
                 {!isLoading && visibleItems.length === 0 && <EmptyState message={t("instructions.noneYet")} />}
                 <div className="flex flex-col gap-3">
                   {visibleItems.map((i) => (
-                    <InstructionCard key={i.id} item={i} ownerId={ownerId} canEdit={canEdit} canDelete={canDelete} userId={user.id}
+                    <InstructionCard key={i.id} item={i} ownerId={ownerId} userId={user.id}
+                      projectName={viewAll ? (i as CMInstructionWithProject).projectName : undefined}
                       onChanged={invalidate} onOpenPhoto={(its, index) => setLightbox({ items: its, index })} />
                   ))}
                 </div>
-                {canCreate && <FAB label={t("instructions.new")} onClick={() => navigate({ to: "/cm/instructions/new" })} />}
+                {!viewAll && canCreate && <FAB label={t("instructions.new")} onClick={() => navigate({ to: "/cm/instructions/new" })} />}
               </>
             )}
           </>

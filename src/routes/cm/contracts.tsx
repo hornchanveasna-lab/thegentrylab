@@ -5,24 +5,28 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, CompanySelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, SettingControlRow, CompanySelect, useSelectedProject, inputCls, labelCls,
   EmptyState, ErrorState, StatusBadge, ConfirmationDialog, WeekCalendarStrip,
   FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet,
 } from "@/components/cm/shared";
 import {
   useCMContracts,
+  useAllCMContracts,
   createCMContract,
   updateCMContract,
   deleteCMContract,
   useCMCompanies,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
+  useCMProject,
   CONTRACT_TYPES,
   CONTRACT_STATUSES,
   type CMContract,
+  type CMContractWithProject,
   type ContractType,
   type ContractStatus,
 } from "@/lib/cm-data";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 
 export const Route = createFileRoute("/cm/contracts")({
   head: () => ({ meta: [{ title: "Contracts — Construction Management App" }] }),
@@ -157,15 +161,17 @@ export function NewContractSheet({ ownerId, projectId, existing, defaultContract
   );
 }
 
-function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
-  item: CMContract; ownerId: string; canEdit: boolean; canDelete: boolean; onChanged: () => void;
+function ContractCard({ item, userId, projectName, onChanged }: {
+  item: CMContract; userId: string; projectName?: string; onChanged: () => void;
 }) {
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const { data: companies } = useCMCompanies(ownerId);
+  const { data: companies } = useCMCompanies(item.owner_id);
   const counterparty = companies?.find((c) => c.id === item.counterparty_company_id);
+  const canEdit = usePermission(item.project_id, userId, "contracts", "edit");
+  const canDelete = usePermission(item.project_id, userId, "contracts", "delete");
   const sc = STATUS_COLOR[item.status];
 
   const handleDelete = async () => {
@@ -180,6 +186,7 @@ function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
         <div className="flex items-center gap-4 min-w-0">
           <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`contractType.${item.contract_type}`)}</span>
           {item.contract_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.contract_number}</span>}
+          {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
           <span className="text-[12px] text-white/70 truncate">{item.title}</span>
         </div>
         <StatusBadge label={t(`contractStatus.${item.status}`)} color={sc} />
@@ -213,17 +220,70 @@ function ContractCard({ item, ownerId, canEdit, canDelete, onChanged }: {
   );
 }
 
+function ContractsQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  const [currencyDraft, setCurrencyDraft] = useState<string | null>(null);
+  if (!project) return null;
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const contractType = resolveSetting(SETTING_DEFINITIONS.contractsContractType, { project });
+  const currency = currencyDraft ?? resolveSetting(SETTING_DEFINITIONS.contractsCurrency, { project }).value;
+
+  const run = async (p: Promise<void>) => {
+    setBusy(true);
+    try { await p; } finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <SettingControlRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3v5h5" /><path d="M6 3h8l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" /></svg>}
+        label={t("contracts.settingsDefaultType")} resolved={contractType} disabled={!canEdit || busy}
+        options={CONTRACT_TYPES.map((ct) => ({ value: ct, label: t(`contractType.${ct}`) }))}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.contractsContractType, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.contractsContractType, SETTING_DEFINITIONS.contractsContractType.defaultValue, ctx, queryClient))}
+      />
+      <div className="w-full flex items-center gap-3.5 px-4 py-3">
+        <span className="text-white/70 shrink-0">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v10" /><path d="M15 9.5c0-1.4-1.3-2.5-3-2.5s-3 1.1-3 2.5 1.3 2 3 2.5 3 1.1 3 2.5-1.3 2.5-3 2.5-3-1.1-3-2.5" /></svg>
+        </span>
+        <span className="min-w-0 flex-1 text-[14px] text-white/90">{t("contracts.settingsDefaultCurrency")}</span>
+        <input
+          value={currency}
+          placeholder="USD"
+          disabled={!canEdit || busy}
+          onChange={(e) => setCurrencyDraft(e.target.value)}
+          onBlur={() => {
+            if (currencyDraft !== null) {
+              run(writeSettingAndSync(SETTING_DEFINITIONS.contractsCurrency, (currencyDraft.trim() || undefined) as string, ctx, queryClient));
+              setCurrencyDraft(null);
+            }
+          }}
+          className="w-20 bg-white/8 rounded-full px-3 py-1.5 text-[11px] font-mono text-white/85 text-right focus:outline-none"
+        />
+      </div>
+    </>
+  );
+}
+
 function CMContractsPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
+  const [viewAll, setViewAll] = useState(true);
   const activeProject = projects?.find((p) => p.id === projectId);
-  const { data: items, isLoading, isError, refetch } = useCMContracts(projectId || undefined);
+  const { data: singleItems, isLoading: singleLoading, isError: singleIsError, refetch: singleRefetch } = useCMContracts(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allItems, isLoading: allLoading, isError: allIsError, refetch: allRefetch } = useAllCMContracts(viewAll ? user?.id : undefined);
+  const items: (CMContract | CMContractWithProject)[] | undefined = viewAll ? allItems : singleItems;
+  const isLoading = viewAll ? allLoading : singleLoading;
+  const isError = viewAll ? allIsError : singleIsError;
+  const refetch = viewAll ? allRefetch : singleRefetch;
   const canCreate = usePermission(projectId || undefined, user?.id, "contracts", "create");
-  const canEdit = usePermission(projectId || undefined, user?.id, "contracts", "edit");
-  const canDelete = usePermission(projectId || undefined, user?.id, "contracts", "delete");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
   const [search, setSearch] = useState("");
@@ -231,7 +291,17 @@ function CMContractsPage() {
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateOf = (c: CMContract) => c.start_date ?? c.created_at.slice(0, 10);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_contracts", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_contracts", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_contracts", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -255,14 +325,15 @@ function CMContractsPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("contracts.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/contracts/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ModuleHeader title={t("contracts.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/contracts/settings"
+          quickSettings={!viewAll && projectId ? <ContractsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && (
+        {!viewAll && projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <WeekCalendarStrip items={items ?? []} dateOf={dateOf} lang={lang}
             selected={dateFilter} onSelect={setDateFilter} />
         )}
@@ -274,7 +345,7 @@ function CMContractsPage() {
           </button>
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
@@ -283,12 +354,12 @@ function CMContractsPage() {
                 {!isLoading && visibleItems.length === 0 && <EmptyState message={t("contracts.noneYet")} />}
                 <div className="flex flex-col gap-3">
                   {visibleItems.map((c) => (
-                    <ContractCard key={c.id} item={c} ownerId={ownerId} canEdit={canEdit} canDelete={canDelete} onChanged={invalidate} />
+                    <ContractCard key={c.id} item={c} userId={user.id} projectName={viewAll ? (c as CMContractWithProject).projectName : undefined} onChanged={invalidate} />
                   ))}
                 </div>
               </>
             )}
-            {canCreate && <FAB label={t("contracts.new")} onClick={() => navigate({ to: "/cm/contracts/new" })} />}
+            {!viewAll && canCreate && <FAB label={t("contracts.new")} onClick={() => navigate({ to: "/cm/contracts/new" })} />}
           </>
         )}
       </main>

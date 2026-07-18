@@ -5,12 +5,13 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip,
   PriorityBadge, StatusBadge, ConfirmationDialog, LocationSelect, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMTasks,
+  useAllCMTasks,
   createCMTask,
   updateCMTask,
   deleteCMTask,
@@ -19,13 +20,16 @@ import {
   uploadCMQuickCaptureFiles,
   useCMProjectLocations,
   useCMProjectMembers,
+  useCMProject,
   addCMComment,
   logCMActivity,
   locationBreadcrumb,
   type CMTask,
+  type CMTaskWithProject,
   type TaskStatus,
   type TaskPriority,
 } from "@/lib/cm-data";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 
 export const Route = createFileRoute("/cm/punch-list")({
   head: () => ({ meta: [{ title: "Punch List — Construction Management App" }] }),
@@ -159,7 +163,7 @@ export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, de
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function PunchItemCard({ item }: { item: CMTask }) {
+function PunchItemCard({ item, projectName }: { item: CMTask; projectName?: string }) {
   const { t } = useCMLang();
   const sc = STATUS_COLOR[item.status];
   return (
@@ -168,6 +172,7 @@ function PunchItemCard({ item }: { item: CMTask }) {
       <div className="flex items-center gap-4 min-w-0">
         <span className="font-mono text-[12px] text-white/70 shrink-0">{item.created_at.slice(0, 10)}</span>
         {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
         <span className={`text-[12px] truncate ${item.status === "Done" ? "text-white/40 line-through" : "text-white/70"}`}>{item.title}</span>
       </div>
       <StatusBadge label={t(`taskStatus.${item.status}`)} color={sc} />
@@ -389,13 +394,52 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
   );
 }
 
+function PunchListQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const priority = resolveSetting(SETTING_DEFINITIONS.punchListPriority, { project });
+  const requireAfterPhoto = resolveSetting(SETTING_DEFINITIONS.punchListRequireAfterPhoto, { project });
+
+  const run = async (p: Promise<void>) => {
+    setBusy(true);
+    try { await p; } finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <SettingControlRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><path d="M10.3 3.9L2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>}
+        label={t("punchList.settingsDefaultPriority")} resolved={priority} disabled={!canEdit || busy}
+        options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListPriority, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListPriority, SETTING_DEFINITIONS.punchListPriority.defaultValue, ctx, queryClient))}
+      />
+      <SettingControlRow
+        icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" /></svg>}
+        label={t("punchList.settingsRequireAfterPhoto")} resolved={requireAfterPhoto} disabled={!canEdit || busy}
+        onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListRequireAfterPhoto, v, ctx, queryClient))}
+        onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.punchListRequireAfterPhoto, SETTING_DEFINITIONS.punchListRequireAfterPhoto.defaultValue, ctx, queryClient))}
+      />
+    </>
+  );
+}
+
 function CMPunchListPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: items, isLoading } = useCMTasks(projectId || undefined);
+  const [viewAll, setViewAll] = useState(true);
+  const { data: singleItems, isLoading: singleLoading } = useCMTasks(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allItems, isLoading: allLoading } = useAllCMTasks(viewAll ? user?.id : undefined);
+  const items: (CMTask | CMTaskWithProject)[] | undefined = viewAll ? allItems : singleItems;
+  const isLoading = viewAll ? allLoading : singleLoading;
   const canCreate = usePermission(projectId || undefined, user?.id, "punch_list", "create");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
@@ -404,7 +448,17 @@ function CMPunchListPage() {
   const [sortAsc, setSortAsc] = useState(false);
   const [dateFilter, setDateFilter] = useState<string | null>(null);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_tasks", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_tasks", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -429,14 +483,15 @@ function CMPunchListPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/punch-list/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/punch-list/settings"
+          quickSettings={!viewAll && projectId ? <PunchListQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && (
+        {!viewAll && projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <WeekCalendarStrip items={items ?? []} dateOf={(it) => it.created_at.slice(0, 10)} lang={lang}
             selected={dateFilter} onSelect={setDateFilter} />
         )}
@@ -448,7 +503,7 @@ function CMPunchListPage() {
           </button>
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             <>
@@ -461,7 +516,7 @@ function CMPunchListPage() {
                   <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
                 )}
                 <div className="flex flex-col gap-3">
-                  {open.map((t) => <PunchItemCard key={t.id} item={t} />)}
+                  {open.map((t) => <PunchItemCard key={t.id} item={t} projectName={viewAll ? (t as CMTaskWithProject).projectName : undefined} />)}
                 </div>
 
                 {done.length > 0 && (
@@ -471,14 +526,14 @@ function CMPunchListPage() {
                     </button>
                     {showCompleted && (
                       <div className="flex flex-col gap-3 mt-3">
-                        {done.map((t) => <PunchItemCard key={t.id} item={t} />)}
+                        {done.map((t) => <PunchItemCard key={t.id} item={t} projectName={viewAll ? (t as CMTaskWithProject).projectName : undefined} />)}
                       </div>
                     )}
                   </div>
                 )}
             </>
 
-            {canCreate && <FAB label={t("punchList.newBtn")} onClick={() => navigate({ to: "/cm/punch-list/new" })} />}
+            {!viewAll && canCreate && <FAB label={t("punchList.newBtn")} onClick={() => navigate({ to: "/cm/punch-list/new" })} />}
           </>
         )}
       </main>

@@ -5,25 +5,29 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, useSelectedProject, inputCls, labelCls,
+  ModuleHeader, FormPage, FAB, PhotoPicker, FilePicker, FileAttachmentList, QuickUploadButton, QuickUploadSheet, ProjectPicker, SegmentedField, FieldSelect, SettingControlRow, useSelectedProject, inputCls, labelCls,
   WeekCalendarStrip, DisciplineSelect, StatusBadge, ConfirmationDialog, RecordDetailExtras,
 } from "@/components/cm/shared";
 import {
   useCMSubmittals,
+  useAllCMSubmittals,
   createCMSubmittal,
   updateCMSubmittal,
   deleteCMSubmittal,
   stampAndUploadCMPhotos,
   uploadCMFile,
   uploadCMQuickCaptureFiles,
+  useCMProject,
   SUBMITTAL_TYPES,
   APPROVAL_CODES,
   type CMSubmittal,
+  type CMSubmittalWithProject,
   type SubmittalStatus,
   type SubmittalType,
   type ApprovalCode,
   type Discipline,
 } from "@/lib/cm-data";
+import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 
 export const Route = createFileRoute("/cm/submittal")({
   head: () => ({ meta: [{ title: "Submittal — Construction Management App" }] }),
@@ -180,7 +184,7 @@ export function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, di
 
 type LightboxItem = { url: string; thumbUrl: string };
 
-function SubmittalCard({ item }: { item: CMSubmittal }) {
+function SubmittalCard({ item, projectName }: { item: CMSubmittal; projectName?: string }) {
   const { t } = useCMLang();
   const sc = STATUS_COLOR[item.status];
   return (
@@ -190,6 +194,7 @@ function SubmittalCard({ item }: { item: CMSubmittal }) {
         <span className="font-mono text-[12px] text-white/70 shrink-0">{item.submitted_date ?? item.created_at.slice(0, 10)}</span>
         {item.submittal_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`)}</span>}
         {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
         <span className="text-[12px] text-white/70 truncate">{item.title}</span>
       </div>
       <StatusBadge label={t(`submittalStatus.${item.status}`)} color={sc} />
@@ -265,13 +270,43 @@ export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, 
   );
 }
 
+function SubmittalQuickSettings({ projectId, userId }: { projectId: string; userId: string }) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: project } = useCMProject(projectId);
+  const canEdit = usePermission(projectId, userId, "settings", "edit");
+  const [busy, setBusy] = useState(false);
+  if (!project) return null;
+  const ctx = { ownerId: project.owner_id, project, actorId: userId };
+  const type = resolveSetting(SETTING_DEFINITIONS.submittalType, { project });
+
+  const run = async (p: Promise<void>) => {
+    setBusy(true);
+    try { await p; } finally { setBusy(false); }
+  };
+
+  return (
+    <SettingControlRow
+      icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><path d="M14 2v6h6" /></svg>}
+      label={t("submittal.settingsDefaultType")} resolved={type} disabled={!canEdit || busy}
+      options={[{ value: "", label: t("submittal.typePlaceholder") }, ...SUBMITTAL_TYPES.map((s) => ({ value: s, label: t(`submittalType.${SUBMITTAL_TYPE_KEY[s]}`) }))]}
+      onChange={(v) => run(writeSettingAndSync(SETTING_DEFINITIONS.submittalType, v, ctx, queryClient))}
+      onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.submittalType, SETTING_DEFINITIONS.submittalType.defaultValue, ctx, queryClient))}
+    />
+  );
+}
+
 function CMSubmittalPage() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthCM();
   const { t, lang } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { projects, projectId, setProjectId } = useSelectedProject(user?.id);
-  const { data: submittals, isLoading } = useCMSubmittals(projectId || undefined);
+  const [viewAll, setViewAll] = useState(true);
+  const { data: singleSubmittals, isLoading: singleLoading } = useCMSubmittals(!viewAll ? (projectId || undefined) : undefined);
+  const { data: allSubmittals, isLoading: allLoading } = useAllCMSubmittals(viewAll ? user?.id : undefined);
+  const submittals: (CMSubmittal | CMSubmittalWithProject)[] | undefined = viewAll ? allSubmittals : singleSubmittals;
+  const isLoading = viewAll ? allLoading : singleLoading;
   const canCreate = usePermission(projectId || undefined, user?.id, "submittal", "create");
   const [showQuickUpload, setShowQuickUpload] = useState(false);
   const [quickUploadFiles, setQuickUploadFiles] = useState<File[]>([]);
@@ -280,7 +315,17 @@ function CMSubmittalPage() {
   const [dateFilter, setDateFilter] = useState<string | null>(null);
   const dateOf = (s: CMSubmittal) => s.submitted_date ?? s.created_at.slice(0, 10);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] }); };
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["cm_submittals", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_all_submittals", user?.id] });
+  };
+
+  const pickerProjects = useMemo(() => [{ id: "all", name: t("photos.allProjects") }, ...projects], [projects, t]);
+  const handlePickerChange = (id: string) => {
+    if (id === "all") { setViewAll(true); return; }
+    setViewAll(false);
+    setProjectId(id);
+  };
 
   const visibleSubmittals = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -302,14 +347,15 @@ function CMSubmittalPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/submittal/settings" />
-        <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
+        <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/submittal/settings"
+          quickSettings={!viewAll && projectId ? <SubmittalQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+        <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
-        {projectId && canCreate && (
+        {!viewAll && projectId && canCreate && (
           <QuickUploadButton label={t("common.uploadFileBtn")} onFilesSelected={(f) => { setQuickUploadFiles(f); setShowQuickUpload(true); }} />
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <WeekCalendarStrip items={submittals ?? []} dateOf={dateOf} lang={lang}
             selected={dateFilter} onSelect={setDateFilter} />
         )}
@@ -321,7 +367,7 @@ function CMSubmittalPage() {
           </button>
         )}
 
-        {projectId && (
+        {(viewAll || projectId) && (
           <>
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
             <>
@@ -331,10 +377,10 @@ function CMSubmittalPage() {
                 </div>
               )}
               <div className="flex flex-col gap-3">
-                {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} />)}
+                {visibleSubmittals.map((s) => <SubmittalCard key={s.id} item={s} projectName={viewAll ? (s as CMSubmittalWithProject).projectName : undefined} />)}
               </div>
             </>
-            {canCreate && <FAB label={t("submittal.newBtn")} onClick={() => navigate({ to: "/cm/submittal/new" })} />}
+            {!viewAll && canCreate && <FAB label={t("submittal.newBtn")} onClick={() => navigate({ to: "/cm/submittal/new" })} />}
           </>
         )}
       </main>
