@@ -147,6 +147,10 @@ export interface CMDeliveryRow {
    *  certify a different quantity than what was claimed. Falls back to
    *  `quantity` when absent. */
   certified_quantity?: string | null;
+  /** Set when this delivery is pulled into an IPC snapshot (status
+   *  "Claimed" -> included in a Draft IPC) — prevents a later IPC from
+   *  double-counting it. Missing on rows created before IPCs existed. */
+  ipc_id?: string | null;
 }
 
 export type CMVisitorKind = "visitor" | "instruction";
@@ -2602,6 +2606,9 @@ export interface CMBOQItem {
   unit_cost: number;
   category: string | null;
   sort_order: number;
+  /** Links this line to a cm_wbs_nodes row — the primary structural link
+   *  going forward, alongside the free-text `category`. */
+  wbs_node_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -2639,7 +2646,7 @@ export function useActiveCMBOQItems(projectId: string | undefined) {
 export async function createCMBOQItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category" | "version_id">>,
+  input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category" | "version_id" | "wbs_node_id">>,
 ) {
   const { data, error } = await db().from("cm_boq_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -2703,6 +2710,9 @@ export interface CMScheduleItem {
    *  silently broke that link) wherever both are available. Null on
    *  activities created before this field existed or with no linked BOQ line. */
   boq_item_id: string | null;
+  /** Links this activity to a cm_wbs_nodes row — BOQ items and Schedule
+   *  items sharing a wbs_node_id is how the WBS ties cost to schedule. */
+  wbs_node_id: string | null;
   location_id: string | null;
   plan_start: string;
   plan_finish: string;
@@ -2789,7 +2799,7 @@ export function useCMScheduleItems(projectId: string | undefined) {
 export async function createCMScheduleItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
+  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "wbs_node_id" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
 ) {
   const { data, error } = await db().from("cm_schedule_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -2945,6 +2955,75 @@ export function useCMAllScheduleItems(userId: string | undefined) {
     },
     staleTime: STALE_TIME,
   });
+}
+
+/* ── Work Breakdown Structure (parent_id tree, per project) ─────────────
+ *  Same adjacency-list pattern as CMProjectLocation (§ above) — a
+ *  construction WBS is shallow and human-edited, which parent_id handles as
+ *  a single update per reparent, unlike nested-set's expensive renumbering.
+ *  BOQ items and Schedule items link here via their own wbs_node_id FK
+ *  (many-to-one via a shared parent — one activity often spans several BOQ
+ *  lines) rather than a direct 1:1 link between the two. */
+export type CMWBSLevel = "phase" | "package" | "activity";
+
+export interface CMWBSNode {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  parent_id: string | null;
+  code: string | null;
+  name: string;
+  level: CMWBSLevel;
+  sort_order: number;
+  location_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMWBSNodes(projectId: string | undefined) {
+  return useQuery<CMWBSNode[]>({
+    queryKey: ["cm_wbs_nodes", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_wbs_nodes").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as CMWBSNode[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMWBSNode(
+  ownerId: string, projectId: string,
+  input: Pick<CMWBSNode, "name" | "level"> & Partial<Pick<CMWBSNode, "parent_id" | "code" | "location_id" | "sort_order">>,
+) {
+  const { data, error } = await db().from("cm_wbs_nodes").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMWBSNode;
+}
+
+export async function updateCMWBSNode(id: string, patch: Partial<Pick<CMWBSNode, "name" | "level" | "parent_id" | "code" | "location_id" | "sort_order">>) {
+  const { error } = await db().from("cm_wbs_nodes").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMWBSNode(id: string) {
+  const { error } = await db().from("cm_wbs_nodes").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** "Foundations › Package A › Excavation" — same walk-the-parent-chain
+ *  approach as locationBreadcrumb. */
+export function wbsBreadcrumb(node: CMWBSNode, all: CMWBSNode[]): string {
+  const chain: string[] = [node.name];
+  let current = node;
+  while (current.parent_id) {
+    const parent = all.find((n) => n.id === current.parent_id);
+    if (!parent) break;
+    chain.unshift(parent.name);
+    current = parent;
+  }
+  return chain.join(" › ");
 }
 
 function isoDateRange(from: string, to: string): string[] {
@@ -3376,6 +3455,272 @@ export async function updateCMContract(id: string, patch: Partial<CMContract>) {
 export async function deleteCMContract(id: string) {
   const { error } = await db().from("cm_contracts").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ── Interim Payment Certificates (per contract) ─────────────────────────
+ *  Builds on top of — not a parallel copy of — the existing CMQuantityStatus
+ *  pipeline. Creating an IPC snapshots the delivery rows currently sitting
+ *  at "Claimed" (linked via boq_item_id, within the period, not already
+ *  pulled into an earlier IPC) into frozen cm_ipc_line_items rows, so a
+ *  later delivery edit never rewrites a submitted IPC. Certifying is what
+ *  writes certified_quantity back onto those underlying CMDeliveryRows and
+ *  flips their status to "Certified", closing the loop. Workflow is
+ *  strictly linear (Draft→Submitted→Certified→Paid) — corrections go on
+ *  the *next* IPC as a deduction line, not by editing history. */
+export type CMIPCStatus = "Draft" | "Submitted" | "Certified" | "Paid";
+
+export interface CMIPCDeductionRow {
+  description: string;
+  amount: number;
+}
+
+export interface CMIPC {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  contract_id: string;
+  ipc_number: number;
+  period_start: string;
+  period_end: string;
+  status: CMIPCStatus;
+  gross_value_this_period: number;
+  cumulative_gross_to_date: number;
+  retention_pct: number;
+  retention_held_this_period: number;
+  cumulative_retention_held: number;
+  advance_recovery_this_period: number;
+  other_deductions: CMIPCDeductionRow[];
+  net_payable_this_period: number;
+  certified_value: number | null;
+  submitted_at: string | null;
+  certified_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CMIPCLineItem {
+  id: string;
+  ipc_id: string;
+  boq_item_id: string;
+  claimed_quantity: number;
+  unit_cost_snapshot: number;
+  certified_quantity: number | null;
+  created_at: string;
+}
+
+export function useCMIPCs(projectId: string | undefined) {
+  return useQuery<CMIPC[]>({
+    queryKey: ["cm_ipcs", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_ipcs").select("*").eq("project_id", projectId).order("ipc_number", { ascending: false });
+      if (error) throw error;
+      return data as CMIPC[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCMIPC(id: string | undefined) {
+  return useQuery<CMIPC | null>({
+    queryKey: ["cm_ipc", id],
+    enabled: !!id && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_ipcs").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data as CMIPC | null;
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCMIPCLineItems(ipcId: string | undefined) {
+  return useQuery<CMIPCLineItem[]>({
+    queryKey: ["cm_ipc_line_items", ipcId],
+    enabled: !!ipcId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_ipc_line_items").select("*").eq("ipc_id", ipcId);
+      if (error) throw error;
+      return data as CMIPCLineItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+interface ClaimedDeliveryRef {
+  logId: string;
+  index: number;
+  boqItemId: string;
+  quantity: number;
+}
+
+/** Finds every delivery row across the project's logs that's eligible for a
+ *  new IPC: linked to a BOQ item, status "Claimed", within the period, and
+ *  not already pulled into an earlier IPC (`ipc_id` unset) — this last
+ *  check is what prevents a second IPC from double-counting a delivery a
+ *  prior IPC already claimed. */
+function findClaimableDeliveries(logs: CMDailyLog[], periodStart: string, periodEnd: string): ClaimedDeliveryRef[] {
+  const refs: ClaimedDeliveryRef[] = [];
+  for (const log of logs) {
+    if (log.log_date < periodStart || log.log_date > periodEnd) continue;
+    log.deliveries.forEach((row, index) => {
+      if (row.boq_item_id && row.status === "Claimed" && !row.ipc_id) {
+        refs.push({ logId: log.id, index, boqItemId: row.boq_item_id, quantity: parseFloat(row.quantity) || 0 });
+      }
+    });
+  }
+  return refs;
+}
+
+/** Creates a Draft IPC: snapshots currently-claimed deliveries into frozen
+ *  line items, then stamps those source deliveries with this IPC's id so
+ *  they can never be pulled into a later IPC too. */
+export async function createCMIPC(
+  ownerId: string, projectId: string, contractId: string,
+  periodStart: string, periodEnd: string,
+  boqItems: CMBOQItem[], logs: CMDailyLog[], previousIPCs: CMIPC[],
+  opts?: { retentionPct?: number; advanceRecovery?: number; otherDeductions?: CMIPCDeductionRow[] },
+): Promise<CMIPC> {
+  const retentionPct = opts?.retentionPct ?? 0;
+  const advanceRecovery = opts?.advanceRecovery ?? 0;
+  const otherDeductions = opts?.otherDeductions ?? [];
+
+  const claimable = findClaimableDeliveries(logs, periodStart, periodEnd);
+  const qtyByBoqItem = new Map<string, number>();
+  for (const ref of claimable) {
+    qtyByBoqItem.set(ref.boqItemId, (qtyByBoqItem.get(ref.boqItemId) ?? 0) + ref.quantity);
+  }
+
+  const boqById = new Map(boqItems.map((b) => [b.id, b]));
+  const lineItems: { boq_item_id: string; claimed_quantity: number; unit_cost_snapshot: number }[] = [];
+  let grossValue = 0;
+  for (const [boqItemId, qty] of qtyByBoqItem) {
+    const boq = boqById.get(boqItemId);
+    if (!boq) continue;
+    lineItems.push({ boq_item_id: boqItemId, claimed_quantity: qty, unit_cost_snapshot: boq.unit_cost });
+    grossValue += qty * boq.unit_cost;
+  }
+
+  const ipcNumber = previousIPCs.reduce((max, i) => Math.max(max, i.ipc_number), 0) + 1;
+  const priorGross = previousIPCs.reduce((s, i) => s + i.gross_value_this_period, 0);
+  const priorRetention = previousIPCs.reduce((s, i) => s + i.retention_held_this_period, 0);
+  const retentionHeld = grossValue * (retentionPct / 100);
+  const otherDeductionsTotal = otherDeductions.reduce((s, d) => s + d.amount, 0);
+  const netPayable = grossValue - retentionHeld - advanceRecovery - otherDeductionsTotal;
+
+  const { data: ipc, error } = await db().from("cm_ipcs").insert({
+    owner_id: ownerId, project_id: projectId, contract_id: contractId, ipc_number: ipcNumber,
+    period_start: periodStart, period_end: periodEnd, status: "Draft",
+    gross_value_this_period: grossValue, cumulative_gross_to_date: priorGross + grossValue,
+    retention_pct: retentionPct, retention_held_this_period: retentionHeld,
+    cumulative_retention_held: priorRetention + retentionHeld,
+    advance_recovery_this_period: advanceRecovery, other_deductions: otherDeductions,
+    net_payable_this_period: netPayable,
+  }).select().single();
+  if (error) throw error;
+
+  if (lineItems.length > 0) {
+    const { error: liError } = await db().from("cm_ipc_line_items").insert(lineItems.map((l) => ({ ipc_id: ipc.id, ...l })));
+    if (liError) throw liError;
+  }
+
+  // Stamp the source deliveries with this IPC's id, grouped by log so each
+  // log gets a single update rather than one per delivery row.
+  const refsByLog = new Map<string, ClaimedDeliveryRef[]>();
+  for (const ref of claimable) {
+    if (!refsByLog.has(ref.logId)) refsByLog.set(ref.logId, []);
+    refsByLog.get(ref.logId)!.push(ref);
+  }
+  for (const [logId, refs] of refsByLog) {
+    const log = logs.find((l) => l.id === logId);
+    if (!log) continue;
+    const indices = new Set(refs.map((r) => r.index));
+    const nextDeliveries = log.deliveries.map((row, i) => (indices.has(i) ? { ...row, ipc_id: ipc.id } : row));
+    await updateCMDailyLog(logId, { deliveries: nextDeliveries });
+  }
+
+  logCMActivity(projectId, ownerId, "created", "ipc", ipc.id, { ipc_number: ipcNumber, gross_value_this_period: grossValue });
+  return ipc as CMIPC;
+}
+
+export async function submitCMIPC(id: string, projectId: string, actorId: string, ipcNumber: number) {
+  const { error } = await db().from("cm_ipcs").update({ status: "Submitted", submitted_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+  logCMActivity(projectId, actorId, "submitted", "ipc", id, { ipc_number: ipcNumber });
+}
+
+/** Certifies an IPC: records the certified quantity per line item, then
+ *  writes that back onto every underlying CMDeliveryRow this IPC claimed —
+ *  proportionally scaling each row's own certified_quantity by how much of
+ *  its line's total was actually certified — and flips those rows' status
+ *  to "Certified" so they can never resurface in a later IPC. */
+export async function certifyCMIPC(
+  ipc: CMIPC, lineItems: CMIPCLineItem[], certifiedQuantities: Map<string, number>,
+  logs: CMDailyLog[], actorId: string,
+): Promise<void> {
+  let certifiedValue = 0;
+  for (const line of lineItems) {
+    const certifiedQty = certifiedQuantities.get(line.id) ?? line.claimed_quantity;
+    certifiedValue += certifiedQty * line.unit_cost_snapshot;
+    const { error } = await db().from("cm_ipc_line_items").update({ certified_quantity: certifiedQty }).eq("id", line.id);
+    if (error) throw error;
+
+    const ratio = line.claimed_quantity > 0 ? certifiedQty / line.claimed_quantity : 0;
+    for (const log of logs) {
+      let changed = false;
+      const nextDeliveries = log.deliveries.map((row) => {
+        if (row.ipc_id !== ipc.id || row.boq_item_id !== line.boq_item_id) return row;
+        changed = true;
+        const ownQty = parseFloat(row.quantity) || 0;
+        return { ...row, status: "Certified" as const, certified_quantity: (ownQty * ratio).toFixed(2) };
+      });
+      if (changed) await updateCMDailyLog(log.id, { deliveries: nextDeliveries });
+    }
+  }
+
+  const { error } = await db().from("cm_ipcs").update({
+    status: "Certified", certified_at: new Date().toISOString(), certified_value: certifiedValue,
+  }).eq("id", ipc.id);
+  if (error) throw error;
+  logCMActivity(ipc.project_id, actorId, "certified", "ipc", ipc.id, { ipc_number: ipc.ipc_number, certified_value: certifiedValue });
+}
+
+export async function payCMIPC(id: string, projectId: string, actorId: string, ipcNumber: number) {
+  const { error } = await db().from("cm_ipcs").update({ status: "Paid", paid_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+  logCMActivity(projectId, actorId, "paid", "ipc", id, { ipc_number: ipcNumber });
+}
+
+export interface CashFlowPoint {
+  date: string;
+  plannedValue: number;
+  submittedValue: number | null;
+  certifiedValue: number | null;
+}
+
+/** Cash-flow S-curve, sibling to buildSCurveSeries — reuses
+ *  projectPlanPercent unchanged for the planned $ line (× contract value),
+ *  with the actual line stepping at each IPC's certified_at (a dashed
+ *  "provisional" line steps at submitted_at). Coexists alongside the
+ *  existing percent-based S-curve rather than replacing it. */
+export function buildCashFlowSCurve(contract: CMContract, scheduleItems: CMScheduleItem[], ipcs: CMIPC[]): CashFlowPoint[] {
+  if (!contract.start_date || !contract.completion_date || !contract.contract_value) return [];
+  const dates = isoDateRange(contract.start_date, contract.completion_date);
+  const certified = ipcs.filter((i): i is CMIPC & { certified_at: string } => !!i.certified_at).sort((a, b) => a.certified_at.localeCompare(b.certified_at));
+  const submitted = ipcs.filter((i): i is CMIPC & { submitted_at: string } => !!i.submitted_at).sort((a, b) => a.submitted_at.localeCompare(b.submitted_at));
+
+  return dates.map((date) => {
+    const plannedValue = contract.contract_value! * (projectPlanPercent(scheduleItems, date) / 100);
+    const certifiedToDate = certified.filter((i) => i.certified_at <= date);
+    const submittedToDate = submitted.filter((i) => i.submitted_at <= date);
+    return {
+      date,
+      plannedValue,
+      certifiedValue: certifiedToDate.length > 0 ? certifiedToDate.reduce((s, i) => s + (i.certified_value ?? i.gross_value_this_period), 0) : null,
+      submittedValue: submittedToDate.length > 0 ? submittedToDate.reduce((s, i) => s + i.gross_value_this_period, 0) : null,
+    };
+  });
 }
 
 /* ── Instructions (Contract Administration — formal instructions issued
