@@ -2705,6 +2705,26 @@ function Inspector({
       : site.image_url ? [site.image_url] : [];
   const [imgIdx,    setImgIdx]    = useState(0);
   const [expanded,  setExpanded]  = useState(false);
+  const [sheetVh,   setSheetVh]   = useState(52); // live drag height, in vh
+  const [imageEnlarged, setImageEnlarged] = useState(false);
+  const dragRef = useRef<{ startY: number; startVh: number } | null>(null);
+  const draggedRef = useRef(false);
+
+  const onHandlePointerDown = (e: React.PointerEvent) => {
+    dragRef.current = { startY: e.clientY, startVh: sheetVh };
+    draggedRef.current = false;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onHandlePointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const deltaPx = dragRef.current.startY - e.clientY; // drag up = positive = taller
+    if (Math.abs(deltaPx) > 4) draggedRef.current = true;
+    const deltaVh = (deltaPx / window.innerHeight) * 100;
+    const next = Math.min(92, Math.max(28, dragRef.current.startVh + deltaVh));
+    setSheetVh(next);
+    setExpanded(next > 70);
+  };
+  const onHandlePointerUp = () => { dragRef.current = null; };
   // Desktop gets the classic right-docked sidebar (wide screens have room
   // beside the map); mobile/tablet gets a bottom sheet so the map stays
   // visible above it and reachable with one thumb.
@@ -2772,18 +2792,24 @@ function Inspector({
   };
 
   return (
+    <>
     <aside
-      className="absolute bottom-0 left-0 right-0 z-[400] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl transition-[height] duration-300"
+      className={`absolute bottom-0 left-0 right-0 z-[400] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl ${dragRef.current ? "" : "transition-[height] duration-300"}`}
       style={{
-        height: expanded ? "88vh" : "52vh",
+        height: `${sheetVh}vh`,
         maxHeight: "calc(100vh - 4.5rem)",
         width: "100%",
         backgroundColor: panelBg,
         borderTop: `1px solid ${borderCol}`,
       }}
     >
-      {/* Drag handle */}
-      <div className="flex justify-center pt-2 pb-1 shrink-0 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
+      {/* Drag handle — drag up/down to resize; tap still toggles expand/collapse */}
+      <div className="flex justify-center py-3 shrink-0 cursor-ns-resize touch-none"
+        onPointerDown={onHandlePointerDown}
+        onPointerMove={onHandlePointerMove}
+        onPointerUp={onHandlePointerUp}
+        onPointerCancel={onHandlePointerUp}
+        onClick={() => { if (!draggedRef.current) { setExpanded((e) => !e); setSheetVh((v) => v > 70 ? 52 : 88); } }}>
         <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
       </div>
 
@@ -2800,8 +2826,9 @@ function Inspector({
                 key={images[imgIdx]}
                 src={images[imgIdx]}
                 alt={site.name}
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full object-cover object-center cursor-zoom-in"
                 style={{ filter: "brightness(0.78) contrast(1.1)" }}
+                onClick={() => setImageEnlarged(true)}
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
               />
               {images.length > 1 && (
@@ -2971,8 +2998,9 @@ function Inspector({
         <div className="flex items-start gap-3 px-4 pt-3 pb-2" style={{ borderBottom: `1px solid ${dividerCol}` }}>
           <div className="relative shrink-0 overflow-hidden rounded" style={{ width: "64px", height: "64px" }}>
             {images.length > 0 ? (
-              <img src={images[0]} alt={site.name} className="w-full h-full object-cover object-center"
+              <img src={images[0]} alt={site.name} className="w-full h-full object-cover object-center cursor-zoom-in"
                 style={{ filter: "brightness(0.78) contrast(1.1)" }}
+                onClick={() => setImageEnlarged(true)}
                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center"
@@ -3685,6 +3713,48 @@ function Inspector({
       )}
       </div>
     </aside>
+
+    {/* ── Enlarged image viewer — takes over the map area above the sheet ── */}
+    {imageEnlarged && images.length > 0 && (
+      <div className="absolute left-0 right-0 top-0 z-[450] flex flex-col bg-black"
+        style={{ bottom: `${sheetVh}vh` }}>
+        <div className="relative flex-1 overflow-hidden">
+          <img key={images[imgIdx]} src={images[imgIdx]} alt={site.name}
+            className="w-full h-full object-contain" />
+          {images.length > 1 && (
+            <>
+              <button onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm"
+                style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.9)" }}>
+                <svg width="16" height="16" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 2L4 6l4 4"/></svg>
+              </button>
+              <button onClick={() => setImgIdx((i) => (i + 1) % images.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm"
+                style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.9)" }}>
+                <svg width="16" height="16" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 2l4 4-4 4"/></svg>
+              </button>
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                {images.map((_, i) => (
+                  <button key={i} onClick={() => setImgIdx(i)}
+                    className="w-1.5 h-1.5 rounded-full transition-all"
+                    style={{ backgroundColor: i === imgIdx ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)" }} />
+                ))}
+              </div>
+              <span className="absolute bottom-3 right-3 font-mono text-[10px] px-2 py-0.5 rounded-sm"
+                style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.7)" }}>
+                {imgIdx + 1}/{images.length}
+              </span>
+            </>
+          )}
+          <button onClick={() => setImageEnlarged(false)}
+            className="absolute top-3 right-3 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm"
+            style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.9)" }}>
+            <svg width="14" height="14" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg>
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
