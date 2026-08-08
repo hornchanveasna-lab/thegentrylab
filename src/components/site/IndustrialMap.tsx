@@ -2787,7 +2787,9 @@ function Inspector({
         <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
       </div>
 
-      {/* ── Header row: thumbnail+actions (left) + name/meta (right) — always horizontal ── */}
+      {/* ── Header row: thumbnail+actions (left) + name/meta (right) — mobile only; desktop puts a compact version inside column 1 so columns 2-4 aren't left blank up top ── */}
+      {!isDesktop && (
+      <>
       <div className="flex items-start shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
         {/* Thumbnail + action icons */}
         <div className="shrink-0 flex flex-col" style={{ width: isDesktop ? "160px" : "130px" }}>
@@ -2953,7 +2955,8 @@ function Inspector({
           </a>
         </div>
       )}
-
+      </>
+      )}
 
       {/* ── Scrollable content ── */}
       <div className="overflow-y-auto flex-1">
@@ -2963,6 +2966,55 @@ function Inspector({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", alignItems: "start" }}>
           {/* Column 1 — quick facts + reference data */}
           <div style={{ borderRight: `1px solid ${dividerCol}` }}>
+
+        {/* Compact header (desktop only) — lives inside column 1 so columns 2-4 start at the very top instead of waiting for the photo/name block */}
+        <div className="flex items-start gap-3 px-4 pt-3 pb-2" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="relative shrink-0 overflow-hidden rounded" style={{ width: "64px", height: "64px" }}>
+            {images.length > 0 ? (
+              <img src={images[0]} alt={site.name} className="w-full h-full object-cover object-center"
+                style={{ filter: "brightness(0.78) contrast(1.1)" }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center"
+                style={{ background: `linear-gradient(145deg, ${layerColor}28 0%, ${panelBg} 100%)` }}>
+                <div dangerouslySetInnerHTML={{ __html:
+                  `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="opacity:0.2"><g fill="none" stroke="${layerColor}" stroke-width="1">${kindSvg}</g></svg>`
+                }} />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider rounded-sm shrink-0" style={{ backgroundColor: cardBg, color: textMuted }}>
+                {site.province}
+              </span>
+            </div>
+            <h2 className="font-bold text-[15px] leading-tight mb-1 truncate" style={{ color: textMain }}>{site.name}</h2>
+            <div className="flex items-center gap-2">
+              <a href={directionsUrl} target="_blank" rel="noopener noreferrer" title="Directions"
+                className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: panelBg2, color: accentBlue }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" fill="currentColor" stroke="none"/></svg>
+              </a>
+              <button onClick={handleShare} title="Share"
+                className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: panelBg2, color: accentBlue }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => setExpanded(e => !e)} title={expanded ? "Collapse" : "Expand"}
+              className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: cardBg, color: textMuted }}>
+              {expanded ? (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+              ) : (
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="3" y1="21" x2="10" y2="14"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
+              )}
+            </button>
+            <button onClick={onClose} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: cardBg, color: textMuted }}>
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 1l8 8M9 1L1 9"/></svg>
+            </button>
+          </div>
+        </div>
 
         {/* Feature chips row */}
         {featureChips.length > 0 && (
