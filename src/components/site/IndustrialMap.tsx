@@ -2757,17 +2757,8 @@ function Inspector({
 
   return (
     <aside
-      className={`absolute z-[400] flex flex-col overflow-hidden shadow-2xl transition-[height,width] duration-300 ${
-        isDesktop ? "top-0 right-0" : "bottom-0 left-0 right-0 rounded-t-2xl"
-      }`}
-      style={isDesktop ? {
-        height: "100%",
-        maxHeight: "100%",
-        width: expanded ? "min(700px, 92vw)" : "400px",
-        maxWidth: "calc(100vw - 2rem)",
-        backgroundColor: panelBg,
-        borderLeft: `1px solid ${borderCol}`,
-      } : {
+      className="absolute bottom-0 left-0 right-0 z-[400] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl transition-[height] duration-300"
+      style={{
         height: expanded ? "88vh" : "52vh",
         maxHeight: "calc(100vh - 4.5rem)",
         width: "100%",
@@ -2775,19 +2766,15 @@ function Inspector({
         borderTop: `1px solid ${borderCol}`,
       }}
     >
-      {/* Drag handle — mobile only */}
-      {!isDesktop && (
-        <div className="flex justify-center pt-2 pb-1 shrink-0 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
-          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
-        </div>
-      )}
+      {/* Drag handle */}
+      <div className="flex justify-center pt-2 pb-1 shrink-0 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
+        <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
+      </div>
 
-      {/* ── Header row: thumbnail (left) + name/meta (right) ── */}
-      <div className={isDesktop ? "flex flex-col shrink-0" : "flex shrink-0"} style={{ borderBottom: `1px solid ${dividerCol}` }}>
-        {/* Thumbnail — full-width banner on desktop, left thumbnail on mobile */}
-        <div className="relative shrink-0 overflow-hidden bg-black" style={isDesktop
-          ? { width: "100%", height: expanded ? "220px" : "170px" }
-          : { width: "150px", height: expanded ? "150px" : "120px" }}>
+      {/* ── Header row: thumbnail (left) + name/meta (right) — always horizontal ── */}
+      <div className="flex shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        {/* Thumbnail */}
+        <div className="relative shrink-0 overflow-hidden bg-black" style={{ width: isDesktop ? "200px" : "150px", height: expanded ? "180px" : "130px" }}>
           {images.length > 0 ? (
             <>
               <img
@@ -2983,7 +2970,7 @@ function Inspector({
 
       {/* ── Scrollable content ── */}
       <div className="overflow-y-auto flex-1">
-      {expanded ? (
+      {isDesktop ? (
         <>
         {/* ── Wide 2-column layout ── */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
