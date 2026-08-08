@@ -2944,8 +2944,8 @@ function Inspector({
       {isDesktop ? (
         <>
         {/* ── Wide 2-column layout ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", alignItems: "start" }}>
-          {/* Column 1 — quick facts */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", alignItems: "start" }}>
+          {/* Column 1 — quick facts + reference data */}
           <div style={{ borderRight: `1px solid ${dividerCol}` }}>
 
         {/* Feature chips row */}
@@ -3029,9 +3029,7 @@ function Inspector({
           )}
         </div>
 
-          </div>{/* end col 1 */}
-          {/* Column 2 -- reference data */}
-          <div style={{ borderRight: `1px solid ${dividerCol}` }}>
+
 
         {/* Key info table */}
         {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
@@ -3188,9 +3186,9 @@ function Inspector({
           </div>
         )}
 
-          </div>{/* end col 2 */}
-          {/* Column 3 — analysis */}
-          <div>
+          </div>{/* end col 1 */}
+          {/* Column 2 — connectivity + score */}
+          <div style={{ borderRight: `1px solid ${dividerCol}` }}>
 
         {/* Logistics connectivity */}
         {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
@@ -3270,6 +3268,10 @@ function Inspector({
           </div>
         )}
 
+          </div>{/* end col 2 */}
+          {/* Column 3 -- sector fit */}
+          <div style={{ borderRight: `1px solid ${dividerCol}` }}>
+
         {/* Target industries */}
         {!!site.targetIndustries?.length && (
           <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
@@ -3290,6 +3292,10 @@ function Inspector({
         {(site.kind === "sez" || site.kind === "park") && (
           <LandUsePanel siteId={site.id} textDim={textDim} textMain={textMain} textMuted={textMuted} dividerCol={dividerCol} isDark={isDark} />
         )}
+
+          </div>{/* end col 3 */}
+          {/* Column 4 -- strengths, advisory, research */}
+          <div>
 
         {/* Strengths + Constraints */}
         {(!!site.strengths?.length || !!site.constraints?.length) && (
@@ -3357,8 +3363,8 @@ function Inspector({
           </div>
         )}
 
-          </div>{/* end col 3 */}
-        </div>{/* end 3-col grid */}
+          </div>{/* end col 4 */}
+        </div>{/* end 4-col grid */}
         {/* Disclaimer footer (expanded) */}
         <div className="px-4 py-3">
           <p className="font-mono text-[9px]" style={{ color: textDim }}>{t("map.disclaimer")}</p>
