@@ -29,6 +29,7 @@ import { Route as CmIndexRouteImport } from './routes/cm/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
+import { Route as CmSyncStatusRouteImport } from './routes/cm/sync-status'
 import { Route as CmSubmittalRouteImport } from './routes/cm/submittal'
 import { Route as CmSiteDiaryRouteImport } from './routes/cm/site-diary'
 import { Route as CmSettingsRouteImport } from './routes/cm/settings'
@@ -196,6 +197,11 @@ const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
   id: '/framework/$stageId',
   path: '/framework/$stageId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CmSyncStatusRoute = CmSyncStatusRouteImport.update({
+  id: '/sync-status',
+  path: '/sync-status',
+  getParentRoute: () => CmRoute,
 } as any)
 const CmSubmittalRoute = CmSubmittalRouteImport.update({
   id: '/submittal',
@@ -568,6 +574,7 @@ export interface FileRoutesByFullPath {
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
+  '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -654,6 +661,7 @@ export interface FileRoutesByTo {
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
+  '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -743,6 +751,7 @@ export interface FileRoutesById {
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
+  '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -833,6 +842,7 @@ export interface FileRouteTypes {
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
+    | '/cm/sync-status'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -919,6 +929,7 @@ export interface FileRouteTypes {
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
+    | '/cm/sync-status'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -1007,6 +1018,7 @@ export interface FileRouteTypes {
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
+    | '/cm/sync-status'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -1219,6 +1231,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/framework/$stageId'
       preLoaderRoute: typeof FrameworkStageIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/cm/sync-status': {
+      id: '/cm/sync-status'
+      path: '/sync-status'
+      fullPath: '/cm/sync-status'
+      preLoaderRoute: typeof CmSyncStatusRouteImport
+      parentRoute: typeof CmRoute
     }
     '/cm/submittal': {
       id: '/cm/submittal'
@@ -1777,6 +1796,7 @@ interface CmRouteChildren {
   CmSettingsRoute: typeof CmSettingsRoute
   CmSiteDiaryRoute: typeof CmSiteDiaryRoute
   CmSubmittalRoute: typeof CmSubmittalRoute
+  CmSyncStatusRoute: typeof CmSyncStatusRoute
   CmIndexRoute: typeof CmIndexRoute
   CmAuthCallbackRoute: typeof CmAuthCallbackRoute
   CmBoqNewRoute: typeof CmBoqNewRoute
@@ -1839,6 +1859,7 @@ const CmRouteChildren: CmRouteChildren = {
   CmSettingsRoute: CmSettingsRoute,
   CmSiteDiaryRoute: CmSiteDiaryRoute,
   CmSubmittalRoute: CmSubmittalRoute,
+  CmSyncStatusRoute: CmSyncStatusRoute,
   CmIndexRoute: CmIndexRoute,
   CmAuthCallbackRoute: CmAuthCallbackRoute,
   CmBoqNewRoute: CmBoqNewRoute,

@@ -798,6 +798,7 @@ const EN: Dict = {
   "siteDiary.capture.title": "Capture",
   "siteDiary.capture.backToReview": "Back to review ({count})",
   "siteDiary.capture.savedAddAnother": "Saved ✓ — add another, or close when done.",
+  "siteDiary.capture.queuedAddAnother": "Queued offline — will sync when back online. Add another, or close when done.",
   "siteDiary.capture.purposeTitle": "This photo is for:",
   "siteDiary.capture.changePurpose": "Change purpose",
   "siteDiary.capture.note": "Note",
@@ -1304,6 +1305,19 @@ const EN: Dict = {
   "settingsEngine.sourceModule": "This project",
   "settingsEngine.sourceGlobal": "Global default",
   "settingsEngine.resetToDefault": "Reset to default",
+
+  "offline.syncingPill": "Syncing ({count})",
+  "offline.failedPill": "{count} failed to sync",
+  "offline.syncStatusTitle": "Sync Status",
+  "offline.empty": "Nothing queued — everything's synced.",
+  "offline.retryNow": "Retry now",
+  "offline.retryAll": "Retry all",
+  "offline.statusPending": "Queued offline",
+  "offline.statusSyncing": "Syncing…",
+  "offline.statusFailed": "Failed to sync",
+  "offline.kindDailyLogWrite": "Site Diary entry",
+  "offline.kindPhotoNote": "Photo",
+  "offline.photosCount": "{count} photo(s)",
 };
 
 const KM: Dict = {
@@ -2100,6 +2114,7 @@ const KM: Dict = {
   "siteDiary.capture.title": "ថតចាប់យក",
   "siteDiary.capture.backToReview": "ត្រឡប់ទៅពិនិត្យឡើងវិញ ({count})",
   "siteDiary.capture.savedAddAnother": "បានរក្សាទុក ✓ — បន្ថែមមួយទៀត ឬបិទនៅពេលរួចរាល់។",
+  "siteDiary.capture.queuedAddAnother": "បានដាក់ជាជួរក្រៅបណ្តាញ — នឹងធ្វើសមកាលកម្មនៅពេលមានអ៊ីនធឺណិត។ បន្ថែមមួយទៀត ឬបិទនៅពេលរួចរាល់។",
   "siteDiary.capture.purposeTitle": "រូបភាពនេះសម្រាប់៖",
   "siteDiary.capture.changePurpose": "ប្តូរគោលបំណង",
   "siteDiary.capture.note": "កំណត់ចំណាំ",
@@ -2606,6 +2621,19 @@ const KM: Dict = {
   "settingsEngine.sourceModule": "គម្រោងនេះ",
   "settingsEngine.sourceGlobal": "លំនាំដើមទូទៅ",
   "settingsEngine.resetToDefault": "កំណត់ទៅលំនាំដើមវិញ",
+
+  "offline.syncingPill": "កំពុងធ្វើសមកាលកម្ម ({count})",
+  "offline.failedPill": "{count} បរាជ័យក្នុងការធ្វើសមកាលកម្ម",
+  "offline.syncStatusTitle": "ស្ថានភាពសមកាលកម្ម",
+  "offline.empty": "គ្មានអ្វីនៅជាជួរទេ — ធ្វើសមកាលកម្មរួចរាល់ហើយ។",
+  "offline.retryNow": "ព្យាយាមម្តងទៀត",
+  "offline.retryAll": "ព្យាយាមឡើងវិញទាំងអស់",
+  "offline.statusPending": "នៅជាជួរក្រៅបណ្តាញ",
+  "offline.statusSyncing": "កំពុងធ្វើសមកាលកម្ម…",
+  "offline.statusFailed": "បរាជ័យក្នុងការធ្វើសមកាលកម្ម",
+  "offline.kindDailyLogWrite": "កំណត់ត្រាកំណត់ហេតុប្រចាំថ្ងៃ",
+  "offline.kindPhotoNote": "រូបថត",
+  "offline.photosCount": "{count} រូបថត",
 };
 
 const ZH: Dict = {
@@ -3402,6 +3430,7 @@ const ZH: Dict = {
   "siteDiary.capture.title": "拍摄记录",
   "siteDiary.capture.backToReview": "返回查看（{count}）",
   "siteDiary.capture.savedAddAnother": "已保存 ✓ — 可继续添加，完成后关闭即可。",
+  "siteDiary.capture.queuedAddAnother": "已离线排队 — 恢复网络后将自动同步。可继续添加，完成后关闭即可。",
   "siteDiary.capture.purposeTitle": "这张照片是关于：",
   "siteDiary.capture.changePurpose": "更改类型",
   "siteDiary.capture.note": "备注",
@@ -3908,6 +3937,19 @@ const ZH: Dict = {
   "settingsEngine.sourceModule": "本项目",
   "settingsEngine.sourceGlobal": "全局默认",
   "settingsEngine.resetToDefault": "重置为默认",
+
+  "offline.syncingPill": "同步中（{count}）",
+  "offline.failedPill": "{count} 项同步失败",
+  "offline.syncStatusTitle": "同步状态",
+  "offline.empty": "队列为空 — 全部已同步。",
+  "offline.retryNow": "立即重试",
+  "offline.retryAll": "全部重试",
+  "offline.statusPending": "已离线排队",
+  "offline.statusSyncing": "同步中…",
+  "offline.statusFailed": "同步失败",
+  "offline.kindDailyLogWrite": "施工日志记录",
+  "offline.kindPhotoNote": "照片",
+  "offline.photosCount": "{count} 张照片",
 };
 
 const DICTS: Record<CMLang, Dict> = { en: EN, km: KM, zh: ZH };

@@ -298,16 +298,18 @@ export async function setCMProjectFavorite(userId: string, projectId: string, is
 }
 
 /* ── Daily logs (site diary) ───────────────────────────────── */
+export async function fetchCMDailyLogsList(projectId: string): Promise<CMDailyLog[]> {
+  const { data, error } = await db().from("cm_daily_logs").select("*").eq("project_id", projectId)
+    .order("log_date", { ascending: false }).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as CMDailyLog[];
+}
+
 export function useCMDailyLogs(projectId: string | undefined) {
   return useQuery<CMDailyLog[]>({
     queryKey: ["cm_daily_logs", projectId],
     enabled: !!projectId && !!supabaseCM,
-    queryFn: async () => {
-      const { data, error } = await db().from("cm_daily_logs").select("*").eq("project_id", projectId)
-        .order("log_date", { ascending: false }).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as CMDailyLog[];
-    },
+    queryFn: () => fetchCMDailyLogsList(projectId!),
     staleTime: STALE_TIME,
   });
 }
@@ -592,6 +594,11 @@ export interface StampPhotoOptions {
   projectName?: string | null;
   projectCode?: string | null;
   location?: string | null;
+  /** Moment to burn into the stamp. Defaults to now — pass the original
+   *  capture time for photos uploaded later (e.g. from the offline outbox)
+   *  so the stamp reflects when the photo was actually taken, not when it
+   *  finally synced. */
+  captureTime?: Date;
 }
 
 function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -784,7 +791,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
 
   // ── bottom-right: capture date/time, e.g. "Sun-12-Jul-2026" / "02:11:45 PM" ──
   if (opts.timestamp) {
-    const now = new Date();
+    const now = opts.captureTime ?? new Date();
     const dateStr = `${now.toLocaleDateString("en-US", { weekday: "short" })}-${String(now.getDate()).padStart(2, "0")}-${now.toLocaleDateString("en-US", { month: "short" })}-${now.getFullYear()}`;
     let hours = now.getHours();
     const ampm = hours >= 12 ? "PM" : "AM";
@@ -844,7 +851,7 @@ export async function uploadCMPhotoWithThumb(ownerId: string, projectId: string,
  *  uploads each at full quality plus a thumbnail. This is the one place
  *  every module's camera capture should route through so the stamp stays
  *  consistent everywhere instead of only on Photos-module captures. */
-export async function stampAndUploadCMPhotos(ownerId: string, projectId: string, files: File[]): Promise<{ url: string; thumbUrl: string }[]> {
+export async function stampAndUploadCMPhotos(ownerId: string, projectId: string, files: File[], captureTime?: Date): Promise<{ url: string; thumbUrl: string }[]> {
   if (files.length === 0) return [];
   const [{ data: account }, { data: project }, { data: consultants }] = await Promise.all([
     db().from("cm_account_settings").select("*").eq("owner_id", ownerId).maybeSingle(),
@@ -865,6 +872,7 @@ export async function stampAndUploadCMPhotos(ownerId: string, projectId: string,
     projectName: proj?.name ?? null,
     projectCode: proj?.project_code ?? null,
     location: proj?.location ?? null,
+    captureTime,
   };
   const stamped = await Promise.all(files.map((f) => stampPhoto(f, stampOpts)));
   return Promise.all(stamped.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));

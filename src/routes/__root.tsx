@@ -6,11 +6,17 @@ import {
   useRouter,
   useRouterState,
 } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { AuthProvider } from "@/lib/auth";
 import { AuthCMProvider, useAuthCM } from "@/lib/auth-cm";
-import { CMLangProvider } from "@/lib/cm-i18n";
+import { CMLangProvider, useCMLang } from "@/lib/cm-i18n";
 import { useCMAccountSettings, makeSquareIconDataUrl } from "@/lib/cm-data";
+import {
+  listOutboxJobs,
+  subscribeOutbox,
+  wireOutboxAutoSync,
+  type OutboxJob,
+} from "@/lib/cm-offline/capture";
 
 // Only the main site uses this — lazy so cm.thegentrylab.io never fetches its code.
 const AiChat = lazy(() => import("@/components/site/AiChat").then((m) => ({ default: m.AiChat })));
@@ -51,9 +57,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-black px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-white">
-          This page didn't load
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight text-white">This page didn't load</h1>
         <p className="mt-2 text-sm text-white/50">
           Something went wrong. You can try refreshing or head back home.
         </p>
@@ -110,10 +114,56 @@ function CMAppIconSync() {
         link.href = dataUrl;
       }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [logoUrl]);
 
   return null;
+}
+
+/** Small persistent indicator for the offline outbox (Site Diary + Photos
+ *  captures made with no network). Hidden while the queue is empty; shows a
+ *  "syncing" pill while jobs are pending/in-flight, or a "failed" pill once
+ *  a job has exhausted a sync attempt — tapping either opens the full
+ *  per-job list at /cm/sync-status. Auto-syncs on mount and whenever the
+ *  browser regains connectivity (no service worker involved). */
+function CMSyncStatusBadge() {
+  const { t } = useCMLang();
+  const [jobs, setJobs] = useState<OutboxJob[]>([]);
+
+  useEffect(() => {
+    wireOutboxAutoSync();
+    let cancelled = false;
+    const refresh = () => {
+      listOutboxJobs().then((j) => {
+        if (!cancelled) setJobs(j);
+      });
+    };
+    refresh();
+    const unsubscribe = subscribeOutbox(refresh);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
+
+  if (jobs.length === 0) return null;
+  const failed = jobs.filter((j) => j.status === "failed").length;
+  const pending = jobs.length - failed;
+
+  return (
+    <Link
+      to="/cm/sync-status"
+      className={`fixed top-3 left-1/2 -translate-x-1/2 z-50 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg transition-colors ${
+        failed > 0 ? "bg-red-500 text-white" : "bg-amber-400 text-black"
+      }`}
+    >
+      {failed > 0
+        ? t("offline.failedPill", { count: String(failed) })
+        : t("offline.syncingPill", { count: String(pending) })}
+    </Link>
+  );
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -137,7 +187,9 @@ function RootComponent() {
 
   // The industrial-intelligence AI chat widget belongs to the main site only —
   // hide it on the Construction Management App (its own cm.thegentrylab.io subdomain, or /cm/*).
-  const isCMApp = (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) || pathname.startsWith("/cm");
+  const isCMApp =
+    (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) ||
+    pathname.startsWith("/cm");
 
   return (
     <AuthProvider>
@@ -146,6 +198,7 @@ function RootComponent() {
           <QueryClientProvider client={queryClient}>
             <Outlet />
             {isCMApp && <CMAppIconSync />}
+            {isCMApp && <CMSyncStatusBadge />}
             {!isCMApp && (
               <Suspense fallback={null}>
                 <AiChat />
