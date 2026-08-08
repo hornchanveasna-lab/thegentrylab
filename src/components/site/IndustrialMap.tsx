@@ -1673,7 +1673,8 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         </div>
       )}
 
-      {/* ── Search bar (beside LAYERS button, top-left) ───── */}
+      {/* ── Search bar (beside LAYERS button, top-left) — hidden while a site's detail sheet is open, since it overlaps the map view ───── */}
+      {!selected && (
       <div ref={searchWrapRef} className="absolute top-4 z-[600]" style={{ left: "168px", right: "16px", maxWidth: "320px" }}>
         <form
           onSubmit={(e) => { e.preventDefault(); setSuggestions([]); setShowSuggestions(false); handleLocationSearch(); }}
@@ -1741,8 +1742,10 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           <p className="mt-1 text-[10px] font-mono text-red-400 text-center bg-black/80 px-3 py-1">{locError}</p>
         )}
       </div>
+      )}
 
-      {/* ── Layer panel toggle (top-left) ─────────────────── */}
+      {/* ── Layer panel toggle (top-left) — hidden while a site's detail sheet is open ─────────────────── */}
+      {!selected && (
       <div className="absolute top-4 left-4 z-[500] flex flex-col gap-2">
         <button
           onClick={() => setPanelOpen((o) => !o)}
@@ -1756,9 +1759,10 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
           <span className="font-mono text-[9px] text-white/30">{active.size}/{ALL_LAYERS.length}</span>
         </button>
       </div>
+      )}
 
       {/* ── Layer panel ───────────────────────────────────── */}
-      {panelOpen && (
+      {panelOpen && !selected && (
         <div className="absolute top-14 left-4 z-[500] w-[220px] backdrop-blur shadow-2xl rounded-sm overflow-y-auto max-h-[calc(100vh-220px)] overscroll-contain"
           style={{ backgroundColor: pc.bg, border: `1px solid ${pc.border}` }}>
           <div className="px-3 py-2 flex items-center justify-between" style={{ borderBottom: `1px solid ${pc.divider}` }}>
