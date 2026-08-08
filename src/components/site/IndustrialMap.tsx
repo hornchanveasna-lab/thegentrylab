@@ -482,7 +482,9 @@ function FlyController({ target }: { target: { lat: number; lng: number; zoom: n
     if (target.sheetOffset) {
       google.maps.event.addListenerOnce(map, "idle", () => {
         const sheetHeight = window.innerHeight * 0.52;
-        map.panBy(0, sheetHeight / 2);
+        const visibleHeight = window.innerHeight - sheetHeight;
+        const desiredScreenY = visibleHeight * 0.3; // near the top of the visible strip, not centered in it
+        map.panBy(0, window.innerHeight / 2 - desiredScreenY);
       });
     }
   }, [map, target]);
