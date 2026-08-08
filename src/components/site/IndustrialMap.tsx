@@ -2771,10 +2771,11 @@ function Inspector({
         <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
       </div>
 
-      {/* ── Header row: thumbnail (left) + name/meta (right) — always horizontal ── */}
+      {/* ── Header row: thumbnail+actions (left) + name/meta (right) — always horizontal ── */}
       <div className="flex shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-        {/* Thumbnail */}
-        <div className="relative shrink-0 overflow-hidden bg-black" style={{ width: isDesktop ? "200px" : "150px", height: expanded ? "180px" : "130px" }}>
+        {/* Thumbnail + action icons */}
+        <div className="shrink-0 flex flex-col" style={{ width: isDesktop ? "200px" : "150px" }}>
+        <div className="relative shrink-0 overflow-hidden bg-black" style={{ width: "100%", height: expanded ? "150px" : "110px" }}>
           {images.length > 0 ? (
             <>
               <img
@@ -2820,9 +2821,33 @@ function Inspector({
             </div>
           )}
         </div>
+        {/* Compact action icons — Directions / Website / Share, next to the picture */}
+        <div className="flex items-center justify-center gap-1.5 py-1.5" style={{ backgroundColor: cardBg }}>
+          {[
+            { label: "Directions", href: directionsUrl,
+              icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11" fill="currentColor" stroke="none"/></svg> },
+            ...(site.website ? [{ label: "Website", href: site.website.startsWith("http") ? site.website : `https://${site.website}`,
+              icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg> }] : []),
+            { label: "Share", onClick: handleShare,
+              icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> },
+          ].map((btn) => btn.href ? (
+            <a key={btn.label} href={btn.href} target="_blank" rel="noopener noreferrer" title={btn.label}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition hover:brightness-90"
+              style={{ backgroundColor: panelBg2, color: accentBlue }}>
+              {btn.icon}
+            </a>
+          ) : (
+            <button key={btn.label} onClick={btn.onClick} title={btn.label}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition hover:brightness-90"
+              style={{ backgroundColor: panelBg2, color: accentBlue }}>
+              {btn.icon}
+            </button>
+          ))}
+        </div>
+        </div>
 
         {/* Name + meta */}
-        <div className="flex-1 min-w-0 px-4 py-3 relative">
+        <div className="flex-1 min-w-0 px-4 py-2 relative">
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <span className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider rounded-sm shrink-0" style={{ backgroundColor: cardBg, color: textMuted }}>
               {site.province}
@@ -2881,7 +2906,7 @@ function Inspector({
 
       {/* ── Data provenance strip ── */}
       {(site.source_tier || site.confidence) && (
-        <div className="flex items-center gap-2 px-4 py-2 flex-wrap shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        <div className="flex items-center gap-2 px-4 py-1.5 flex-wrap shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
           <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: textDim }}>Data</span>
           {site.source_tier && (() => {
             const tier = { 1: { l: "Tier 1 · Official",   c: "#34d399" },
@@ -2913,60 +2938,6 @@ function Inspector({
         </div>
       )}
 
-      {/* ── Action buttons (Google Maps style) ── */}
-      <div className="flex items-center justify-around px-3 py-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-        {[
-          {
-            label: "Directions",
-            href: directionsUrl,
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="3 11 22 2 13 21 11 13 3 11" fill="currentColor" stroke="none"/>
-              </svg>
-            ),
-          },
-          ...(site.website ? [{
-            label: "Website",
-            href: site.website.startsWith("http") ? site.website : `https://${site.website}`,
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-                <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
-              </svg>
-            ),
-          }] : []),
-          {
-            label: "Share",
-            onClick: handleShare,
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-              </svg>
-            ),
-          },
-        ].map((btn) => (
-          btn.href ? (
-            <a key={btn.label} href={btn.href} target="_blank" rel="noopener noreferrer"
-              className="flex flex-col items-center gap-1.5 group">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center transition group-hover:brightness-90"
-                style={{ backgroundColor: panelBg2, color: accentBlue }}>
-                {btn.icon}
-              </div>
-              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: accentBlue }}>{btn.label}</span>
-            </a>
-          ) : (
-            <button key={btn.label} onClick={btn.onClick}
-              className="flex flex-col items-center gap-1.5 group">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center transition group-hover:brightness-90"
-                style={{ backgroundColor: panelBg2, color: accentBlue }}>
-                {btn.icon}
-              </div>
-              <span className="font-mono text-[9px] uppercase tracking-wider" style={{ color: accentBlue }}>{btn.label}</span>
-            </button>
-          )
-        ))}
-      </div>
 
       {/* ── Scrollable content ── */}
       <div className="overflow-y-auto flex-1">
@@ -3038,7 +3009,7 @@ function Inspector({
         )}
 
         {/* Location row */}
-        <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        <div className="flex items-start gap-3 px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill={layerColor + "bb"}/>
             <circle cx="12" cy="9" r="2.5" fill="white"/>
@@ -3259,7 +3230,7 @@ function Inspector({
 
         {/* EIP 4-pillar score */}
         {(site.score !== undefined || hasEip) && (
-          <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <div className="flex items-center justify-between mb-3">
               <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>EIP Suitability Score</p>
               <div className="flex items-baseline gap-1">
@@ -3297,7 +3268,7 @@ function Inspector({
 
         {/* Target industries */}
         {!!site.targetIndustries?.length && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>Target Industries</p>
             <div className="flex flex-wrap gap-1.5">
               {site.targetIndustries.map((ind) => (
@@ -3318,7 +3289,7 @@ function Inspector({
 
         {/* Strengths + Constraints */}
         {(!!site.strengths?.length || !!site.constraints?.length) && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             {!!site.strengths?.length && (
               <>
                 <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>Strengths</p>
@@ -3350,7 +3321,7 @@ function Inspector({
 
         {/* GentryLab Advisory */}
         {site.recommendation && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[11px]" style={{ color: "#ff5100" }}>◈</span>
               <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
@@ -3361,7 +3332,7 @@ function Inspector({
 
         {/* Related research */}
         {relatedResearch.length > 0 && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>
               Related Research
             </p>
@@ -3486,7 +3457,7 @@ function Inspector({
         )}
 
         {/* Location row */}
-        <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        <div className="flex items-start gap-3 px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
             <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill={layerColor + "bb"}/>
             <circle cx="12" cy="9" r="2.5" fill="white"/>
@@ -3546,7 +3517,7 @@ function Inspector({
 
         {/* EIP score */}
         {(site.score !== undefined || hasEip) && (
-          <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <div className="flex items-center justify-between mb-3">
               <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>EIP Suitability Score</p>
               <div className="flex items-baseline gap-1">
@@ -3576,7 +3547,7 @@ function Inspector({
 
         {/* Target industries */}
         {!!site.targetIndustries?.length && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>Target Industries</p>
             <div className="flex flex-wrap gap-1.5">
               {site.targetIndustries.map((ind) => (
@@ -3593,7 +3564,7 @@ function Inspector({
 
         {/* Strengths + Constraints */}
         {(!!site.strengths?.length || !!site.constraints?.length) && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             {!!site.strengths?.length && (<><p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Strengths</p><ul className="space-y-2 mb-3">{site.strengths.map((s) => (<li key={s} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}><span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] mt-0.5" style={{ backgroundColor: "#34d39918", color: "#34d399" }}>✓</span>{s}</li>))}</ul></>)}
             {!!site.constraints?.length && (<><p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Constraints</p><ul className="space-y-2">{site.constraints.map((c) => (<li key={c} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}><span className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] mt-0.5" style={{ backgroundColor: "#f43f5e18", color: "#f43f5e" }}>!</span>{c}</li>))}</ul></>)}
           </div>
@@ -3601,7 +3572,7 @@ function Inspector({
 
         {/* GentryLab Advisory */}
         {site.recommendation && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[11px]" style={{ color: "#ff5100" }}>◈</span>
               <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
@@ -3612,7 +3583,7 @@ function Inspector({
 
         {/* Related research */}
         {relatedResearch.length > 0 && (
-          <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>Related Research</p>
             <div className="space-y-2">
               {relatedResearch.map((r) => (
