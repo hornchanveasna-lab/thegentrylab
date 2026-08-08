@@ -2786,10 +2786,10 @@ function Inspector({
       </div>
 
       {/* ── Header row: thumbnail+actions (left) + name/meta (right) — always horizontal ── */}
-      <div className="flex shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+      <div className="flex items-start shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
         {/* Thumbnail + action icons */}
-        <div className="shrink-0 flex flex-col" style={{ width: isDesktop ? "200px" : "150px" }}>
-        <div className="relative shrink-0 overflow-hidden bg-black" style={{ width: "100%", height: expanded ? "150px" : "110px" }}>
+        <div className="shrink-0 flex flex-col" style={{ width: isDesktop ? "160px" : "130px" }}>
+        <div className="relative shrink-0 overflow-hidden bg-black" style={{ width: "100%", height: expanded ? "100px" : "80px" }}>
           {images.length > 0 ? (
             <>
               <img
