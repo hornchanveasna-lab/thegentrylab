@@ -2744,136 +2744,125 @@ function Inspector({
 
   return (
     <aside
-      className="absolute bottom-0 left-0 right-0 z-[400] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl transition-[height] duration-300 mx-auto"
+      className="absolute bottom-0 left-0 right-0 z-[400] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl transition-[height] duration-300"
       style={{
         height: expanded ? "88vh" : "52vh",
         maxHeight: "calc(100vh - 4.5rem)",
-        width: "min(760px, 100vw)",
+        width: "100%",
         backgroundColor: panelBg,
         borderTop: `1px solid ${borderCol}`,
-        borderLeft: `1px solid ${borderCol}`,
-        borderRight: `1px solid ${borderCol}`,
       }}
     >
       {/* Drag handle */}
       <div className="flex justify-center pt-2 pb-1 shrink-0 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
         <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
       </div>
-      {/* ── Hero image carousel ── */}
-      <div className="relative shrink-0 overflow-hidden bg-black" style={{ height: expanded ? "240px" : "180px" }}>
-        {images.length > 0 ? (
-          <>
-            <img
-              key={images[imgIdx]}
-              src={images[imgIdx]}
-              alt={site.name}
-              className="w-full h-full object-cover object-center"
-              style={{ filter: "brightness(0.78) contrast(1.1)" }}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-            />
-            {/* Prev / Next arrows */}
-            {images.length > 1 && (
-              <>
-                <button
-                  onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm"
-                  style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 2L4 6l4 4"/></svg>
-                </button>
-                <button
-                  onClick={() => setImgIdx((i) => (i + 1) % images.length)}
-                  className="absolute right-10 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm"
-                  style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 2l4 4-4 4"/></svg>
-                </button>
-                {/* Dot indicators */}
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                  {images.map((_, i) => (
-                    <button key={i} onClick={() => setImgIdx(i)}
-                      className="w-1.5 h-1.5 rounded-full transition-all"
-                      style={{ backgroundColor: i === imgIdx ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)" }} />
-                  ))}
-                </div>
-              </>
-            )}
-            {/* Image count badge */}
-            {images.length > 1 && (
-              <div className="absolute bottom-2 right-10">
-                <span className="font-mono text-[8px] px-1.5 py-0.5 rounded-sm"
-                  style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.6)" }}>
-                  {imgIdx + 1}/{images.length}
-                </span>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="w-full h-full flex items-center justify-center"
-            style={{ background: `linear-gradient(145deg, ${layerColor}28 0%, ${panelBg} 100%)` }}>
-            <div dangerouslySetInnerHTML={{ __html:
-              `<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" style="opacity:0.2">
-                <g fill="none" stroke="${layerColor}" stroke-width="1">${kindSvg}</g>
-              </svg>`
-            }} />
-          </div>
-        )}
-        {/* Expand / collapse button */}
-        <button onClick={() => setExpanded(e => !e)}
-          className="absolute top-3 right-12 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition"
-          style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}
-          title={expanded ? "Collapse" : "Expand"}>
-          {expanded ? (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-              <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
-            </svg>
-          ) : (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
-              <line x1="3" y1="21" x2="10" y2="14"/><line x1="21" y1="3" x2="14" y2="10"/>
-            </svg>
-          )}
-        </button>
-        {/* Close button */}
-        <button onClick={onClose}
-          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center backdrop-blur-sm transition"
-          style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M1 1l8 8M9 1L1 9"/>
-          </svg>
-        </button>
-        {/* Province badge */}
-        <div className="absolute top-3 left-3">
-          <span className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider backdrop-blur-sm rounded-sm"
-            style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.8)" }}>
-            {site.province}
-          </span>
-        </div>
-      </div>
 
-      {/* ── Name + meta ── */}
-      <div className="px-4 pt-4 pb-3 shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-        <h2 className="font-bold text-[17px] leading-tight mb-1" style={{ color: textMain }}>{site.name}</h2>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[12px]" style={{ color: textMuted }}>
-            {LAYER_META[site.layer].label}
-          </span>
-          <span style={{ color: textDim }}>·</span>
-          <span className="text-[12px] capitalize" style={{ color: textMuted }}>{site.kind}</span>
-          {site.score !== undefined && (
+      {/* ── Header row: thumbnail (left) + name/meta (right) ── */}
+      <div className="flex shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        {/* Thumbnail */}
+        <div className="relative shrink-0 overflow-hidden bg-black" style={{ width: "150px", height: expanded ? "150px" : "120px" }}>
+          {images.length > 0 ? (
             <>
-              <span style={{ color: textDim }}>·</span>
-              <span className="font-bold text-[12px]" style={{ color: scoreColor }}>{site.score}/100</span>
-              {site.eip_tier && (
-                <span className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded"
-                  style={{
-                    color: site.eip_tier === "gold" ? "#fbbf24" : site.eip_tier === "silver" ? "#94a3b8" : "#f97316",
-                    backgroundColor: site.eip_tier === "gold" ? "#fbbf2418" : site.eip_tier === "silver" ? "#94a3b818" : "#f9731618",
-                  }}>
-                  {site.eip_tier}
-                </span>
+              <img
+                key={images[imgIdx]}
+                src={images[imgIdx]}
+                alt={site.name}
+                className="w-full h-full object-cover object-center"
+                style={{ filter: "brightness(0.78) contrast(1.1)" }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+              {images.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
+                    className="absolute left-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center backdrop-blur-sm"
+                    style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M8 2L4 6l4 4"/></svg>
+                  </button>
+                  <button
+                    onClick={() => setImgIdx((i) => (i + 1) % images.length)}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full flex items-center justify-center backdrop-blur-sm"
+                    style={{ backgroundColor: "rgba(0,0,0,0.55)", color: "rgba(255,255,255,0.85)" }}>
+                    <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 2l4 4-4 4"/></svg>
+                  </button>
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                    {images.map((_, i) => (
+                      <button key={i} onClick={() => setImgIdx(i)}
+                        className="w-1 h-1 rounded-full transition-all"
+                        style={{ backgroundColor: i === imgIdx ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.35)" }} />
+                    ))}
+                  </div>
+                </>
               )}
             </>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center"
+              style={{ background: `linear-gradient(145deg, ${layerColor}28 0%, ${panelBg} 100%)` }}>
+              <div dangerouslySetInnerHTML={{ __html:
+                `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" style="opacity:0.2">
+                  <g fill="none" stroke="${layerColor}" stroke-width="1">${kindSvg}</g>
+                </svg>`
+              }} />
+            </div>
           )}
+        </div>
+
+        {/* Name + meta */}
+        <div className="flex-1 min-w-0 px-4 py-3 relative">
+          <div className="flex items-start justify-between gap-2 mb-1.5">
+            <span className="px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider rounded-sm shrink-0" style={{ backgroundColor: cardBg, color: textMuted }}>
+              {site.province}
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <button onClick={() => setExpanded(e => !e)}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition"
+                style={{ backgroundColor: cardBg, color: textMuted }}
+                title={expanded ? "Collapse" : "Expand"}>
+                {expanded ? (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                    <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+                  </svg>
+                ) : (
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+                    <line x1="3" y1="21" x2="10" y2="14"/><line x1="21" y1="3" x2="14" y2="10"/>
+                  </svg>
+                )}
+              </button>
+              <button onClick={onClose}
+                className="w-7 h-7 rounded-full flex items-center justify-center transition"
+                style={{ backgroundColor: cardBg, color: textMuted }}>
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M1 1l8 8M9 1L1 9"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <h2 className="font-bold text-[17px] leading-tight mb-1" style={{ color: textMain }}>{site.name}</h2>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[12px]" style={{ color: textMuted }}>
+              {LAYER_META[site.layer].label}
+            </span>
+            <span style={{ color: textDim }}>·</span>
+            <span className="text-[12px] capitalize" style={{ color: textMuted }}>{site.kind}</span>
+            {site.score !== undefined && (
+              <>
+                <span style={{ color: textDim }}>·</span>
+                <span className="font-bold text-[12px]" style={{ color: scoreColor }}>{site.score}/100</span>
+                {site.eip_tier && (
+                  <span className="font-mono text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded"
+                    style={{
+                      color: site.eip_tier === "gold" ? "#fbbf24" : site.eip_tier === "silver" ? "#94a3b8" : "#f97316",
+                      backgroundColor: site.eip_tier === "gold" ? "#fbbf2418" : site.eip_tier === "silver" ? "#94a3b818" : "#f9731618",
+                    }}>
+                    {site.eip_tier}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
