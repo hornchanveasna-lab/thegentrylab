@@ -1274,7 +1274,9 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
      (same "Area Data" layers) so reports can carry the exact admin unit,
      not just a fuzzy Google address. */
   const showCalloutAt = useCallback(async (lat: number, lng: number) => {
-    setSelected(null);
+    // Deliberately does NOT clear `selected` — tapping empty map should not
+    // dismiss an open site detail sheet; only the close button or picking a
+    // different marker should.
     setLocCallout({ lat, lng, address: null, plusCode: null, loading: true });
     try {
       const [geoRes, admin] = await Promise.all([
@@ -2289,6 +2291,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         floodOn={floodVisible || bm.floodOverlay}
         areaActive={areaActive}
         covActive={covActive}
+        siteSelected={!!selected}
       />
     </div>
   );
@@ -2304,13 +2307,17 @@ const FLOOD_LEGEND: { c: string; label: string }[] = [
 ];
 
 function MapLegend({
-  floodOn, areaActive, covActive,
+  floodOn, areaActive, covActive, siteSelected,
 }: {
   floodOn: boolean;
   areaActive: Set<AreaKey>;
   covActive: Set<string>;
+  siteSelected: boolean;
 }) {
   const [open, setOpen] = useState(true);
+  // Auto-hide once a site is selected — screen space is tight with the
+  // detail sheet open; user can still reopen via the collapsed strip.
+  useEffect(() => { if (siteSelected) setOpen(false); }, [siteSelected]);
   const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
   const activeCov = COVERAGE.filter((c) => covActive.has(c.key));
   const hasContent = floodOn || activeAreas.length > 0 || activeCov.length > 0;
@@ -2737,14 +2744,21 @@ function Inspector({
 
   return (
     <aside
-      className="absolute top-0 right-0 z-[400] flex flex-col h-full max-h-full overflow-hidden shadow-2xl transition-[width] duration-300"
+      className="absolute bottom-0 left-0 right-0 z-[400] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl transition-[height] duration-300 mx-auto"
       style={{
-        width: expanded ? "min(700px, 92vw)" : "360px",
-        maxWidth: "calc(100vw - 2rem)",
+        height: expanded ? "88vh" : "52vh",
+        maxHeight: "calc(100vh - 4.5rem)",
+        width: "min(760px, 100vw)",
         backgroundColor: panelBg,
+        borderTop: `1px solid ${borderCol}`,
         borderLeft: `1px solid ${borderCol}`,
+        borderRight: `1px solid ${borderCol}`,
       }}
     >
+      {/* Drag handle */}
+      <div className="flex justify-center pt-2 pb-1 shrink-0 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
+        <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
+      </div>
       {/* ── Hero image carousel ── */}
       <div className="relative shrink-0 overflow-hidden bg-black" style={{ height: expanded ? "240px" : "180px" }}>
         {images.length > 0 ? (
