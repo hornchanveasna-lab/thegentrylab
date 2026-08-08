@@ -2944,8 +2944,8 @@ function Inspector({
       {isDesktop ? (
         <>
         {/* ── Wide 2-column layout ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", alignItems: "start" }}>
-          {/* Left column */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", alignItems: "start" }}>
+          {/* Column 1 — quick facts */}
           <div style={{ borderRight: `1px solid ${dividerCol}` }}>
 
         {/* Feature chips row */}
@@ -3028,6 +3028,10 @@ function Inspector({
               style={{ color: "#fbbf24", backgroundColor: "#fbbf2412" }}>est.</span>
           )}
         </div>
+
+          </div>{/* end col 1 */}
+          {/* Column 2 -- reference data */}
+          <div style={{ borderRight: `1px solid ${dividerCol}` }}>
 
         {/* Key info table */}
         {(site.operator || site.website || site.phone || site.utilities || site.year_commissioned ||
@@ -3184,8 +3188,8 @@ function Inspector({
           </div>
         )}
 
-          </div>{/* end left col */}
-          {/* Right column */}
+          </div>{/* end col 2 */}
+          {/* Column 3 — analysis */}
           <div>
 
         {/* Logistics connectivity */}
@@ -3353,8 +3357,8 @@ function Inspector({
           </div>
         )}
 
-          </div>{/* end right col */}
-        </div>{/* end 2-col grid */}
+          </div>{/* end col 3 */}
+        </div>{/* end 3-col grid */}
         {/* Disclaimer footer (expanded) */}
         <div className="px-4 py-3">
           <p className="font-mono text-[9px]" style={{ color: textDim }}>{t("map.disclaimer")}</p>
