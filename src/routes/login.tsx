@@ -14,8 +14,8 @@ const BENEFITS = [
         <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
       </svg>
     ),
-    title: "100 AI credits per day",
-    desc: "Ask GentryBot anything about Cambodia's industrial landscape — 100 credits daily, completely free.",
+    title: "Ask GentryBot anything",
+    desc: "Ask GentryBot anything about Cambodia's industrial landscape — completely free.",
   },
   {
     icon: (
@@ -98,19 +98,6 @@ export default function LoginPage() {
             </h1>
             <p className="mt-3 text-[13px] leading-relaxed max-w-sm mx-auto" style={{ color: "var(--text-muted)" }}>
               260+ sites mapped · AI research assistant · Live project tracker
-            </p>
-          </div>
-
-          {/* Credit highlight */}
-          <div className="mb-6 flex items-center justify-center gap-3 rounded-xl px-5 py-4"
-            style={{ backgroundColor: "rgba(255,81,0,0.08)", border: "1px solid rgba(255,81,0,0.20)" }}>
-            <div className="text-center">
-              <p className="text-[36px] font-extrabold leading-none" style={{ color: "#ff5100" }}>100</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest mt-1" style={{ color: "rgba(255,81,0,0.80)" }}>Credits / Day</p>
-            </div>
-            <div className="w-px h-10" style={{ backgroundColor: "var(--border)" }} />
-            <p className="text-[12px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              Ask GentryBot 100 questions daily about SEZs, permits, costs, and opportunities — free.
             </p>
           </div>
 

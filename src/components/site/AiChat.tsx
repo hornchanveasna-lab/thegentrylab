@@ -128,8 +128,8 @@ function LoginWall() {
   return (
     <div className="border-t border-white/8 px-4 py-5 flex flex-col items-center gap-3 shrink-0 bg-[#0d0d0e]">
       <p className="text-[11.5px] text-white/60 text-center leading-relaxed">
-        You've used your <span className="text-white font-semibold">5 free credits</span>.<br />
-        Sign in to continue — 20 credits per day, free.
+        You've reached the free chat limit.<br />
+        Sign in to keep chatting — free, no card required.
       </p>
       <a
         href="/login"
@@ -450,9 +450,7 @@ export function AiChat() {
               {user ? displayName.split(" ")[0] || "GentryBot" : "GentryBot"}
             </p>
             <p className="text-[10px] mt-0.5 font-mono uppercase tracking-widest" style={{ color: "var(--chat-text-muted)" }}>
-              {user
-                ? `${DAILY_CREDITS - creditsUsed} credits remaining`
-                : "Cambodia Industrial AI"}
+              Cambodia Industrial AI
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -500,8 +498,8 @@ export function AiChat() {
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
                 <p className="text-[11.5px] text-white/50 leading-relaxed text-left">
-                  <span className="text-white/80 font-semibold">0 credits remaining.</span><br />
-                  {user ? "Resets at midnight." : <a href="/login" className="text-[#ff5100] hover:underline">Sign in for 20 credits/day →</a>}
+                  <span className="text-white/80 font-semibold">You've reached today's limit.</span><br />
+                  {user ? "Resets at midnight." : <a href="/login" className="text-[#ff5100] hover:underline">Sign in to keep chatting →</a>}
                 </p>
               </div>
             </div>

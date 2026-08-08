@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { TopNav } from "@/components/site/TopNav";
 import { useSmoothScroll } from "@/components/site/Counter";
-import { useCredits, CREDIT_COSTS } from "@/lib/credits";
+import { useCredits } from "@/lib/credits";
 import { toDropdownProvince } from "@/lib/geoLookup";
 import PptxGenJS from "pptxgenjs";
 import heroBlueprintImg from "@/assets/hero-blueprint.jpg";
@@ -3615,7 +3615,7 @@ export default function AdvisorPage() {
                   <span className="font-mono text-[9px] uppercase tracking-[0.25em] px-2.5 py-1 rounded" style={{ color: "#ff5100", backgroundColor: "rgba(255,81,0,0.10)", border: "1px solid rgba(255,81,0,0.20)" }}>
                     AI Tool · Beta
                   </span>
-                  {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "var(--adv-text-faint)" }}>Logged in · Credits active</span>}
+                  {user && <span className="font-mono text-[9px] uppercase tracking-[0.2em]" style={{ color: "var(--adv-text-faint)" }}>Logged in</span>}
                 </div>
                 <h1 className="text-[28px] md:text-[36px] font-extrabold tracking-tight leading-tight" style={{ color: "var(--adv-text-hi)" }}>
                   AI Industrial Advisor
@@ -3823,7 +3823,6 @@ export default function AdvisorPage() {
                 <div className="grid grid-cols-2 gap-2">
                   {(["standard", "comprehensive"] as ReportType[]).map(rt => {
                     const isSelected = reportType === rt;
-                    const cost = rt === "standard" ? CREDIT_COSTS.brief_standard : CREDIT_COSTS.brief_comprehensive;
                     return (
                       <button key={rt} onClick={() => setReportType(rt)}
                         className="text-left p-3 rounded-lg transition"
@@ -3832,7 +3831,6 @@ export default function AdvisorPage() {
                           <span className="font-bold text-[12px]" style={{ color: isSelected ? "#ff5100" : "var(--adv-text-body)" }}>
                             {rt === "standard" ? "Standard" : "Comprehensive"}
                           </span>
-                          <span className="font-mono text-[9px]" style={{ color: isSelected ? "#ff5100" : "var(--adv-text-dim)" }}>~{cost} cr</span>
                         </div>
                         <p className="text-[10px] leading-relaxed" style={{ color: "var(--adv-text-sub)" }}>
                           {rt === "standard" ? "Structured text brief with full analysis and recommendations." : "Includes charts, cost tables, timeline visual, and scoring graphs."}
@@ -3866,8 +3864,8 @@ export default function AdvisorPage() {
                 <div className="mt-4 rounded-xl p-4 flex items-start gap-3" style={{ backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" className="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   <div>
-                    <p className="font-bold text-[12px] mb-1" style={{ color: "#ef4444" }}>Insufficient credits</p>
-                    <p className="text-[11px]" style={{ color: "var(--adv-text-muted)" }}>Your balance is {creditError.balance} cr. <Link to="/credits" className="underline" style={{ color: "#ff5100" }}>Buy more credits →</Link></p>
+                    <p className="font-bold text-[12px] mb-1" style={{ color: "#ef4444" }}>Daily limit reached</p>
+                    <p className="text-[11px]" style={{ color: "var(--adv-text-muted)" }}>You've hit today's usage limit. Please try again tomorrow.</p>
                   </div>
                 </div>
               )}
@@ -3928,7 +3926,7 @@ export default function AdvisorPage() {
                     {actualCost !== null && !streaming && (
                       <span className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest" style={{ color: "var(--adv-text-sec)" }}>
                         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                        {actualCost} cr charged{credits ? ` · ${credits.balance} remaining` : ""}
+                        Report generated
                       </span>
                     )}
                   </div>
@@ -4216,7 +4214,7 @@ export default function AdvisorPage() {
                     {creditError && (
                       <div className="mt-2 flex items-center gap-2 text-[11px]" style={{ color: "#ef4444" }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        Insufficient credits ({creditError.balance} cr). <Link to="/credits" className="underline ml-1" style={{ color: "#ff5100" }}>Buy more →</Link>
+                        Daily limit reached. Please try again tomorrow.
                       </div>
                     )}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3">

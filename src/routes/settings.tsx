@@ -197,10 +197,6 @@ const save = async () => {
                 className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
                 Edit Profile →
               </button>
-              <button onClick={() => navigate({ to: "/credits" })}
-                className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
-                Manage Credits →
-              </button>
             </div>
           </section>
 
