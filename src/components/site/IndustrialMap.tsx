@@ -3037,50 +3037,6 @@ function Inspector({
           </div>
         )}
 
-          </div>{/* end left col */}
-          {/* Right column */}
-          <div>
-
-        {/* Logistics connectivity */}
-        {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
-          <div style={{ borderBottom: `1px solid ${dividerCol}`, padding: "12px 16px" }}>
-            <div className="flex items-baseline justify-between mb-2">
-              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Connectivity</p>
-              <span className="font-mono text-[8px] tracking-wide" style={{ color: textDim }}>straight-line est.</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-              {site.port_distance_km != null && (
-                <div style={{ background: isDark ? "rgba(55,138,221,0.08)" : "rgba(55,138,221,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
-                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#378ADD" }}>Port</p>
-                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
-                  {site.nearest_port && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_port}</p>}
-                </div>
-              )}
-              {site.airport_distance_km != null && (
-                <div style={{ background: isDark ? "rgba(29,158,117,0.08)" : "rgba(29,158,117,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
-                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#1D9E75" }}>Airport</p>
-                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.airport_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
-                  {site.nearest_airport && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_airport}</p>}
-                </div>
-              )}
-              {site.rail_distance_km != null && (
-                <div style={{ background: isDark ? "rgba(186,117,23,0.08)" : "rgba(186,117,23,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
-                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#BA7517" }}>Rail</p>
-                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.rail_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
-                  {site.nearest_rail && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_rail}</p>}
-                </div>
-              )}
-              {site.border_distance_km != null && (
-                <div style={{ background: isDark ? "rgba(216,90,48,0.08)" : "rgba(216,90,48,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
-                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#D85A30" }}>Border</p>
-                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.border_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
-                  {site.nearest_border && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_border}</p>}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Location row */}
         <div className="flex items-start gap-3 px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5">
@@ -3254,6 +3210,50 @@ function Inspector({
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>About</p>
             <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.notes}</p>
+          </div>
+        )}
+
+          </div>{/* end left col */}
+          {/* Right column */}
+          <div>
+
+        {/* Logistics connectivity */}
+        {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
+          <div style={{ borderBottom: `1px solid ${dividerCol}`, padding: "12px 16px" }}>
+            <div className="flex items-baseline justify-between mb-2">
+              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Connectivity</p>
+              <span className="font-mono text-[8px] tracking-wide" style={{ color: textDim }}>straight-line est.</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              {site.port_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(55,138,221,0.08)" : "rgba(55,138,221,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#378ADD" }}>Port</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.port_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_port && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_port}</p>}
+                </div>
+              )}
+              {site.airport_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(29,158,117,0.08)" : "rgba(29,158,117,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#1D9E75" }}>Airport</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.airport_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_airport && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_airport}</p>}
+                </div>
+              )}
+              {site.rail_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(186,117,23,0.08)" : "rgba(186,117,23,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#BA7517" }}>Rail</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.rail_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_rail && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_rail}</p>}
+                </div>
+              )}
+              {site.border_distance_km != null && (
+                <div style={{ background: isDark ? "rgba(216,90,48,0.08)" : "rgba(216,90,48,0.06)", borderRadius: "6px", padding: "8px 10px" }}>
+                  <p className="font-mono text-[8px] uppercase tracking-widest mb-1" style={{ color: "#D85A30" }}>Border</p>
+                  <p className="font-semibold text-[13px] leading-none" style={{ color: textMain }}>{Math.round(site.border_distance_km)} <span className="text-[10px] font-normal" style={{ color: textMuted }}>km</span></p>
+                  {site.nearest_border && <p className="text-[10px] mt-0.5 truncate" style={{ color: textDim }}>{site.nearest_border}</p>}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
