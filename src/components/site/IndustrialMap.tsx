@@ -469,12 +469,22 @@ function ZoomLabelController() {
 
 /* ── Inner map sub-components (must be inside <Map>) ────── */
 
-function FlyController({ target }: { target: { lat: number; lng: number; zoom: number } | null }) {
+function FlyController({ target }: { target: { lat: number; lng: number; zoom: number; sheetOffset?: boolean } | null }) {
   const map = useMap();
   useEffect(() => {
     if (!map || !target) return;
     map.panTo({ lat: target.lat, lng: target.lng });
     map.setZoom(target.zoom);
+    // When opening straight into a site's detail sheet (shared link), the
+    // bottom sheet covers roughly the lower half of the screen — nudge the
+    // pin up so it lands in the middle of the visible map strip above the
+    // sheet instead of the true screen center (which is hidden behind it).
+    if (target.sheetOffset) {
+      google.maps.event.addListenerOnce(map, "idle", () => {
+        const sheetHeight = window.innerHeight * 0.52;
+        map.panBy(0, sheetHeight / 2);
+      });
+    }
   }, [map, target]);
   return null;
 }
@@ -1247,7 +1257,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
 
   /* Location search */
   const [locationInput, setLocationInput] = useState("");
-  const [pinTarget, setPinTarget] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
+  const [pinTarget, setPinTarget] = useState<{ lat: number; lng: number; zoom: number; sheetOffset?: boolean } | null>(null);
   const [pinMarker, setPinMarker] = useState<{ lat: number; lng: number } | null>(null);
   const [locSearching, setLocSearching] = useState(false);
   const [locError, setLocError]         = useState("");
@@ -1543,7 +1553,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     if (target) {
       deepLinkDone.current = true;
       setSelected(target);
-      setPinTarget({ lat: target.lat, lng: target.lng, zoom: 13 });
+      setPinTarget({ lat: target.lat, lng: target.lng, zoom: 13, sheetOffset: true });
     }
   }, [sites]);
 
