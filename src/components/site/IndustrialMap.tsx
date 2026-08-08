@@ -2611,7 +2611,7 @@ function LandUsePanel({
   return (
     <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
       <div className="flex items-center justify-between mb-3">
-        <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Land Use · Satellite</p>
+        <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Land Use · Satellite</p>
         <button onClick={runCheck} disabled={checking}
           className="font-mono text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full border transition disabled:opacity-50"
           style={{ borderColor: "#ff510055", color: "#ff5100" }}>
@@ -3029,7 +3029,7 @@ function Inspector({
         {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
           <div style={{ borderBottom: `1px solid ${dividerCol}`, padding: "12px 16px" }}>
             <div className="flex items-baseline justify-between mb-2">
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Connectivity</p>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Connectivity</p>
               <span className="font-mono text-[8px] tracking-wide" style={{ color: textDim }}>straight-line est.</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
@@ -3092,7 +3092,7 @@ function Inspector({
           site.on_site_facilities || site.city_distance_km || site.stock_ticker ||
           site.developer || site.financier || site.capacity_mw || site.eia_registered) && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>Details</p>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
               <tbody>
                 {site.operator && (
@@ -3236,7 +3236,7 @@ function Inspector({
         {/* Notes / description */}
         {site.notes && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>About</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>About</p>
             <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.notes}</p>
           </div>
         )}
@@ -3245,7 +3245,7 @@ function Inspector({
         {(site.score !== undefined || hasEip) && (
           <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <div className="flex items-center justify-between mb-3">
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>EIP Suitability Score</p>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>EIP Suitability Score</p>
               <div className="flex items-baseline gap-1">
                 {site.eip_tier && (
                   <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded mr-1"
@@ -3282,7 +3282,7 @@ function Inspector({
         {/* Target industries */}
         {!!site.targetIndustries?.length && (
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>Target Industries</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>Target Industries</p>
             <div className="flex flex-wrap gap-1.5">
               {site.targetIndustries.map((ind) => (
                 <span key={ind}
@@ -3305,7 +3305,7 @@ function Inspector({
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             {!!site.strengths?.length && (
               <>
-                <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Strengths</p>
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>Strengths</p>
                 <ul className="space-y-2 mb-3">
                   {site.strengths.map((s) => (
                     <li key={s} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}>
@@ -3318,7 +3318,7 @@ function Inspector({
             )}
             {!!site.constraints?.length && (
               <>
-                <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Constraints</p>
+                <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>Constraints</p>
                 <ul className="space-y-2">
                   {site.constraints.map((c) => (
                     <li key={c} className="flex items-start gap-2.5 text-[12px] leading-snug" style={{ color: textMuted }}>
@@ -3337,7 +3337,7 @@ function Inspector({
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[11px]" style={{ color: "#ff5100" }}>◈</span>
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
             </div>
             <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.recommendation}</p>
           </div>
@@ -3346,7 +3346,7 @@ function Inspector({
         {/* Related research */}
         {relatedResearch.length > 0 && (
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>
               Related Research
             </p>
             <div className="space-y-2">
@@ -3433,7 +3433,7 @@ function Inspector({
         {(site.port_distance_km != null || site.airport_distance_km != null || site.rail_distance_km != null || site.border_distance_km != null) && (
           <div style={{ borderBottom: `1px solid ${dividerCol}`, padding: "12px 16px" }}>
             <div className="flex items-baseline justify-between mb-2">
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Connectivity</p>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>Connectivity</p>
               <span className="font-mono text-[8px] tracking-wide" style={{ color: textDim }}>straight-line est.</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
@@ -3494,7 +3494,7 @@ function Inspector({
           site.on_site_facilities || site.city_distance_km || site.stock_ticker ||
           site.developer || site.financier || site.capacity_mw || site.eia_registered) && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>Details</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>Details</p>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
               <tbody>
                 {site.operator && (<tr><td style={{ color: textDim, fontFamily: "var(--font-mono)", fontSize: "10px", textTransform: "uppercase", letterSpacing: "0.08em", paddingBottom: "6px", paddingRight: "12px", whiteSpace: "nowrap", verticalAlign: "top", width: "32%" }}>Operator</td><td style={{ color: textMain, paddingBottom: "6px", verticalAlign: "top" }}>{site.operator}</td></tr>)}
@@ -3523,7 +3523,7 @@ function Inspector({
         {/* Notes */}
         {site.notes && (
           <div className="px-4 py-3" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2" style={{ color: textDim }}>About</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: textMuted }}>About</p>
             <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.notes}</p>
           </div>
         )}
@@ -3532,7 +3532,7 @@ function Inspector({
         {(site.score !== undefined || hasEip) && (
           <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
             <div className="flex items-center justify-between mb-3">
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>EIP Suitability Score</p>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: textMuted }}>EIP Suitability Score</p>
               <div className="flex items-baseline gap-1">
                 {site.eip_tier && (<span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded mr-1" style={{ color: site.eip_tier === "gold" ? "#fbbf24" : site.eip_tier === "silver" ? "#94a3b8" : "#f97316", backgroundColor: site.eip_tier === "gold" ? "#fbbf2415" : site.eip_tier === "silver" ? "#94a3b815" : "#f9731615" }}>{site.eip_tier}</span>)}
                 <span className="text-[22px] font-extrabold leading-none" style={{ color: scoreColor }}>{site.score ?? "—"}</span>
@@ -3561,7 +3561,7 @@ function Inspector({
         {/* Target industries */}
         {!!site.targetIndustries?.length && (
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>Target Industries</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>Target Industries</p>
             <div className="flex flex-wrap gap-1.5">
               {site.targetIndustries.map((ind) => (
                 <span key={ind} className="px-2.5 py-1 text-[11px] rounded-full border" style={{ backgroundColor: `${layerColor}10`, borderColor: `${layerColor}40`, color: layerColor }}>{ind}</span>
@@ -3588,7 +3588,7 @@ function Inspector({
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}`, backgroundColor: isDark ? "#ff510009" : "#ff510005" }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[11px]" style={{ color: "#ff5100" }}>◈</span>
-              <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
+              <p className="font-mono text-[11px] font-bold uppercase tracking-wide" style={{ color: "#ff5100" }}>GentryLab Advisory</p>
             </div>
             <p className="text-[12px] leading-relaxed" style={{ color: textMuted }}>{site.recommendation}</p>
           </div>
@@ -3597,7 +3597,7 @@ function Inspector({
         {/* Related research */}
         {relatedResearch.length > 0 && (
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-            <p className="font-mono text-[9px] uppercase tracking-widest mb-2.5" style={{ color: textDim }}>Related Research</p>
+            <p className="font-mono text-[11px] font-bold uppercase tracking-wide mb-2.5" style={{ color: textMuted }}>Related Research</p>
             <div className="space-y-2">
               {relatedResearch.map((r) => (
                 <div key={r.id} className="flex gap-3 py-2">
