@@ -2315,9 +2315,6 @@ function MapLegend({
   siteSelected: boolean;
 }) {
   const [open, setOpen] = useState(true);
-  // Auto-hide once a site is selected — screen space is tight with the
-  // detail sheet open; user can still reopen via the collapsed strip.
-  useEffect(() => { if (siteSelected) setOpen(false); }, [siteSelected]);
   const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
   const activeCov = COVERAGE.filter((c) => covActive.has(c.key));
   const hasContent = floodOn || activeAreas.length > 0 || activeCov.length > 0;
@@ -2328,6 +2325,11 @@ function MapLegend({
   if (floodOn) srcSet.add("GloFAS / Copernicus EMS");
   if (activeCov.length) srcSet.add("Operator coverage 2023");
   const sources = srcSet.size ? [...srcSet] : ["GADM 4.1"];
+
+  // Fully hidden (not just collapsed) once a site is selected — the detail
+  // sheet takes that screen real estate and would otherwise sit under it
+  // at a higher z-index. Reappears automatically once the sheet closes.
+  if (siteSelected) return null;
 
   return (
     <div className="absolute bottom-4 left-4 z-[450] max-w-[210px]">
@@ -2687,6 +2689,17 @@ function Inspector({
       : site.image_url ? [site.image_url] : [];
   const [imgIdx,    setImgIdx]    = useState(0);
   const [expanded,  setExpanded]  = useState(false);
+  // Desktop gets the classic right-docked sidebar (wide screens have room
+  // beside the map); mobile/tablet gets a bottom sheet so the map stays
+  // visible above it and reachable with one thumb.
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" && window.innerWidth >= 900);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 900px)");
+    const onChange = () => setIsDesktop(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
   useEffect(() => { setImgIdx(0); }, [site.id]);
   // Auto-scroll every 4s when multiple images
   useEffect(() => {
@@ -2744,8 +2757,17 @@ function Inspector({
 
   return (
     <aside
-      className="absolute bottom-0 left-0 right-0 z-[400] flex flex-col overflow-hidden shadow-2xl rounded-t-2xl transition-[height] duration-300"
-      style={{
+      className={`absolute z-[400] flex flex-col overflow-hidden shadow-2xl transition-[height,width] duration-300 ${
+        isDesktop ? "top-0 right-0" : "bottom-0 left-0 right-0 rounded-t-2xl"
+      }`}
+      style={isDesktop ? {
+        height: "100%",
+        maxHeight: "100%",
+        width: expanded ? "min(700px, 92vw)" : "400px",
+        maxWidth: "calc(100vw - 2rem)",
+        backgroundColor: panelBg,
+        borderLeft: `1px solid ${borderCol}`,
+      } : {
         height: expanded ? "88vh" : "52vh",
         maxHeight: "calc(100vh - 4.5rem)",
         width: "100%",
@@ -2753,15 +2775,19 @@ function Inspector({
         borderTop: `1px solid ${borderCol}`,
       }}
     >
-      {/* Drag handle */}
-      <div className="flex justify-center pt-2 pb-1 shrink-0 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
-        <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
-      </div>
+      {/* Drag handle — mobile only */}
+      {!isDesktop && (
+        <div className="flex justify-center pt-2 pb-1 shrink-0 cursor-pointer" onClick={() => setExpanded((e) => !e)}>
+          <div className="w-10 h-1 rounded-full" style={{ backgroundColor: dividerCol }} />
+        </div>
+      )}
 
       {/* ── Header row: thumbnail (left) + name/meta (right) ── */}
-      <div className="flex shrink-0" style={{ borderBottom: `1px solid ${dividerCol}` }}>
-        {/* Thumbnail */}
-        <div className="relative shrink-0 overflow-hidden bg-black" style={{ width: "150px", height: expanded ? "150px" : "120px" }}>
+      <div className={isDesktop ? "flex flex-col shrink-0" : "flex shrink-0"} style={{ borderBottom: `1px solid ${dividerCol}` }}>
+        {/* Thumbnail — full-width banner on desktop, left thumbnail on mobile */}
+        <div className="relative shrink-0 overflow-hidden bg-black" style={isDesktop
+          ? { width: "100%", height: expanded ? "220px" : "170px" }
+          : { width: "150px", height: expanded ? "150px" : "120px" }}>
           {images.length > 0 ? (
             <>
               <img
