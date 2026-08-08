@@ -1263,7 +1263,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [pinMarker, setPinMarker] = useState<{ lat: number; lng: number } | null>(null);
   const [locSearching, setLocSearching] = useState(false);
   const [locError, setLocError]         = useState("");
-  const [suggestions, setSuggestions]   = useState<{ placeId: string; main: string; secondary: string }[]>([]);
+  const [suggestions, setSuggestions]   = useState<{ placeId: string; main: string; secondary: string; siteId?: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
@@ -1310,22 +1310,34 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   /* Fetch Places Autocomplete suggestions via Maps JS SDK (no CORS issue) */
   const fetchSuggestions = useCallback((input: string) => {
     if (input.length < 2) { setSuggestions([]); return; }
-    if (!window.google?.maps?.places) { setSuggestions([]); return; }
+
+    /* Platform data first — sites already tracked on the map (name, code, province) */
+    const q = input.toLowerCase();
+    const siteMatches = sites
+      .filter((s) =>
+        s.name.toLowerCase().includes(q) ||
+        s.province?.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q)
+      )
+      .slice(0, 4)
+      .map((s) => ({ placeId: `site:${s.id}`, main: s.name, secondary: s.province ?? "", siteId: s.id }));
+
+    if (!window.google?.maps?.places) { setSuggestions(siteMatches); return; }
     const svc = new google.maps.places.AutocompleteService();
     svc.getPlacePredictions(
       { input, componentRestrictions: { country: "kh" } },
       (predictions, status) => {
-        if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
-          setSuggestions([]); return;
-        }
-        setSuggestions(predictions.slice(0, 5).map((p) => ({
-          placeId:   p.place_id,
-          main:      p.structured_formatting?.main_text ?? p.description,
-          secondary: p.structured_formatting?.secondary_text ?? "",
-        })));
+        const placeMatches = status === google.maps.places.PlacesServiceStatus.OK && predictions
+          ? predictions.slice(0, 5 - siteMatches.length).map((p) => ({
+              placeId:   p.place_id,
+              main:      p.structured_formatting?.main_text ?? p.description,
+              secondary: p.structured_formatting?.secondary_text ?? "",
+            }))
+          : [];
+        setSuggestions([...siteMatches, ...placeMatches]);
       }
     );
-  }, []);
+  }, [sites]);
 
   /* Pick a suggestion — resolve coords via Geocoder (no CORS, no fake div) */
   const pickSuggestion = useCallback((s: { placeId: string; main: string; secondary: string }) => {
@@ -1730,18 +1742,38 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               <button
                 key={s.placeId}
                 type="button"
-                onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  if (s.siteId) {
+                    const site = sites.find((x) => x.id === s.siteId);
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                    setLocationInput("");
+                    if (site) handleSelect(site);
+                  } else {
+                    pickSuggestion(s);
+                  }
+                }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/8 transition text-left"
                 style={{ borderTop: i > 0 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-white/30">
-                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor"/>
-                  <circle cx="12" cy="9" r="2.5" fill="black" opacity="0.4"/>
-                </svg>
+                {s.siteId ? (
+                  <span className="shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center" style={{ backgroundColor: "#ff510022" }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "#ff5100" }} />
+                  </span>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0 text-white/30">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor"/>
+                    <circle cx="12" cy="9" r="2.5" fill="black" opacity="0.4"/>
+                  </svg>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] text-white/90 truncate">{s.main}</p>
                   {s.secondary && <p className="text-[11px] text-white/40 truncate">{s.secondary}</p>}
                 </div>
+                {s.siteId && (
+                  <span className="font-mono text-[8px] uppercase tracking-widest shrink-0" style={{ color: "#ff5100" }}>On platform</span>
+                )}
               </button>
             ))}
             <div className="px-4 py-1.5 flex justify-end border-t border-white/5">
