@@ -2557,6 +2557,110 @@ function LocationCallout({
   );
 }
 
+/* ── Land use (satellite) panel ─────────────────────────── */
+interface ImagerySnapshot {
+  id: string;
+  checked_at: string;
+  image_date: string | null;
+  built_up_pct: number | null;
+  ndvi_mean: number | null;
+  change_vs_prior_pct: number | null;
+  boundary_source: "boundary" | "buffer";
+}
+
+function LandUsePanel({
+  siteId, textDim, textMain, textMuted, dividerCol, isDark,
+}: {
+  siteId: string;
+  textDim: string; textMain: string; textMuted: string; dividerCol: string; isDark: boolean;
+}) {
+  const [snapshots, setSnapshots] = useState<ImagerySnapshot[] | null>(null);
+  const [checking, setChecking]   = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    fetch(`/api/sez-imagery?site_id=${encodeURIComponent(siteId)}`)
+      .then((r) => r.json())
+      .then((d) => setSnapshots(d.snapshots ?? []))
+      .catch(() => setSnapshots([]));
+  }, [siteId]);
+
+  useEffect(() => { setSnapshots(null); setError(null); load(); }, [siteId, load]);
+
+  const runCheck = async () => {
+    setChecking(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/sez-imagery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ site_id: siteId }),
+      });
+      const body = await res.json();
+      if (!res.ok) { setError(body.error ?? "Check failed"); return; }
+      load();
+    } catch {
+      setError("Check failed — please try again");
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const latest = snapshots?.[0];
+
+  return (
+    <div className="px-4 py-4" style={{ borderBottom: `1px solid ${dividerCol}` }}>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: textDim }}>Land Use · Satellite</p>
+        <button onClick={runCheck} disabled={checking}
+          className="font-mono text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full border transition disabled:opacity-50"
+          style={{ borderColor: "#ff510055", color: "#ff5100" }}>
+          {checking ? "Checking…" : latest ? "Recheck" : "Check now"}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-[11px] mb-2" style={{ color: "#f87171" }}>{error}</p>
+      )}
+
+      {latest ? (
+        <>
+          <div className="flex items-end gap-3 mb-2">
+            <div>
+              <p className="text-[28px] font-extrabold leading-none" style={{ color: textMain }}>
+                {latest.built_up_pct != null ? `${latest.built_up_pct}%` : "—"}
+              </p>
+              <p className="font-mono text-[8px] uppercase tracking-widest mt-1" style={{ color: textDim }}>Built-up</p>
+            </div>
+            {latest.change_vs_prior_pct != null && (
+              <span className="font-mono text-[11px] mb-1" style={{ color: latest.change_vs_prior_pct >= 0 ? "#34d399" : "#f87171" }}>
+                {latest.change_vs_prior_pct >= 0 ? "+" : ""}{latest.change_vs_prior_pct}% vs last check
+              </span>
+            )}
+          </div>
+          <p className="text-[10px]" style={{ color: textMuted }}>
+            Sentinel-2 · {latest.image_date ?? "unknown date"}
+            {latest.boundary_source === "buffer" && " · approximate (buffer, no drawn boundary)"}
+          </p>
+          {snapshots && snapshots.length > 1 && (
+            <div className="flex items-end gap-1 mt-3 h-8">
+              {[...snapshots].reverse().map((s) => (
+                <div key={s.id} title={`${s.image_date}: ${s.built_up_pct}%`}
+                  className="flex-1 rounded-sm"
+                  style={{ height: `${Math.max(8, (s.built_up_pct ?? 0))}%`, backgroundColor: isDark ? "#ff510066" : "#ff510088" }} />
+              ))}
+            </div>
+          )}
+        </>
+      ) : snapshots && snapshots.length === 0 ? (
+        <p className="text-[11px]" style={{ color: textMuted }}>No satellite check has been run for this site yet.</p>
+      ) : (
+        <p className="text-[11px]" style={{ color: textDim }}>Loading…</p>
+      )}
+    </div>
+  );
+}
+
 /* ── Inspector ──────────────────────────────────────────── */
 function Inspector({
   site, research, onClose, t, isDark,
@@ -3191,6 +3295,11 @@ function Inspector({
           </div>
         )}
 
+        {/* Land use (satellite) — SEZ/park only */}
+        {(site.kind === "sez" || site.kind === "park") && (
+          <LandUsePanel siteId={site.id} textDim={textDim} textMain={textMain} textMuted={textMuted} dividerCol={dividerCol} isDark={isDark} />
+        )}
+
         {/* Strengths + Constraints */}
         {(!!site.strengths?.length || !!site.constraints?.length) && (
           <div className="px-4 py-3.5" style={{ borderBottom: `1px solid ${dividerCol}` }}>
@@ -3459,6 +3568,11 @@ function Inspector({
               ))}
             </div>
           </div>
+        )}
+
+        {/* Land use (satellite) — SEZ/park only */}
+        {(site.kind === "sez" || site.kind === "park") && (
+          <LandUsePanel siteId={site.id} textDim={textDim} textMain={textMain} textMuted={textMuted} dividerCol={dividerCol} isDark={isDark} />
         )}
 
         {/* Strengths + Constraints */}
