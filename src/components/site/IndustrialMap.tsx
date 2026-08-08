@@ -2883,7 +2883,7 @@ function Inspector({
             </a>
           ) : (
             <button key={btn.label} onClick={btn.onClick} title={btn.label}
-              className="w-7 h-7 rounded-full flex items-center justify-center transition hover:brightness-90"
+              className="w-7 h-7 rounded-full flex items-center justify-center transition hover:brightness-90 cursor-pointer"
               style={{ backgroundColor: panelBg2, color: accentBlue }}>
               {btn.icon}
             </button>
