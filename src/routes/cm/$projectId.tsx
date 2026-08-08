@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
@@ -8,7 +8,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import { ProjectSettingsView, PeopleSection } from "@/components/cm/ProjectSettingsView";
 import {
   BackButton, Card, EmptyState, SegmentedField, useCMTheme,
-  PROJECT_STATUS_COLOR, PROJECT_HEALTH_COLOR, setLastProject,
+  PROJECT_STATUS_COLOR, CM_HEALTH_BAND_COLOR, setLastProject,
 } from "@/components/cm/shared";
 import {
   useCMProject,
@@ -21,13 +21,16 @@ import {
   useCMSubmittals,
   useCMDailyLogs,
   useCMScheduleItems,
-  cmComputedHealth,
+  cmProjectHealthScore,
   useActiveCMBOQItems,
   useCMEquipment,
   useCMAuditLog,
   buildSCurveSeries,
   scheduleItemPlanPercent,
   jobRoleLabel,
+  updateCMProject,
+  notifyCMUser,
+  type CMHealthBand,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/$projectId")({
@@ -136,6 +139,30 @@ function CMProjectPage() {
   const pendingSubmittals = useMemo(() => (submittals ?? []).filter((x) => x.status === "Submitted" || x.status === "Under Review").length, [submittals]);
   const actionSubmittals = useMemo(() => (submittals ?? []).filter((x) => x.status === "Rejected" || x.status === "Revise & Resubmit").length, [submittals]);
 
+  // The one real cross-module signal: cost (BOQ delivery status) + schedule
+  // + quality/safety combined into a single score, instead of three numbers
+  // shown side by side. Quality here is failed inspections + open punch
+  // items — the two Quality-tab counters above.
+  const healthScore = useMemo(
+    () => cmProjectHealthScore(boqItems ?? [], logs ?? [], scheduleItems ?? [], openSafety, failedInspections + openPunch, criticalSafety, todayStr),
+    [boqItems, logs, scheduleItems, openSafety, failedInspections, openPunch, criticalSafety, todayStr],
+  );
+
+  // Fires a notification the first time a load sees the score drop into a
+  // worse band since the last snapshot — best-effort, client-side (no
+  // background job), so it only catches drops between visits to this page.
+  useEffect(() => {
+    if (!project || !ownerId) return;
+    const prevScore = project.last_health_score;
+    if (prevScore != null && healthScore.score < prevScore - 5) {
+      notifyCMUser(projectId, ownerId, "health_score_dropped", project.name, `${prevScore} → ${healthScore.score}`, "project", projectId);
+    }
+    if (prevScore !== healthScore.score) {
+      updateCMProject(projectId, { last_health_score: healthScore.score, last_health_checked_at: new Date().toISOString() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, healthScore.score]);
+
   const series = useMemo(() => (project ? buildSCurveSeries(project, logs ?? [], scheduleItems ?? []) : []), [project, logs, scheduleItems]);
   const todayPoint = useMemo(() => {
     const past = series.filter((p) => p.date <= todayStr);
@@ -237,10 +264,7 @@ function CMProjectPage() {
   }
 
   const sc = PROJECT_STATUS_COLOR[project.status];
-  // Health is computed from the schedule (Ahead / On Schedule / Behind) so
-  // this chip can never contradict the plan-vs-actual numbers below it.
-  const computedHealth = cmComputedHealth(scheduleItems ?? [], new Date().toISOString().slice(0, 10)).health;
-  const hc = PROJECT_HEALTH_COLOR[computedHealth];
+  const hc = CM_HEALTH_BAND_COLOR[healthScore.band];
   const value = formatContractValue(project.contract_value, project.currency);
 
   const TAB_OPTIONS: { value: InsightTab; label: string }[] = [
@@ -288,7 +312,7 @@ function CMProjectPage() {
             </span>
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: `${hc}15` }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: hc }}>{t(`health.${computedHealth}`)}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: hc }}>{t(`health.${healthScore.band}`)} · {healthScore.score}</span>
             </span>
             {project.sector && <span className="px-2.5 py-1 rounded-full bg-white/5 font-mono text-[9px] uppercase tracking-widest text-white/40">{t(`sector.${project.sector}`)}</span>}
           </div>

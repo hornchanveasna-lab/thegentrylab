@@ -62,6 +62,11 @@ export interface CMProject {
    *  { punch_list: { priority: "High", requireAfterPhoto: true }, safety: { recordType: "...", severity: "Low" } }.
    *  Generic JSON so new modules/fields don't need their own migration. */
   module_defaults: Record<string, Record<string, unknown>> | null;
+  /** Last computed `cmProjectHealthScore` snapshot, so a load can detect a
+   *  drop since the previous view and fire a notification. Null until the
+   *  score has been checked at least once. */
+  last_health_score: number | null;
+  last_health_checked_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1805,7 +1810,7 @@ export interface CMNotificationRule {
 export const NOTIFICATION_EVENTS = [
   "new_assignment", "approval_required", "rejection", "overdue_action",
   "critical_safety_issue", "late_submittal", "inspection_reminder",
-  "certificate_expiry", "daily_report_missing",
+  "certificate_expiry", "daily_report_missing", "health_score_dropped",
 ] as const;
 export type NotificationEvent = typeof NOTIFICATION_EVENTS[number];
 
@@ -2693,6 +2698,11 @@ export interface CMScheduleItem {
    *  activities created by hand before import existed. */
   activity_code: string | null;
   boq_category: string | null;
+  /** Real FK into cm_boq_items — the primary link going forward. Preferred
+   *  over the fragile `boq_category` string match (a BOQ category rename
+   *  silently broke that link) wherever both are available. Null on
+   *  activities created before this field existed or with no linked BOQ line. */
+  boq_item_id: string | null;
   location_id: string | null;
   plan_start: string;
   plan_finish: string;
@@ -2744,6 +2754,25 @@ export function cmBOQCategoryProgress(boqItems: CMBOQItem[], logs: CMDailyLog[])
   return result;
 }
 
+/** Delivered % per individual BOQ line (not per category) — the suggestion
+ *  source for schedule activities linked via the real `boq_item_id` FK
+ *  instead of the fragile `boq_category` string match. */
+export function cmBOQItemProgress(boqItems: CMBOQItem[], logs: CMDailyLog[]): Map<string, number> {
+  const deliveredById = new Map<string, number>();
+  for (const l of logs) {
+    for (const d of l.deliveries) {
+      if (!d.boq_item_id) continue;
+      deliveredById.set(d.boq_item_id, (deliveredById.get(d.boq_item_id) ?? 0) + (parseFloat(d.quantity) || 0));
+    }
+  }
+  const result = new Map<string, number>();
+  for (const b of boqItems) {
+    if (b.quantity <= 0) continue;
+    result.set(b.id, Math.round((Math.min(deliveredById.get(b.id) ?? 0, b.quantity) / b.quantity) * 100));
+  }
+  return result;
+}
+
 export function useCMScheduleItems(projectId: string | undefined) {
   return useQuery<CMScheduleItem[]>({
     queryKey: ["cm_schedule_items", projectId],
@@ -2760,7 +2789,7 @@ export function useCMScheduleItems(projectId: string | undefined) {
 export async function createCMScheduleItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
+  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
 ) {
   const { data, error } = await db().from("cm_schedule_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -2816,6 +2845,90 @@ export function cmComputedHealth(items: CMScheduleItem[], date: string): { healt
   const variance = actual - planned;
   const health: CMComputedHealth = variance > 3 ? "Ahead" : variance >= -3 ? "OnSchedule" : "Behind";
   return { health, planned, actual, variance };
+}
+
+/** How far along each `CMQuantityStatus` counts a delivered quantity toward
+ *  its BOQ line's cost progress — a claimed-but-not-yet-certified quantity
+ *  is real progress, just less certain than a certified one. */
+const QUANTITY_STATUS_WEIGHT: Record<CMQuantityStatus, number> = {
+  Reported: 0.25, Accepted: 0.5, Claimed: 0.75, Certified: 1,
+};
+
+/** Cost-weighted delivery progress across the active BOQ, joined to Site
+ *  Diary deliveries via the real `boq_item_id` FK (never the fragile
+ *  `boq_category` string match). Each BOQ line's contribution is capped at
+ *  its own planned quantity so over-delivery on one line can't offset
+ *  shortfall on another. Returns 0-100; 0 when there's no costed BOQ. */
+function cmBOQCostProgress(boqItems: CMBOQItem[], logs: CMDailyLog[]): number {
+  const deliveredWeightedById = new Map<string, number>();
+  for (const log of logs) {
+    for (const d of log.deliveries) {
+      if (!d.boq_item_id) continue;
+      const qty = parseFloat(d.quantity) || 0;
+      if (qty <= 0) continue;
+      const weight = QUANTITY_STATUS_WEIGHT[d.status ?? "Reported"] ?? QUANTITY_STATUS_WEIGHT.Reported;
+      deliveredWeightedById.set(d.boq_item_id, (deliveredWeightedById.get(d.boq_item_id) ?? 0) + qty * weight);
+    }
+  }
+  let earned = 0;
+  let planned = 0;
+  for (const b of boqItems) {
+    const lineValue = b.quantity * b.unit_cost;
+    if (lineValue <= 0) continue;
+    planned += lineValue;
+    const fraction = Math.min(1, (deliveredWeightedById.get(b.id) ?? 0) / b.quantity);
+    earned += lineValue * fraction;
+  }
+  return planned > 0 ? (earned / planned) * 100 : 0;
+}
+
+/** Weights for `cmProjectHealthScore`'s three components. Cost carries the
+ *  most weight since it's the hardest signal to fake (it requires real
+ *  delivered-and-accepted quantities, not just a manually-typed percent). */
+export const CM_HEALTH_SCORE_WEIGHTS = { cost: 0.4, schedule: 0.35, qualitySafety: 0.25 } as const;
+
+export type CMHealthBand = "Green" | "Amber" | "Red";
+
+export interface CMProjectHealthScore {
+  score: number;
+  band: CMHealthBand;
+  components: {
+    costProgress: { value: number; weight: number };
+    scheduleProgress: { value: number; weight: number };
+    qualitySafety: { value: number; weight: number };
+  };
+  varianceVsPlan: number;
+}
+
+/** The one real cross-module signal in the app: cost (from BOQ delivery
+ *  status), schedule (from `cmComputedHealth`), and quality/safety (from
+ *  open counts) combined into a single 0-100 score instead of three numbers
+ *  shown side by side. Quality/safety is a capped penalty so no single open
+ *  issue can zero out an otherwise healthy project. */
+export function cmProjectHealthScore(
+  boqItems: CMBOQItem[],
+  logs: CMDailyLog[],
+  scheduleItems: CMScheduleItem[],
+  openSafetyCount: number,
+  openQualityCount: number,
+  criticalSafetyCount: number,
+  date: string,
+): CMProjectHealthScore {
+  const costProgress = cmBOQCostProgress(boqItems, logs);
+  const { actual: scheduleProgress, variance } = cmComputedHealth(scheduleItems, date);
+  const qualitySafety = 100 - Math.min(50, criticalSafetyCount * 15 + openSafetyCount * 3 + openQualityCount * 2);
+  const w = CM_HEALTH_SCORE_WEIGHTS;
+  const score = Math.round(costProgress * w.cost + scheduleProgress * w.schedule + qualitySafety * w.qualitySafety);
+  const band: CMHealthBand = score >= 80 ? "Green" : score >= 60 ? "Amber" : "Red";
+  return {
+    score, band,
+    components: {
+      costProgress: { value: costProgress, weight: w.cost },
+      scheduleProgress: { value: scheduleProgress, weight: w.schedule },
+      qualitySafety: { value: qualitySafety, weight: w.qualitySafety },
+    },
+    varianceVsPlan: variance,
+  };
 }
 
 /** Schedule items across every project the signed-in user can see (RLS
