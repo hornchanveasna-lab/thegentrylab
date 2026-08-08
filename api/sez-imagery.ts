@@ -11,6 +11,15 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import { getBuiltUpStats } from "./lib/gee.js";
 
+/** Parses a free-text size field like "118 ha" or "1,000+ ha (expanded...)" into hectares. */
+function parseHectares(size: string | null): number | null {
+  if (!size) return null;
+  const match = size.replace(/,/g, "").match(/([\d.]+)\s*\+?\s*ha/i);
+  if (!match) return null;
+  const n = parseFloat(match[1]);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,10 +57,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { data: site, error: siteErr } = await supabase
       .from("sites")
-      .select("id, lat, lng, boundary")
+      .select("id, lat, lng, boundary, size, plot_size_min_ha")
       .eq("id", siteId)
       .single();
     if (siteErr || !site) return res.status(404).json({ error: "Site not found" });
+
+    const knownAreaHa = site.plot_size_min_ha ?? parseHectares(site.size);
 
     let stats;
     try {
@@ -59,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         lat: Number(site.lat),
         lng: Number(site.lng),
         boundary: site.boundary,
+        knownAreaHa,
       });
     } catch (e) {
       return res.status(502).json({ error: e instanceof Error ? e.message : "Satellite check failed" });

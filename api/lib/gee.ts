@@ -57,7 +57,17 @@ export interface BuiltUpStats {
 /** GeoJSON Polygon/MultiPolygon geometry, as stored in sites.boundary */
 type GeoJsonGeometry = { type: string; coordinates: unknown };
 
-const FALLBACK_BUFFER_M = 1500; // ~1.5km radius when no drawn boundary exists
+const DEFAULT_BUFFER_M = 1500; // used only when no boundary AND no known area
+
+/**
+ * Radius (m) of a circle whose area equals the given hectare figure.
+ * Lets the buffer fallback match a site's real known footprint size
+ * instead of guessing — still an approximation of *shape*, but the
+ * *area* is grounded in a sourced figure rather than invented.
+ */
+function radiusForAreaHa(areaHa: number): number {
+  return Math.sqrt((areaHa * 10000) / Math.PI);
+}
 
 /**
  * Computes built-up-area % and mean NDVI over the last 60 days of
@@ -67,12 +77,17 @@ export async function getBuiltUpStats(params: {
   lat: number;
   lng: number;
   boundary: GeoJsonGeometry | null;
+  knownAreaHa?: number | null;
 }): Promise<BuiltUpStats> {
   await initEarthEngine();
 
+  const bufferRadius = params.knownAreaHa && params.knownAreaHa > 0
+    ? radiusForAreaHa(params.knownAreaHa)
+    : DEFAULT_BUFFER_M;
+
   const geometry = params.boundary
     ? ee.Geometry(params.boundary as unknown as object)
-    : ee.Geometry.Point([params.lng, params.lat]).buffer(FALLBACK_BUFFER_M);
+    : ee.Geometry.Point([params.lng, params.lat]).buffer(bufferRadius);
 
   const end = new Date();
   const start = new Date(end.getTime() - 60 * 24 * 60 * 60 * 1000);
