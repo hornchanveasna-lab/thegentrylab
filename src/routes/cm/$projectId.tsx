@@ -371,7 +371,7 @@ function CMProjectPage() {
               <div className="grid grid-cols-4 gap-3">
                 {MODULE_SHORTCUTS.map((m) => (
                   <button key={m.to} onClick={() => goToModule(m.to)} className="flex flex-col items-center gap-1.5 text-white/70 hover:text-white transition-colors">
-                    <span className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundImage: "linear-gradient(135deg, rgba(255,81,0,0.16), rgba(255,179,71,0.08))" }}>{m.icon}</span>
+                    <span className="app-tile-icon w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{m.icon}</span>
                     <span className="text-[10px] text-center leading-tight">{t(m.labelKey)}</span>
                   </button>
                 ))}
