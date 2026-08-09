@@ -50,7 +50,18 @@
   --gradient-brand: linear-gradient(135deg, #ff7a3c 0%, #ff5100 55%, #d43e00 100%);
   --shadow-sm:     0 2px 10px rgba(0,0,0,0.35);
   --shadow-md:     0 10px 28px rgba(0,0,0,0.45);
+  --page-wash-dark:  linear-gradient(180deg, color-mix(in srgb, #ff5100 12%, #0a0a0b) 0%, #0a0a0b 55%, color-mix(in srgb, #ff5100 5%, #0a0a0b) 100%);
+  --page-wash-light: linear-gradient(180deg, color-mix(in srgb, #ff5100 10%, #faf7f2) 0%, #faf7f2 55%, color-mix(in srgb, #ff5100 4%, #faf7f2) 100%);
 }
+
+/* ── Full-page gradient wash — a soft, brand-tinted wash across the whole
+   page (not just card surfaces), resolved per theme. CMBrandColorSync
+   (__root.tsx) overrides --page-wash-dark/--page-wash-light as inline
+   style on :root once a signed-in account's brand color resolves — inline
+   style always wins over these defaults, so this pair just needs to name
+   the mapping, not the color itself. */
+:root, [data-theme="dark"] { --page-wash: var(--page-wash-dark); }
+[data-theme="light"]       { --page-wash: var(--page-wash-light); }
 
 /* ── Light mode tokens ───────────────────────────────────── */
 [data-theme="light"] {

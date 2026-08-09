@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
-import { SegmentedField, ProjectPicker, FieldSelect, useSelectedProject } from "@/components/cm/shared";
+import { SegmentedField, ProjectPicker, FieldSelect, useSelectedProject, inputCls } from "@/components/cm/shared";
 import { ProjectSettingsView, CompaniesSection } from "@/components/cm/ProjectSettingsView";
 import {
   useCMAccountSettings,
@@ -11,6 +11,7 @@ import {
   uploadCMCompanyLogo,
   useCMGlobalAuditLog,
   useCMAllProjectMembers,
+  type CMAccountSettings,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/settings")({
@@ -39,17 +40,75 @@ function Row({ children, onClick }: { children: React.ReactNode; onClick?: () =>
 
 const LANG_OPTIONS: CMLang[] = ["en", "km", "zh"];
 
-type SettingsTab = "app" | "project";
+/** Brand accent control — auto (extracted from the uploaded logo, applied
+ *  live app-wide by CMBrandColorSync in __root.tsx) or manual (a stored
+ *  hex the user picks, which always wins over extraction once set). */
+function BrandColorSection({ account, ownerId, onSaved }: {
+  account: CMAccountSettings | null | undefined; ownerId: string; onSaved: () => void;
+}) {
+  const { t } = useCMLang();
+  const mode = account?.brand_color_mode ?? "auto";
+  const [saving, setSaving] = useState(false);
 
-/** App Settings categories with no backing feature yet — shown as an honest
- *  placeholder (matching the same convention Project Settings already uses
- *  for "integrations") rather than fabricated controls. "auditLog" is not
- *  in this list — it has a real, working section below, since the data
- *  (cm_audit_log) already exists per-project and just needed aggregating. */
-const APP_PLACEHOLDER_KEYS = [
+  const setMode = async (m: "auto" | "manual") => {
+    setSaving(true);
+    try {
+      await upsertCMAccountSettings(ownerId, { brand_color_mode: m, brand_color: m === "manual" ? (account?.brand_color ?? "#ff5100") : account?.brand_color ?? null });
+      onSaved();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const setColor = async (hex: string) => {
+    await upsertCMAccountSettings(ownerId, { brand_color_mode: "manual", brand_color: hex });
+    onSaved();
+  };
+
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.brandColor")}</p>
+      <SegmentedField value={mode} onChange={setMode} disabled={saving}
+        options={[
+          { value: "auto" as const, label: t("settings.brandColorAuto") },
+          { value: "manual" as const, label: t("settings.brandColorManual") },
+        ]} />
+      {mode === "auto" && (
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mt-3">{t("settings.brandColorAutoHint")}</p>
+      )}
+      {mode === "manual" && (
+        <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {BRAND_COLOR_SWATCHES.map((hex) => (
+            <button key={hex} type="button" onClick={() => setColor(hex)}
+              className="w-8 h-8 rounded-full shrink-0 transition-transform active:scale-90"
+              style={{ backgroundColor: hex, boxShadow: account?.brand_color === hex ? "0 0 0 2px #0d0d0e, 0 0 0 4px currentColor" : undefined, color: hex }} />
+          ))}
+          <label className="w-8 h-8 rounded-full shrink-0 overflow-hidden relative border border-dashed border-white/20 flex items-center justify-center text-white/40 text-[14px]">
+            +
+            <input type="color" value={account?.brand_color ?? "#ff5100"} onChange={(e) => setColor(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer" />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type SettingsTab = "app" | "organization" | "project";
+
+/** Personal-only placeholder — things that belong to the signed-in person,
+ *  not the business. Everything company-wide moved to Organization below. */
+const APP_PLACEHOLDER_KEYS = ["notifications"] as const;
+
+/** Organization Settings categories with no backing feature yet — shown as
+ *  an honest placeholder (matching the same convention Project Settings
+ *  already uses for "integrations") rather than fabricated controls. */
+const ORG_PLACEHOLDER_KEYS = [
   "organizations", "masterData", "modules", "documentStandards",
-  "templates", "notifications", "integrations", "storage", "security", "subscription",
+  "templates", "integrations", "storage", "security", "subscription",
 ] as const;
+
+const BRAND_COLOR_SWATCHES = ["#ff5100", "#3b82f6", "#22c55e", "#a855f7", "#ef4444", "#06b6d4", "#f59e0b", "#ec4899"];
 
 /** Cross-project audit trail (App Settings → Audit Log). RLS already scopes
  *  cm_audit_log to rows this user can see, so this is a real aggregate view
@@ -208,7 +267,7 @@ function CMSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col font-sans">
+    <div className="min-h-screen text-white flex flex-col font-sans" style={{ background: "var(--page-wash)" }}>
       <div className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24 flex-1">
         <div className="flex items-center gap-3 mb-6">
           <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
@@ -239,6 +298,7 @@ function CMSettingsPage() {
           <SegmentedField
             options={[
               { value: "app", label: t("settings.appTab") },
+              { value: "organization", label: t("settings.organizationTab") },
               { value: "project", label: t("settings.projectTab") },
             ]}
             value={tab}
@@ -246,11 +306,51 @@ function CMSettingsPage() {
           />
         </div>
 
-        {tab === "app" && showAuditLog && user && (
+        {tab === "app" && (
+          <>
+            <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.language")}</p>
+              <SegmentedField
+                options={LANG_OPTIONS.map((l) => ({ value: l, label: t(`settings.lang.${l}`) }))}
+                value={lang}
+                onChange={handleLangChange}
+              />
+            </div>
+
+            <div className="rounded-2xl overflow-hidden mb-5">
+              <Row onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
+                <span className="text-[13px] text-white/85">{t("settings.appearance")}</span>
+                <span className="text-[12px] text-white/40 font-mono uppercase tracking-widest">{theme === "dark" ? t("settings.dark") : t("settings.light")}</span>
+              </Row>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden mb-5">
+              {APP_PLACEHOLDER_KEYS.map((k) => (
+                <Row key={k}>
+                  <div className="min-w-0">
+                    <p className="text-[13px] text-white/85">{t(`appSettingsNav.${k}`)}</p>
+                    <p className="text-[10px] text-white/30 mt-0.5">{t("settingsNav.notBuiltYet")}</p>
+                  </div>
+                </Row>
+              ))}
+            </div>
+
+            <div className="rounded-2xl overflow-hidden mb-5">
+              <Row>
+                <a href="https://thegentrylab.com" className="text-[13px] text-white/85">
+                  {t("settings.gentryLabHome")}
+                </a>
+                <span className="text-white/25">↗</span>
+              </Row>
+            </div>
+          </>
+        )}
+
+        {tab === "organization" && showAuditLog && user && (
           <GlobalAuditLogSection userId={user.id} projects={projects} onBack={() => setShowAuditLog(false)} />
         )}
 
-        {tab === "app" && !showAuditLog && (
+        {tab === "organization" && !showAuditLog && user && (
           <>
             <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
               <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.companyBranding")}</p>
@@ -272,7 +372,7 @@ function CMSettingsPage() {
               <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">{t("settings.companyLogoHint")}</p>
               <div className="flex gap-2">
                 <input
-                  className="flex-1 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+                  className={inputCls}
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   placeholder={t("settings.companyNamePlaceholder")}
@@ -280,27 +380,18 @@ function CMSettingsPage() {
                 />
                 <button onClick={handleSaveName} disabled={savingName}
                   className="px-4 py-2 rounded-xl text-[11px] font-mono uppercase tracking-widest text-black font-bold disabled:opacity-40"
-                  style={{ backgroundColor: "#ff5100" }}>
+                  style={{ backgroundImage: "var(--gradient-brand)" }}>
                   {savingName ? "…" : t("common.save")}
                 </button>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.language")}</p>
-              <SegmentedField
-                options={LANG_OPTIONS.map((l) => ({ value: l, label: t(`settings.lang.${l}`) }))}
-                value={lang}
-                onChange={handleLangChange}
-              />
-            </div>
+            <BrandColorSection account={account} ownerId={user.id} onSaved={invalidateAccount} />
 
-            {user && (
-              <div className="mb-5">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2 px-1">{t("appSettingsNav.companies")}</p>
-                <CompaniesSection ownerId={user.id} canCreate canEdit />
-              </div>
-            )}
+            <div className="mb-5">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2 px-1">{t("appSettingsNav.companies")}</p>
+              <CompaniesSection ownerId={user.id} canCreate canEdit />
+            </div>
 
             <div className="rounded-2xl overflow-hidden mb-5">
               <Row>
@@ -327,7 +418,7 @@ function CMSettingsPage() {
             </div>
 
             <div className="rounded-2xl overflow-hidden mb-5">
-              {APP_PLACEHOLDER_KEYS.map((k) => (
+              {ORG_PLACEHOLDER_KEYS.map((k) => (
                 <Row key={k}>
                   <div className="min-w-0">
                     <p className="text-[13px] text-white/85">{t(`appSettingsNav.${k}`)}</p>
@@ -337,22 +428,6 @@ function CMSettingsPage() {
                   </div>
                 </Row>
               ))}
-            </div>
-
-            <div className="rounded-2xl overflow-hidden mb-5">
-              <Row onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
-                <span className="text-[13px] text-white/85">{t("settings.appearance")}</span>
-                <span className="text-[12px] text-white/40 font-mono uppercase tracking-widest">{theme === "dark" ? t("settings.dark") : t("settings.light")}</span>
-              </Row>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden mb-5">
-              <Row>
-                <a href="https://thegentrylab.com" className="text-[13px] text-white/85">
-                  {t("settings.gentryLabHome")}
-                </a>
-                <span className="text-white/25">↗</span>
-              </Row>
             </div>
           </>
         )}

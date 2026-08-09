@@ -17,9 +17,9 @@ import {
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import { type ResolvedSetting } from "@/lib/cm-settings";
 
-export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[#ff5100]/70 focus:ring-2 focus:ring-[#ff5100]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)] transition-all";
+export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[color:var(--color-brand-accent)]/70 focus:ring-2 focus:ring-[color:var(--color-brand-accent)]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)] transition-all";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
-const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 hover:bg-white/[0.08] rounded-xl border border-white/15 px-3.5 py-3 text-[13px] text-white disabled:opacity-40 transition-all focus:bg-white/[0.07] focus:border-[#ff5100]/70 focus:ring-2 focus:ring-[#ff5100]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)]";
+const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 hover:bg-white/[0.08] rounded-xl border border-white/15 px-3.5 py-3 text-[13px] text-white disabled:opacity-40 transition-all focus:bg-white/[0.07] focus:border-[color:var(--color-brand-accent)]/70 focus:ring-2 focus:ring-[color:var(--color-brand-accent)]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)]";
 
 export interface FieldSelectOption<T extends string> {
   value: T;
@@ -161,7 +161,7 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10">{t("common.cancel")}</button>
           <button onClick={onConfirm}
             className={`flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest ${destructive ? "text-red-400 bg-red-500/10 hover:bg-red-500/15" : "text-black"}`}
-            style={destructive ? undefined : { backgroundColor: "#ff5100" }}>
+            style={destructive ? undefined : { backgroundImage: "var(--gradient-brand)" }}>
             {confirmLabel}
           </button>
         </div>
@@ -224,8 +224,8 @@ export function CircularProgress({ value, size = 96, strokeWidth = 8, gradient =
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#ffb347" />
-            <stop offset="100%" stopColor={color ?? "#ff5100"} />
+            <stop offset="0%" style={{ stopColor: color ? `${color}99` : "color-mix(in srgb, var(--color-brand-accent) 65%, white)" }} />
+            <stop offset="100%" style={{ stopColor: color ?? "var(--color-brand-accent)" }} />
           </linearGradient>
         </defs>
         <circle cx={c} cy={c} r={r} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-white/8" />
@@ -1151,7 +1151,7 @@ export function RecordActionsMenu({ items }: { items: RecordMenuItem[] }) {
  *  record-detail pages that offer Edit/Delete. */
 export function FormPage({ title, backTo, menu, children }: { title: string; backTo: string; menu?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to={backTo} />
@@ -1169,7 +1169,7 @@ export function FormPage({ title, backTo, menu, children }: { title: string; bac
  *  children are a vertical stack of `Card`s rather than a form. */
 export function ModuleSettingsPage({ title, backTo, children }: { title: string; backTo: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to={backTo} />
@@ -1187,7 +1187,7 @@ export function FAB({ onClick, label }: { onClick: () => void; label: string }) 
       onClick={onClick}
       aria-label={label}
       className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform z-30"
-      style={{ backgroundColor: "#ff5100", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+      style={{ backgroundImage: "var(--gradient-brand)", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
     >
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
     </button>
@@ -1558,7 +1558,7 @@ export function QuickUploadButton({ label, onFilesSelected }: { label: string; o
     <>
       <button type="button" onClick={() => inputRef.current?.click()}
         className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98]"
-        style={{ backgroundColor: "#ff5100" }}>
+        style={{ backgroundImage: "var(--gradient-brand)" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
         </svg>
@@ -1695,7 +1695,7 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
             style={
               opt.color
                 ? { color: opt.color, boxShadow: active ? `inset 0 0 0 1.5px ${opt.color}` : undefined }
-                : active ? { backgroundColor: "#ff5100", color: "#000" } : undefined
+                : active ? { backgroundImage: "var(--gradient-brand)", color: "#000" } : undefined
             }
           >
             {opt.icon}

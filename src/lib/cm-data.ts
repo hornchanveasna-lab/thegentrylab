@@ -4287,6 +4287,12 @@ export interface CMAccountSettings {
   owner_id: string;
   company_name: string | null;
   company_logo_url: string | null;
+  /** Resolved brand accent, hex. In "auto" mode this is ignored in favor of
+   *  live extraction from company_logo_url (see extractDominantColor) — it
+   *  only takes effect in "manual" mode. Kept as a stored column (not just
+   *  derived) so a manual choice survives a logo change. */
+  brand_color: string | null;
+  brand_color_mode: "auto" | "manual";
   language: "en" | "km" | "zh";
   projects_view: "card" | "list";
   photo_show_company_logo: boolean;
@@ -4314,6 +4320,60 @@ export function useCMAccountSettings(userId: string | undefined) {
 export async function upsertCMAccountSettings(ownerId: string, patch: Partial<Omit<CMAccountSettings, "owner_id" | "created_at" | "updated_at">>) {
   const { error } = await db().from("cm_account_settings").upsert({ owner_id: ownerId, ...patch }, { onConflict: "owner_id" });
   if (error) throw error;
+}
+
+/** Samples an uploaded logo for its most vivid color, for the "auto" brand
+ *  color mode — buckets pixels by hue (skipping near-white/near-black/
+ *  near-gray ones, which are almost always background or line art rather
+ *  than the brand mark itself) and returns the hue bucket with the most
+ *  saturation-weighted coverage. Returns null on load/CORS failure or a
+ *  fully grayscale logo, so the caller can fall back to the default accent
+ *  instead of a wrong color. */
+export async function extractDominantColor(logoUrl: string): Promise<string | null> {
+  const img = await loadExternalImage(logoUrl);
+  if (!img) return null;
+  const size = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, size, size);
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, size, size).data;
+  } catch {
+    return null;
+  }
+  const buckets = new Map<number, { r: number; g: number; b: number; weight: number }>();
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+    if (a < 128) continue;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    const lightness = (max + min) / 2 / 255;
+    const sat = max === min ? 0 : (max - min) / (255 - Math.abs(max + min - 255));
+    if (sat < 0.25 || lightness < 0.12 || lightness > 0.9) continue;
+    let hue = 0;
+    const d = max - min;
+    if (max === r) hue = ((g - b) / d + (g < b ? 6 : 0));
+    else if (max === g) hue = (b - r) / d + 2;
+    else hue = (r - g) / d + 4;
+    hue *= 60;
+    const bucket = Math.round(hue / 15) * 15;
+    const entry = buckets.get(bucket) ?? { r: 0, g: 0, b: 0, weight: 0 };
+    entry.r += r * sat;
+    entry.g += g * sat;
+    entry.b += b * sat;
+    entry.weight += sat;
+    buckets.set(bucket, entry);
+  }
+  let best: { r: number; g: number; b: number; weight: number } | null = null;
+  for (const entry of buckets.values()) {
+    if (!best || entry.weight > best.weight) best = entry;
+  }
+  if (!best || best.weight === 0) return null;
+  const toHex = (v: number) => Math.round(v / best!.weight).toString(16).padStart(2, "0");
+  return `#${toHex(best.r)}${toHex(best.g)}${toHex(best.b)}`;
 }
 
 export async function uploadCMCompanyLogo(ownerId: string, file: File): Promise<string> {

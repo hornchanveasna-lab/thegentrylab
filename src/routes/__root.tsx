@@ -10,7 +10,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { AuthProvider } from "@/lib/auth";
 import { AuthCMProvider, useAuthCM } from "@/lib/auth-cm";
 import { CMLangProvider, useCMLang } from "@/lib/cm-i18n";
-import { useCMAccountSettings, makeSquareIconDataUrl } from "@/lib/cm-data";
+import { useCMAccountSettings, makeSquareIconDataUrl, extractDominantColor } from "@/lib/cm-data";
 import {
   listOutboxJobs,
   subscribeOutbox,
@@ -122,6 +122,47 @@ function CMAppIconSync() {
   return null;
 }
 
+const CM_DEFAULT_ACCENT = "#ff5100";
+
+/** Pushes a resolved brand color onto :root as CSS custom properties that
+ *  styles.css's --gradient-brand/--page-wash rules read — inline style on
+ *  the root element always wins over any stylesheet selector, so this
+ *  overrides the static per-theme defaults uniformly without needing to
+ *  know which theme is active. */
+function applyCMBrandColor(hex: string) {
+  const root = document.documentElement.style;
+  root.setProperty("--color-brand-accent", hex);
+  root.setProperty("--gradient-brand", `linear-gradient(135deg, color-mix(in srgb, ${hex} 65%, white) 0%, ${hex} 55%, color-mix(in srgb, ${hex} 78%, black) 100%)`);
+  root.setProperty("--page-wash-dark", `linear-gradient(180deg, color-mix(in srgb, ${hex} 12%, #0a0a0b) 0%, #0a0a0b 55%, color-mix(in srgb, ${hex} 5%, #0a0a0b) 100%)`);
+  root.setProperty("--page-wash-light", `linear-gradient(180deg, color-mix(in srgb, ${hex} 10%, #faf7f2) 0%, #faf7f2 55%, color-mix(in srgb, ${hex} 4%, #faf7f2) 100%)`);
+}
+
+/** Resolves the CM app's brand accent — a manual override always wins when
+ *  set, otherwise the color is auto-extracted from the company logo,
+ *  otherwise the default orange — and pushes it onto :root so the whole
+ *  app's gradients/accents follow the signed-in account's own branding. */
+function CMBrandColorSync() {
+  const { user } = useAuthCM();
+  const { data: account } = useCMAccountSettings(user?.id);
+  const manualColor = account?.brand_color_mode === "manual" ? account.brand_color : null;
+  const logoUrl = account?.company_logo_url;
+
+  useEffect(() => {
+    if (!account) return;
+    let cancelled = false;
+    (async () => {
+      const extracted = !manualColor && logoUrl ? await extractDominantColor(logoUrl) : null;
+      if (cancelled) return;
+      applyCMBrandColor(manualColor || extracted || CM_DEFAULT_ACCENT);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [account, manualColor, logoUrl]);
+
+  return null;
+}
+
 /** Small persistent indicator for the offline outbox (Site Diary + Photos
  *  captures made with no network). Hidden while the queue is empty; shows a
  *  "syncing" pill while jobs are pending/in-flight, or a "failed" pill once
@@ -198,6 +239,7 @@ function RootComponent() {
           <QueryClientProvider client={queryClient}>
             <Outlet />
             {isCMApp && <CMAppIconSync />}
+            {isCMApp && <CMBrandColorSync />}
             {isCMApp && <CMSyncStatusBadge />}
             {!isCMApp && (
               <Suspense fallback={null}>

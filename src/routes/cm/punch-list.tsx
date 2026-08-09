@@ -50,6 +50,20 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "
 const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Ready for Check", "Done"];
 const PRIORITY_OPTIONS: TaskPriority[] = ["Low", "Medium", "High"];
 
+const ip = { width: 13, height: 13, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+const STATUS_ICON: Record<TaskStatus, React.ReactNode> = {
+  "To Do": <svg {...ip}><circle cx="12" cy="12" r="8" /></svg>,
+  "In Progress": <svg {...ip}><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>,
+  Blocked: <svg {...ip}><circle cx="12" cy="12" r="8" /><path d="M8 8l8 8" /></svg>,
+  "Ready for Check": <svg {...ip}><circle cx="12" cy="12" r="8" /><path d="M8.5 12l2.5 2.5 4.5-5" /></svg>,
+  Done: <svg {...ip} fill="currentColor" stroke="none"><circle cx="12" cy="12" r="8" /><path d="M8.5 12.2l2.3 2.3 4.7-4.9" stroke="#0a0a0b" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>,
+};
+const PRIORITY_ICON: Record<TaskPriority, React.ReactNode> = {
+  Low: <svg {...ip}><path d="M12 6v12M8 14l4 4 4-4" /></svg>,
+  Medium: <svg {...ip}><path d="M6 9h12M6 15h12" /></svg>,
+  High: <svg {...ip}><path d="M12 18V6M8 10l4-4 4 4" /></svg>,
+};
+
 export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, defaultPriority, documentId, backTo, onCreated }: {
   ownerId: string; projectId: string; existing?: CMTask; canApprove: boolean; defaultPriority?: TaskPriority;
   /** Attaches a newly created item to this specific Punch List Document
@@ -126,11 +140,11 @@ export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, de
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5">
                 <span className={labelCls}>{t("punchList.status")}</span>
-                <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`) }))} />
+                <SegmentedField value={status} onChange={setStatus} disabled={saving} options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`), icon: STATUS_ICON[s], color: STATUS_COLOR[s] }))} />
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className={labelCls}>{t("punchList.priority")}</span>
-                <SegmentedField value={priority} onChange={setPriority} disabled={saving} options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`) }))} />
+                <SegmentedField value={priority} onChange={setPriority} disabled={saving} options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: t(`taskPriority.${p}`), icon: PRIORITY_ICON[p], color: PRIORITY_COLOR[p] }))} />
               </label>
             </div>
           </div>
@@ -639,7 +653,7 @@ function CMPunchListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/punch-list/settings"
           quickSettings={projectId ? <PunchListQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
