@@ -133,8 +133,8 @@ function applyCMBrandColor(hex: string) {
   const root = document.documentElement.style;
   root.setProperty("--color-brand-accent", hex);
   root.setProperty("--gradient-brand", `linear-gradient(135deg, color-mix(in srgb, ${hex} 65%, white) 0%, ${hex} 55%, color-mix(in srgb, ${hex} 78%, black) 100%)`);
-  root.setProperty("--page-wash-dark", `linear-gradient(180deg, color-mix(in srgb, ${hex} 12%, #0a0a0b) 0%, #0a0a0b 55%, color-mix(in srgb, ${hex} 5%, #0a0a0b) 100%)`);
-  root.setProperty("--page-wash-light", `linear-gradient(180deg, color-mix(in srgb, ${hex} 10%, #faf7f2) 0%, #faf7f2 55%, color-mix(in srgb, ${hex} 4%, #faf7f2) 100%)`);
+  root.setProperty("--page-wash-dark", `linear-gradient(180deg, color-mix(in srgb, ${hex} 26%, #0a0a0b) 0%, #0a0a0b 55%, color-mix(in srgb, ${hex} 14%, #0a0a0b) 100%)`);
+  root.setProperty("--page-wash-light", `linear-gradient(180deg, color-mix(in srgb, ${hex} 20%, #faf7f2) 0%, #faf7f2 55%, color-mix(in srgb, ${hex} 9%, #faf7f2) 100%)`);
 }
 
 /** Resolves the CM app's brand accent — a manual override always wins when
@@ -231,6 +231,14 @@ function RootComponent() {
   const isCMApp =
     (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) ||
     pathname.startsWith("/cm");
+
+  // Marks <html> so styles.css can scope CM-only rules (like its gradient
+  // page background) without touching the main marketing site, which reuses
+  // several of the same literal utility classes (e.g. bg-[#0a0a0b]) for its
+  // own flat-color page backgrounds.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-app", isCMApp ? "cm" : "site");
+  }, [isCMApp]);
 
   return (
     <AuthProvider>
