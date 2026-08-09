@@ -22,6 +22,7 @@ import {
   mergeDuplicateCMDailyLogs,
   flattenCMDailyActivityPhotos,
   updateCMDailyLog,
+  updateCMScheduleItem,
   deleteCMDailyLog,
   stampAndUploadCMPhotos,
   useActiveCMBOQItems,
@@ -44,6 +45,8 @@ import {
   type CMVisitorKind,
   type CMDelayRow,
   type CMDelayCause,
+  type CMActivityProgressRow,
+  type CMScheduleItem,
   type CMPhotoModule,
   type Discipline,
 } from "@/lib/cm-data";
@@ -103,6 +106,8 @@ type VisitorDraft = CMVisitorRow & { _pendingFiles?: File[] };
 const EMPTY_DELIVERY: DeliveryDraft = { material: "", quantity: "", unit: null, supplier: null, boq_item_id: null, photos: [], photo_thumbs: [], status: "Reported", certified_quantity: null };
 const EMPTY_VISITOR: VisitorDraft = { name: "", organization: null, kind: "visitor", note: "", photos: [], photo_thumbs: [] };
 const EMPTY_DELAY: CMDelayRow = { cause: "Weather", description: "", hours_lost: 0 };
+type ActivityProgressDraft = { wbs_node_id: string; progress_pct: string };
+const EMPTY_ACTIVITY_PROGRESS: ActivityProgressDraft = { wbs_node_id: "", progress_pct: "" };
 
 function totalManpower(rows: CMManpowerRow[]) {
   return rows.reduce((sum, r) => sum + (r.count || 0), 0);
@@ -382,17 +387,19 @@ async function resolveDraftRowPhotos<T extends { photos?: string[] | null; photo
   }));
 }
 
-type LogSectionKey = "weather" | "manpower" | "deliveries" | "visitors" | "delays" | "notes";
+type LogSectionKey = "weather" | "manpower" | "progress" | "deliveries" | "visitors" | "delays" | "notes";
 
 export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCreated }: {
   ownerId: string; projectId: string; existing?: CMDailyLog; logs?: (CMDailyLog | CMDailyLogWithProject)[];
   backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
+  const queryClient = useQueryClient();
   const { data: boqItems } = useActiveCMBOQItems(projectId);
   const { data: roster } = useCMManpowerRoster(projectId);
   const { data: subcontractors } = useCMProjectSubcontractors(projectId);
   const { data: locations } = useCMProjectLocations(projectId);
+  const { data: scheduleItems } = useCMScheduleItems(projectId);
 
   // Company/trade suggestions for the reused Manpower quick-entry sheet,
   // sourced the same way as the Manpower module's own picker options.
@@ -429,6 +436,9 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
   const [deliveries, setDeliveries] = useState<DeliveryDraft[]>(existing?.deliveries ?? []);
   const [visitors, setVisitors] = useState<VisitorDraft[]>(existing?.visitors ?? []);
   const [delays, setDelays] = useState<CMDelayRow[]>(existing?.delays ?? []);
+  const [activityUpdates, setActivityUpdates] = useState<ActivityProgressDraft[]>(
+    (existing?.activity_updates ?? []).map((r) => ({ wbs_node_id: r.wbs_node_id, progress_pct: String(r.progress_pct) })),
+  );
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -457,6 +467,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
     setDeliveries(match.deliveries ?? []);
     setVisitors(match.visitors ?? []);
     setDelays(match.delays ?? []);
+    setActivityUpdates((match.activity_updates ?? []).map((r) => ({ wbs_node_id: r.wbs_node_id, progress_pct: String(r.progress_pct) })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [logDate, logs, existing]);
 
@@ -473,6 +484,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
   const TAB_OPTIONS = [
     { value: "weather" as const, label: t("siteDiary.weather"), badge: weather ? t(`weather.${weather}`) : undefined },
     { value: "manpower" as const, label: t("siteDiary.manpower"), badge: totalManpower(manpower) || undefined },
+    { value: "progress" as const, label: t("siteDiary.progress"), badge: activityUpdates.filter((r) => r.wbs_node_id).length || undefined },
     { value: "deliveries" as const, label: t("siteDiary.deliveries"), badge: deliveries.length || undefined },
     { value: "visitors" as const, label: t("siteDiary.visitors"), badge: visitors.length || undefined },
     { value: "delays" as const, label: t("siteDiary.delays"), badge: delays.length || undefined },
@@ -494,6 +506,9 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
       // above already found, the form's local state is now the full desired
       // state either way — no more separate merge-vs-replace branches.
       const log = existing ?? await findOrCreateCMDailyLog(ownerId, projectId, logDate, {});
+      const resolvedActivityUpdates: CMActivityProgressRow[] = activityUpdates
+        .filter((r) => r.wbs_node_id)
+        .map((r) => ({ wbs_node_id: r.wbs_node_id, progress_pct: Math.max(0, Math.min(100, Number(r.progress_pct) || 0)) }));
       await updateCMDailyLog(log.id, {
         weather: weather || null,
         temperature_c: temperature ? Number(temperature) : null,
@@ -509,9 +524,23 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
         deliveries: resolvedDeliveries,
         visitors: resolvedVisitors,
         delays: delays.filter((r) => r.description.trim()),
+        activity_updates: resolvedActivityUpdates,
         photos: [...log.photos, ...uploadedTopPhotos.map((u) => u.url)],
         photo_thumbs: [...log.photo_thumbs, ...uploadedTopPhotos.map((u) => u.thumbUrl)],
       });
+      // Push today's reported percent onto the actual Schedule/WBS node so
+      // the Estimated-vs-Actual Gantt reflects what was logged on site —
+      // the diary's own `activity_updates` above is just the audit trail.
+      if (resolvedActivityUpdates.length > 0) {
+        await Promise.all(resolvedActivityUpdates.map((r) => {
+          const node = (scheduleItems ?? []).find((s) => s.id === r.wbs_node_id);
+          const patch: Partial<CMScheduleItem> = { actual_percent: r.progress_pct };
+          if (node && !node.actual_start) patch.actual_start = logDate;
+          if (r.progress_pct >= 100 && node && !node.actual_end) patch.actual_end = logDate;
+          return updateCMScheduleItem(r.wbs_node_id, patch);
+        }));
+        queryClient.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
+      }
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save diary entry");
@@ -590,6 +619,44 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
             </div>
             <button type="button" onClick={() => setManpowerSheet({ editIndex: null })} disabled={saving}
               className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("siteDiary.addManpower")}</button>
+          </div>
+        )}
+
+        {activeTab === "progress" && (
+          <div className="flex flex-col gap-4">
+            {(scheduleItems ?? []).length === 0 && <p className="text-white/30 text-[12px]">{t("siteDiary.noScheduleActivities")}</p>}
+            <RepeatingRows
+              label={t("siteDiary.activityUpdates")}
+              addLabel={t("siteDiary.addActivityUpdate")}
+              rows={activityUpdates}
+              onChange={setActivityUpdates}
+              emptyRow={EMPTY_ACTIVITY_PROGRESS}
+              renderRow={(row, update) => {
+                const node = (scheduleItems ?? []).find((s) => s.id === row.wbs_node_id);
+                return (
+                  <div className="flex flex-col gap-2">
+                    <FieldSelect
+                      value={row.wbs_node_id}
+                      onChange={(id) => {
+                        const item = (scheduleItems ?? []).find((s) => s.id === id);
+                        update({ wbs_node_id: id, progress_pct: item ? String(item.actual_percent) : "" });
+                      }}
+                      placeholder={t("siteDiary.selectActivity")}
+                      options={(scheduleItems ?? []).map((s) => ({ value: s.id, label: `${s.group_label} / ${s.title}` }))}
+                      disabled={saving}
+                    />
+                    {node && (
+                      <p className="text-[10px] text-white/30">{t("siteDiary.currentProgress")}: {node.actual_percent}%</p>
+                    )}
+                    <label className="flex flex-col gap-1.5">
+                      <span className={labelCls}>{t("siteDiary.todaysProgress")}</span>
+                      <input type="number" min={0} max={100} className={inputCls} value={row.progress_pct}
+                        onChange={(e) => update({ progress_pct: e.target.value })} disabled={saving || !row.wbs_node_id} />
+                    </label>
+                  </div>
+                );
+              }}
+            />
           </div>
         )}
 

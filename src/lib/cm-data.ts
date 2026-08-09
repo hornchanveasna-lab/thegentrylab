@@ -172,6 +172,17 @@ export interface CMDelayRow {
   hours_lost: number;
 }
 
+/** Links a Site Diary entry to a real Schedule/WBS activity node and the
+ *  actual-percent-complete reported that day — the "Activities" field's
+ *  free text alone can't move a schedule bar, this can. Saving a row also
+ *  patches the referenced node's `actual_percent` (and, on first report,
+ *  `actual_start`) so Schedule's Estimated-vs-Actual Gantt reflects what
+ *  was logged on site. */
+export interface CMActivityProgressRow {
+  wbs_node_id: string;
+  progress_pct: number;
+}
+
 export interface CMDailyLog {
   id: string;
   project_id: string;
@@ -195,6 +206,7 @@ export interface CMDailyLog {
   deliveries: CMDeliveryRow[];
   visitors: CMVisitorRow[];
   delays: CMDelayRow[];
+  activity_updates: CMActivityProgressRow[];
   photos: string[];
   photo_thumbs: string[];
   created_at: string;
@@ -438,6 +450,7 @@ export async function mergeDuplicateCMDailyLogs(logs: CMDailyLog[]): Promise<boo
       deliveries: sorted.flatMap((l) => l.deliveries),
       visitors: sorted.flatMap((l) => l.visitors),
       delays: sorted.flatMap((l) => l.delays),
+      activity_updates: sorted.flatMap((l) => l.activity_updates),
       weather: latestNonNull((l) => l.weather),
       temperature_c: latestNonNull((l) => l.temperature_c),
       progress_pct: latestNonNull((l) => l.progress_pct),
