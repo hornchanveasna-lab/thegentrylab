@@ -206,6 +206,12 @@ export interface CMTask {
   project_id: string;
   owner_id: string;
   doc_number: string | null;
+  /** The single Punch List Document ("one document to send in and out")
+   *  this item belongs to — every item raised on the same project/day
+   *  shares one document_id, and the document (not the item) carries the
+   *  doc_number and the Issue/Close workflow. Null on items created before
+   *  documents existed. */
+  document_id: string | null;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -509,13 +515,130 @@ export function useAllCMTasks(userId: string | undefined) {
   });
 }
 
+/* ── Punch List Documents ─────────────────────────────────
+ *  "One document to send in and out": every punch item raised on a given
+ *  project/day shares a single Punch List Document, which carries the one
+ *  doc_number and its own Draft → Issued → Closed workflow — Issued means
+ *  it's gone out to the contractor, Closed means it's come back. Individual
+ *  cm_tasks rows are untouched (own id, status, photos, comments) so
+ *  everything already built on them keeps working; they just belong to a
+ *  document via document_id. */
+export type CMPunchListDocStatus = "Draft" | "Issued" | "Closed";
+
+export interface CMPunchListDocument {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  doc_number: string | null;
+  doc_date: string;
+  status: CMPunchListDocStatus;
+  issued_at: string | null;
+  issued_by: string | null;
+  closed_at: string | null;
+  closed_by: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMPunchListDocuments(projectId: string | undefined) {
+  return useQuery<CMPunchListDocument[]>({
+    queryKey: ["cm_punch_list_documents", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_punch_list_documents").select("*").eq("project_id", projectId).order("doc_date", { ascending: false });
+      if (error) throw error;
+      return data as CMPunchListDocument[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export interface CMPunchListDocumentWithProject extends CMPunchListDocument {
+  projectName: string;
+}
+
+/** Punch List's "All Projects" filter for documents — same cross-project
+ *  pattern as useAllCMTasks. */
+export function useAllCMPunchListDocuments(userId: string | undefined) {
+  return useQuery<CMPunchListDocumentWithProject[]>({
+    queryKey: ["cm_all_punch_list_documents", userId],
+    enabled: !!userId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_punch_list_documents").select("*, cm_projects(name)").order("doc_date", { ascending: false });
+      if (error) throw error;
+      return (data as unknown as (CMPunchListDocument & { cm_projects: { name: string } | null })[]).map((r) => {
+        const { cm_projects, ...doc } = r;
+        return { ...doc, projectName: cm_projects?.name ?? "Untitled project" };
+      });
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCMPunchListDocument(id: string | undefined) {
+  return useQuery<CMPunchListDocument | null>({
+    queryKey: ["cm_punch_list_document", id],
+    enabled: !!id && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_punch_list_documents").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data as CMPunchListDocument | null;
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+/** Finds (or creates) the one Punch List Document for a project/day —
+ *  mirrors findOrCreateCMDailyLog's find-or-create pattern for Site Diary.
+ *  The unique (project_id, doc_date) constraint means a losing concurrent
+ *  insert just refetches the winner rather than failing the capture. */
+export async function findOrCreateCMPunchListDocument(ownerId: string, projectId: string, docDate: string): Promise<CMPunchListDocument> {
+  const { data: existing } = await db().from("cm_punch_list_documents").select("*").eq("project_id", projectId).eq("doc_date", docDate).maybeSingle();
+  if (existing) return existing as CMPunchListDocument;
+
+  const docNumber = await generateCMDocNumberDaily(projectId, "punch_list", "PL", docDate);
+  const { data, error } = await db().from("cm_punch_list_documents")
+    .insert({ owner_id: ownerId, project_id: projectId, doc_date: docDate, doc_number: docNumber })
+    .select().single();
+  if (error) {
+    const { data: winner } = await db().from("cm_punch_list_documents").select("*").eq("project_id", projectId).eq("doc_date", docDate).maybeSingle();
+    if (winner) return winner as CMPunchListDocument;
+    throw error;
+  }
+  return data as CMPunchListDocument;
+}
+
+/** Sends the document out to the contractor — items can still be worked
+ *  through, but the document itself is now "in flight". */
+export async function issueCMPunchListDocument(id: string, projectId: string, actorId: string, docNumber: string | null) {
+  const { error } = await db().from("cm_punch_list_documents")
+    .update({ status: "Issued", issued_at: new Date().toISOString(), issued_by: actorId }).eq("id", id);
+  if (error) throw error;
+  logCMActivity(projectId, actorId, "issued", "punch_list_document", id, { doc_number: docNumber });
+}
+
+/** Marks the document as returned/received — the "sent in" half of the
+ *  round trip. */
+export async function closeCMPunchListDocument(id: string, projectId: string, actorId: string, docNumber: string | null) {
+  const { error } = await db().from("cm_punch_list_documents")
+    .update({ status: "Closed", closed_at: new Date().toISOString(), closed_by: actorId }).eq("id", id);
+  if (error) throw error;
+  logCMActivity(projectId, actorId, "closed", "punch_list_document", id, { doc_number: docNumber });
+}
+
 export async function createCMTask(
   ownerId: string,
   projectId: string,
   input: Pick<CMTask, "title"> & Partial<Pick<CMTask, "description" | "status" | "priority" | "location_id" | "assignee" | "due_date">>,
+  /** Attaches the item to this specific Punch List Document instead of
+   *  resolving (or creating) today's document for the project — used when
+   *  adding an item from inside an already-open, not-necessarily-today
+   *  document. */
+  documentId?: string,
 ) {
-  const docNumber = await generateCMDocNumberDaily(projectId, "punch_list", "PL", new Date().toISOString().slice(0, 10));
-  const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
+  const docId = documentId ?? (await findOrCreateCMPunchListDocument(ownerId, projectId, new Date().toISOString().slice(0, 10))).id;
+  const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, document_id: docId, ...input }).select().single();
   if (error) throw error;
   logCMActivity(projectId, ownerId, "created", "punch_list", data.id, { title: data.title });
   return data as CMTask;
