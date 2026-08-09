@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
@@ -204,6 +205,132 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
           onConfirm={() => { setConfirmingDelete(false); deleteCMBOQItem(item.id).then(onChanged); }} onCancel={() => setConfirmingDelete(false)} />
       )}
     </div>
+  );
+}
+
+/** A small fixed tint ramp of the single dynamic brand accent — mirrors the
+ *  main site's own cost-breakdown donut (`stageContent.ts`'s `ORANGE` ramp)
+ *  instead of an arbitrary rainbow palette, so the largest category reads
+ *  strongest and smaller slices fade toward pale without introducing new
+ *  hues. Cycles if a BOQ has more categories than stops. */
+const BOQ_TINT_STOPS = [100, 82, 66, 52, 40, 30];
+function boqCategoryColor(index: number): string {
+  return `color-mix(in srgb, var(--color-brand-accent) ${BOQ_TINT_STOPS[index % BOQ_TINT_STOPS.length]}%, white)`;
+}
+
+/** Category icon set — hand-rolled monochrome outline SVGs matching the
+ *  MODULE_ICON convention in shared.tsx, matched by keyword against the
+ *  Discipline/Work Package vocabulary. Falls back to a generic tag icon. */
+function BoqCategoryIcon({ name, size = 15 }: { name: string; size?: number }) {
+  const n = name.toLowerCase();
+  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none" as const, stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (/(concrete|structur|foundation)/.test(n)) return <svg {...p}><rect x="3" y="10" width="18" height="9" rx="1" /><path d="M3 10l9-6 9 6" /></svg>;
+  if (/(steel|frame)/.test(n)) return <svg {...p}><path d="M4 20V4h16v16" /><path d="M4 12h16M10 4v16M4 4l16 16M20 4L4 20" /></svg>;
+  if (/electric/.test(n)) return <svg {...p}><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" /></svg>;
+  if (/(mechanic|hvac|\bmep\b)/.test(n)) return <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg>;
+  if (/(plumb|water|drain|sanitary)/.test(n)) return <svg {...p}><path d="M12 2.5c3 4 6 7.5 6 11a6 6 0 1 1-12 0c0-3.5 3-7 6-11z" /></svg>;
+  if (/fire/.test(n)) return <svg {...p}><path d="M12 2.5c1.5 3 4.5 4 4.5 8a4.5 4.5 0 1 1-9 0c0-1 .3-1.8.8-2.5.4 1 1.2 1.5 1.7 1 .6-.6.2-1.8-.5-2.8C8.7 5 10 3.5 12 2.5z" /></svg>;
+  if (/roof/.test(n)) return <svg {...p}><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></svg>;
+  if (/(clad|facade|envelope)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="1" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>;
+  if (/(earthwork|excavat|grading)/.test(n)) return <svg {...p}><path d="M3 20h18" /><path d="M6 20l3-9 3 5 2-3 4 7" /></svg>;
+  if (/(external|landscape|paving)/.test(n)) return <svg {...p}><path d="M3 20h18" /><circle cx="8" cy="14" r="3" /><path d="M14 20l3-9 4 9" /></svg>;
+  if (/(finish|paint|floor|tile|ceiling)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 15l4-4 3 3 5-6 6 7" /></svg>;
+  if (/safety/.test(n)) return <svg {...p}><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" /></svg>;
+  if (/(test|commission|quality|civil)/.test(n)) return <svg {...p}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>;
+  return <svg {...p}><path d="M20.6 12.3L12.3 3.9a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2v5.9c0 .5.2 1 .6 1.4l8.4 8.4a2 2 0 0 0 2.8 0l5.8-5.8a2 2 0 0 0 0-2.9z" /><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" /></svg>;
+}
+
+/** Ranked horizontal bar chart, magnitude-comparison companion to the donut
+ *  (which reads proportion well but makes close values hard to compare). */
+function BoqCategoryBarChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+  const { t } = useCMLang();
+  if (data.length < 2) return null;
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-3">{t("boq.categoryRanking")}</p>
+      <ResponsiveContainer width="100%" height={Math.max(140, data.length * 34)}>
+        <BarChart data={data} layout="vertical" barCategoryGap="28%" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+          <XAxis type="number" hide />
+          <YAxis type="category" dataKey="name" tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 10 }} axisLine={false} tickLine={false} width={112} />
+          <Tooltip
+            formatter={(v: number) => [Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 }), t("boq.total")]}
+            contentStyle={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }}
+            itemStyle={{ color: "#fff" }} cursor={{ fill: "rgba(255,255,255,0.04)" }}
+          />
+          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+            {data.map((d) => <Cell key={d.name} fill={d.color} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function BoqCostDonut({ data, total }: { data: { name: string; value: number; color: string }[]; total: number }) {
+  const { t } = useCMLang();
+  if (data.length === 0) return null;
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">{t("boq.costBreakdown")}</p>
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={180}>
+          <PieChart>
+            <Pie data={data} cx="50%" cy="50%" innerRadius={54} outerRadius={82} paddingAngle={2} dataKey="value" nameKey="name" stroke="none">
+              {data.map((d) => <Cell key={d.name} fill={d.color} />)}
+            </Pie>
+            <Tooltip
+              formatter={(v: number, name: string) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${total > 0 ? ((Number(v) / total) * 100).toFixed(1) : "0"}%)`, name]}
+              contentStyle={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }}
+              itemStyle={{ color: "#fff" }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("boq.grandTotal")}</span>
+          <span className="font-mono text-[16px] font-bold text-white">{total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
+        {data.map((d) => (
+          <div key={d.name} className="flex items-center gap-1.5" style={{ color: d.color }}>
+            <BoqCategoryIcon name={d.name} size={12} />
+            <span className="text-[10px] text-white/50 truncate max-w-[130px]">{d.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Graphical browsing tile for one BOQ category — the default landing view
+ *  (spec ask: "tile tile, then touch see more work"). Tapping opens a drill
+ *  sheet listing that category's items instead of an inline accordion. */
+function CategoryTile({ name, count, subtotal, pct, color, avgActual, onClick }: {
+  name: string; count: number; subtotal: number; pct: number; color: string; avgActual: number | null; onClick: () => void;
+}) {
+  const { t } = useCMLang();
+  return (
+    <button type="button" onClick={onClick}
+      className="text-left rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-2.5 active:scale-[0.98] transition-transform">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
+          <BoqCategoryIcon name={name} size={15} />
+        </span>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/45 truncate">{name}</p>
+      </div>
+      <p className="font-mono text-[16px] font-bold truncate" style={{ color }}>
+        {subtotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      </p>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-white/30">{count === 1 ? t("boq.item") : t("boq.items", { count: String(count) })}</span>
+        <span className="font-mono text-[10px] text-white/35">{pct.toFixed(0)}%</span>
+      </div>
+      {avgActual != null && (
+        <div className="h-1 rounded-full bg-white/8 overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, avgActual))}%`, backgroundColor: color }} />
+        </div>
+      )}
+    </button>
   );
 }
 
@@ -647,6 +774,14 @@ function CMBoqPage() {
   const [confirmingApprove, setConfirmingApprove] = useState(false);
   const [confirmingRevision, setConfirmingRevision] = useState(false);
   const [versionBusy, setVersionBusy] = useState(false);
+  // Tiles is the default graphical browsing view; Edit (near Settings, in
+  // the header) flips into the editable List/accordion view. Remembered
+  // per device since it's a pure display preference, not project data.
+  const [view, setView] = useState<"tiles" | "list">(() => {
+    try { return (localStorage.getItem("cm-boq-view") as "tiles" | "list" | null) ?? "tiles"; } catch { return "tiles"; }
+  });
+  useEffect(() => { try { localStorage.setItem("cm-boq-view", view); } catch { /* */ } }, [view]);
+  const [drillCategory, setDrillCategory] = useState<string | null>(null);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
@@ -743,6 +878,21 @@ function CMBoqPage() {
     return map;
   }, [scheduleItems]);
 
+  // Largest category first, so the donut and tiles read consistently and
+  // the tint ramp (strongest -> palest) lines up with actual weight.
+  const categoryTotals = useMemo(() => {
+    const withTotals = categories.map(([name, catItems]) => ({
+      name,
+      items: catItems,
+      subtotal: catItems.reduce((s, i) => s + i.quantity * i.unit_cost, 0),
+      avgActual: linkedByCategory.get(name)?.avgActual ?? null,
+    }));
+    withTotals.sort((a, b) => b.subtotal - a.subtotal);
+    return withTotals.map((c, i) => ({ ...c, color: boqCategoryColor(i) }));
+  }, [categories, linkedByCategory]);
+  const visibleTotal = useMemo(() => categoryTotals.reduce((s, c) => s + c.subtotal, 0), [categoryTotals]);
+  const drillCategoryData = drillCategory ? categoryTotals.find((c) => c.name === drillCategory) ?? null : null;
+
   if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
   if (!user) {
     return (
@@ -755,7 +905,17 @@ function CMBoqPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <ModuleHeader title={t("boq.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/boq/settings" />
+        <ModuleHeader title={t("boq.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/boq/settings"
+          extraAction={
+            <button type="button" aria-label={t("boq.editList")} aria-pressed={view === "list"}
+              onClick={() => setView((v) => (v === "list" ? "tiles" : "list"))}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${view === "list" ? "" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"}`}
+              style={view === "list" ? { backgroundColor: "var(--color-brand-accent)", color: "#0a0a0b" } : undefined}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+            </button>
+          } />
         <p className="text-[12px] text-white/35 mb-5">{t("boq.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
@@ -811,23 +971,38 @@ function CMBoqPage() {
                 <p className="text-white/40 text-sm">{t("boq.nothingYet")}</p>
               </div>
             )}
-            {!isLoading && categories.length > 0 && (
-              <div className="flex items-center justify-between rounded-2xl bg-[#0d0d0e] px-5 py-4 mb-3">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.grandTotal")}</span>
-                <span className="font-mono text-[15px] font-bold" style={{ color: "#ff5100" }}>{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              </div>
+            {!isLoading && categories.length > 0 && view === "tiles" && (
+              <>
+                <BoqCostDonut data={categoryTotals.map((c) => ({ name: c.name, value: c.subtotal, color: c.color }))} total={visibleTotal} />
+                <BoqCategoryBarChart data={categoryTotals.map((c) => ({ name: c.name, value: c.subtotal, color: c.color }))} />
+                <div className="grid grid-cols-2 gap-3">
+                  {categoryTotals.map((c) => (
+                    <CategoryTile key={c.name} name={c.name} count={c.items.length} subtotal={c.subtotal}
+                      pct={visibleTotal > 0 ? (c.subtotal / visibleTotal) * 100 : 0} color={c.color} avgActual={c.avgActual}
+                      onClick={() => setDrillCategory(c.name)} />
+                  ))}
+                </div>
+              </>
             )}
-            <div className="flex flex-col gap-3">
-              {categories.map(([category, categoryItems]) => {
-                const linked = linkedByCategory.get(category);
-                return (
-                  <CategorySection key={category} category={category} items={categoryItems} projectId={projectId ?? ""} actorId={user.id} grandTotal={grandTotal}
-                    linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null}
-                    deliveredByBoqItem={deliveredByBoqItem} canEdit={effectiveCanEdit} canDelete={effectiveCanDelete} onChanged={invalidate}
-                    onOpenDetail={setDetailItem} defaultOpen={hasActiveSearch || categories.length <= 3} />
-                );
-              })}
-            </div>
+            {!isLoading && categories.length > 0 && view === "list" && (
+              <>
+                <div className="flex items-center justify-between rounded-2xl bg-[#0d0d0e] px-5 py-4 mb-3">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.grandTotal")}</span>
+                  <span className="font-mono text-[15px] font-bold" style={{ color: "#ff5100" }}>{grandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {categories.map(([category, categoryItems]) => {
+                    const linked = linkedByCategory.get(category);
+                    return (
+                      <CategorySection key={category} category={category} items={categoryItems} projectId={projectId ?? ""} actorId={user.id} grandTotal={grandTotal}
+                        linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null}
+                        deliveredByBoqItem={deliveredByBoqItem} canEdit={effectiveCanEdit} canDelete={effectiveCanDelete} onChanged={invalidate}
+                        onOpenDetail={setDetailItem} defaultOpen={hasActiveSearch || categories.length <= 3} />
+                    );
+                  })}
+                </div>
+              </>
+            )}
             {effectiveCanCreate && (
               <button type="button" onClick={() => setShowImport(true)} aria-label={t("boq.import.title")}
                 className="fixed right-6 w-11 h-11 rounded-full flex items-center justify-center text-white/70 bg-white/10 hover:bg-white/15 active:scale-95 transition-all z-30"
@@ -849,6 +1024,29 @@ function CMBoqPage() {
       {detailItem && projectId && (
         <BoqItemDetailSheet item={detailItem} projectId={projectId} actorId={user.id} dailyLogs={dailyLogs ?? []} scheduleItems={scheduleItems ?? []}
           canEdit={canEdit} onClose={() => setDetailItem(null)} />
+      )}
+      {drillCategoryData && projectId && (
+        <Sheet title={drillCategoryData.name} onClose={() => setDrillCategory(null)}>
+          <div className="px-6 pb-8 pt-2 flex flex-col gap-2">
+            <div className="flex items-center gap-2 px-1 pb-1" style={{ color: drillCategoryData.color }}>
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${drillCategoryData.color} 18%, transparent)` }}>
+                <BoqCategoryIcon name={drillCategoryData.name} size={13} />
+              </span>
+              <span className="text-[11px] text-white/40">{drillCategoryData.items.length === 1 ? t("boq.item") : t("boq.items", { count: String(drillCategoryData.items.length) })}</span>
+            </div>
+            <div className="flex items-center justify-between px-1 pb-3 mb-1 border-b border-white/6">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
+              <span className="font-mono text-[14px] font-bold" style={{ color: drillCategoryData.color }}>
+                {drillCategoryData.subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            {drillCategoryData.items.map((item) => (
+              <BoqItemRow key={item.id} item={item} projectId={projectId} actorId={user.id} delivered={deliveredByBoqItem.get(item.id)}
+                canEdit={effectiveCanEdit} canDelete={effectiveCanDelete} onChanged={invalidate}
+                onOpenDetail={() => { setDrillCategory(null); setDetailItem(item); }} />
+            ))}
+          </div>
+        </Sheet>
       )}
       {confirmingApprove && (
         <ConfirmationDialog message={t("boq.version.confirmApprove")} confirmLabel={t("boq.version.approveBaseline")} destructive={false}

@@ -48,7 +48,6 @@ const MODULE_SHORTCUTS: { to: string; labelKey: string; icon: React.ReactNode }[
   { to: "/cm/submittal", labelKey: "tile.submittal", icon: <svg {...iconProps}><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg> },
   { to: "/cm/schedule", labelKey: "tile.schedule", icon: <svg {...iconProps}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" /><path d="M7 13h4M7 17h7" /></svg> },
   { to: "/cm/boq", labelKey: "tile.boq", icon: <svg {...iconProps}><path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" /></svg> },
-  { to: "/cm/wbs", labelKey: "tile.wbs", icon: <svg {...iconProps}><circle cx="6" cy="5" r="2" /><circle cx="6" cy="19" r="2" /><circle cx="18" cy="12" r="2" /><path d="M6 7v10M6 12h10" /></svg> },
   { to: "/cm/manpower", labelKey: "tile.manpower", icon: <svg {...iconProps}><path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" /><path d="M12 3v3" /></svg> },
   { to: "/cm/equipment", labelKey: "tile.equipment", icon: <svg {...iconProps}><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" /></svg> },
   { to: "/cm/contracts", labelKey: "tile.contracts", icon: <svg {...iconProps}><path d="M8 3h8l3 3v15H5V6z" /><path d="M15 3v4h4" /><path d="M8 12h8M8 16h5" /></svg> },

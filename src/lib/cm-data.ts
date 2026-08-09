@@ -172,6 +172,17 @@ export interface CMDelayRow {
   hours_lost: number;
 }
 
+/** Links a Site Diary entry to a real Schedule/WBS activity node and the
+ *  actual-percent-complete reported that day — the "Activities" field's
+ *  free text alone can't move a schedule bar, this can. Saving a row also
+ *  patches the referenced node's `actual_percent` (and, on first report,
+ *  `actual_start`) so Schedule's Estimated-vs-Actual Gantt reflects what
+ *  was logged on site. */
+export interface CMActivityProgressRow {
+  wbs_node_id: string;
+  progress_pct: number;
+}
+
 export interface CMDailyLog {
   id: string;
   project_id: string;
@@ -195,6 +206,7 @@ export interface CMDailyLog {
   deliveries: CMDeliveryRow[];
   visitors: CMVisitorRow[];
   delays: CMDelayRow[];
+  activity_updates: CMActivityProgressRow[];
   photos: string[];
   photo_thumbs: string[];
   created_at: string;
@@ -438,6 +450,7 @@ export async function mergeDuplicateCMDailyLogs(logs: CMDailyLog[]): Promise<boo
       deliveries: sorted.flatMap((l) => l.deliveries),
       visitors: sorted.flatMap((l) => l.visitors),
       delays: sorted.flatMap((l) => l.delays),
+      activity_updates: sorted.flatMap((l) => l.activity_updates),
       weather: latestNonNull((l) => l.weather),
       temperature_c: latestNonNull((l) => l.temperature_c),
       progress_pct: latestNonNull((l) => l.progress_pct),
@@ -2959,7 +2972,7 @@ export function useCMScheduleItems(projectId: string | undefined) {
 export async function createCMScheduleItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "wbs_node_id" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
+  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "wbs_node_id" | "weight" | "actual_percent" | "activity_code" | "location_id" | "actual_start" | "actual_end">>,
   allNodes: CMWBSNode[] = [],
 ): Promise<CMScheduleItem> {
   const parentId = input.wbs_node_id
@@ -2974,6 +2987,8 @@ export async function createCMScheduleItem(
     actual_percent: input.actual_percent ?? 0,
     activity_code: input.activity_code ?? null,
     location_id: input.location_id ?? null,
+    actual_start: input.actual_start ?? null,
+    actual_end: input.actual_end ?? null,
   });
   return toScheduleItem(node, [...allNodes, node]);
 }
@@ -3174,6 +3189,12 @@ export interface CMWBSNode {
   boq_version_id: string | null;
   plan_start: string | null;
   plan_finish: string | null;
+  /** When work actually started/finished — distinct from `actual_percent`
+   *  (a completion % alone can't place a real bar on an Estimated-vs-Actual
+   *  Gantt). Both null until someone logs it; `actual_end` stays null while
+   *  in progress. */
+  actual_start: string | null;
+  actual_end: string | null;
   weight: number | null;
   actual_percent: number;
   activity_code: string | null;
