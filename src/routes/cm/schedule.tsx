@@ -6,8 +6,9 @@ import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
-  ModuleHeader, Sheet, FormPage, FAB, EmptyState, ProjectPicker, FieldSelect, LocationSelect, SegmentedField,
+  ModuleHeader, Sheet, FormPage, FAB, ProjectPicker, FieldSelect, LocationSelect, SegmentedField,
   useSelectedProject, inputCls, labelCls, ConfirmationDialog, useCMTheme,
+  categoryColorForName, CategoryIcon,
 } from "@/components/cm/shared";
 import {
   useCMScheduleItems,
@@ -501,9 +502,15 @@ function WBSNodeRow({ node, depth, isLeaf, rollup, canEdit, canDelete, editing, 
   onStartEdit: () => void; onEditValueChange: (v: string) => void; onCommitEdit: () => void; onCancelEdit: () => void; onDelete: () => void;
 }) {
   const { t } = useCMLang();
+  const color = categoryColorForName(node.name);
   return (
     <div className="rounded-xl bg-white/3 px-3 py-2.5" style={{ marginLeft: depth * 16 }}>
       <div className="flex items-center gap-3">
+        {!isLeaf && (
+          <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
+            <CategoryIcon name={node.name} size={13} />
+          </span>
+        )}
         {editing && canEdit ? (
           <input
             className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
@@ -1151,7 +1158,6 @@ function CMSchedulePage() {
                       onDelete={() => setStructureDeletingId(n.id)} />
                   );
                 })}
-                {(wbsNodes?.length ?? 0) === 0 && !structureAdding && <EmptyState message={t("wbs.noneYet")} />}
                 {canCreateStructure && (structureAdding ? (
                   <div className="flex flex-col gap-2 mt-1">
                     <input className={inputCls} placeholder={t("wbs.name")} value={structureName} onChange={(e) => setStructureName(e.target.value)} autoFocus />
@@ -1169,7 +1175,7 @@ function CMSchedulePage() {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setStructureAdding(true)} className="self-start px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest mt-1" style={{ color: "#ff5100" }}>{t("wbs.add")}</button>
+                  <button onClick={() => setStructureAdding(true)} className="self-start px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest mt-1" style={{ color: "#ff5100" }}>+ {t("wbs.add")}</button>
                 ))}
               </div>
             )}
