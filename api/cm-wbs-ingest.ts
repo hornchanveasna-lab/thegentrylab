@@ -8,8 +8,8 @@
  * Not a public, credit-metered feature — an authenticated CM-app internal
  * tool, so no credit deduction and no streaming. It never touches the CM
  * Supabase project's tables itself: auth is verified against the CM
- * project's own auth server, already-parsed spreadsheet rows go to Claude,
- * and the proposal comes back as one JSON response. All writes happen
+ * project's own auth server, already-parsed spreadsheet rows go to the AI
+ * model, and the proposal comes back as one JSON response. All writes happen
  * client-side, after a human reviews and confirms.
  */
 const CORS = {
