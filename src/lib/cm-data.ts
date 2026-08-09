@@ -3206,6 +3206,35 @@ export function wbsFlatten(all: CMWBSNode[]): { node: CMWBSNode; depth: number }
   return out;
 }
 
+/** Per-project AI usage balance for the WBS/Schedule ingest tool — mirrors
+ *  the public advisor's `user_credits` shape, but billed against a project
+ *  instead of a site account since CM users authenticate against a separate
+ *  auth server. Row is created lazily server-side (`cm_ai_ensure_credits`)
+ *  on first use; reading it here is select-only, RLS-gated the same way as
+ *  every other project-scoped table — balance can only change through the
+ *  ingest endpoint's server-side RPC calls, never a direct client write. */
+export interface CMAiCredits {
+  project_id: string;
+  owner_id: string;
+  balance: number;
+  lifetime_granted: number;
+  lifetime_spent: number;
+  updated_at: string;
+}
+
+export function useCMAiCredits(projectId: string | undefined) {
+  return useQuery<CMAiCredits | null>({
+    queryKey: ["cm_ai_credits", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_ai_credits").select("*").eq("project_id", projectId).maybeSingle();
+      if (error) throw error;
+      return data as CMAiCredits | null;
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
 function isoDateRange(from: string, to: string): string[] {
   const dates: string[] = [];
   const cursor = new Date(from);
