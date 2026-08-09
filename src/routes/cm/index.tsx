@@ -74,8 +74,7 @@ export function CMIndexPage() {
           <h1 className="text-2xl font-extrabold tracking-tight mb-3">{t("home.title")}</h1>
           <p className="text-white/45 text-sm mb-8">{t("home.signedOutSubtitle")}</p>
           <button onClick={() => signInWithGoogle()}
-            className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-            style={{ backgroundColor: "var(--color-brand-accent)" }}>
+            className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-white font-bold bg-white/10 border border-white/15">
             {t("common.signInGoogle")}
           </button>
         </div>

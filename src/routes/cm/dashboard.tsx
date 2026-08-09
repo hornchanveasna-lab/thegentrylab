@@ -101,7 +101,7 @@ function CMDashboardPage() {
   if (!user) {
     return (
       <div className="min-h-screen text-white flex items-center justify-center px-4 font-sans" style={{ background: "var(--page-wash)" }}>
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-white font-bold bg-white/10 border border-white/15">{t("common.signInGoogle")}</button>
       </div>
     );
   }
