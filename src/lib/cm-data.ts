@@ -4198,7 +4198,7 @@ export function useCMGlobalSearch(projectId: string | undefined, query: string):
   }
   for (const x of boqItems ?? []) {
     if (matches(x.description, x.category)) {
-      results.push({ module: "boq", id: x.id, title: x.description, subtitle: x.category, docNumber: null, to: "/cm/boq" });
+      results.push({ module: "boq", id: x.id, title: x.description, subtitle: x.category, docNumber: null, to: "/cm/schedule" });
     }
   }
   for (const x of scheduleItems ?? []) {

@@ -50,7 +50,6 @@ import { Route as CmEquipmentRouteImport } from './routes/cm/equipment'
 import { Route as CmDirectoryRouteImport } from './routes/cm/directory'
 import { Route as CmDashboardRouteImport } from './routes/cm/dashboard'
 import { Route as CmContractsRouteImport } from './routes/cm/contracts'
-import { Route as CmBoqRouteImport } from './routes/cm/boq'
 import { Route as CmProjectIdRouteImport } from './routes/cm/$projectId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
@@ -304,11 +303,6 @@ const CmDashboardRoute = CmDashboardRouteImport.update({
 const CmContractsRoute = CmContractsRouteImport.update({
   id: '/contracts',
   path: '/contracts',
-  getParentRoute: () => CmRoute,
-} as any)
-const CmBoqRoute = CmBoqRouteImport.update({
-  id: '/boq',
-  path: '/boq',
   getParentRoute: () => CmRoute,
 } as any)
 const CmProjectIdRoute = CmProjectIdRouteImport.update({
@@ -572,7 +566,6 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
-  '/cm/boq': typeof CmBoqRoute
   '/cm/contracts': typeof CmContractsRoute
   '/cm/dashboard': typeof CmDashboardRoute
   '/cm/directory': typeof CmDirectoryRoute
@@ -662,7 +655,6 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
-  '/cm/boq': typeof CmBoqRoute
   '/cm/contracts': typeof CmContractsRoute
   '/cm/dashboard': typeof CmDashboardRoute
   '/cm/directory': typeof CmDirectoryRoute
@@ -755,7 +747,6 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/auth/start': typeof AuthStartRoute
   '/cm/$projectId': typeof CmProjectIdRoute
-  '/cm/boq': typeof CmBoqRoute
   '/cm/contracts': typeof CmContractsRoute
   '/cm/dashboard': typeof CmDashboardRoute
   '/cm/directory': typeof CmDirectoryRoute
@@ -849,7 +840,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
-    | '/cm/boq'
     | '/cm/contracts'
     | '/cm/dashboard'
     | '/cm/directory'
@@ -939,7 +929,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
-    | '/cm/boq'
     | '/cm/contracts'
     | '/cm/dashboard'
     | '/cm/directory'
@@ -1031,7 +1020,6 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/auth/start'
     | '/cm/$projectId'
-    | '/cm/boq'
     | '/cm/contracts'
     | '/cm/dashboard'
     | '/cm/directory'
@@ -1413,13 +1401,6 @@ declare module '@tanstack/react-router' {
       path: '/contracts'
       fullPath: '/cm/contracts'
       preLoaderRoute: typeof CmContractsRouteImport
-      parentRoute: typeof CmRoute
-    }
-    '/cm/boq': {
-      id: '/cm/boq'
-      path: '/boq'
-      fullPath: '/cm/boq'
-      preLoaderRoute: typeof CmBoqRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/$projectId': {
@@ -1833,7 +1814,6 @@ const CmSubmittalIdRouteWithChildren = CmSubmittalIdRoute._addFileChildren(
 
 interface CmRouteChildren {
   CmProjectIdRoute: typeof CmProjectIdRoute
-  CmBoqRoute: typeof CmBoqRoute
   CmContractsRoute: typeof CmContractsRoute
   CmDashboardRoute: typeof CmDashboardRoute
   CmDirectoryRoute: typeof CmDirectoryRoute
@@ -1899,7 +1879,6 @@ interface CmRouteChildren {
 
 const CmRouteChildren: CmRouteChildren = {
   CmProjectIdRoute: CmProjectIdRoute,
-  CmBoqRoute: CmBoqRoute,
   CmContractsRoute: CmContractsRoute,
   CmDashboardRoute: CmDashboardRoute,
   CmDirectoryRoute: CmDirectoryRoute,

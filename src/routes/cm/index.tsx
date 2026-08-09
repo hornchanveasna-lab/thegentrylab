@@ -204,15 +204,6 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label={t("tile.boq")}
-            to="/cm/boq"
-            icon={
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" />
-              </svg>
-            }
-          />
-          <AppTile
             label={t("tile.manpower")}
             to="/cm/manpower"
             icon={

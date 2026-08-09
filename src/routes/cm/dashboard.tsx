@@ -201,7 +201,7 @@ function CMDashboardPage() {
                   </div>
                 ))}
               </div>
-              <Link to="/cm/boq" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</Link>
+              <Link to="/cm/schedule" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</Link>
             </Card>
 
             <Card title={t("dashboard.scheduleSummary")} icon={

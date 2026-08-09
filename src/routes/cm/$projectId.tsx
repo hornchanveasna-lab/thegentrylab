@@ -47,7 +47,6 @@ const MODULE_SHORTCUTS: { to: string; labelKey: string; icon: React.ReactNode }[
   { to: "/cm/safety", labelKey: "tile.safety", icon: <svg {...iconProps}><path d="M4.3 15.2a7.7 7.7 0 0 1 15.4 0" /><rect x="2.8" y="15.2" width="18.4" height="2.8" rx="1.4" /><path d="M12 6.3V3.4" /><path d="M12 3.4h2.2" /></svg> },
   { to: "/cm/submittal", labelKey: "tile.submittal", icon: <svg {...iconProps}><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg> },
   { to: "/cm/schedule", labelKey: "tile.schedule", icon: <svg {...iconProps}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" /><path d="M7 13h4M7 17h7" /></svg> },
-  { to: "/cm/boq", labelKey: "tile.boq", icon: <svg {...iconProps}><path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" /></svg> },
   { to: "/cm/manpower", labelKey: "tile.manpower", icon: <svg {...iconProps}><path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" /><path d="M12 3v3" /></svg> },
   { to: "/cm/equipment", labelKey: "tile.equipment", icon: <svg {...iconProps}><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" /></svg> },
   { to: "/cm/contracts", labelKey: "tile.contracts", icon: <svg {...iconProps}><path d="M8 3h8l3 3v15H5V6z" /><path d="M15 3v4h4" /><path d="M8 12h8M8 16h5" /></svg> },
@@ -493,7 +492,7 @@ function CMProjectPage() {
                   <span className="font-mono text-[13px] font-bold text-white/70">{boqTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
-              <button onClick={() => goToModule("/cm/boq")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</button>
+              <button onClick={() => goToModule("/cm/schedule")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</button>
             </Card>
           </div>
         )}

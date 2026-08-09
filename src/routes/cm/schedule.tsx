@@ -1,14 +1,14 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FormPage, FAB, ProjectPicker, FieldSelect, LocationSelect, SegmentedField,
   useSelectedProject, inputCls, labelCls, ConfirmationDialog, useCMTheme,
-  categoryColorForName, CategoryIcon,
+  categoryColorForName, categoryTintColor, CategoryIcon,
 } from "@/components/cm/shared";
 import {
   useCMScheduleItems,
@@ -21,7 +21,18 @@ import {
   cmBOQCategoryProgress,
   cmBOQItemProgress,
   useActiveCMBOQItems,
+  useCMBOQItems,
+  useCMBOQVersions,
+  activeCMBOQVersion,
+  createCMBOQVersion,
+  createCMBOQRevision,
+  approveCMBOQBaseline,
   createCMBOQItem,
+  updateCMBOQItem,
+  deleteCMBOQItem,
+  useCMPhotoBoqTags,
+  QUANTITY_STATUS_ORDER,
+  updateCMDailyLog,
   useCMDailyLogs,
   useCMProjectLocations,
   locationBreadcrumb,
@@ -38,10 +49,18 @@ import {
   type CMScheduleItem,
   type CMScheduleStatus,
   type CMBOQItem,
+  type CMBOQVersion,
+  type CMBOQVersionStatus,
+  type CMQuantityStatus,
+  type CMDeliveryRow,
+  type CMDailyLog,
   type CMWBSNode,
 } from "@/lib/cm-data";
 import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
-import { parseWorkbookRows, parsePdfRows, type BoqSheet } from "@/lib/cm-boq-import";
+import {
+  parseWorkbookRows, parsePdfRows, detectHeaderRow, rowsToBoqDraftItems,
+  type BoqSheet, type BoqColumnMapping, type BoqField,
+} from "@/lib/cm-boq-import";
 import {
   detectScheduleHeaderRow, rowsToScheduleDraftActivities, SCHEDULE_IMPORT_FIELDS,
   type ScheduleColumnMapping,
@@ -49,6 +68,22 @@ import {
 
 const STATUS_COLOR: Record<CMScheduleStatus, string> = {
   "Not Started": "#94a3b8", "In Progress": "#60a5fa", Completed: "#34d399", Delayed: "#f43f5e",
+};
+
+const VERSION_STATUS_COLOR: Record<CMBOQVersionStatus, string> = {
+  Draft: "#9ca3af",
+  Imported: "#60a5fa",
+  "Under Review": "#fbbf24",
+  "Approved Baseline": "#22c55e",
+  Superseded: "#6b7280",
+  Archived: "#4b5563",
+};
+
+const QUANTITY_STATUS_COLOR: Record<CMQuantityStatus, string> = {
+  Reported: "#9ca3af",
+  Accepted: "#3b82f6",
+  Claimed: "#f59e0b",
+  Certified: "#22c55e",
 };
 
 export const Route = createFileRoute("/cm/schedule")({
@@ -459,6 +494,647 @@ function ActivityRow({ item, projectId, actorId, canEdit, canDelete, locationLab
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />
       )}
     </div>
+  );
+}
+
+export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categoryOptions, backTo, onCreated }: {
+  ownerId: string; projectId: string; versionId: string | null; existing?: CMBOQItem; categoryOptions?: string[]; backTo: string; onCreated: () => void;
+}) {
+  const { t } = useCMLang();
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [unit, setUnit] = useState(existing?.unit ?? "");
+  const [quantity, setQuantity] = useState(existing ? String(existing.quantity) : "");
+  const [unitCost, setUnitCost] = useState(existing ? String(existing.unit_cost) : "");
+  const [category, setCategory] = useState(existing?.category ?? "");
+  const [wbsNodeId, setWbsNodeId] = useState(existing?.wbs_node_id ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const { data: wbsNodes } = useCMWBSNodes(projectId);
+  // Qty/rate only ever belong at a leaf WBS node — a folder (Zone, Building,
+  // work category, ...) exists purely to group other nodes.
+  const leafWbsNodes = useMemo(() => (wbsNodes ?? []).filter((n) => wbsIsLeaf(n, wbsNodes ?? [])), [wbsNodes]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const patch = {
+        description: description.trim(), unit: unit.trim() || null,
+        quantity: quantity ? Number(quantity) : 0, unit_cost: unitCost ? Number(unitCost) : 0,
+        category: category.trim() || null, wbs_node_id: wbsNodeId || null,
+      };
+      if (existing) {
+        await updateCMBOQItem(existing.id, patch);
+      } else {
+        await createCMBOQItem(ownerId, projectId, { ...patch, version_id: versionId }, wbsNodes ?? []);
+      }
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add BOQ item");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <FormPage title={t(existing ? "boq.edit" : "boq.new")} backTo={backTo}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("boq.description")}</span>
+          <input className={inputCls} value={description} onChange={(e) => setDescription(e.target.value)} required autoFocus disabled={saving} />
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("boq.category")}</span>
+          <input className={inputCls} list="boq-category-options" value={category} onChange={(e) => setCategory(e.target.value)} disabled={saving} />
+          <datalist id="boq-category-options">
+            {(categoryOptions ?? []).map((c) => <option key={c} value={c} />)}
+          </datalist>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("boq.wbsNode")}</span>
+          <FieldSelect value={wbsNodeId} onChange={setWbsNodeId} disabled={saving} placeholder={t("boq.wbsNodeNone")}
+            options={[{ value: "", label: t("boq.wbsNodeNone") }, ...leafWbsNodes.map((n) => ({ value: n.id, label: wbsBreadcrumb(n, wbsNodes ?? []) }))]} />
+        </label>
+        <div className="grid grid-cols-3 gap-2">
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("boq.unit")}</span>
+            <input className={inputCls} value={unit} onChange={(e) => setUnit(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("boq.qty")}</span>
+            <input type="number" className={inputCls} value={quantity} onChange={(e) => setQuantity(e.target.value)} disabled={saving} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className={labelCls}>{t("boq.unitCost")}</span>
+            <input type="number" className={inputCls} value={unitCost} onChange={(e) => setUnitCost(e.target.value)} disabled={saving} />
+          </label>
+        </div>
+        {error && <p className="text-[12px] text-red-400">{error}</p>}
+        <button type="submit" disabled={saving || !description.trim()}
+          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
+          style={{ backgroundColor: "#ff5100" }}>
+          {saving ? t("boq.adding") : t("boq.addItem")}
+        </button>
+      </form>
+    </FormPage>
+  );
+}
+
+/** Ranked horizontal bar chart, magnitude-comparison companion to the donut
+ *  (which reads proportion well but makes close values hard to compare). */
+function BoqCategoryBarChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+  const { t } = useCMLang();
+  if (data.length < 2) return null;
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-3">{t("boq.categoryRanking")}</p>
+      <ResponsiveContainer width="100%" height={Math.max(140, data.length * 34)}>
+        <BarChart data={data} layout="vertical" barCategoryGap="28%" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+          <XAxis type="number" hide />
+          <YAxis type="category" dataKey="name" tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 10 }} axisLine={false} tickLine={false} width={112} />
+          <Tooltip
+            formatter={(v: number) => [Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 }), t("boq.total")]}
+            contentStyle={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }}
+            itemStyle={{ color: "#fff" }} cursor={{ fill: "rgba(255,255,255,0.04)" }}
+          />
+          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+            {data.map((d) => <Cell key={d.name} fill={d.color} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function BoqCostDonut({ data, total }: { data: { name: string; value: number; color: string }[]; total: number }) {
+  const { t } = useCMLang();
+  if (data.length === 0) return null;
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">{t("boq.costBreakdown")}</p>
+      <div className="relative">
+        <ResponsiveContainer width="100%" height={180}>
+          <PieChart>
+            <Pie data={data} cx="50%" cy="50%" innerRadius={54} outerRadius={82} paddingAngle={2} dataKey="value" nameKey="name" stroke="none">
+              {data.map((d) => <Cell key={d.name} fill={d.color} />)}
+            </Pie>
+            <Tooltip
+              formatter={(v: number, name: string) => [`${Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 })} (${total > 0 ? ((Number(v) / total) * 100).toFixed(1) : "0"}%)`, name]}
+              contentStyle={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }}
+              itemStyle={{ color: "#fff" }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("boq.grandTotal")}</span>
+          <span className="font-mono text-[16px] font-bold text-white">{total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
+        {data.map((d) => (
+          <div key={d.name} className="flex items-center gap-1.5" style={{ color: d.color }}>
+            <CategoryIcon name={d.name} size={12} />
+            <span className="text-[10px] text-white/50 truncate max-w-[130px]">{d.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Graphical browsing tile for one BOQ category — the default landing view
+ *  (spec ask: "tile tile, then touch see more work"). Tapping opens a drill
+ *  sheet listing that category's items instead of an inline accordion. */
+function CategoryTile({ name, count, subtotal, pct, color, avgActual, onClick }: {
+  name: string; count: number; subtotal: number; pct: number; color: string; avgActual: number | null; onClick: () => void;
+}) {
+  const { t } = useCMLang();
+  return (
+    <button type="button" onClick={onClick}
+      className="text-left rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-2.5 active:scale-[0.98] transition-transform">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
+          <CategoryIcon name={name} size={15} />
+        </span>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-white/45 truncate">{name}</p>
+      </div>
+      <p className="font-mono text-[16px] font-bold truncate" style={{ color }}>
+        {subtotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      </p>
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-white/30">{count === 1 ? t("boq.item") : t("boq.items", { count: String(count) })}</span>
+        <span className="font-mono text-[10px] text-white/35">{pct.toFixed(0)}%</span>
+      </div>
+      {avgActual != null && (
+        <div className="h-1 rounded-full bg-white/8 overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, avgActual))}%`, backgroundColor: color }} />
+        </div>
+      )}
+    </button>
+  );
+}
+
+/** A collapsible accordion, not an always-open Card — a real BOQ can have
+ *  dozens of sections with hundreds of rows each, which is unusable on a
+ *  phone if every section renders fully expanded at once. Opens by default
+ *  only when there's an active search/filter (so matches stay visible) or
+ *  the BOQ has very few sections overall. */
+function CategorySection({ category, items, projectId, actorId, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, canEdit, canDelete, onChanged, onOpenDetail, defaultOpen }: {
+  category: string; items: CMBOQItem[]; projectId: string; actorId: string; grandTotal: number; linkedCount: number; linkedAvgActual: number | null;
+  deliveredByBoqItem: Map<string, number>; canEdit: boolean; canDelete: boolean; onChanged: () => void; onOpenDetail: (item: CMBOQItem) => void;
+  defaultOpen: boolean;
+}) {
+  const { t } = useCMLang();
+  const [open, setOpen] = useState(defaultOpen);
+  const subtotal = items.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
+  const ratio = grandTotal > 0 ? (subtotal / grandTotal) * 100 : 0;
+
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-5">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between gap-3 text-left">
+        <div className="flex items-center gap-2 min-w-0">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+            className={`shrink-0 text-white/35 transition-transform duration-150 ${open ? "rotate-90" : ""}`}>
+            <path d="M9 6l6 6-6 6" />
+          </svg>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 truncate">{category}</p>
+          <span className="font-mono text-[9px] text-white/20 shrink-0">({items.length})</span>
+        </div>
+        <span className="font-mono text-[10px] shrink-0" style={{ color: "#ff5100" }}>{ratio.toFixed(1)}%</span>
+      </button>
+      {open && (
+        <div className="flex flex-col gap-2 mt-4">
+          {items.map((item) => <BoqItemRow key={item.id} item={item} projectId={projectId} actorId={actorId} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} onOpenDetail={() => onOpenDetail(item)} />)}
+          <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
+            <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          </div>
+          {linkedCount > 0 && (
+            <p className="font-mono text-[10px] text-white/30">
+              {linkedCount} {t("boq.linkedActivities")}{linkedAvgActual != null ? ` — ${linkedAvgActual.toFixed(0)}% ${t("boq.avgComplete")}` : ""}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, onChanged, onOpenDetail }: {
+  item: CMBOQItem; projectId: string; actorId: string; delivered: number | undefined; canEdit: boolean; canDelete: boolean; onChanged: () => void; onOpenDetail: () => void;
+}) {
+  const { t } = useCMLang();
+  const [quantity, setQuantity] = useState(String(item.quantity));
+  const [unitCost, setUnitCost] = useState(String(item.unit_cost));
+  const [busy, setBusy] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  const commit = async (patch: Partial<CMBOQItem>) => {
+    setBusy(true);
+    try {
+      await updateCMBOQItem(item.id, patch);
+      logCMActivity(projectId, actorId, "updated", "boq", item.id, { ...patch, description: item.description });
+      onChanged();
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        <button type="button" onClick={onOpenDetail} className="text-left w-full">
+          <p className="text-[12px] text-white/80 truncate hover:text-white transition-colors">{item.description}</p>
+        </button>
+        <div className="flex items-center gap-1.5 mt-1">
+          {canEdit ? (
+            <>
+              <input type="number" min={0} value={quantity} disabled={busy}
+                onChange={(e) => setQuantity(e.target.value)}
+                onBlur={() => { const v = Number(quantity) || 0; if (v !== item.quantity) commit({ quantity: v }); }}
+                className="w-16 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
+              <span className="font-mono text-[10px] text-white/30">{item.unit ?? ""} ×</span>
+              <input type="number" min={0} value={unitCost} disabled={busy}
+                onChange={(e) => setUnitCost(e.target.value)}
+                onBlur={() => { const v = Number(unitCost) || 0; if (v !== item.unit_cost) commit({ unit_cost: v }); }}
+                className="w-20 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
+            </>
+          ) : (
+            <span className="font-mono text-[10px] text-white/50">
+              {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""} × {item.unit_cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </span>
+          )}
+        </div>
+        {delivered != null && (
+          <p className="font-mono text-[9px] text-white/30 mt-1">
+            {t("boq.deliveredToDate")} {delivered.toLocaleString(undefined, { maximumFractionDigits: 2 })} / {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}
+            {item.quantity > 0 && ` (${((delivered / item.quantity) * 100).toFixed(0)}%)`}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>
+          {(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        </span>
+        {canEdit && (
+          <Link to="/cm/boq/$id/edit" params={{ id: item.id }}
+            className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+            </svg>
+          </Link>
+        )}
+        {canDelete && (
+          <button onClick={() => setConfirmingDelete(true)} disabled={busy}
+            className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        )}
+      </div>
+      {confirmingDelete && (
+        <ConfirmationDialog message={t("boq.confirmDelete")} confirmLabel={t("common.delete")}
+          onConfirm={() => { setConfirmingDelete(false); deleteCMBOQItem(item.id).then(onChanged); }} onCancel={() => setConfirmingDelete(false)} />
+      )}
+    </div>
+  );
+}
+
+function DeliveryStatusRow({ logId, logDate, index, row, unit, canEdit, busy, onStatusChange }: {
+  logId: string; logDate: string; index: number; row: CMDeliveryRow; unit: string | null; canEdit: boolean; busy: boolean;
+  onStatusChange: (logId: string, index: number, status: CMQuantityStatus, certifiedQuantity?: string) => void;
+}) {
+  const { t } = useCMLang();
+  const status = row.status ?? "Reported";
+  const [certifiedQty, setCertifiedQty] = useState(row.certified_quantity ?? row.quantity);
+
+  return (
+    <div className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-white/50">{logDate}</span>
+        <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{row.quantity} {unit ?? ""}</span>
+      </div>
+      {canEdit ? (
+        <SegmentedField
+          value={status}
+          onChange={(v) => onStatusChange(logId, index, v as CMQuantityStatus)}
+          options={QUANTITY_STATUS_ORDER.map((s) => ({ value: s, label: t(`boq.status.${s.toLowerCase()}`) }))}
+          disabled={busy}
+        />
+      ) : (
+        <span className="self-start text-[10px] px-2 py-0.5 rounded-full font-mono" style={{ color: QUANTITY_STATUS_COLOR[status], backgroundColor: `${QUANTITY_STATUS_COLOR[status]}1a` }}>
+          {t(`boq.status.${status.toLowerCase()}`)}
+        </span>
+      )}
+      {status === "Certified" && canEdit && (
+        <label className="flex flex-col gap-1 mt-0.5">
+          <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.detail.certifiedQty")}</span>
+          <input type="number" className={inputCls} value={certifiedQty} disabled={busy}
+            onChange={(e) => setCertifiedQty(e.target.value)}
+            onBlur={() => onStatusChange(logId, index, "Certified", certifiedQty)} />
+        </label>
+      )}
+    </div>
+  );
+}
+
+/** Tapping a BOQ item's description opens this detail sheet: the item's own
+ *  overview, the Reported -> Accepted -> Claimed -> Certified quantity
+ *  pipeline computed from every Site Diary delivery row linked to it, plus
+ *  whatever photos and schedule activities are already connected. */
+function BoqItemDetailSheet({ item, projectId, actorId, dailyLogs, scheduleItems, canEdit, onClose }: {
+  item: CMBOQItem; projectId: string; actorId: string; dailyLogs: CMDailyLog[]; scheduleItems: CMScheduleItem[]; canEdit: boolean; onClose: () => void;
+}) {
+  const { t } = useCMLang();
+  const queryClient = useQueryClient();
+  const { data: photoTags } = useCMPhotoBoqTags(projectId);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const linkedDeliveries = useMemo(() => {
+    const rows: { logId: string; logDate: string; index: number; row: CMDeliveryRow }[] = [];
+    for (const log of dailyLogs) {
+      log.deliveries.forEach((row, index) => {
+        if (row.boq_item_id === item.id) rows.push({ logId: log.id, logDate: log.log_date, index, row });
+      });
+    }
+    return rows.sort((a, b) => (a.logDate < b.logDate ? 1 : -1));
+  }, [dailyLogs, item.id]);
+
+  const totals = useMemo(() => {
+    let reported = 0, accepted = 0, claimed = 0, certified = 0;
+    for (const { row } of linkedDeliveries) {
+      const qty = Number(row.quantity) || 0;
+      const status = row.status ?? "Reported";
+      reported += qty;
+      if (status === "Accepted" || status === "Claimed" || status === "Certified") accepted += qty;
+      if (status === "Claimed" || status === "Certified") claimed += qty;
+      if (status === "Certified") certified += Number(row.certified_quantity ?? row.quantity) || 0;
+    }
+    return { reported, accepted, claimed, certified, remaining: Math.max(item.quantity - certified, 0) };
+  }, [linkedDeliveries, item.quantity]);
+
+  const linkedSchedule = useMemo(() => (item.category ? scheduleItems.filter((s) => s.boq_category === item.category) : []), [scheduleItems, item.category]);
+
+  const linkedPhotos = useMemo(() => {
+    const urls = new Set<string>();
+    for (const { row } of linkedDeliveries) for (const p of row.photos) urls.add(p);
+    for (const tag of photoTags ?? []) if (tag.boq_item_id === item.id) urls.add(tag.photo_url);
+    return Array.from(urls);
+  }, [linkedDeliveries, photoTags, item.id]);
+
+  const handleStatusChange = async (logId: string, index: number, status: CMQuantityStatus, certifiedQuantity?: string) => {
+    const log = dailyLogs.find((l) => l.id === logId);
+    if (!log) return;
+    const key = `${logId}-${index}`;
+    setBusyKey(key);
+    try {
+      const nextDeliveries = log.deliveries.map((row, i) =>
+        i === index ? { ...row, status, certified_quantity: status === "Certified" ? (certifiedQuantity ?? row.certified_quantity ?? row.quantity) : row.certified_quantity } : row,
+      );
+      await updateCMDailyLog(logId, { deliveries: nextDeliveries });
+      logCMActivity(projectId, actorId, "delivery_status_changed", "boq", item.id, { material: item.description, status });
+      queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  return (
+    <Sheet title={item.description} onClose={onClose}>
+      <div className="px-6 pb-8 pt-2 flex flex-col gap-5">
+        <div className="rounded-2xl bg-white/3 p-4 flex flex-col gap-1.5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("boq.detail.overview")}</p>
+          <div className="flex items-center justify-between text-[12px] text-white/60">
+            <span>{t("boq.qty")}</span>
+            <span className="font-mono">{item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}</span>
+          </div>
+          <div className="flex items-center justify-between text-[12px] text-white/60">
+            <span>{t("boq.unitCost")}</span>
+            <span className="font-mono">{item.unit_cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          </div>
+          <div className="flex items-center justify-between text-[12px] text-white/60 pt-1 border-t border-white/6">
+            <span>{t("boq.total")}</span>
+            <span className="font-mono font-bold" style={{ color: "#ff5100" }}>{(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+          </div>
+        </div>
+
+        <div className="rounded-2xl bg-white/3 p-4 flex flex-col gap-2">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("boq.detail.pipelineTitle")}</p>
+          {([["reported", totals.reported, "Reported"], ["accepted", totals.accepted, "Accepted"], ["claimed", totals.claimed, "Claimed"], ["certified", totals.certified, "Certified"]] as const).map(([key, value, statusKey]) => (
+            <div key={key} className="flex items-center justify-between text-[12px]">
+              <span className="text-white/50">{t(`boq.status.${key}`)}</span>
+              <span className="font-mono" style={{ color: QUANTITY_STATUS_COLOR[statusKey] }}>
+                {value.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}
+              </span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between text-[12px] pt-1.5 border-t border-white/6">
+            <span className="text-white/50">{t("boq.detail.remaining")}</span>
+            <span className="font-mono font-bold text-white/80">{totals.remaining.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}</span>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.records")}</p>
+          {linkedDeliveries.length === 0 && <p className="text-[12px] text-white/30 px-1">{t("boq.detail.noRecords")}</p>}
+          {linkedDeliveries.map(({ logId, logDate, index, row }) => (
+            <DeliveryStatusRow key={`${logId}-${index}`} logId={logId} logDate={logDate} index={index} row={row}
+              unit={item.unit} canEdit={canEdit} busy={busyKey === `${logId}-${index}`} onStatusChange={handleStatusChange} />
+          ))}
+        </div>
+
+        {linkedPhotos.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.photos")}</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {linkedPhotos.map((url, i) => (
+                <img key={i} src={url} alt="" className="w-full aspect-square rounded-lg object-cover" />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {linkedSchedule.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.schedule")}</p>
+            {linkedSchedule.map((s) => (
+              <div key={s.id} className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2 text-[12px]">
+                <span className="text-white/60 truncate">{s.title}</span>
+                <span className="font-mono text-white/40">{s.actual_percent}%</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
+const BOQ_IMPORT_FIELDS: BoqField[] = ["description", "quantity", "unit", "unitCost", "category"];
+const NEW_VERSION_OPTION = "__new__";
+
+/** Upload → review/map → confirm, same pattern as the Schedule import above.
+ *  One column mapping applies across every sheet in the workbook, but each
+ *  sheet keeps its own detected header row. */
+function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClose, onImported }: {
+  ownerId: string; projectId: string; versions: CMBOQVersion[]; defaultVersionId: string | null; onClose: () => void; onImported: () => void;
+}) {
+  const { t } = useCMLang();
+  const [step, setStep] = useState<"upload" | "review">("upload");
+  const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [sheets, setSheets] = useState<BoqSheet[]>([]);
+  const [headerBySheet, setHeaderBySheet] = useState<Map<string, number>>(new Map());
+  const [mapping, setMapping] = useState<BoqColumnMapping>({ description: null, unit: null, quantity: null, unitCost: null, category: null });
+  const [referenceSheetIdx, setReferenceSheetIdx] = useState(0);
+  const importableVersions = versions.filter((v) => !v.locked);
+  const [targetVersionId, setTargetVersionId] = useState(defaultVersionId && importableVersions.some((v) => v.id === defaultVersionId) ? defaultVersionId : NEW_VERSION_OPTION);
+  const [newVersionName, setNewVersionName] = useState(`Contract BOQ V${versions.length + 1}`);
+
+  const handleFile = async (file: File) => {
+    setError("");
+    try {
+      const isPdf = file.name.toLowerCase().endsWith(".pdf");
+      const parsed = isPdf ? await parsePdfRows(file) : await parseWorkbookRows(file);
+      const nonEmptySheets = parsed.filter((s) => s.rows.length > 0);
+      if (nonEmptySheets.length === 0) { setError(t("boq.import.noRows")); return; }
+
+      const headers = new Map<string, number>();
+      let firstMapping: BoqColumnMapping | null = null;
+      let firstIdx = 0;
+      nonEmptySheets.forEach((s, i) => {
+        const detected = detectHeaderRow(s.rows);
+        if (!detected) return;
+        headers.set(s.sheetName, detected.rowIndex);
+        if (!firstMapping) { firstMapping = detected.mapping; firstIdx = i; }
+      });
+      if (!firstMapping) { setError(t("boq.import.noHeaderFound")); return; }
+
+      setSheets(nonEmptySheets);
+      setHeaderBySheet(headers);
+      setMapping(firstMapping);
+      setReferenceSheetIdx(firstIdx);
+      setStep("review");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to parse file");
+    }
+  };
+
+  const referenceSheet = sheets[referenceSheetIdx] as BoqSheet | undefined;
+  const referenceHeaderRow = referenceSheet ? headerBySheet.get(referenceSheet.sheetName) ?? 0 : 0;
+  const referenceHeaderCells = referenceSheet?.rows[referenceHeaderRow] ?? [];
+  const subHeaderCells = referenceSheet?.rows[referenceHeaderRow + 1] ?? [];
+  const columnOptions = referenceHeaderCells.map((cell, i) => ({ value: String(i), label: String(cell || subHeaderCells[i] || `Col ${i + 1}`) }));
+
+  const draftItemsBySheet = useMemo(
+    () => sheets.filter((s) => headerBySheet.has(s.sheetName))
+      .map((s) => ({ sheet: s, items: rowsToBoqDraftItems(s.rows, headerBySheet.get(s.sheetName)!, mapping, s.sheetName) })),
+    [sheets, headerBySheet, mapping],
+  );
+  const allDraftItems = useMemo(() => draftItemsBySheet.flatMap((d) => d.items), [draftItemsBySheet]);
+  const previewItems = draftItemsBySheet.find((d) => d.sheet === referenceSheet)?.items ?? [];
+  const categoryCount = useMemo(() => new Set(allDraftItems.map((i) => i.category)).size, [allDraftItems]);
+  const skippedCount = sheets.length - draftItemsBySheet.length;
+
+  const { data: wbsNodes } = useCMWBSNodes(projectId);
+
+  const handleImport = async () => {
+    setImporting(true);
+    setError("");
+    try {
+      const versionId = targetVersionId === NEW_VERSION_OPTION
+        ? (await createCMBOQVersion(ownerId, projectId, newVersionName.trim() || `Contract BOQ V${versions.length + 1}`, versions)).id
+        : targetVersionId;
+      let allNodes = [...(wbsNodes ?? [])];
+      for (const category of new Set(allDraftItems.map((i) => i.category ?? "Uncategorized"))) {
+        if (allNodes.some((n) => n.parent_id === null && n.level === "Category" && n.name === category)) continue;
+        const folder = await createCMWBSNode(ownerId, projectId, { name: category, level: "Category", parent_id: null });
+        allNodes = [...allNodes, folder];
+      }
+      const chunkSize = 20;
+      for (let i = 0; i < allDraftItems.length; i += chunkSize) {
+        const chunk = allDraftItems.slice(i, i + chunkSize);
+        await Promise.all(chunk.map((item) => createCMBOQItem(ownerId, projectId, { ...item, version_id: versionId }, allNodes)));
+      }
+      onImported();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to import BOQ items");
+      setImporting(false);
+    }
+  };
+
+  return (
+    <Sheet title={t("boq.import.title")} onClose={onClose}>
+      <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
+        {step === "upload" && (
+          <>
+            <p className="text-[12px] text-white/40">{t("boq.import.uploadHint")}</p>
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("boq.version.importInto")}</span>
+              <FieldSelect
+                value={targetVersionId}
+                onChange={setTargetVersionId}
+                options={[
+                  ...importableVersions.map((v) => ({ value: v.id, label: `${v.name} — ${t(`boq.version.status.${v.status.replace(/\s+/g, "")}`)}` })),
+                  { value: NEW_VERSION_OPTION, label: t("boq.version.createNew") },
+                ]}
+              />
+            </label>
+            {targetVersionId === NEW_VERSION_OPTION && (
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("boq.version.name")}</span>
+                <input className={inputCls} value={newVersionName} onChange={(e) => setNewVersionName(e.target.value)} />
+              </label>
+            )}
+            <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl border border-dashed border-white/15 text-white/60 hover:border-white/30 cursor-pointer text-center transition-colors">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+              </svg>
+              <span className="text-[13px] font-bold uppercase tracking-widest">{t("boq.import.chooseFile")}</span>
+              <input type="file" accept=".xlsx,.xls,.csv,.pdf" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+            </label>
+            {error && <p className="text-[12px] text-red-400">{error}</p>}
+          </>
+        )}
+
+        {step === "review" && referenceSheet && (
+          <>
+            <p className="text-[12px] text-white/40">{t("boq.import.reviewHint")}</p>
+            {BOQ_IMPORT_FIELDS.map((field) => (
+              <label key={field} className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t(`boq.import.field.${field}`)}</span>
+                <FieldSelect
+                  value={mapping[field] != null ? String(mapping[field]) : ""}
+                  onChange={(v) => setMapping((m) => ({ ...m, [field]: v === "" ? null : Number(v) }))}
+                  placeholder={t("boq.import.notMapped")}
+                  options={[{ value: "", label: t("boq.import.notMapped") }, ...columnOptions]}
+                  disabled={importing}
+                />
+              </label>
+            ))}
+
+            <div className="rounded-xl bg-white/3 p-3 flex flex-col gap-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.import.preview")} — {referenceSheet.sheetName}</p>
+              {previewItems.slice(0, 5).map((item, i) => (
+                <p key={i} className="text-[11px] text-white/60 truncate">
+                  {item.description} — {item.quantity} {item.unit ?? ""} × {item.unit_cost.toLocaleString()}
+                </p>
+              ))}
+              {previewItems.length === 0 && <p className="text-[11px] text-white/30">{t("boq.import.noItemsDetected")}</p>}
+            </div>
+
+            <div className="rounded-xl bg-white/3 p-3 text-[12px] text-white/60">
+              {t("boq.import.summary", { count: String(allDraftItems.length), categories: String(categoryCount) })}
+              {skippedCount > 0 && <p className="text-white/30 mt-1">{t("boq.import.skipped", { count: String(skippedCount) })}</p>}
+            </div>
+
+            {error && <p className="text-[12px] text-red-400">{error}</p>}
+            <button type="button" onClick={handleImport} disabled={importing || allDraftItems.length === 0}
+              className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
+              style={{ backgroundColor: "#ff5100" }}>
+              {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
+            </button>
+          </>
+        )}
+      </div>
+    </Sheet>
   );
 }
 
@@ -942,11 +1618,17 @@ function CMSchedulePage() {
   const { data: items, isLoading } = useCMScheduleItems(projectId || undefined);
   const { data: wbsNodes } = useCMWBSNodes(projectId || undefined);
   const { data: boqItems } = useActiveCMBOQItems(projectId || undefined);
+  const { data: boqAllItems } = useCMBOQItems(projectId || undefined);
+  const { data: boqVersions } = useCMBOQVersions(projectId || undefined);
   const { data: logs } = useCMDailyLogs(projectId || undefined);
   const { data: locations } = useCMProjectLocations(projectId || undefined);
   const canCreate = usePermission(projectId || undefined, user?.id, "schedule", "create");
   const canEdit = usePermission(projectId || undefined, user?.id, "schedule", "edit");
   const canDelete = usePermission(projectId || undefined, user?.id, "schedule", "delete");
+  const canApproveBoq = usePermission(projectId || undefined, user?.id, "boq", "approve");
+  const canCreateBoq = usePermission(projectId || undefined, user?.id, "boq", "create");
+  const canEditBoq = usePermission(projectId || undefined, user?.id, "boq", "edit");
+  const canDeleteBoq = usePermission(projectId || undefined, user?.id, "boq", "delete");
   // Structural edits (adding/renaming/deleting folders) stay gated by the
   // "settings" permission, same as the standalone WBS page used to —
   // restructuring cascades into BOQ too, so it's kept separate from
@@ -956,7 +1638,7 @@ function CMSchedulePage() {
   const canDeleteStructure = usePermission(projectId || undefined, user?.id, "settings", "delete");
   const [showImport, setShowImport] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
-  const [view, setView] = useState<"list" | "gantt">("list");
+  const [view, setView] = useState<"list" | "gantt" | "cost">("list");
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
 
@@ -967,6 +1649,21 @@ function CMSchedulePage() {
   const [structureEditingId, setStructureEditingId] = useState<string | null>(null);
   const [structureEditValue, setStructureEditValue] = useState("");
   const [structureDeletingId, setStructureDeletingId] = useState<string | null>(null);
+
+  // Cost view (BOQ) state — Tiles is the default graphical browsing display;
+  // the header Edit icon flips into the editable accordion list. Remembered
+  // per device since it's a pure display preference, not project data.
+  const [costDisplay, setCostDisplay] = useState<"tiles" | "list">(() => {
+    try { return (localStorage.getItem("cm-boq-view") as "tiles" | "list" | null) ?? "tiles"; } catch { return "tiles"; }
+  });
+  useEffect(() => { try { localStorage.setItem("cm-boq-view", costDisplay); } catch { /* */ } }, [costDisplay]);
+  const [showBoqImport, setShowBoqImport] = useState(false);
+  const [boqDetailItem, setBoqDetailItem] = useState<CMBOQItem | null>(null);
+  const [drillCategory, setDrillCategory] = useState<string | null>(null);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [confirmingApprove, setConfirmingApprove] = useState(false);
+  const [confirmingRevision, setConfirmingRevision] = useState(false);
+  const [versionBusy, setVersionBusy] = useState(false);
 
   const locationLabelById = useMemo(() => {
     const map = new Map<string, string>();
@@ -997,7 +1694,10 @@ function CMSchedulePage() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
     queryClient.invalidateQueries({ queryKey: ["cm_active_boq_items", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_boq_versions", projectId] });
     queryClient.invalidateQueries({ queryKey: ["cm_ai_credits", projectId] });
+    setShowImport(false);
+    setShowBoqImport(false);
   };
 
   const groupOptions = useMemo(() => Array.from(new Set((items ?? []).map((i) => i.group_label))), [items]);
@@ -1005,6 +1705,104 @@ function CMSchedulePage() {
     () => Array.from(new Set((boqItems ?? []).map((b) => b.category).filter((c): c is string => !!c))),
     [boqItems],
   );
+
+  const defaultVersion = useMemo(() => activeCMBOQVersion(boqVersions), [boqVersions]);
+  const selectedVersion = useMemo(
+    () => (boqVersions ?? []).find((v) => v.id === selectedVersionId) ?? defaultVersion,
+    [boqVersions, selectedVersionId, defaultVersion],
+  );
+  const versionItems = useMemo(
+    () => (boqAllItems ?? []).filter((i) => (selectedVersion ? i.version_id === selectedVersion.id : !i.version_id)),
+    [boqAllItems, selectedVersion],
+  );
+  const boqLocked = selectedVersion?.locked ?? false;
+  const effectiveCanEditBoq = canEditBoq && !boqLocked;
+  const effectiveCanDeleteBoq = canDeleteBoq && !boqLocked;
+  const effectiveCanCreateBoq = canCreateBoq && !boqLocked;
+
+  const handleApproveBaseline = async () => {
+    if (!selectedVersion || !user) return;
+    setVersionBusy(true);
+    try {
+      await approveCMBOQBaseline(projectId!, selectedVersion.id, user.id, boqVersions ?? []);
+      setConfirmingApprove(false);
+      invalidate();
+    } finally { setVersionBusy(false); }
+  };
+  const handleCreateRevision = async () => {
+    if (!selectedVersion || !user) return;
+    setVersionBusy(true);
+    try {
+      const revision = await createCMBOQRevision(user.id, projectId!, selectedVersion, boqVersions ?? []);
+      setConfirmingRevision(false);
+      invalidate();
+      setSelectedVersionId(revision.id);
+    } finally { setVersionBusy(false); }
+  };
+  const handleCreateVersion = async () => {
+    if (!user || !projectId) return;
+    setVersionBusy(true);
+    try {
+      const v = await createCMBOQVersion(user.id, projectId, `Contract BOQ V${(boqVersions ?? []).length + 1}`, boqVersions ?? []);
+      invalidate();
+      setSelectedVersionId(v.id);
+    } finally { setVersionBusy(false); }
+  };
+
+  const boqGrandTotal = useMemo(() => versionItems.reduce((s, i) => s + i.quantity * i.unit_cost, 0), [versionItems]);
+
+  const boqCategories = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let list = versionItems;
+    if (q) list = list.filter((i) => [i.description, i.category].some((f) => f?.toLowerCase().includes(q)));
+    if (!sortAsc) list = [...list].reverse();
+    const map = new Map<string, CMBOQItem[]>();
+    for (const item of list) {
+      const key = item.category ?? t("boq.uncategorized");
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    }
+    return Array.from(map.entries());
+  }, [versionItems, search, sortAsc, t]);
+  const boqHasActiveSearch = search.trim().length > 0;
+
+  const deliveredByBoqItem = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const log of logs ?? []) {
+      for (const d of log.deliveries) {
+        if (!d.boq_item_id) continue;
+        map.set(d.boq_item_id, (map.get(d.boq_item_id) ?? 0) + (Number(d.quantity) || 0));
+      }
+    }
+    return map;
+  }, [logs]);
+
+  const linkedByCategory = useMemo(() => {
+    const map = new Map<string, { count: number; avgActual: number }>();
+    for (const s of items ?? []) {
+      if (!s.boq_category) continue;
+      const entry = map.get(s.boq_category) ?? { count: 0, avgActual: 0 };
+      entry.avgActual = (entry.avgActual * entry.count + s.actual_percent) / (entry.count + 1);
+      entry.count += 1;
+      map.set(s.boq_category, entry);
+    }
+    return map;
+  }, [items]);
+
+  // Largest category first, so the donut and tiles read consistently and
+  // the tint ramp (strongest -> palest) lines up with actual weight.
+  const boqCategoryTotals = useMemo(() => {
+    const withTotals = boqCategories.map(([name, catItems]) => ({
+      name,
+      items: catItems,
+      subtotal: catItems.reduce((s, i) => s + i.quantity * i.unit_cost, 0),
+      avgActual: linkedByCategory.get(name)?.avgActual ?? null,
+    }));
+    withTotals.sort((a, b) => b.subtotal - a.subtotal);
+    return withTotals.map((c, i) => ({ ...c, color: categoryTintColor(i) }));
+  }, [boqCategories, linkedByCategory]);
+  const boqVisibleTotal = useMemo(() => boqCategoryTotals.reduce((s, c) => s + c.subtotal, 0), [boqCategoryTotals]);
+  const drillCategoryData = drillCategory ? boqCategoryTotals.find((c) => c.name === drillCategory) ?? null : null;
 
   const groups = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -1077,7 +1875,17 @@ function CMSchedulePage() {
     <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("schedule.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/schedule/settings"
-          quickSettings={projectId ? <ScheduleQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
+          quickSettings={projectId ? <ScheduleQuickSettings projectId={projectId} userId={user.id} /> : undefined}
+          extraAction={view === "cost" ? (
+            <button type="button" aria-label={t("boq.editList")} aria-pressed={costDisplay === "list"}
+              onClick={() => setCostDisplay((v) => (v === "list" ? "tiles" : "list"))}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${costDisplay === "list" ? "" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"}`}
+              style={costDisplay === "list" ? { backgroundColor: "var(--color-brand-accent)", color: "#0a0a0b" } : undefined}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+            </button>
+          ) : undefined} />
         <p className="text-[12px] text-white/35 mb-5">{t("schedule.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
@@ -1105,29 +1913,130 @@ function CMSchedulePage() {
                 <SegmentedField
                   value={view}
                   onChange={setView}
-                  options={[{ value: "list", label: t("schedule.view.list") }, { value: "gantt", label: t("schedule.view.gantt") }]}
+                  options={[
+                    { value: "list", label: t("schedule.view.list") },
+                    { value: "gantt", label: t("schedule.view.gantt") },
+                    { value: "cost", label: t("schedule.view.cost") },
+                  ]}
                 />
               )}
-              {canCreate && (
-                <button onClick={() => setShowImport(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors">
-                  {t("schedule.import.title")}
-                </button>
-              )}
-              {canCreateStructure && (
-                <button onClick={() => setAiOpen(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 hover:bg-white/10 transition-colors" style={{ color: "#ff5100" }}>
-                  {t("wbs.aiImport")}
-                </button>
+              {view === "cost" ? (
+                canCreateBoq && (
+                  <button onClick={() => setShowBoqImport(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors">
+                    {t("boq.import.title")}
+                  </button>
+                )
+              ) : (
+                <>
+                  {canCreate && (
+                    <button onClick={() => setShowImport(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors">
+                      {t("schedule.import.title")}
+                    </button>
+                  )}
+                  {canCreateStructure && (
+                    <button onClick={() => setAiOpen(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 hover:bg-white/10 transition-colors" style={{ color: "#ff5100" }}>
+                      {t("wbs.aiImport")}
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
+            {view === "cost" && (boqVersions?.length ?? 0) > 0 && (
+              <div className="mb-4 flex flex-col gap-2">
+                <FieldSelect
+                  value={selectedVersion?.id ?? ""}
+                  onChange={setSelectedVersionId}
+                  options={(boqVersions ?? []).slice().sort((a, b) => b.version_number - a.version_number).map((v) => ({
+                    value: v.id,
+                    label: `${v.name}${v.locked ? " 🔒" : ""}`,
+                  }))}
+                />
+                <div className="flex items-center gap-2 flex-wrap">
+                  {selectedVersion && (
+                    <span className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full"
+                      style={{ color: VERSION_STATUS_COLOR[selectedVersion.status], backgroundColor: `${VERSION_STATUS_COLOR[selectedVersion.status]}1a` }}>
+                      {t(`boq.version.status.${selectedVersion.status.replace(/\s+/g, "")}`)}
+                    </span>
+                  )}
+                  {canApproveBoq && selectedVersion && !boqLocked && selectedVersion.status !== "Archived" && (
+                    <button type="button" onClick={() => setConfirmingApprove(true)} disabled={versionBusy}
+                      className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full" style={{ backgroundColor: "#22c55e22", color: "#22c55e" }}>
+                      {t("boq.version.approveBaseline")}
+                    </button>
+                  )}
+                  {canCreateBoq && boqLocked && (
+                    <button type="button" onClick={() => setConfirmingRevision(true)} disabled={versionBusy}
+                      className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/8 text-white/60">
+                      {t("boq.version.createRevision")}
+                    </button>
+                  )}
+                  {canCreateBoq && (
+                    <button type="button" onClick={handleCreateVersion} disabled={versionBusy}
+                      className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/8 text-white/60">
+                      + {t("boq.version.newVersion")}
+                    </button>
+                  )}
+                  <Link to="/cm/boq/settings" className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/8 text-white/60">
+                    {t("common.settings")}
+                  </Link>
+                </div>
+                {boqLocked && (
+                  <div className="rounded-xl px-3 py-2.5 text-[11px] flex items-center gap-2" style={{ backgroundColor: "#22c55e14", color: "#22c55e" }}>
+                    🔒 {t("boq.version.lockedHint")}
+                  </div>
+                )}
+              </div>
+            )}
+
             {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-            {!isLoading && (wbsNodes?.length ?? 0) === 0 && (
+            {!isLoading && view !== "cost" && (wbsNodes?.length ?? 0) === 0 && (
               <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
                 <p className="text-white/40 text-sm">{t("schedule.nothingYet")}</p>
               </div>
             )}
+            {!isLoading && view === "cost" && boqCategories.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
+                <p className="text-white/40 text-sm">{t("boq.nothingYet")}</p>
+              </div>
+            )}
             {view === "gantt" && groups.length > 0 ? (
               <GanttView groups={groups} />
+            ) : view === "cost" ? (
+              <>
+                {boqCategories.length > 0 && costDisplay === "tiles" && (
+                  <>
+                    <BoqCostDonut data={boqCategoryTotals.map((c) => ({ name: c.name, value: c.subtotal, color: c.color }))} total={boqVisibleTotal} />
+                    <BoqCategoryBarChart data={boqCategoryTotals.map((c) => ({ name: c.name, value: c.subtotal, color: c.color }))} />
+                    <div className="grid grid-cols-2 gap-3">
+                      {boqCategoryTotals.map((c) => (
+                        <CategoryTile key={c.name} name={c.name} count={c.items.length} subtotal={c.subtotal}
+                          pct={boqVisibleTotal > 0 ? (c.subtotal / boqVisibleTotal) * 100 : 0} color={c.color} avgActual={c.avgActual}
+                          onClick={() => setDrillCategory(c.name)} />
+                      ))}
+                    </div>
+                  </>
+                )}
+                {boqCategories.length > 0 && costDisplay === "list" && (
+                  <>
+                    <div className="flex items-center justify-between rounded-2xl bg-[#0d0d0e] px-5 py-4 mb-3">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.grandTotal")}</span>
+                      <span className="font-mono text-[15px] font-bold" style={{ color: "#ff5100" }}>{boqGrandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      {boqCategories.map(([category, categoryItems]) => {
+                        const linked = linkedByCategory.get(category);
+                        return (
+                          <CategorySection key={category} category={category} items={categoryItems} projectId={projectId ?? ""} actorId={user.id} grandTotal={boqGrandTotal}
+                            linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null}
+                            deliveredByBoqItem={deliveredByBoqItem} canEdit={effectiveCanEditBoq} canDelete={effectiveCanDeleteBoq} onChanged={invalidate}
+                            onOpenDetail={setBoqDetailItem} defaultOpen={boqHasActiveSearch || boqCategories.length <= 3} />
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <div className="flex flex-col gap-2">
                 {flat.filter(({ node: n }) => !visibleNodeIds || visibleNodeIds.has(n.id)).map(({ node: n, depth }) => {
@@ -1179,13 +2088,21 @@ function CMSchedulePage() {
                 ))}
               </div>
             )}
-            {canCreate && <FAB label={t("schedule.newBtn")} onClick={() => navigate({ to: "/cm/schedule/new" })} />}
+            {view === "cost" ? (
+              effectiveCanCreateBoq && <FAB label={t("boq.newBtn")} onClick={() => navigate({ to: "/cm/boq/new" })} />
+            ) : (
+              canCreate && <FAB label={t("schedule.newBtn")} onClick={() => navigate({ to: "/cm/schedule/new" })} />
+            )}
           </>
         )}
       </main>
 
       {showImport && projectId && canCreate && (
         <ImportScheduleSheet ownerId={user.id} projectId={projectId} onImported={invalidate} onClose={() => setShowImport(false)} />
+      )}
+      {showBoqImport && projectId && canCreateBoq && (
+        <ImportBoqSheet ownerId={user.id} projectId={projectId} versions={boqVersions ?? []} defaultVersionId={selectedVersion?.id ?? null}
+          onClose={() => setShowBoqImport(false)} onImported={invalidate} />
       )}
       {aiOpen && projectId && activeProject && (
         <AIImportPanel
@@ -1194,6 +2111,41 @@ function CMSchedulePage() {
           accessToken={session?.access_token}
           onClose={() => setAiOpen(false)} onApplied={invalidate}
         />
+      )}
+      {boqDetailItem && projectId && (
+        <BoqItemDetailSheet item={boqDetailItem} projectId={projectId} actorId={user.id} dailyLogs={logs ?? []} scheduleItems={items ?? []}
+          canEdit={canEditBoq} onClose={() => setBoqDetailItem(null)} />
+      )}
+      {drillCategoryData && projectId && (
+        <Sheet title={drillCategoryData.name} onClose={() => setDrillCategory(null)}>
+          <div className="px-6 pb-8 pt-2 flex flex-col gap-2">
+            <div className="flex items-center gap-2 px-1 pb-1" style={{ color: drillCategoryData.color }}>
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${drillCategoryData.color} 18%, transparent)` }}>
+                <CategoryIcon name={drillCategoryData.name} size={13} />
+              </span>
+              <span className="text-[11px] text-white/40">{drillCategoryData.items.length === 1 ? t("boq.item") : t("boq.items", { count: String(drillCategoryData.items.length) })}</span>
+            </div>
+            <div className="flex items-center justify-between px-1 pb-3 mb-1 border-b border-white/6">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
+              <span className="font-mono text-[14px] font-bold" style={{ color: drillCategoryData.color }}>
+                {drillCategoryData.subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </span>
+            </div>
+            {drillCategoryData.items.map((item) => (
+              <BoqItemRow key={item.id} item={item} projectId={projectId} actorId={user.id} delivered={deliveredByBoqItem.get(item.id)}
+                canEdit={effectiveCanEditBoq} canDelete={effectiveCanDeleteBoq} onChanged={invalidate}
+                onOpenDetail={() => { setDrillCategory(null); setBoqDetailItem(item); }} />
+            ))}
+          </div>
+        </Sheet>
+      )}
+      {confirmingApprove && (
+        <ConfirmationDialog message={t("boq.version.confirmApprove")} confirmLabel={t("boq.version.approveBaseline")} destructive={false}
+          onConfirm={handleApproveBaseline} onCancel={() => setConfirmingApprove(false)} />
+      )}
+      {confirmingRevision && (
+        <ConfirmationDialog message={t("boq.version.confirmRevision")} confirmLabel={t("boq.version.createRevision")} destructive={false}
+          onConfirm={handleCreateRevision} onCancel={() => setConfirmingRevision(false)} />
       )}
       {structureDeletingId && (
         <ConfirmationDialog message={t("wbs.confirmDelete")} confirmLabel={t("common.delete")}
