@@ -25,6 +25,7 @@ import {
   logCMActivity,
   useCMProject,
   useCMWBSNodes,
+  createCMWBSNode,
   wbsBreadcrumb,
   type CMScheduleItem,
   type CMScheduleStatus,
@@ -96,7 +97,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
         await updateCMScheduleItem(existing.id, patch);
         logCMActivity(projectId, ownerId, "updated", "schedule", existing.id, { weight: patch.weight, title: patch.title });
       } else {
-        await createCMScheduleItem(ownerId, projectId, patch);
+        await createCMScheduleItem(ownerId, projectId, patch, wbsNodes ?? []);
       }
       onCreated();
     } catch (err) {
@@ -240,13 +241,24 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
     [sheet, headerRowIdx, mapping],
   );
 
+  const { data: wbsNodes } = useCMWBSNodes(projectId);
+
   const handleImport = async () => {
     setImporting(true);
     setError("");
     try {
+      // Pre-create every distinct group's folder up front, sequentially —
+      // avoids a race where two concurrently-created activities under the
+      // same brand-new group each spawn their own duplicate folder.
+      let allNodes = [...(wbsNodes ?? [])];
+      for (const group of new Set(drafts.map((d) => d.group_label))) {
+        if (allNodes.some((n) => n.parent_id === null && n.level === "Group" && n.name === group)) continue;
+        const folder = await createCMWBSNode(ownerId, projectId, { name: group, level: "Group", parent_id: null });
+        allNodes = [...allNodes, folder];
+      }
       const chunkSize = 20;
       for (let i = 0; i < drafts.length; i += chunkSize) {
-        await Promise.all(drafts.slice(i, i + chunkSize).map((d) => createCMScheduleItem(ownerId, projectId, d)));
+        await Promise.all(drafts.slice(i, i + chunkSize).map((d) => createCMScheduleItem(ownerId, projectId, d, allNodes)));
       }
       logCMActivity(projectId, ownerId, "schedule_imported", "schedule", null, { activities: drafts.length });
       onImported();
@@ -577,7 +589,7 @@ function CMSchedulePage() {
     return { planned, actual, variance: actual - planned, dueToday, overdue, delayed };
   }, [items, delayThresholdPct]);
 
-  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_schedule_items", projectId] }); };
+  const invalidate = () => { queryClient.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] }); };
 
   const groupOptions = useMemo(() => Array.from(new Set((items ?? []).map((i) => i.group_label))), [items]);
   const boqCategoryOptions = useMemo(

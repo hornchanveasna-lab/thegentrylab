@@ -2708,11 +2708,13 @@ export async function createCMBOQVersion(ownerId: string, projectId: string, nam
  *  approved (which then supersedes the source). */
 export async function createCMBOQRevision(ownerId: string, projectId: string, sourceVersion: CMBOQVersion, existingVersions: CMBOQVersion[]) {
   const revision = await createCMBOQVersion(ownerId, projectId, `${sourceVersion.name.replace(/ V\d+$/, "")} V${existingVersions.length + 1} (Revision)`, existingVersions);
-  const { data: sourceItems, error } = await db().from("cm_boq_items").select("*").eq("version_id", sourceVersion.id);
+  const { data: sourceItems, error } = await db().from("cm_wbs_nodes").select("*").eq("boq_version_id", sourceVersion.id);
   if (error) throw error;
   if (sourceItems && sourceItems.length > 0) {
-    const copies = (sourceItems as CMBOQItem[]).map(({ id: _id, created_at: _c, updated_at: _u, version_id: _v, ...rest }) => ({ ...rest, version_id: revision.id }));
-    const { error: insertError } = await db().from("cm_boq_items").insert(copies);
+    // Same parent folder, fresh id, new version — the folder itself isn't
+    // duplicated, only the costed leaf nodes it contains.
+    const copies = (sourceItems as CMWBSNode[]).map(({ id: _id, created_at: _c, updated_at: _u, ...rest }) => ({ ...rest, boq_version_id: revision.id }));
+    const { error: insertError } = await db().from("cm_wbs_nodes").insert(copies);
     if (insertError) throw insertError;
   }
   return revision;
@@ -2734,36 +2736,40 @@ export async function approveCMBOQBaseline(projectId: string, versionId: string,
   await logCMActivity(projectId, userId, "approved_baseline", "boq", versionId, {});
 }
 
-/* ── BOQ items (per project) ───────────────────────────── */
-export interface CMBOQItem {
-  id: string;
-  project_id: string;
-  owner_id: string;
-  version_id: string | null;
+/* ── BOQ items — WBS leaf nodes with quantity/rate set ──── */
+/** A costed WBS leaf, viewed as a BOQ line. `description`/`category` are
+ *  computed from the node's own `name`/parent so every existing BOQ call
+ *  site keeps reading the same shape it always has. */
+export type CMBOQItem = CMWBSNode & {
   description: string;
-  unit: string | null;
   quantity: number;
   unit_cost: number;
   category: string | null;
-  sort_order: number;
-  /** Links this line to a cm_wbs_nodes row — the primary structural link
-   *  going forward, alongside the free-text `category`. */
+  /** @deprecated a BOQ item IS a wbs node now — use `id`/`parent_id` directly. */
   wbs_node_id: string | null;
-  created_at: string;
-  updated_at: string;
+  version_id: string | null;
+};
+
+function toBOQItem(node: CMWBSNode, all: CMWBSNode[]): CMBOQItem {
+  return {
+    ...node,
+    description: node.name,
+    quantity: node.quantity ?? 0,
+    unit_cost: node.unit_cost ?? 0,
+    category: wbsParentName(node, all),
+    wbs_node_id: node.id,
+    version_id: node.boq_version_id,
+  };
 }
 
 export function useCMBOQItems(projectId: string | undefined) {
-  return useQuery<CMBOQItem[]>({
-    queryKey: ["cm_boq_items", projectId],
-    enabled: !!projectId && !!supabaseCM,
-    queryFn: async () => {
-      const { data, error } = await db().from("cm_boq_items").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
-      if (error) throw error;
-      return data as CMBOQItem[];
-    },
-    staleTime: STALE_TIME,
-  });
+  const query = useCMWBSNodes(projectId);
+  const data = useMemo(() => {
+    if (!query.data) return query.data;
+    const boqLeaves = query.data.filter((n) => n.quantity != null);
+    return boqLeaves.map((n) => toBOQItem(n, query.data!));
+  }, [query.data]);
+  return { ...query, data };
 }
 
 /** Most of the app (Dashboard, Reports, Schedule, Site Diary, Search,
@@ -2787,20 +2793,33 @@ export async function createCMBOQItem(
   ownerId: string,
   projectId: string,
   input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category" | "version_id" | "wbs_node_id">>,
-) {
-  const { data, error } = await db().from("cm_boq_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
-  if (error) throw error;
-  return data as CMBOQItem;
+  allNodes: CMWBSNode[] = [],
+): Promise<CMBOQItem> {
+  const parentId = input.wbs_node_id
+    ?? (await findOrCreateWBSFolder(ownerId, projectId, input.category ?? "Uncategorized", "Category", allNodes)).id;
+  const node = await createCMWBSNode(ownerId, projectId, {
+    name: input.description,
+    parent_id: parentId,
+    level: "Item",
+    unit: input.unit ?? null,
+    quantity: input.quantity ?? 0,
+    unit_cost: input.unit_cost ?? 0,
+    boq_version_id: input.version_id ?? null,
+  });
+  return toBOQItem(node, [...allNodes, node]);
 }
 
 export async function updateCMBOQItem(id: string, patch: Partial<CMBOQItem>) {
-  const { error } = await db().from("cm_boq_items").update(patch).eq("id", id);
-  if (error) throw error;
+  const { description, category: _category, wbs_node_id: _wbsNodeId, version_id, ...rest } = patch;
+  await updateCMWBSNode(id, {
+    ...(description !== undefined ? { name: description } : {}),
+    ...(version_id !== undefined ? { boq_version_id: version_id } : {}),
+    ...rest,
+  } as Partial<CMWBSNode>);
 }
 
 export async function deleteCMBOQItem(id: string) {
-  const { error } = await db().from("cm_boq_items").delete().eq("id", id);
-  if (error) throw error;
+  await deleteCMWBSNode(id);
 }
 
 /** Tags a captured photo (from the general Photos capture flow, whichever
@@ -2834,33 +2853,37 @@ export async function createCMPhotoBoqTag(ownerId: string, projectId: string, bo
   if (error) throw error;
 }
 
-/* ── Schedule items (WBS plan-vs-actual, per project) ──── */
-export interface CMScheduleItem {
-  id: string;
-  project_id: string;
-  owner_id: string;
-  group_label: string;
+/* ── Schedule items — WBS leaf nodes with plan_start/plan_finish set ── */
+/** A scheduled WBS leaf, viewed as a schedule activity. `title`/`group_label`
+ *  are computed from the node's own `name`/parent, same facade as
+ *  `CMBOQItem`. A node can be both a `CMBOQItem` and a `CMScheduleItem` at
+ *  once — that's how cost and schedule tie to the same piece of work. */
+export type CMScheduleItem = CMWBSNode & {
   title: string;
-  /** Activity ID from the source schedule (e.g. "SCH-021") — null for
-   *  activities created by hand before import existed. */
-  activity_code: string | null;
-  boq_category: string | null;
-  /** Real FK into cm_boq_items — the primary link going forward. Preferred
-   *  over the fragile `boq_category` string match (a BOQ category rename
-   *  silently broke that link) wherever both are available. Null on
-   *  activities created before this field existed or with no linked BOQ line. */
-  boq_item_id: string | null;
-  /** Links this activity to a cm_wbs_nodes row — BOQ items and Schedule
-   *  items sharing a wbs_node_id is how the WBS ties cost to schedule. */
-  wbs_node_id: string | null;
-  location_id: string | null;
+  group_label: string;
   plan_start: string;
   plan_finish: string;
   weight: number;
-  actual_percent: number;
-  sort_order: number;
-  created_at: string;
-  updated_at: string;
+  /** @deprecated a schedule item IS a wbs node now — use `id`/`parent_id` directly. */
+  wbs_node_id: string | null;
+  /** @deprecated no longer a stored link — a node with both quantity and
+   *  plan_start set is inherently "the same item," no FK needed. */
+  boq_item_id: string | null;
+  boq_category: string | null;
+};
+
+function toScheduleItem(node: CMWBSNode, all: CMWBSNode[]): CMScheduleItem {
+  return {
+    ...node,
+    title: node.name,
+    group_label: wbsParentName(node, all) ?? "Ungrouped",
+    plan_start: node.plan_start!,
+    plan_finish: node.plan_finish!,
+    weight: node.weight ?? 0,
+    wbs_node_id: node.id,
+    boq_item_id: node.quantity != null ? node.id : null,
+    boq_category: wbsParentName(node, all),
+  };
 }
 
 /** Simple derived status per the Schedule spec §6 — computed, not stored,
@@ -2924,36 +2947,47 @@ export function cmBOQItemProgress(boqItems: CMBOQItem[], logs: CMDailyLog[]): Ma
 }
 
 export function useCMScheduleItems(projectId: string | undefined) {
-  return useQuery<CMScheduleItem[]>({
-    queryKey: ["cm_schedule_items", projectId],
-    enabled: !!projectId && !!supabaseCM,
-    queryFn: async () => {
-      const { data, error } = await db().from("cm_schedule_items").select("*").eq("project_id", projectId).order("sort_order").order("plan_start");
-      if (error) throw error;
-      return data as CMScheduleItem[];
-    },
-    staleTime: STALE_TIME,
-  });
+  const query = useCMWBSNodes(projectId);
+  const data = useMemo(() => {
+    if (!query.data) return query.data;
+    const schedLeaves = query.data.filter((n) => n.plan_start != null && n.plan_finish != null);
+    return schedLeaves.map((n) => toScheduleItem(n, query.data!));
+  }, [query.data]);
+  return { ...query, data };
 }
 
 export async function createCMScheduleItem(
   ownerId: string,
   projectId: string,
   input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "wbs_node_id" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
-) {
-  const { data, error } = await db().from("cm_schedule_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
-  if (error) throw error;
-  return data as CMScheduleItem;
+  allNodes: CMWBSNode[] = [],
+): Promise<CMScheduleItem> {
+  const parentId = input.wbs_node_id
+    ?? (await findOrCreateWBSFolder(ownerId, projectId, input.group_label, "Group", allNodes)).id;
+  const node = await createCMWBSNode(ownerId, projectId, {
+    name: input.title,
+    parent_id: parentId,
+    level: "Activity",
+    plan_start: input.plan_start,
+    plan_finish: input.plan_finish,
+    weight: input.weight ?? 0,
+    actual_percent: input.actual_percent ?? 0,
+    activity_code: input.activity_code ?? null,
+    location_id: input.location_id ?? null,
+  });
+  return toScheduleItem(node, [...allNodes, node]);
 }
 
 export async function updateCMScheduleItem(id: string, patch: Partial<CMScheduleItem>) {
-  const { error } = await db().from("cm_schedule_items").update(patch).eq("id", id);
-  if (error) throw error;
+  const { title, group_label: _groupLabel, wbs_node_id: _wbsNodeId, boq_item_id: _boqItemId, boq_category: _boqCategory, ...rest } = patch;
+  await updateCMWBSNode(id, {
+    ...(title !== undefined ? { name: title } : {}),
+    ...rest,
+  } as Partial<CMWBSNode>);
 }
 
 export async function deleteCMScheduleItem(id: string) {
-  const { error } = await db().from("cm_schedule_items").delete().eq("id", id);
-  if (error) throw error;
+  await deleteCMWBSNode(id);
 }
 
 /** Linear ramp 0→100 between start and finish (inclusive), clamped; a
@@ -3089,9 +3123,10 @@ export function useCMAllScheduleItems(userId: string | undefined) {
     queryKey: ["cm_schedule_items_all", userId],
     enabled: !!userId && !!supabaseCM,
     queryFn: async () => {
-      const { data, error } = await db().from("cm_schedule_items").select("*");
+      const { data, error } = await db().from("cm_wbs_nodes").select("*").not("plan_start", "is", null);
       if (error) throw error;
-      return data as CMScheduleItem[];
+      const nodes = data as CMWBSNode[];
+      return nodes.map((n) => toScheduleItem(n, nodes));
     },
     staleTime: STALE_TIME,
   });
@@ -3118,6 +3153,11 @@ export function useCMAllScheduleItems(userId: string | undefined) {
  *  since it's a modeling rule, not a database constraint. */
 export type CMWBSLevel = string;
 
+/** The single source of truth for project structure — a WBS node doubles as
+ *  a BOQ line item (when `quantity`/`unit_cost` are set) and/or a schedule
+ *  activity (when `plan_start`/`plan_finish` are set), so cost and schedule
+ *  never drift into a separate tree from the structure they describe. See
+ *  `CMBOQItem`/`CMScheduleItem` below for the narrowed views consumers use. */
 export interface CMWBSNode {
   id: string;
   project_id: string;
@@ -3128,6 +3168,15 @@ export interface CMWBSNode {
   level: CMWBSLevel;
   sort_order: number;
   location_id: string | null;
+  unit: string | null;
+  quantity: number | null;
+  unit_cost: number | null;
+  boq_version_id: string | null;
+  plan_start: string | null;
+  plan_finish: string | null;
+  weight: number | null;
+  actual_percent: number;
+  activity_code: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -3145,16 +3194,15 @@ export function useCMWBSNodes(projectId: string | undefined) {
   });
 }
 
-export async function createCMWBSNode(
-  ownerId: string, projectId: string,
-  input: Pick<CMWBSNode, "name"> & Partial<Pick<CMWBSNode, "level" | "parent_id" | "code" | "location_id" | "sort_order">>,
-) {
+type CMWBSNodeWritable = Pick<CMWBSNode, "name"> & Partial<Omit<CMWBSNode, "id" | "project_id" | "owner_id" | "name" | "created_at" | "updated_at">>;
+
+export async function createCMWBSNode(ownerId: string, projectId: string, input: CMWBSNodeWritable) {
   const { data, error } = await db().from("cm_wbs_nodes").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
   return data as CMWBSNode;
 }
 
-export async function updateCMWBSNode(id: string, patch: Partial<Pick<CMWBSNode, "name" | "level" | "parent_id" | "code" | "location_id" | "sort_order">>) {
+export async function updateCMWBSNode(id: string, patch: Partial<Omit<CMWBSNode, "id" | "project_id" | "owner_id" | "created_at" | "updated_at">>) {
   const { error } = await db().from("cm_wbs_nodes").update(patch).eq("id", id);
   if (error) throw error;
 }
@@ -3183,6 +3231,26 @@ export function wbsBreadcrumb(node: CMWBSNode, all: CMWBSNode[]): string {
  *  ...) exist purely to group leaves and other folders. */
 export function wbsIsLeaf(node: CMWBSNode, all: CMWBSNode[]): boolean {
   return !all.some((n) => n.parent_id === node.id);
+}
+
+/** Immediate parent's name, or null at the root — the BOQ/Schedule
+ *  "category"/"group" label is now just a node's position in the tree
+ *  rather than a stored free-text field. */
+export function wbsParentName(node: CMWBSNode, all: CMWBSNode[]): string | null {
+  if (!node.parent_id) return null;
+  return all.find((n) => n.id === node.parent_id)?.name ?? null;
+}
+
+/** Finds a root-level folder by (level, name), creating it if missing —
+ *  lets BOQ/Schedule writers keep passing a plain "category"/"group label"
+ *  string (import pipelines, the AI ingest apply flow, manual entry) without
+ *  the caller having to navigate the tree themselves. */
+async function findOrCreateWBSFolder(
+  ownerId: string, projectId: string, name: string, level: string, all: CMWBSNode[],
+): Promise<CMWBSNode> {
+  const existing = all.find((n) => n.parent_id === null && n.level === level && n.name === name);
+  if (existing) return existing;
+  return createCMWBSNode(ownerId, projectId, { name, level, parent_id: null });
 }
 
 /** Depth-first flatten with each node's indent depth, root-first — the

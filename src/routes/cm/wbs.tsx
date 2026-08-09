@@ -325,9 +325,9 @@ function CMWBSPage() {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
-    qc.invalidateQueries({ queryKey: ["cm_boq_items", projectId] });
+    qc.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
     qc.invalidateQueries({ queryKey: ["cm_active_boq_items", projectId] });
-    qc.invalidateQueries({ queryKey: ["cm_schedule_items", projectId] });
+    qc.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
     qc.invalidateQueries({ queryKey: ["cm_ai_credits", projectId] });
   };
 

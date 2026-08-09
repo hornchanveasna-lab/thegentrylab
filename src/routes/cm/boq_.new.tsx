@@ -27,7 +27,7 @@ function NewBoqItemPage() {
       ownerId={user.id} projectId={projectId} versionId={defaultVersion?.id ?? null}
       categoryOptions={activeProject?.boq_default_categories ?? []} backTo="/cm/boq"
       onCreated={() => {
-        queryClient.invalidateQueries({ queryKey: ["cm_boq_items", projectId] });
+        queryClient.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
         queryClient.invalidateQueries({ queryKey: ["cm_boq_versions", projectId] });
         navigate({ to: "/cm/boq" });
       }}

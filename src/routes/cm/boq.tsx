@@ -22,6 +22,7 @@ import {
   createCMBOQRevision,
   approveCMBOQBaseline,
   useCMWBSNodes,
+  createCMWBSNode,
   wbsIsLeaf,
   wbsBreadcrumb,
   type CMBOQItem,
@@ -78,7 +79,7 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categ
       if (existing) {
         await updateCMBOQItem(existing.id, patch);
       } else {
-        await createCMBOQItem(ownerId, projectId, { ...patch, version_id: versionId });
+        await createCMBOQItem(ownerId, projectId, { ...patch, version_id: versionId }, wbsNodes ?? []);
       }
       onCreated();
     } catch (err) {
@@ -515,6 +516,8 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
   const categoryCount = useMemo(() => new Set(allDraftItems.map((i) => i.category)).size, [allDraftItems]);
   const skippedCount = sheets.length - draftItemsBySheet.length;
 
+  const { data: wbsNodes } = useCMWBSNodes(projectId);
+
   const handleImport = async () => {
     setImporting(true);
     setError("");
@@ -522,10 +525,19 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
       const versionId = targetVersionId === NEW_VERSION_OPTION
         ? (await createCMBOQVersion(ownerId, projectId, newVersionName.trim() || `Contract BOQ V${versions.length + 1}`, versions)).id
         : targetVersionId;
+      // Pre-create every distinct category's folder up front, sequentially —
+      // avoids a race where two concurrently-created items under the same
+      // brand-new category each spawn their own duplicate folder.
+      let allNodes = [...(wbsNodes ?? [])];
+      for (const category of new Set(allDraftItems.map((i) => i.category ?? "Uncategorized"))) {
+        if (allNodes.some((n) => n.parent_id === null && n.level === "Category" && n.name === category)) continue;
+        const folder = await createCMWBSNode(ownerId, projectId, { name: category, level: "Category", parent_id: null });
+        allNodes = [...allNodes, folder];
+      }
       const chunkSize = 20;
       for (let i = 0; i < allDraftItems.length; i += chunkSize) {
         const chunk = allDraftItems.slice(i, i + chunkSize);
-        await Promise.all(chunk.map((item) => createCMBOQItem(ownerId, projectId, { ...item, version_id: versionId })));
+        await Promise.all(chunk.map((item) => createCMBOQItem(ownerId, projectId, { ...item, version_id: versionId }, allNodes)));
       }
       onImported();
     } catch (err) {
@@ -637,7 +649,7 @@ function CMBoqPage() {
   const [versionBusy, setVersionBusy] = useState(false);
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["cm_boq_items", projectId] });
+    queryClient.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
     queryClient.invalidateQueries({ queryKey: ["cm_boq_versions", projectId] });
     setShowImport(false);
   };
