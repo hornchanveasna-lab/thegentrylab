@@ -249,15 +249,6 @@ export function CMIndexPage() {
             }
           />
           <AppTile
-            label={t("tile.wbs")}
-            to="/cm/wbs"
-            icon={
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="6" cy="5" r="2" /><circle cx="6" cy="19" r="2" /><circle cx="18" cy="12" r="2" /><path d="M6 7v10M6 12h10" />
-              </svg>
-            }
-          />
-          <AppTile
             label={t("tile.ipc")}
             to="/cm/ipc"
             icon={

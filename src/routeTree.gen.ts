@@ -29,7 +29,6 @@ import { Route as CmIndexRouteImport } from './routes/cm/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
-import { Route as CmWbsRouteImport } from './routes/cm/wbs'
 import { Route as CmSyncStatusRouteImport } from './routes/cm/sync-status'
 import { Route as CmSubmittalRouteImport } from './routes/cm/submittal'
 import { Route as CmSiteDiaryRouteImport } from './routes/cm/site-diary'
@@ -201,11 +200,6 @@ const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
   id: '/framework/$stageId',
   path: '/framework/$stageId',
   getParentRoute: () => rootRouteImport,
-} as any)
-const CmWbsRoute = CmWbsRouteImport.update({
-  id: '/wbs',
-  path: '/wbs',
-  getParentRoute: () => CmRoute,
 } as any)
 const CmSyncStatusRoute = CmSyncStatusRouteImport.update({
   id: '/sync-status',
@@ -600,7 +594,6 @@ export interface FileRoutesByFullPath {
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
   '/cm/sync-status': typeof CmSyncStatusRoute
-  '/cm/wbs': typeof CmWbsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -691,7 +684,6 @@ export interface FileRoutesByTo {
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
   '/cm/sync-status': typeof CmSyncStatusRoute
-  '/cm/wbs': typeof CmWbsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -785,7 +777,6 @@ export interface FileRoutesById {
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
   '/cm/sync-status': typeof CmSyncStatusRoute
-  '/cm/wbs': typeof CmWbsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -880,7 +871,6 @@ export interface FileRouteTypes {
     | '/cm/site-diary'
     | '/cm/submittal'
     | '/cm/sync-status'
-    | '/cm/wbs'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -971,7 +961,6 @@ export interface FileRouteTypes {
     | '/cm/site-diary'
     | '/cm/submittal'
     | '/cm/sync-status'
-    | '/cm/wbs'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -1064,7 +1053,6 @@ export interface FileRouteTypes {
     | '/cm/site-diary'
     | '/cm/submittal'
     | '/cm/sync-status'
-    | '/cm/wbs'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -1279,13 +1267,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/framework/$stageId'
       preLoaderRoute: typeof FrameworkStageIdRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/cm/wbs': {
-      id: '/cm/wbs'
-      path: '/wbs'
-      fullPath: '/cm/wbs'
-      preLoaderRoute: typeof CmWbsRouteImport
-      parentRoute: typeof CmRoute
     }
     '/cm/sync-status': {
       id: '/cm/sync-status'
@@ -1874,7 +1855,6 @@ interface CmRouteChildren {
   CmSiteDiaryRoute: typeof CmSiteDiaryRoute
   CmSubmittalRoute: typeof CmSubmittalRoute
   CmSyncStatusRoute: typeof CmSyncStatusRoute
-  CmWbsRoute: typeof CmWbsRoute
   CmIndexRoute: typeof CmIndexRoute
   CmAuthCallbackRoute: typeof CmAuthCallbackRoute
   CmBoqNewRoute: typeof CmBoqNewRoute
@@ -1941,7 +1921,6 @@ const CmRouteChildren: CmRouteChildren = {
   CmSiteDiaryRoute: CmSiteDiaryRoute,
   CmSubmittalRoute: CmSubmittalRoute,
   CmSyncStatusRoute: CmSyncStatusRoute,
-  CmWbsRoute: CmWbsRoute,
   CmIndexRoute: CmIndexRoute,
   CmAuthCallbackRoute: CmAuthCallbackRoute,
   CmBoqNewRoute: CmBoqNewRoute,
