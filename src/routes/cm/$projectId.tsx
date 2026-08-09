@@ -295,7 +295,7 @@ function CMProjectPage() {
           </button>
         </div>
 
-        <div className="rounded-2xl p-5 mb-5 shadow-[var(--shadow-md)]" style={{ backgroundImage: "var(--gradient-brand)" }}>
+        <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-5 shadow-[var(--shadow-md)]">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex items-center gap-3">
               {project.client_logo_url && <img src={project.client_logo_url} alt="" className="w-11 h-11 rounded-xl object-contain bg-white/15 shrink-0" />}
