@@ -380,7 +380,7 @@ function CMSettingsPage() {
                 />
                 <button onClick={handleSaveName} disabled={savingName}
                   className="px-4 py-2 rounded-xl text-[11px] font-mono uppercase tracking-widest text-black font-bold disabled:opacity-40"
-                  style={{ backgroundImage: "var(--gradient-brand)" }}>
+                  style={{ backgroundColor: "var(--color-brand-accent)" }}>
                   {savingName ? "…" : t("common.save")}
                 </button>
               </div>

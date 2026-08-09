@@ -161,7 +161,7 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10">{t("common.cancel")}</button>
           <button onClick={onConfirm}
             className={`flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest ${destructive ? "text-red-400 bg-red-500/10 hover:bg-red-500/15" : "text-black"}`}
-            style={destructive ? undefined : { backgroundImage: "var(--gradient-brand)" }}>
+            style={destructive ? undefined : { backgroundColor: "var(--color-brand-accent)" }}>
             {confirmLabel}
           </button>
         </div>
@@ -177,14 +177,20 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
  *  styles.css) and flips text to on-gradient-safe white — used for the one
  *  or two headline cards per screen (project/health summary), not every
  *  card, so the gradient stays a highlight rather than the whole page. */
-export function Card({ title, action, children, variant = "flat" }: {
+export function Card({ title, action, children, variant = "flat", icon, iconColor = "var(--color-brand-accent)" }: {
   title: string; action?: React.ReactNode; children: React.ReactNode; variant?: "flat" | "hero";
+  icon?: React.ReactNode; iconColor?: string;
 }) {
   if (variant === "hero") {
     return (
       <div className="rounded-2xl p-5 shadow-[var(--shadow-md)]" style={{ backgroundImage: "var(--gradient-brand)" }}>
         <div className="flex items-center justify-between mb-4">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/70">{title}</p>
+          <div className="flex items-center gap-2">
+            {icon && (
+              <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-white/15 text-white">{icon}</span>
+            )}
+            <p className="font-mono text-[10px] uppercase tracking-widest text-white/70">{title}</p>
+          </div>
           {action}
         </div>
         <div className="text-white">{children}</div>
@@ -194,7 +200,15 @@ export function Card({ title, action, children, variant = "flat" }: {
   return (
     <div className="rounded-2xl bg-[#0d0d0e] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between mb-4">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{title}</p>
+        <div className="flex items-center gap-2">
+          {icon && (
+            <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+              style={{ color: iconColor, backgroundColor: `color-mix(in srgb, ${iconColor} 16%, transparent)` }}>
+              {icon}
+            </span>
+          )}
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{title}</p>
+        </div>
         {action}
       </div>
       {children}
@@ -1187,7 +1201,7 @@ export function FAB({ onClick, label }: { onClick: () => void; label: string }) 
       onClick={onClick}
       aria-label={label}
       className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform z-30"
-      style={{ backgroundImage: "var(--gradient-brand)", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+      style={{ backgroundColor: "var(--color-brand-accent)", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
     >
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
     </button>
@@ -1558,7 +1572,7 @@ export function QuickUploadButton({ label, onFilesSelected }: { label: string; o
     <>
       <button type="button" onClick={() => inputRef.current?.click()}
         className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98]"
-        style={{ backgroundImage: "var(--gradient-brand)" }}>
+        style={{ backgroundColor: "var(--color-brand-accent)" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
         </svg>
@@ -1695,7 +1709,7 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
             style={
               opt.color
                 ? { color: opt.color, boxShadow: active ? `inset 0 0 0 1.5px ${opt.color}` : undefined }
-                : active ? { backgroundImage: "var(--gradient-brand)", color: "#000" } : undefined
+                : active ? { backgroundColor: "var(--color-brand-accent)", color: "#000" } : undefined
             }
           >
             {opt.icon}

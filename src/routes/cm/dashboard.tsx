@@ -97,11 +97,11 @@ function CMDashboardPage() {
     return counts;
   }, [equipment]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen" style={{ background: "var(--page-wash)" }} />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
+      <div className="min-h-screen text-white flex items-center justify-center px-4 font-sans" style={{ background: "var(--page-wash)" }}>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -120,7 +120,11 @@ function CMDashboardPage() {
 
         {projectId && project && (
           <div className="flex flex-col gap-4">
-            <Card title={t("dashboard.overview")} variant="hero">
+            <Card title={t("dashboard.overview")} variant="hero" icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 12h4l2-7 4 14 2-7h6" />
+              </svg>
+            }>
               <div className="flex items-center gap-5">
                 <CircularProgress
                   value={actualPct ?? 0} secondary={planPct} size={100} strokeWidth={9}
@@ -153,7 +157,11 @@ function CMDashboardPage() {
               </div>
             </Card>
 
-            <Card title={t("dashboard.sCurve")}>
+            <Card title={t("dashboard.sCurve")} iconColor="#3b82f6" icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" />
+              </svg>
+            }>
               {series.length === 0 ? (
                 <p className="text-white/30 text-[12px]">{t("dashboard.notEnoughData")}</p>
               ) : (
@@ -169,17 +177,21 @@ function CMDashboardPage() {
                       <Legend wrapperStyle={{ fontSize: 10, color: chartTick }} />
                       <Bar yAxisId="left" dataKey="manpower" name={t("dashboard.manpowerLegend")} fill="#94a3b8" fillOpacity={0.5} radius={[2, 2, 0, 0]} />
                       <Line yAxisId="right" type="monotone" dataKey="plan" name={t("dashboard.planLegend")} stroke="#3b82f6" strokeWidth={2} dot={false} />
-                      <Line yAxisId="right" type="monotone" dataKey="actual" name={t("dashboard.actualLegend")} stroke="#ff5100" strokeWidth={2} dot={false} connectNulls />
+                      <Line yAxisId="right" type="monotone" dataKey="actual" name={t("dashboard.actualLegend")} stroke="var(--color-brand-accent)" strokeWidth={2} dot={false} connectNulls />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               )}
             </Card>
 
-            <Card title={t("dashboard.boqSummary")}>
+            <Card title={t("dashboard.boqSummary")} iconColor="#84cc16" icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" />
+              </svg>
+            }>
               <div className="flex items-center justify-between mb-3">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.totalValue")}</span>
-                <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{boqTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                <span className="font-mono text-[13px] font-bold" style={{ color: "var(--color-brand-accent)" }}>{boqTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 {topCategories.map(([category, value]) => (
@@ -189,33 +201,45 @@ function CMDashboardPage() {
                   </div>
                 ))}
               </div>
-              <Link to="/cm/boq" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("dashboard.viewBoq")}</Link>
+              <Link to="/cm/boq" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</Link>
             </Card>
 
-            <Card title={t("dashboard.scheduleSummary")}>
+            <Card title={t("dashboard.scheduleSummary")} iconColor="#f97316" icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" />
+              </svg>
+            }>
               <div className="flex items-center gap-5">
                 <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{scheduleBuckets.ahead}</p><StatusBadge variant="dot" color="#34d399" label={t("dashboard.statusAhead")} /></div>
                 <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{scheduleBuckets.onTrack}</p><StatusBadge variant="dot" color="#fbbf24" label={t("dashboard.statusOnTrack")} /></div>
                 <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{scheduleBuckets.behind}</p><StatusBadge variant="dot" color="#f43f5e" label={t("dashboard.statusBehind")} /></div>
               </div>
-              <Link to="/cm/schedule" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("dashboard.viewSchedule")}</Link>
+              <Link to="/cm/schedule" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewSchedule")}</Link>
             </Card>
 
-            <Card title={t("dashboard.manpowerCard")}>
+            <Card title={t("dashboard.manpowerCard")} iconColor="#0ea5e9" icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" />
+              </svg>
+            }>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.latestHeadcount")}</span>
                 <span className="font-bold text-[14px] text-white/80">{latestHeadcount}</span>
               </div>
-              <Link to="/cm/manpower" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("dashboard.viewManpower")}</Link>
+              <Link to="/cm/manpower" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewManpower")}</Link>
             </Card>
 
-            <Card title={t("dashboard.equipmentCard")}>
+            <Card title={t("dashboard.equipmentCard")} iconColor="#64748b" icon={
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" />
+              </svg>
+            }>
               <div className="flex items-center gap-5">
                 <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{equipmentCounts.Operational}</p><StatusBadge variant="dot" color="#34d399" label={t("equipmentStatus.Operational")} /></div>
                 <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{equipmentCounts.Maintenance}</p><StatusBadge variant="dot" color="#fbbf24" label={t("equipmentStatus.Maintenance")} /></div>
                 <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{equipmentCounts["Out of Service"]}</p><StatusBadge variant="dot" color="#f43f5e" label={t("equipmentStatus.Out of Service")} /></div>
               </div>
-              <Link to="/cm/equipment" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("dashboard.viewEquipment")}</Link>
+              <Link to="/cm/equipment" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewEquipment")}</Link>
             </Card>
           </div>
         )}

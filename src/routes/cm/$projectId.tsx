@@ -245,7 +245,7 @@ function CMProjectPage() {
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -260,7 +260,7 @@ function CMProjectPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col items-center justify-center gap-3 font-sans">
         <p className="text-white/40 text-sm">{t("projects.notFound")}</p>
-        <Link to="/cm/projects" className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "#ff5100" }}>← {t("projects.title")}</Link>
+        <Link to="/cm/projects" className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>← {t("projects.title")}</Link>
       </div>
     );
   }
@@ -399,7 +399,7 @@ function CMProjectPage() {
                       <Legend wrapperStyle={{ fontSize: 10, color: chartTick }} />
                       <Bar yAxisId="left" dataKey="manpower" name={t("dashboard.manpowerLegend")} fill="#94a3b8" fillOpacity={0.5} radius={[2, 2, 0, 0]} />
                       <Line yAxisId="right" type="monotone" dataKey="plan" name={t("dashboard.planLegend")} stroke="#3b82f6" strokeWidth={2} dot={false} />
-                      <Line yAxisId="right" type="monotone" dataKey="actual" name={t("dashboard.actualLegend")} stroke="#ff5100" strokeWidth={2} dot={false} connectNulls />
+                      <Line yAxisId="right" type="monotone" dataKey="actual" name={t("dashboard.actualLegend")} stroke="var(--color-brand-accent)" strokeWidth={2} dot={false} connectNulls />
                     </ComposedChart>
                   </ResponsiveContainer>
                 </div>
@@ -411,14 +411,14 @@ function CMProjectPage() {
                 <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{scheduleBuckets.onTrack}</p><p className="font-mono text-[9px] text-white/30">{t("dashboard.statusOnTrack")}</p></div>
                 <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{scheduleBuckets.behind}</p><p className="font-mono text-[9px] text-white/30">{t("dashboard.statusBehind")}</p></div>
               </div>
-              <button onClick={() => goToModule("/cm/schedule")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("dashboard.viewSchedule")}</button>
+              <button onClick={() => goToModule("/cm/schedule")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewSchedule")}</button>
             </Card>
             <Card title={t("dashboard.manpowerCard")}>
               <div className="flex items-center justify-between mb-3">
                 <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.latestHeadcount")}</span>
                 <span className="font-bold text-[14px] text-white/80">{latestHeadcount}</span>
               </div>
-              <button onClick={() => goToModule("/cm/manpower")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("dashboard.viewManpower")}</button>
+              <button onClick={() => goToModule("/cm/manpower")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewManpower")}</button>
             </Card>
           </div>
         )}
@@ -432,7 +432,7 @@ function CMProjectPage() {
                 <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{failedInspections}</p><p className="font-mono text-[9px] text-white/30">{t("insight.failed")}</p></div>
                 <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{pendingInspections}</p><p className="font-mono text-[9px] text-white/30">{t("insight.scheduled")}</p></div>
               </div>
-              <button onClick={() => goToModule("/cm/inspection")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("insight.viewInspections")}</button>
+              <button onClick={() => goToModule("/cm/inspection")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewInspections")}</button>
             </Card>
             <Card title={t("punchList.title")}>
               <div className="flex items-center gap-4 mb-3">
@@ -440,7 +440,7 @@ function CMProjectPage() {
                 <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(tasks ?? []).filter((x) => x.status === "Done").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.closed")}</p></div>
                 <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{overduePunch}</p><p className="font-mono text-[9px] text-white/30">{t("insight.overdue")}</p></div>
               </div>
-              <button onClick={() => goToModule("/cm/punch-list")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("insight.viewPunchList")}</button>
+              <button onClick={() => goToModule("/cm/punch-list")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewPunchList")}</button>
             </Card>
           </div>
         )}
@@ -458,7 +458,7 @@ function CMProjectPage() {
                 <div><p className="font-bold text-[13px] text-white/70">{(safetyRecords ?? []).filter((x) => x.record_type === "Toolbox Talk").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.toolboxTalks")}</p></div>
                 <div><p className="font-bold text-[13px] text-white/70">{(safetyRecords ?? []).filter((x) => x.record_type === "Incident").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.incidents")}</p></div>
               </div>
-              <button onClick={() => goToModule("/cm/safety")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("insight.viewSafety")}</button>
+              <button onClick={() => goToModule("/cm/safety")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewSafety")}</button>
             </Card>
           </div>
         )}
@@ -472,11 +472,11 @@ function CMProjectPage() {
                 <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(submittals ?? []).filter((x) => x.status === "Approved" || x.status === "Approved as Noted").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.approved")}</p></div>
                 <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{actionSubmittals}</p><p className="font-mono text-[9px] text-white/30">{t("insight.needsAction")}</p></div>
               </div>
-              <button onClick={() => goToModule("/cm/submittal")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("insight.viewSubmittals")}</button>
+              <button onClick={() => goToModule("/cm/submittal")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewSubmittals")}</button>
             </Card>
             <Card title={t("tile.photo")}>
               <p className="text-[12px] text-white/45 mb-3">{t("insight.photosHint")}</p>
-              <button onClick={() => goToModule("/cm/photos")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("insight.viewPhotos")}</button>
+              <button onClick={() => goToModule("/cm/photos")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewPhotos")}</button>
             </Card>
           </div>
         )}
@@ -487,14 +487,14 @@ function CMProjectPage() {
               <div className="flex flex-col gap-2 mb-3">
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("projectSettings.contractValue")}</span>
-                  <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{value ?? "—"}</span>
+                  <span className="font-mono text-[13px] font-bold" style={{ color: "var(--color-brand-accent)" }}>{value ?? "—"}</span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.totalValue")} ({t("boq.title")})</span>
                   <span className="font-mono text-[13px] font-bold text-white/70">{boqTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
-              <button onClick={() => goToModule("/cm/boq")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("dashboard.viewBoq")}</button>
+              <button onClick={() => goToModule("/cm/boq")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</button>
             </Card>
           </div>
         )}
