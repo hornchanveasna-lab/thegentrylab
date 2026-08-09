@@ -815,7 +815,7 @@ export function SettingControlRow<T extends string | boolean>({ icon, label, res
  *  button, a title that swaps for a search input, and a "⋮" menu — all
  *  pinned (`sticky`) so they stay visible while the list scrolls beneath
  *  them, matching the Telegram reference the design follows. */
-export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort, settingsTo, quickSettings }: {
+export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder, sortAsc, onToggleSort, settingsTo, quickSettings, extraAction }: {
   title: string;
   search: string;
   onSearchChange: (v: string) => void;
@@ -828,6 +828,9 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
    *  the Photos-style quick-settings pattern. Omit for modules with no
    *  quick-editable defaults; behavior is unchanged when absent. */
   quickSettings?: React.ReactNode;
+  /** Extra icon button rendered before the search toggle, e.g. an Edit
+   *  action that needs to live next to Settings instead of a list-row FAB. */
+  extraAction?: React.ReactNode;
 }) {
   const { t } = useCMLang();
   const [showSearch, setShowSearch] = useState(false);
@@ -848,6 +851,7 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
       ) : (
         <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
       )}
+      {extraAction}
       <button type="button" aria-label={t("common.search")}
         onClick={() => setShowSearch((v) => { const next = !v; if (!next) onSearchChange(""); return next; })}
         className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0">
