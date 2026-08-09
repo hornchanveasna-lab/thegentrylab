@@ -2959,7 +2959,7 @@ export function useCMScheduleItems(projectId: string | undefined) {
 export async function createCMScheduleItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "wbs_node_id" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
+  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "wbs_node_id" | "weight" | "actual_percent" | "activity_code" | "location_id" | "actual_start" | "actual_end">>,
   allNodes: CMWBSNode[] = [],
 ): Promise<CMScheduleItem> {
   const parentId = input.wbs_node_id
@@ -2974,6 +2974,8 @@ export async function createCMScheduleItem(
     actual_percent: input.actual_percent ?? 0,
     activity_code: input.activity_code ?? null,
     location_id: input.location_id ?? null,
+    actual_start: input.actual_start ?? null,
+    actual_end: input.actual_end ?? null,
   });
   return toScheduleItem(node, [...allNodes, node]);
 }
@@ -3174,6 +3176,12 @@ export interface CMWBSNode {
   boq_version_id: string | null;
   plan_start: string | null;
   plan_finish: string | null;
+  /** When work actually started/finished — distinct from `actual_percent`
+   *  (a completion % alone can't place a real bar on an Estimated-vs-Actual
+   *  Gantt). Both null until someone logs it; `actual_end` stays null while
+   *  in progress. */
+  actual_start: string | null;
+  actual_end: string | null;
   weight: number | null;
   actual_percent: number;
   activity_code: string | null;

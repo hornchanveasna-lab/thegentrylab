@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FormPage, FAB, Card, ProjectPicker, FieldSelect, LocationSelect, SegmentedField,
-  useSelectedProject, inputCls, labelCls, ConfirmationDialog,
+  useSelectedProject, inputCls, labelCls, ConfirmationDialog, useCMTheme,
 } from "@/components/cm/shared";
 import {
   useCMScheduleItems,
@@ -72,6 +73,8 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
   const { data: wbsNodes } = useCMWBSNodes(projectId);
   const [planStart, setPlanStart] = useState(existing?.plan_start ?? today());
   const [planFinish, setPlanFinish] = useState(existing?.plan_finish ?? today());
+  const [actualStart, setActualStart] = useState(existing?.actual_start ?? "");
+  const [actualEnd, setActualEnd] = useState(existing?.actual_end ?? "");
   const [weight, setWeight] = useState(existing ? String(existing.weight) : "1");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -91,6 +94,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
         wbs_node_id: wbsNodeId || null,
         location_id: locationId,
         plan_start: planStart, plan_finish: planFinish,
+        actual_start: actualStart || null, actual_end: actualEnd || null,
         weight: Number(weight) || 1,
       };
       if (existing) {
@@ -180,6 +184,17 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
               <label className="flex flex-col gap-1.5">
                 <span className={labelCls}>{t("schedule.planFinish")}</span>
                 <input type="date" className={inputCls} value={planFinish} onChange={(e) => setPlanFinish(e.target.value)} disabled={saving} />
+              </label>
+            </div>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 -mb-1">{t("schedule.actualDatesHint")}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("schedule.actualStart")}</span>
+                <input type="date" className={inputCls} value={actualStart} onChange={(e) => setActualStart(e.target.value)} disabled={saving} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("schedule.actualFinish")}</span>
+                <input type="date" className={inputCls} value={actualEnd} onChange={(e) => setActualEnd(e.target.value)} disabled={saving || !actualStart} min={actualStart || undefined} />
               </label>
             </div>
             <label className="flex flex-col gap-1.5">
@@ -469,40 +484,97 @@ function GroupSection({ groupLabel, items, projectId, actorId, canEdit, canDelet
  *  plan start to the latest plan finish, a plan bar per activity with an
  *  actual-progress fill, and a today line. No dependencies/critical path —
  *  this is deliberately not Primavera. */
-function GanttView({ groups, delayThresholdPct }: { groups: [string, CMScheduleItem[]][]; delayThresholdPct: number }) {
+const MS_PER_WEEK = 7 * 24 * 3600 * 1000;
+
+interface GanttRow {
+  title: string;
+  estOffset: number;
+  estDuration: number;
+  actOffset: number;
+  actDuration: number;
+  estLabel: string;
+  actLabel: string | null;
+}
+
+function GanttTooltip({ active, payload, accent, bg, border, text }: {
+  active?: boolean; payload?: { payload: GanttRow }[]; accent: string; bg: string; border: string; text: string;
+}) {
+  const { t } = useCMLang();
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  return (
+    <div className="rounded-xl px-3.5 py-2.5 shadow-lg" style={{ background: bg, border: `1px solid ${border}` }}>
+      <p className="text-[12px] font-bold mb-1.5" style={{ color: text }}>{row.title}</p>
+      <p className="text-[11px]" style={{ color: `color-mix(in srgb, ${accent} 55%, ${text})` }}>{t("schedule.estimated")}: {row.estLabel}</p>
+      {row.actLabel && <p className="text-[11px] font-bold" style={{ color: accent }}>{t("schedule.actual")}: {row.actLabel}</p>}
+    </div>
+  );
+}
+
+function GanttView({ groups }: { groups: [string, CMScheduleItem[]][] }) {
+  const { t } = useCMLang();
+  const theme = useCMTheme();
+  const chartGrid = theme === "light" ? "rgba(0,0,0,0.10)" : "rgba(255,255,255,0.08)";
+  const chartTick = theme === "light" ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.4)";
+  const chartText = theme === "light" ? "#17130f" : "#ffffff";
+  const chartTooltipBg = theme === "light" ? "#ffffff" : "#181818";
+  const chartTooltipBorder = theme === "light" ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.1)";
+  const estColor = "color-mix(in srgb, var(--color-brand-accent) 38%, transparent)";
+  const actColor = "var(--color-brand-accent)";
+
   const all = groups.flatMap(([, items]) => items);
-  const min = all.reduce((m, i) => (i.plan_start < m ? i.plan_start : m), all[0].plan_start);
-  const max = all.reduce((m, i) => (i.plan_finish > m ? i.plan_finish : m), all[0].plan_finish);
-  const span = Math.max(1, new Date(max).getTime() - new Date(min).getTime());
-  const pct = (date: string) => Math.max(0, Math.min(100, ((new Date(date).getTime() - new Date(min).getTime()) / span) * 100));
-  const todayPct = pct(today());
-  const showToday = today() >= min && today() <= max;
+  const allDates = all.flatMap((i) => [i.plan_start, i.plan_finish, i.actual_start, i.actual_end].filter((d): d is string => !!d));
+  const minMs = Math.min(...allDates.map((d) => new Date(d).getTime()));
+  const maxMs = Math.max(...allDates.map((d) => new Date(d).getTime()), new Date(today()).getTime());
+  const maxWeek = Math.max(1, Math.ceil((maxMs - minMs) / MS_PER_WEEK));
+  const weekOf = (date: string) => (new Date(date).getTime() - minMs) / MS_PER_WEEK;
 
   return (
     <div className="flex flex-col gap-3">
-      {groups.map(([groupLabel, items]) => (
-        <div key={groupLabel} className="rounded-2xl bg-[#0d0d0e] px-4 py-3">
-          <p className="text-[11px] text-white/60 font-medium mb-2">{groupLabel}</p>
-          <div className="flex flex-col gap-1.5">
-            {items.map((item) => {
-              const left = pct(item.plan_start);
-              const width = Math.max(1.5, pct(item.plan_finish) - left);
-              const status = cmScheduleStatus(item, today(), delayThresholdPct);
-              return (
-                <div key={item.id} className="flex items-center gap-2">
-                  <p className="w-[38%] shrink-0 text-[10px] text-white/60 truncate">{item.title}</p>
-                  <div className="flex-1 h-4 relative rounded bg-white/[0.03]">
-                    {showToday && <div className="absolute top-0 bottom-0 w-px bg-[#ff5100]/60 pointer-events-none z-10" style={{ left: `${todayPct}%` }} />}
-                    <div className="absolute top-0.5 bottom-0.5 rounded-sm bg-white/10 overflow-hidden" style={{ left: `${left}%`, width: `${width}%` }}>
-                      <div className="h-full" style={{ width: `${item.actual_percent}%`, backgroundColor: STATUS_COLOR[status] }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+      <p className="text-[11px] text-white/40 px-1">{t("schedule.ganttHint")}</p>
+      {groups.map(([groupLabel, items]) => {
+        const rows: GanttRow[] = items.map((item) => {
+          const estStart = weekOf(item.plan_start);
+          const estEnd = weekOf(item.plan_finish);
+          const estDuration = Math.max(0.4, estEnd - estStart);
+          const hasActualStart = !!item.actual_start;
+          const actStart = hasActualStart ? weekOf(item.actual_start!) : estStart;
+          const inProgress = item.actual_percent > 0 && item.actual_percent < 100 && !item.actual_end;
+          const actEnd = item.actual_end ? weekOf(item.actual_end) : inProgress ? weekOf(today()) : actStart;
+          const showActual = hasActualStart || item.actual_end || inProgress;
+          const actDuration = showActual ? Math.max(0.4, actEnd - actStart) : 0;
+          return {
+            title: item.title,
+            estOffset: estStart, estDuration,
+            actOffset: showActual ? actStart : 0, actDuration,
+            estLabel: `wk ${Math.round(estStart)}–${Math.round(estEnd)} (${Math.round(estEnd - estStart)} wk)`,
+            actLabel: showActual ? `wk ${Math.round(actStart)}–${Math.round(actStart + actDuration)} (${Math.round(actDuration)} wk)` : null,
+          };
+        });
+        return (
+          <div key={groupLabel} className="rounded-2xl bg-[#0d0d0e] px-4 py-4">
+            <p className="text-[11px] text-white/60 font-medium mb-2">{groupLabel}</p>
+            <div style={{ height: rows.length * 46 + 40 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }} barCategoryGap="28%" barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartGrid} horizontal={false} />
+                  <XAxis type="number" domain={[0, maxWeek]} tick={{ fill: chartTick, fontSize: 9 }} tickLine={false} axisLine={false}
+                    tickFormatter={(w: number) => `${Math.round(w)} wk`} />
+                  <YAxis type="category" dataKey="title" width={110} tick={{ fill: chartTick, fontSize: 9 }} tickLine={false} axisLine={false} />
+                  <Tooltip content={<GanttTooltip accent={actColor} bg={chartTooltipBg} border={chartTooltipBorder} text={chartText} />} cursor={{ fill: "transparent" }} />
+                  <Legend
+                    payload={[{ value: t("schedule.estimated"), type: "square", color: "color-mix(in srgb, var(--color-brand-accent) 55%, transparent)" }, { value: t("schedule.actual"), type: "square", color: actColor }]}
+                    wrapperStyle={{ fontSize: 10, color: chartTick }} />
+                  <Bar dataKey="estOffset" stackId="est" fill="transparent" legendType="none" isAnimationActive={false} />
+                  <Bar dataKey="estDuration" stackId="est" fill={estColor} radius={2} barSize={7} legendType="none" isAnimationActive={false} />
+                  <Bar dataKey="actOffset" stackId="act" fill="transparent" legendType="none" isAnimationActive={false} />
+                  <Bar dataKey="actDuration" stackId="act" fill={actColor} radius={2} barSize={7} legendType="none" isAnimationActive={false} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -668,7 +740,7 @@ function CMSchedulePage() {
               </div>
             )}
             {view === "gantt" && groups.length > 0 ? (
-              <GanttView groups={groups} delayThresholdPct={delayThresholdPct} />
+              <GanttView groups={groups} />
             ) : (
               <div className="flex flex-col gap-3">
                 {groups.map(([groupLabel, groupItems]) => (
