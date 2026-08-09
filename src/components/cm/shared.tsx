@@ -17,9 +17,9 @@ import {
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import { type ResolvedSetting } from "@/lib/cm-settings";
 
-export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[#ff5100]/70 focus:ring-2 focus:ring-[#ff5100]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)] transition-all";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
-const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 hover:bg-white/[0.08] rounded-xl border border-white/15 px-3.5 py-3 text-[13px] text-white disabled:opacity-40 transition-colors";
+const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 hover:bg-white/[0.08] rounded-xl border border-white/15 px-3.5 py-3 text-[13px] text-white disabled:opacity-40 transition-all focus:bg-white/[0.07] focus:border-[#ff5100]/70 focus:ring-2 focus:ring-[#ff5100]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)]";
 
 export interface FieldSelectOption<T extends string> {
   value: T;
@@ -101,8 +101,21 @@ export const CM_HEALTH_BAND_COLOR: Record<CMHealthBand, string> = {
 
 /** A read-only colored pill, extracted from what every module was hand-
  *  rolling inline for its status/priority chips. `PriorityBadge` is the
- *  same shape under a clearer call-site name. */
-export function StatusBadge({ label, color, size = "xs" }: { label: string; color: string; size?: "xs" | "sm" }) {
+ *  same shape under a clearer call-site name. `variant="dot"` swaps the
+ *  filled pill for a small colored dot + label — no background — for
+ *  timeline/list rows where a pill-per-row reads as too heavy; default
+ *  stays `"pill"` so every existing call site is unaffected. */
+export function StatusBadge({ label, color, size = "xs", variant = "pill" }: {
+  label: string; color: string; size?: "xs" | "sm"; variant?: "pill" | "dot";
+}) {
+  if (variant === "dot") {
+    return (
+      <span className={`inline-flex items-center gap-1.5 font-mono uppercase tracking-widest shrink-0 ${size === "xs" ? "text-[9px]" : "text-[10px]"}`} style={{ color }}>
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+        {label}
+      </span>
+    );
+  }
   return (
     <span className={`px-2.5 py-1 rounded-full font-mono uppercase tracking-widest shrink-0 ${size === "xs" ? "text-[9px]" : "text-[10px]"}`}
       style={{ backgroundColor: `${color}15`, color }}>
@@ -159,16 +172,97 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
 
 /** A titled card shell used by Project Settings and the new dedicated
  *  BOQ/Schedule/Manpower/Equipment/Dashboard pages, so every module-level
- *  "section" reads the same. */
-export function Card({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+ *  "section" reads the same. `variant="hero"` swaps the flat dark surface
+ *  for the brand gradient (`--gradient-brand`, defined per-theme in
+ *  styles.css) and flips text to on-gradient-safe white — used for the one
+ *  or two headline cards per screen (project/health summary), not every
+ *  card, so the gradient stays a highlight rather than the whole page. */
+export function Card({ title, action, children, variant = "flat" }: {
+  title: string; action?: React.ReactNode; children: React.ReactNode; variant?: "flat" | "hero";
+}) {
+  if (variant === "hero") {
+    return (
+      <div className="rounded-2xl p-5 shadow-[var(--shadow-md)]" style={{ backgroundImage: "var(--gradient-brand)" }}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/70">{title}</p>
+          {action}
+        </div>
+        <div className="text-white">{children}</div>
+      </div>
+    );
+  }
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] p-5">
+    <div className="rounded-2xl bg-[#0d0d0e] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between mb-4">
         <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{title}</p>
         {action}
       </div>
       {children}
     </div>
+  );
+}
+
+/** A single-value progress ring — hand-rolled SVG rather than a recharts
+ *  RadialBarChart, since a static ring + centered number needs none of
+ *  ResponsiveContainer/axis/tooltip machinery and can take a gradient
+ *  stroke directly (recharts' arc fill can't cleanly do that). `secondary`
+ *  draws a thin plan/target tick mark on the track for plan-vs-actual
+ *  comparisons (e.g. dashboard's plan% vs actual% ring). */
+export function CircularProgress({ value, size = 96, strokeWidth = 8, gradient = true, color, secondary, label }: {
+  value: number; size?: number; strokeWidth?: number; gradient?: boolean; color?: string;
+  secondary?: number; label?: React.ReactNode;
+}) {
+  const clamped = Math.max(0, Math.min(100, value));
+  const r = (size - strokeWidth) / 2;
+  const c = size / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference * (1 - clamped / 100);
+  const gradId = "cp-grad";
+  const secondaryAngle = secondary != null ? (Math.max(0, Math.min(100, secondary)) / 100) * 360 - 90 : null;
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ffb347" />
+            <stop offset="100%" stopColor={color ?? "#ff5100"} />
+          </linearGradient>
+        </defs>
+        <circle cx={c} cy={c} r={r} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-white/8" />
+        <circle cx={c} cy={c} r={r} fill="none" stroke={gradient ? `url(#${gradId})` : (color ?? "#ff5100")}
+          strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 0.6s ease" }} />
+        {secondaryAngle != null && (
+          <line x1={c} y1={strokeWidth / 2} x2={c} y2={strokeWidth * 1.6}
+            stroke="#ffffff" strokeWidth={2} strokeLinecap="round"
+            transform={`rotate(${secondaryAngle + 90} ${c} ${c})`} opacity={0.55} />
+        )}
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        {label ?? <span className="text-[20px] font-extrabold text-white">{clamped.toFixed(0)}%</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Small decorative trend line for card corners — hand-rolled SVG
+ *  polyline, no axes/tooltip, not a real chart. */
+export function Sparkline({ data, width = 64, height = 22, color = "#ff5100" }: {
+  data: number[]; width?: number; height?: number; color?: string;
+}) {
+  if (data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * height;
+    return `${x},${y}`;
+  }).join(" ");
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="shrink-0" fill="none">
+      <polyline points={points} stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" opacity={0.85} />
+    </svg>
   );
 }
 

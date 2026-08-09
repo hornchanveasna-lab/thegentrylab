@@ -7,7 +7,7 @@ import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import { ProjectSettingsView, PeopleSection } from "@/components/cm/ProjectSettingsView";
 import {
-  BackButton, Card, EmptyState, SegmentedField, useCMTheme,
+  BackButton, Card, CircularProgress, StatusBadge, EmptyState, SegmentedField, useCMTheme,
   PROJECT_STATUS_COLOR, CM_HEALTH_BAND_COLOR, setLastProject,
 } from "@/components/cm/shared";
 import {
@@ -92,7 +92,7 @@ function OverviewCard({ label, value }: { label: string; value: string }) {
 function AttentionRow({ label, count, to, projectId }: { label: string; count: number; to: string; projectId: string }) {
   return (
     <Link to={to} onClick={() => setLastProject(projectId)} className="flex items-center justify-between rounded-xl bg-white/3 hover:bg-white/6 px-3.5 py-2.5 transition-colors">
-      <span className="text-[12px] text-white/70">{label}</span>
+      <StatusBadge variant="dot" color="#f43f5e" label={label} size="sm" />
       <span className="flex items-center gap-1.5 shrink-0">
         <span className="font-mono text-[12px] font-bold text-red-400">{count}</span>
         <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/25"><path d="M6 3l5 5-5 5" /></svg>
@@ -297,35 +297,37 @@ function CMProjectPage() {
           </button>
         </div>
 
-        <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-5">
+        <div className="rounded-2xl p-5 mb-5 shadow-[var(--shadow-md)]" style={{ backgroundImage: "var(--gradient-brand)" }}>
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex items-center gap-3">
-              {project.client_logo_url && <img src={project.client_logo_url} alt="" className="w-11 h-11 rounded-xl object-contain bg-white/5 shrink-0" />}
+              {project.client_logo_url && <img src={project.client_logo_url} alt="" className="w-11 h-11 rounded-xl object-contain bg-white/15 shrink-0" />}
               <div className="min-w-0">
                 <h2 className="text-lg font-extrabold tracking-tight text-white truncate">{project.name}</h2>
-                {project.project_code && <p className="font-mono text-[10px] text-white/25">{project.project_code}</p>}
+                {project.project_code && <p className="font-mono text-[10px] text-white/60">{project.project_code}</p>}
               </div>
             </div>
+            <CircularProgress value={healthScore.score} color={hc} gradient={false} size={56} strokeWidth={5}
+              label={<span className="text-[12px] font-extrabold text-white">{healthScore.score}</span>} />
           </div>
           <div className="flex items-center gap-1.5 flex-wrap mb-2">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: `${sc}15` }}>
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 bg-white/15">
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{t(`status.${project.status}`)}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-white">{t(`status.${project.status}`)}</span>
             </span>
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: `${hc}15` }}>
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 bg-white/15">
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: hc }}>{t(`health.${healthScore.band}`)} · {healthScore.score}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-white">{t(`health.${healthScore.band}`)}</span>
             </span>
-            {project.sector && <span className="px-2.5 py-1 rounded-full bg-white/5 font-mono text-[9px] uppercase tracking-widest text-white/40">{t(`sector.${project.sector}`)}</span>}
+            {project.sector && <span className="px-2.5 py-1 rounded-full bg-white/15 font-mono text-[9px] uppercase tracking-widest text-white/80">{t(`sector.${project.sector}`)}</span>}
           </div>
-          {project.client && <p className="text-[12px] text-white/45 mb-1">{t("projects.clientLabel")} <span className="text-white/70">{project.client}</span></p>}
-          {project.location && <p className="text-[12px] text-white/45 mb-1">{project.location}</p>}
-          {projectManager && <p className="text-[12px] text-white/45 mb-1">{jobRoleLabel("project_manager", t)}: <span className="text-white/70">{projectManager.display_name || projectManager.email}</span></p>}
+          {project.client && <p className="text-[12px] text-white/75 mb-1">{t("projects.clientLabel")} <span className="text-white">{project.client}</span></p>}
+          {project.location && <p className="text-[12px] text-white/75 mb-1">{project.location}</p>}
+          {projectManager && <p className="text-[12px] text-white/75 mb-1">{jobRoleLabel("project_manager", t)}: <span className="text-white">{projectManager.display_name || projectManager.email}</span></p>}
           <div className="flex items-center justify-between mt-2">
             {(project.start_date || project.target_end_date) && (
-              <p className="font-mono text-[10px] text-white/25 uppercase tracking-widest">{project.start_date ?? "—"} → {project.target_end_date ?? "—"}</p>
+              <p className="font-mono text-[10px] text-white/60 uppercase tracking-widest">{project.start_date ?? "—"} → {project.target_end_date ?? "—"}</p>
             )}
-            {value && commercialVisible && <p className="font-mono text-[10px] text-white/35 uppercase tracking-widest ml-auto">{value}</p>}
+            {value && commercialVisible && <p className="font-mono text-[10px] text-white/75 uppercase tracking-widest ml-auto">{value}</p>}
           </div>
         </div>
 
@@ -371,7 +373,7 @@ function CMProjectPage() {
               <div className="grid grid-cols-4 gap-3">
                 {MODULE_SHORTCUTS.map((m) => (
                   <button key={m.to} onClick={() => goToModule(m.to)} className="flex flex-col items-center gap-1.5 text-white/70 hover:text-white transition-colors">
-                    <span className="w-11 h-11 rounded-2xl bg-white/5 flex items-center justify-center">{m.icon}</span>
+                    <span className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundImage: "linear-gradient(135deg, rgba(255,81,0,0.16), rgba(255,179,71,0.08))" }}>{m.icon}</span>
                     <span className="text-[10px] text-center leading-tight">{t(m.labelKey)}</span>
                   </button>
                 ))}

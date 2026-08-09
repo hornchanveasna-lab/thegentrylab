@@ -165,8 +165,8 @@ export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, de
         <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
-          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40 shadow-[var(--shadow-sm)]"
+          style={{ backgroundImage: "var(--gradient-brand)" }}>
           {existing ? (saving ? t("punchList.saving") : t("punchList.saveChanges")) : (saving ? t("punchList.adding") : t("punchList.addToPunchList"))}
         </button>
       </form>
@@ -227,7 +227,7 @@ function PunchListDocumentCard({ row, viewAll, canCreate, canApprove, userId, on
   };
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden">
+    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden shadow-[var(--shadow-sm)]">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
         <div className="flex items-center gap-3 min-w-0">
           <div className="min-w-0">
@@ -285,16 +285,18 @@ function PunchListDocumentCard({ row, viewAll, canCreate, canApprove, userId, on
 function PunchItemCard({ item, projectName, showDate = true }: { item: CMTask; projectName?: string; showDate?: boolean }) {
   const { t } = useCMLang();
   const sc = STATUS_COLOR[item.status];
+  const isOpen = item.status !== "Done";
   return (
     <Link to="/cm/punch-list/$id" params={{ id: item.id }}
-      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      className="relative w-full flex items-center justify-between gap-3 pl-6 pr-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 hover:-translate-y-0.5 transition-all shadow-[var(--shadow-sm)] overflow-hidden">
+      {isOpen && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sc }} />}
       <div className="flex items-center gap-4 min-w-0">
         {showDate && <span className="font-mono text-[12px] text-white/70 shrink-0">{item.created_at.slice(0, 10)}</span>}
         {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
         {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
         <span className={`text-[12px] truncate ${item.status === "Done" ? "text-white/40 line-through" : "text-white/70"}`}>{item.title}</span>
       </div>
-      <StatusBadge label={t(`taskStatus.${item.status}`)} color={sc} />
+      <StatusBadge label={t(`taskStatus.${item.status}`)} color={sc} variant="dot" />
     </Link>
   );
 }
