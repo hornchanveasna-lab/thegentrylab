@@ -654,7 +654,7 @@ function CategoryTile({ name, count, subtotal, pct, color, avgActual, onClick }:
     <button type="button" onClick={onClick}
       className="text-left rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-2.5 active:scale-[0.98] transition-transform">
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="app-tile-icon w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: color, color: "#fff" }}>
+        <span className="app-tile-icon w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 80%, transparent)`, color: "#fff" }}>
           <CategoryIcon name={name} size={15} />
         </span>
         <p className="font-mono text-[9px] uppercase tracking-widest text-white/45 truncate">{name}</p>
@@ -1183,7 +1183,7 @@ function WBSNodeRow({ node, depth, isLeaf, rollup, canEdit, canDelete, editing, 
     <div className="rounded-xl bg-white/3 px-3 py-2.5" style={{ marginLeft: depth * 16 }}>
       <div className="flex items-center gap-3">
         {!isLeaf && (
-          <span className="app-tile-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: color, color: "#fff" }}>
+          <span className="app-tile-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 80%, transparent)`, color: "#fff" }}>
             <CategoryIcon name={node.name} size={13} />
           </span>
         )}
@@ -2143,7 +2143,7 @@ function CMSchedulePage() {
         <Sheet title={drillCategoryData.name} onClose={() => setDrillCategory(null)}>
           <div className="px-6 pb-8 pt-2 flex flex-col gap-2">
             <div className="flex items-center gap-2 px-1 pb-1" style={{ color: drillCategoryData.color }}>
-              <span className="app-tile-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: drillCategoryData.color, color: "#fff" }}>
+              <span className="app-tile-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${drillCategoryData.color} 80%, transparent)`, color: "#fff" }}>
                 <CategoryIcon name={drillCategoryData.name} size={13} />
               </span>
               <span className="text-[11px] text-white/40">{drillCategoryData.items.length === 1 ? t("boq.item") : t("boq.items", { count: String(drillCategoryData.items.length) })}</span>

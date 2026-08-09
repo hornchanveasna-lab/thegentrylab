@@ -14,7 +14,7 @@ export function AppTile({ label, icon, to }: AppTileProps) {
     >
       <span
         className="app-tile-icon w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
-        style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}
+        style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 80%, transparent)", color: "#fff" }}
       >
         {icon}
       </span>
