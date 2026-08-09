@@ -133,8 +133,8 @@ function applyCMBrandColor(hex: string) {
   const root = document.documentElement.style;
   root.setProperty("--color-brand-accent", hex);
   root.setProperty("--gradient-brand", `linear-gradient(135deg, color-mix(in srgb, ${hex} 65%, white) 0%, ${hex} 55%, color-mix(in srgb, ${hex} 78%, black) 100%)`);
-  root.setProperty("--page-wash-dark", `linear-gradient(180deg, color-mix(in srgb, ${hex} 26%, #0a0a0b) 0%, #0a0a0b 55%, color-mix(in srgb, ${hex} 14%, #0a0a0b) 100%)`);
-  root.setProperty("--page-wash-light", `linear-gradient(180deg, color-mix(in srgb, ${hex} 20%, #faf7f2) 0%, #faf7f2 55%, color-mix(in srgb, ${hex} 9%, #faf7f2) 100%)`);
+  root.setProperty("--page-wash-dark", `linear-gradient(180deg, color-mix(in srgb, ${hex} 45%, #0a0a0b) 0%, #0a0a0b 50%, color-mix(in srgb, ${hex} 20%, #0a0a0b) 100%)`);
+  root.setProperty("--page-wash-light", `linear-gradient(180deg, color-mix(in srgb, ${hex} 38%, #faf7f2) 0%, #faf7f2 50%, color-mix(in srgb, ${hex} 15%, #faf7f2) 100%)`);
 }
 
 /** Resolves the CM app's brand accent — a manual override always wins when
