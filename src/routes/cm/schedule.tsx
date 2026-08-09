@@ -148,7 +148,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
       }
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add activity");
+      setError(err instanceof Error ? err.message : "Failed to add task");
       setSaving(false);
     }
   };
@@ -1638,6 +1638,7 @@ function CMSchedulePage() {
   const canDeleteStructure = usePermission(projectId || undefined, user?.id, "settings", "delete");
   const [showImport, setShowImport] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [importChooserOpen, setImportChooserOpen] = useState(false);
   const [view, setView] = useState<"list" | "gantt" | "cost">("list");
   const [search, setSearch] = useState("");
   const [sortAsc, setSortAsc] = useState(true);
@@ -1927,18 +1928,18 @@ function CMSchedulePage() {
                   </button>
                 )
               ) : (
-                <>
-                  {canCreate && (
-                    <button onClick={() => setShowImport(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors">
-                      {t("schedule.import.title")}
-                    </button>
-                  )}
-                  {canCreateStructure && (
-                    <button onClick={() => setAiOpen(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 hover:bg-white/10 transition-colors" style={{ color: "#ff5100" }}>
-                      {t("wbs.aiImport")}
-                    </button>
-                  )}
-                </>
+                (canCreate || canCreateStructure) && (
+                  <button
+                    onClick={() => {
+                      if (canCreate && canCreateStructure) setImportChooserOpen(true);
+                      else if (canCreate) setShowImport(true);
+                      else setAiOpen(true);
+                    }}
+                    className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                  >
+                    {t("schedule.import.title")}
+                  </button>
+                )
               )}
             </div>
 
@@ -2097,6 +2098,28 @@ function CMSchedulePage() {
         )}
       </main>
 
+      {importChooserOpen && (
+        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-0 sm:px-6" onClick={() => setImportChooserOpen(false)}>
+          <div className="w-full sm:max-w-md bg-[#141415] rounded-t-3xl sm:rounded-3xl p-5 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[14px] font-bold text-white/85">{t("schedule.import.chooseMethod")}</p>
+            <button
+              onClick={() => { setImportChooserOpen(false); setShowImport(true); }}
+              className="text-left rounded-2xl bg-white/5 hover:bg-white/10 transition-colors p-4 flex flex-col gap-1"
+            >
+              <span className="text-[13px] font-bold text-white/85">{t("schedule.import.quickMethod")}</span>
+              <span className="text-[11px] text-white/45">{t("schedule.import.quickMethodHint")}</span>
+            </button>
+            <button
+              onClick={() => { setImportChooserOpen(false); setAiOpen(true); }}
+              className="text-left rounded-2xl bg-white/5 hover:bg-white/10 transition-colors p-4 flex flex-col gap-1"
+            >
+              <span className="text-[13px] font-bold" style={{ color: "#ff5100" }}>{t("wbs.aiImport")}</span>
+              <span className="text-[11px] text-white/45">{t("wbs.aiImportHint")}</span>
+            </button>
+            <button onClick={() => setImportChooserOpen(false)} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-white/40">{t("common.cancel")}</button>
+          </div>
+        </div>
+      )}
       {showImport && projectId && canCreate && (
         <ImportScheduleSheet ownerId={user.id} projectId={projectId} onImported={invalidate} onClose={() => setShowImport(false)} />
       )}
