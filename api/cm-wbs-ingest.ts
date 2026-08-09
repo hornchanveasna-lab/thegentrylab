@@ -8,15 +8,17 @@
  * the project's start/end dates when it doesn't. WBS + BOQ + Schedule in a
  * single pass, one round trip.
  *
- * A per-project, credit-metered CM-app tool (not the public advisor) — costs
- * are calculated from actual token usage, same 2x-of-API-cost formula and
- * pre-check/post-charge shape as the public advisor endpoint, just billed
- * against the project's own `cm_ai_credits` balance instead of a site-wide
- * user account. It never touches the CM Supabase project's feature tables
- * itself beyond that credit ledger: auth is verified against the CM
- * project's own auth server, already-parsed rows go to the AI model, and the
- * proposal comes back as one JSON response. All WBS/BOQ/Schedule writes
- * happen client-side, after a human reviews and confirms.
+ * A per-project, credit-metered CM-app tool (not the public advisor) — every
+ * project gets a free daily allowance of AI credits that resets each day,
+ * so usage is visible and capped without anyone having to pay per run.
+ * Costs are calculated from actual token usage (same 2x-of-API-cost formula
+ * as the public advisor endpoint) and charged against the project's own
+ * `cm_ai_credits` balance instead of a site-wide user account. It never
+ * touches the CM Supabase project's feature tables itself beyond that
+ * credit ledger: auth is verified against the CM project's own auth server,
+ * already-parsed rows go to the AI model, and the proposal comes back as
+ * one JSON response. All WBS/BOQ/Schedule writes happen client-side, after
+ * a human reviews and confirms.
  */
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -25,8 +27,8 @@ const CORS = {
 };
 
 const MAX_ROWS = 400;
-const MIN_BALANCE = 50;
-const STARTING_BALANCE = 2000;
+const MIN_BALANCE = 30;
+const DAILY_ALLOWANCE = 500;
 
 function json(body: unknown, status: number) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS } });
@@ -179,12 +181,13 @@ export default async function handler(req: Request): Promise<Response> {
   if (rows.length === 0) return json({ error: "No rows to analyze" }, 400);
   if (!projectId || !ownerId) return json({ error: "Missing projectId/ownerId" }, 400);
 
-  /* ── Credit pre-check: ensure a ledger row exists and has enough balance
-   *    to attempt a run, before spending anything on the AI call. ── */
+  /* ── Credit pre-check: refill today's free allowance if a new day has
+   *    started since the last run, then make sure there's enough left to
+   *    attempt one, before spending anything on the AI call. ── */
   let balanceBefore: number;
   try {
     const credits = await cmRpc(cmSupabaseUrl, cmAnonKey, auth, "cm_ai_ensure_credits", {
-      p_project_id: projectId, p_owner_id: ownerId, p_starting_balance: STARTING_BALANCE,
+      p_project_id: projectId, p_owner_id: ownerId, p_daily_allowance: DAILY_ALLOWANCE,
     });
     balanceBefore = credits.balance;
   } catch (err) {
