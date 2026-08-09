@@ -157,7 +157,7 @@ function CMDashboardPage() {
               </div>
             </Card>
 
-            <Card title={t("dashboard.sCurve")} iconColor="#3b82f6" icon={
+            <Card title={t("dashboard.sCurve")} icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 17l6-6 4 4 8-8" /><path d="M14 7h7v7" />
               </svg>
@@ -184,7 +184,7 @@ function CMDashboardPage() {
               )}
             </Card>
 
-            <Card title={t("dashboard.boqSummary")} iconColor="#84cc16" icon={
+            <Card title={t("dashboard.boqSummary")} icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" />
               </svg>
@@ -204,7 +204,7 @@ function CMDashboardPage() {
               <Link to="/cm/boq" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</Link>
             </Card>
 
-            <Card title={t("dashboard.scheduleSummary")} iconColor="#f97316" icon={
+            <Card title={t("dashboard.scheduleSummary")} icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" />
               </svg>
@@ -217,7 +217,7 @@ function CMDashboardPage() {
               <Link to="/cm/schedule" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewSchedule")}</Link>
             </Card>
 
-            <Card title={t("dashboard.manpowerCard")} iconColor="#0ea5e9" icon={
+            <Card title={t("dashboard.manpowerCard")} icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" />
               </svg>
@@ -229,7 +229,7 @@ function CMDashboardPage() {
               <Link to="/cm/manpower" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewManpower")}</Link>
             </Card>
 
-            <Card title={t("dashboard.equipmentCard")} iconColor="#64748b" icon={
+            <Card title={t("dashboard.equipmentCard")} icon={
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" />
               </svg>
