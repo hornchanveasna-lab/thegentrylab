@@ -261,7 +261,7 @@ export function Card({ title, action, children, variant = "flat", icon, iconColo
         <div className="flex items-center gap-2">
           {icon && (
             <span className="app-tile-icon w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-              style={{ color: "#fff", backgroundColor: iconColor }}>
+              style={{ color: "#fff", backgroundColor: `color-mix(in srgb, ${iconColor} 80%, transparent)` }}>
               {icon}
             </span>
           )}
