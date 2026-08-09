@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useSelectedProject } from "@/components/cm/shared";
 import { useCMBOQVersions, activeCMBOQVersion } from "@/lib/cm-data";
-import { NewBoqItemSheet } from "./boq";
+import { NewBoqItemSheet } from "./schedule";
 
 export const Route = createFileRoute("/cm/boq_/new")({
   component: NewBoqItemPage,
@@ -25,11 +25,11 @@ function NewBoqItemPage() {
   return (
     <NewBoqItemSheet
       ownerId={user.id} projectId={projectId} versionId={defaultVersion?.id ?? null}
-      categoryOptions={activeProject?.boq_default_categories ?? []} backTo="/cm/boq"
+      categoryOptions={activeProject?.boq_default_categories ?? []} backTo="/cm/schedule"
       onCreated={() => {
         queryClient.invalidateQueries({ queryKey: ["cm_wbs_nodes", projectId] });
         queryClient.invalidateQueries({ queryKey: ["cm_boq_versions", projectId] });
-        navigate({ to: "/cm/boq" });
+        navigate({ to: "/cm/schedule" });
       }}
     />
   );

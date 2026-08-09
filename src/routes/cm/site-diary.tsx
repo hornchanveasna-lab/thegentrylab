@@ -1047,7 +1047,7 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
     onMenuItems?.(items);
   }, [canEdit, canDelete, busy, log.id]);
 
-  const goTo = (to: "/cm/manpower" | "/cm/equipment" | "/cm/boq" | "/cm/photos") => { setLastProject(log.project_id); navigate({ to }); };
+  const goTo = (to: "/cm/manpower" | "/cm/equipment" | "/cm/schedule" | "/cm/photos") => { setLastProject(log.project_id); navigate({ to }); };
   const goToReport = () => {
     setLastProject(log.project_id);
     navigate({ to: "/cm/reports", search: { project: log.project_id, from: log.log_date, to: log.log_date } });
@@ -1116,7 +1116,7 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
             </div>
           ) : <p className="text-[12px] text-white/30">—</p>
         ) : (
-          <CategoryRow icon={BOQ_ICON} label={t("siteDiary.boqDeliveredToday", { count: String(boqDeliveryCount) })} onClick={() => goTo("/cm/boq")} />
+          <CategoryRow icon={BOQ_ICON} label={t("siteDiary.boqDeliveredToday", { count: String(boqDeliveryCount) })} onClick={() => goTo("/cm/schedule")} />
         )}
         {log.photos.length > 0 && (
           <div className="flex flex-wrap gap-2">

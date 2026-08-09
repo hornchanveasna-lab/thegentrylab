@@ -29,7 +29,7 @@ function BoqSettingsPage() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });
 
   return (
-    <ModuleSettingsPage title={`${t("boq.title")} — ${t("common.settings")}`} backTo="/cm/boq">
+    <ModuleSettingsPage title={`${t("boq.title")} — ${t("common.settings")}`} backTo="/cm/schedule">
       <Card title={t("boq.settingsCategories")}>
         <StringListEditor label={t("boq.settingsCategories")} hint={t("boq.settingsCategoriesHint")}
           values={project.boq_default_categories ?? []} canEdit={canEdit && !saving}
