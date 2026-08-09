@@ -260,12 +260,12 @@ export function Card({ title, action, children, variant = "flat", icon, iconColo
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           {icon && (
-            <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-              style={{ color: iconColor, backgroundColor: `color-mix(in srgb, ${iconColor} 16%, transparent)` }}>
+            <span className="app-tile-icon w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+              style={{ color: "#fff", backgroundColor: iconColor }}>
               {icon}
             </span>
           )}
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{title}</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 font-bold">{title}</p>
         </div>
         {action}
       </div>

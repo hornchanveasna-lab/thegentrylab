@@ -50,8 +50,8 @@
   --gradient-brand: linear-gradient(135deg, #ff7a3c 0%, #ff5100 55%, #d43e00 100%);
   --shadow-sm:     0 2px 10px rgba(0,0,0,0.35);
   --shadow-md:     0 10px 28px rgba(0,0,0,0.45);
-  --page-wash-dark:  linear-gradient(180deg, color-mix(in srgb, #ff5100 22%, #0a0a0b) 0%, #0a0a0b 45%, color-mix(in srgb, #ff5100 10%, #0a0a0b) 100%);
-  --page-wash-light: linear-gradient(180deg, color-mix(in srgb, #ff5100 18%, #faf7f2) 0%, #faf7f2 45%, color-mix(in srgb, #ff5100 7%, #faf7f2) 100%);
+  --page-wash-dark:  linear-gradient(180deg, color-mix(in srgb, #ff5100 13%, #0a0a0b) 0%, #0a0a0b 45%, color-mix(in srgb, #ff5100 6%, #0a0a0b) 100%);
+  --page-wash-light: linear-gradient(180deg, color-mix(in srgb, #ff5100 11%, #faf7f2) 0%, #faf7f2 45%, color-mix(in srgb, #ff5100 4%, #faf7f2) 100%);
 }
 
 /* ── Full-page gradient wash — a soft, brand-tinted wash across the whole
@@ -883,5 +883,22 @@ html.snap-scroll {
 [data-app="cm"] .bg-\[\#0a0a0b\],
 [data-app="cm"] .min-h-screen {
   background: var(--page-wash) !important;
+}
+
+/* ── CM app "icon signage" — bold, solid-color icon badges instead of a
+   faint tinted circle, and bold stat/number type. `.app-tile-icon` is a
+   marker class on the badge wrapper (AppTile, module-shortcut grids,
+   Card's title icon, category badges) whose own inline style already sets
+   a solid background-color — this just thickens the icon glyph inside it
+   so the badge reads as a clear "sign" rather than a thin line drawing. */
+[data-app="cm"] .app-tile-icon svg {
+  stroke-width: 2.4;
+}
+
+/* Numbers/labels in this app are set in the mono type family — bolding it
+   app-wide covers stat figures, totals and percentages without having to
+   touch every call site individually. */
+[data-app="cm"] .font-mono {
+  font-weight: 700;
 }
 
