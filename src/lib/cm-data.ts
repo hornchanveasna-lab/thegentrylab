@@ -344,6 +344,23 @@ async function generateCMDocNumber(projectId: string, moduleKey: string, fallbac
   }
 }
 
+/** Day-scoped sibling of `generateCMDocNumber` — the sequence resets every
+ *  calendar day instead of running for the whole project/year, so the code
+ *  itself carries the day (e.g. `PRJ-PL-2026-08-09-01`), matching modules
+ *  whose list groups records into day sections (Punch List). */
+async function generateCMDocNumberDaily(projectId: string, moduleKey: string, fallbackCode: string, dateStr: string): Promise<string | null> {
+  try {
+    const { data: proj } = await db().from("cm_projects").select("doc_module_codes").eq("id", projectId).maybeSingle();
+    const moduleCode = (proj?.doc_module_codes as Record<string, string> | null)?.[moduleKey] || fallbackCode;
+    const { data } = await db().rpc("cm_next_doc_number_daily", {
+      p_project_id: projectId, p_module_key: moduleKey, p_module_code: moduleCode, p_doc_date: dateStr,
+    });
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function createCMDailyLog(
   ownerId: string,
   projectId: string,
@@ -497,7 +514,7 @@ export async function createCMTask(
   projectId: string,
   input: Pick<CMTask, "title"> & Partial<Pick<CMTask, "description" | "status" | "priority" | "location_id" | "assignee" | "due_date">>,
 ) {
-  const docNumber = await generateCMDocNumber(projectId, "punch_list", "PNL");
+  const docNumber = await generateCMDocNumberDaily(projectId, "punch_list", "PL", new Date().toISOString().slice(0, 10));
   const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   logCMActivity(projectId, ownerId, "created", "punch_list", data.id, { title: data.title });
