@@ -62,6 +62,11 @@ export interface CMProject {
    *  { punch_list: { priority: "High", requireAfterPhoto: true }, safety: { recordType: "...", severity: "Low" } }.
    *  Generic JSON so new modules/fields don't need their own migration. */
   module_defaults: Record<string, Record<string, unknown>> | null;
+  /** Last computed `cmProjectHealthScore` snapshot, so a load can detect a
+   *  drop since the previous view and fire a notification. Null until the
+   *  score has been checked at least once. */
+  last_health_score: number | null;
+  last_health_checked_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -142,6 +147,10 @@ export interface CMDeliveryRow {
    *  certify a different quantity than what was claimed. Falls back to
    *  `quantity` when absent. */
   certified_quantity?: string | null;
+  /** Set when this delivery is pulled into an IPC snapshot (status
+   *  "Claimed" -> included in a Draft IPC) — prevents a later IPC from
+   *  double-counting it. Missing on rows created before IPCs existed. */
+  ipc_id?: string | null;
 }
 
 export type CMVisitorKind = "visitor" | "instruction";
@@ -298,16 +307,18 @@ export async function setCMProjectFavorite(userId: string, projectId: string, is
 }
 
 /* ── Daily logs (site diary) ───────────────────────────────── */
+export async function fetchCMDailyLogsList(projectId: string): Promise<CMDailyLog[]> {
+  const { data, error } = await db().from("cm_daily_logs").select("*").eq("project_id", projectId)
+    .order("log_date", { ascending: false }).order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as CMDailyLog[];
+}
+
 export function useCMDailyLogs(projectId: string | undefined) {
   return useQuery<CMDailyLog[]>({
     queryKey: ["cm_daily_logs", projectId],
     enabled: !!projectId && !!supabaseCM,
-    queryFn: async () => {
-      const { data, error } = await db().from("cm_daily_logs").select("*").eq("project_id", projectId)
-        .order("log_date", { ascending: false }).order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as CMDailyLog[];
-    },
+    queryFn: () => fetchCMDailyLogsList(projectId!),
     staleTime: STALE_TIME,
   });
 }
@@ -326,6 +337,23 @@ async function generateCMDocNumber(projectId: string, moduleKey: string, fallbac
     const moduleCode = (proj?.doc_module_codes as Record<string, string> | null)?.[moduleKey] || fallbackCode;
     const { data } = await db().rpc("cm_next_doc_number", {
       p_project_id: projectId, p_module_key: moduleKey, p_module_code: moduleCode, p_year: year,
+    });
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Day-scoped sibling of `generateCMDocNumber` — the sequence resets every
+ *  calendar day instead of running for the whole project/year, so the code
+ *  itself carries the day (e.g. `PRJ-PL-2026-08-09-01`), matching modules
+ *  whose list groups records into day sections (Punch List). */
+async function generateCMDocNumberDaily(projectId: string, moduleKey: string, fallbackCode: string, dateStr: string): Promise<string | null> {
+  try {
+    const { data: proj } = await db().from("cm_projects").select("doc_module_codes").eq("id", projectId).maybeSingle();
+    const moduleCode = (proj?.doc_module_codes as Record<string, string> | null)?.[moduleKey] || fallbackCode;
+    const { data } = await db().rpc("cm_next_doc_number_daily", {
+      p_project_id: projectId, p_module_key: moduleKey, p_module_code: moduleCode, p_doc_date: dateStr,
     });
     return data ?? null;
   } catch {
@@ -486,7 +514,7 @@ export async function createCMTask(
   projectId: string,
   input: Pick<CMTask, "title"> & Partial<Pick<CMTask, "description" | "status" | "priority" | "location_id" | "assignee" | "due_date">>,
 ) {
-  const docNumber = await generateCMDocNumber(projectId, "punch_list", "PNL");
+  const docNumber = await generateCMDocNumberDaily(projectId, "punch_list", "PL", new Date().toISOString().slice(0, 10));
   const { data, error } = await db().from("cm_tasks").insert({ owner_id: ownerId, project_id: projectId, doc_number: docNumber, ...input }).select().single();
   if (error) throw error;
   logCMActivity(projectId, ownerId, "created", "punch_list", data.id, { title: data.title });
@@ -592,6 +620,11 @@ export interface StampPhotoOptions {
   projectName?: string | null;
   projectCode?: string | null;
   location?: string | null;
+  /** Moment to burn into the stamp. Defaults to now — pass the original
+   *  capture time for photos uploaded later (e.g. from the offline outbox)
+   *  so the stamp reflects when the photo was actually taken, not when it
+   *  finally synced. */
+  captureTime?: Date;
 }
 
 function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -784,7 +817,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
 
   // ── bottom-right: capture date/time, e.g. "Sun-12-Jul-2026" / "02:11:45 PM" ──
   if (opts.timestamp) {
-    const now = new Date();
+    const now = opts.captureTime ?? new Date();
     const dateStr = `${now.toLocaleDateString("en-US", { weekday: "short" })}-${String(now.getDate()).padStart(2, "0")}-${now.toLocaleDateString("en-US", { month: "short" })}-${now.getFullYear()}`;
     let hours = now.getHours();
     const ampm = hours >= 12 ? "PM" : "AM";
@@ -844,7 +877,7 @@ export async function uploadCMPhotoWithThumb(ownerId: string, projectId: string,
  *  uploads each at full quality plus a thumbnail. This is the one place
  *  every module's camera capture should route through so the stamp stays
  *  consistent everywhere instead of only on Photos-module captures. */
-export async function stampAndUploadCMPhotos(ownerId: string, projectId: string, files: File[]): Promise<{ url: string; thumbUrl: string }[]> {
+export async function stampAndUploadCMPhotos(ownerId: string, projectId: string, files: File[], captureTime?: Date): Promise<{ url: string; thumbUrl: string }[]> {
   if (files.length === 0) return [];
   const [{ data: account }, { data: project }, { data: consultants }] = await Promise.all([
     db().from("cm_account_settings").select("*").eq("owner_id", ownerId).maybeSingle(),
@@ -865,6 +898,7 @@ export async function stampAndUploadCMPhotos(ownerId: string, projectId: string,
     projectName: proj?.name ?? null,
     projectCode: proj?.project_code ?? null,
     location: proj?.location ?? null,
+    captureTime,
   };
   const stamped = await Promise.all(files.map((f) => stampPhoto(f, stampOpts)));
   return Promise.all(stamped.map((f) => uploadCMPhotoWithThumb(ownerId, projectId, f)));
@@ -1797,7 +1831,7 @@ export interface CMNotificationRule {
 export const NOTIFICATION_EVENTS = [
   "new_assignment", "approval_required", "rejection", "overdue_action",
   "critical_safety_issue", "late_submittal", "inspection_reminder",
-  "certificate_expiry", "daily_report_missing",
+  "certificate_expiry", "daily_report_missing", "health_score_dropped",
 ] as const;
 export type NotificationEvent = typeof NOTIFICATION_EVENTS[number];
 
@@ -2589,6 +2623,9 @@ export interface CMBOQItem {
   unit_cost: number;
   category: string | null;
   sort_order: number;
+  /** Links this line to a cm_wbs_nodes row — the primary structural link
+   *  going forward, alongside the free-text `category`. */
+  wbs_node_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -2626,7 +2663,7 @@ export function useActiveCMBOQItems(projectId: string | undefined) {
 export async function createCMBOQItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category" | "version_id">>,
+  input: Pick<CMBOQItem, "description"> & Partial<Pick<CMBOQItem, "unit" | "quantity" | "unit_cost" | "category" | "version_id" | "wbs_node_id">>,
 ) {
   const { data, error } = await db().from("cm_boq_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -2685,6 +2722,14 @@ export interface CMScheduleItem {
    *  activities created by hand before import existed. */
   activity_code: string | null;
   boq_category: string | null;
+  /** Real FK into cm_boq_items — the primary link going forward. Preferred
+   *  over the fragile `boq_category` string match (a BOQ category rename
+   *  silently broke that link) wherever both are available. Null on
+   *  activities created before this field existed or with no linked BOQ line. */
+  boq_item_id: string | null;
+  /** Links this activity to a cm_wbs_nodes row — BOQ items and Schedule
+   *  items sharing a wbs_node_id is how the WBS ties cost to schedule. */
+  wbs_node_id: string | null;
   location_id: string | null;
   plan_start: string;
   plan_finish: string;
@@ -2736,6 +2781,25 @@ export function cmBOQCategoryProgress(boqItems: CMBOQItem[], logs: CMDailyLog[])
   return result;
 }
 
+/** Delivered % per individual BOQ line (not per category) — the suggestion
+ *  source for schedule activities linked via the real `boq_item_id` FK
+ *  instead of the fragile `boq_category` string match. */
+export function cmBOQItemProgress(boqItems: CMBOQItem[], logs: CMDailyLog[]): Map<string, number> {
+  const deliveredById = new Map<string, number>();
+  for (const l of logs) {
+    for (const d of l.deliveries) {
+      if (!d.boq_item_id) continue;
+      deliveredById.set(d.boq_item_id, (deliveredById.get(d.boq_item_id) ?? 0) + (parseFloat(d.quantity) || 0));
+    }
+  }
+  const result = new Map<string, number>();
+  for (const b of boqItems) {
+    if (b.quantity <= 0) continue;
+    result.set(b.id, Math.round((Math.min(deliveredById.get(b.id) ?? 0, b.quantity) / b.quantity) * 100));
+  }
+  return result;
+}
+
 export function useCMScheduleItems(projectId: string | undefined) {
   return useQuery<CMScheduleItem[]>({
     queryKey: ["cm_schedule_items", projectId],
@@ -2752,7 +2816,7 @@ export function useCMScheduleItems(projectId: string | undefined) {
 export async function createCMScheduleItem(
   ownerId: string,
   projectId: string,
-  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
+  input: Pick<CMScheduleItem, "group_label" | "title" | "plan_start" | "plan_finish"> & Partial<Pick<CMScheduleItem, "boq_category" | "boq_item_id" | "wbs_node_id" | "weight" | "actual_percent" | "activity_code" | "location_id">>,
 ) {
   const { data, error } = await db().from("cm_schedule_items").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -2810,6 +2874,90 @@ export function cmComputedHealth(items: CMScheduleItem[], date: string): { healt
   return { health, planned, actual, variance };
 }
 
+/** How far along each `CMQuantityStatus` counts a delivered quantity toward
+ *  its BOQ line's cost progress — a claimed-but-not-yet-certified quantity
+ *  is real progress, just less certain than a certified one. */
+const QUANTITY_STATUS_WEIGHT: Record<CMQuantityStatus, number> = {
+  Reported: 0.25, Accepted: 0.5, Claimed: 0.75, Certified: 1,
+};
+
+/** Cost-weighted delivery progress across the active BOQ, joined to Site
+ *  Diary deliveries via the real `boq_item_id` FK (never the fragile
+ *  `boq_category` string match). Each BOQ line's contribution is capped at
+ *  its own planned quantity so over-delivery on one line can't offset
+ *  shortfall on another. Returns 0-100; 0 when there's no costed BOQ. */
+function cmBOQCostProgress(boqItems: CMBOQItem[], logs: CMDailyLog[]): number {
+  const deliveredWeightedById = new Map<string, number>();
+  for (const log of logs) {
+    for (const d of log.deliveries) {
+      if (!d.boq_item_id) continue;
+      const qty = parseFloat(d.quantity) || 0;
+      if (qty <= 0) continue;
+      const weight = QUANTITY_STATUS_WEIGHT[d.status ?? "Reported"] ?? QUANTITY_STATUS_WEIGHT.Reported;
+      deliveredWeightedById.set(d.boq_item_id, (deliveredWeightedById.get(d.boq_item_id) ?? 0) + qty * weight);
+    }
+  }
+  let earned = 0;
+  let planned = 0;
+  for (const b of boqItems) {
+    const lineValue = b.quantity * b.unit_cost;
+    if (lineValue <= 0) continue;
+    planned += lineValue;
+    const fraction = Math.min(1, (deliveredWeightedById.get(b.id) ?? 0) / b.quantity);
+    earned += lineValue * fraction;
+  }
+  return planned > 0 ? (earned / planned) * 100 : 0;
+}
+
+/** Weights for `cmProjectHealthScore`'s three components. Cost carries the
+ *  most weight since it's the hardest signal to fake (it requires real
+ *  delivered-and-accepted quantities, not just a manually-typed percent). */
+export const CM_HEALTH_SCORE_WEIGHTS = { cost: 0.4, schedule: 0.35, qualitySafety: 0.25 } as const;
+
+export type CMHealthBand = "Green" | "Amber" | "Red";
+
+export interface CMProjectHealthScore {
+  score: number;
+  band: CMHealthBand;
+  components: {
+    costProgress: { value: number; weight: number };
+    scheduleProgress: { value: number; weight: number };
+    qualitySafety: { value: number; weight: number };
+  };
+  varianceVsPlan: number;
+}
+
+/** The one real cross-module signal in the app: cost (from BOQ delivery
+ *  status), schedule (from `cmComputedHealth`), and quality/safety (from
+ *  open counts) combined into a single 0-100 score instead of three numbers
+ *  shown side by side. Quality/safety is a capped penalty so no single open
+ *  issue can zero out an otherwise healthy project. */
+export function cmProjectHealthScore(
+  boqItems: CMBOQItem[],
+  logs: CMDailyLog[],
+  scheduleItems: CMScheduleItem[],
+  openSafetyCount: number,
+  openQualityCount: number,
+  criticalSafetyCount: number,
+  date: string,
+): CMProjectHealthScore {
+  const costProgress = cmBOQCostProgress(boqItems, logs);
+  const { actual: scheduleProgress, variance } = cmComputedHealth(scheduleItems, date);
+  const qualitySafety = 100 - Math.min(50, criticalSafetyCount * 15 + openSafetyCount * 3 + openQualityCount * 2);
+  const w = CM_HEALTH_SCORE_WEIGHTS;
+  const score = Math.round(costProgress * w.cost + scheduleProgress * w.schedule + qualitySafety * w.qualitySafety);
+  const band: CMHealthBand = score >= 80 ? "Green" : score >= 60 ? "Amber" : "Red";
+  return {
+    score, band,
+    components: {
+      costProgress: { value: costProgress, weight: w.cost },
+      scheduleProgress: { value: scheduleProgress, weight: w.schedule },
+      qualitySafety: { value: qualitySafety, weight: w.qualitySafety },
+    },
+    varianceVsPlan: variance,
+  };
+}
+
 /** Schedule items across every project the signed-in user can see (RLS
  *  scopes the unfiltered select) — lets the Portfolio compute each card's
  *  health in one query instead of one per project. */
@@ -2824,6 +2972,75 @@ export function useCMAllScheduleItems(userId: string | undefined) {
     },
     staleTime: STALE_TIME,
   });
+}
+
+/* ── Work Breakdown Structure (parent_id tree, per project) ─────────────
+ *  Same adjacency-list pattern as CMProjectLocation (§ above) — a
+ *  construction WBS is shallow and human-edited, which parent_id handles as
+ *  a single update per reparent, unlike nested-set's expensive renumbering.
+ *  BOQ items and Schedule items link here via their own wbs_node_id FK
+ *  (many-to-one via a shared parent — one activity often spans several BOQ
+ *  lines) rather than a direct 1:1 link between the two. */
+export type CMWBSLevel = "phase" | "package" | "activity";
+
+export interface CMWBSNode {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  parent_id: string | null;
+  code: string | null;
+  name: string;
+  level: CMWBSLevel;
+  sort_order: number;
+  location_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useCMWBSNodes(projectId: string | undefined) {
+  return useQuery<CMWBSNode[]>({
+    queryKey: ["cm_wbs_nodes", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_wbs_nodes").select("*").eq("project_id", projectId).order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as CMWBSNode[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function createCMWBSNode(
+  ownerId: string, projectId: string,
+  input: Pick<CMWBSNode, "name" | "level"> & Partial<Pick<CMWBSNode, "parent_id" | "code" | "location_id" | "sort_order">>,
+) {
+  const { data, error } = await db().from("cm_wbs_nodes").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
+  if (error) throw error;
+  return data as CMWBSNode;
+}
+
+export async function updateCMWBSNode(id: string, patch: Partial<Pick<CMWBSNode, "name" | "level" | "parent_id" | "code" | "location_id" | "sort_order">>) {
+  const { error } = await db().from("cm_wbs_nodes").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteCMWBSNode(id: string) {
+  const { error } = await db().from("cm_wbs_nodes").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/** "Foundations › Package A › Excavation" — same walk-the-parent-chain
+ *  approach as locationBreadcrumb. */
+export function wbsBreadcrumb(node: CMWBSNode, all: CMWBSNode[]): string {
+  const chain: string[] = [node.name];
+  let current = node;
+  while (current.parent_id) {
+    const parent = all.find((n) => n.id === current.parent_id);
+    if (!parent) break;
+    chain.unshift(parent.name);
+    current = parent;
+  }
+  return chain.join(" › ");
 }
 
 function isoDateRange(from: string, to: string): string[] {
@@ -3255,6 +3472,272 @@ export async function updateCMContract(id: string, patch: Partial<CMContract>) {
 export async function deleteCMContract(id: string) {
   const { error } = await db().from("cm_contracts").delete().eq("id", id);
   if (error) throw error;
+}
+
+/* ── Interim Payment Certificates (per contract) ─────────────────────────
+ *  Builds on top of — not a parallel copy of — the existing CMQuantityStatus
+ *  pipeline. Creating an IPC snapshots the delivery rows currently sitting
+ *  at "Claimed" (linked via boq_item_id, within the period, not already
+ *  pulled into an earlier IPC) into frozen cm_ipc_line_items rows, so a
+ *  later delivery edit never rewrites a submitted IPC. Certifying is what
+ *  writes certified_quantity back onto those underlying CMDeliveryRows and
+ *  flips their status to "Certified", closing the loop. Workflow is
+ *  strictly linear (Draft→Submitted→Certified→Paid) — corrections go on
+ *  the *next* IPC as a deduction line, not by editing history. */
+export type CMIPCStatus = "Draft" | "Submitted" | "Certified" | "Paid";
+
+export interface CMIPCDeductionRow {
+  description: string;
+  amount: number;
+}
+
+export interface CMIPC {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  contract_id: string;
+  ipc_number: number;
+  period_start: string;
+  period_end: string;
+  status: CMIPCStatus;
+  gross_value_this_period: number;
+  cumulative_gross_to_date: number;
+  retention_pct: number;
+  retention_held_this_period: number;
+  cumulative_retention_held: number;
+  advance_recovery_this_period: number;
+  other_deductions: CMIPCDeductionRow[];
+  net_payable_this_period: number;
+  certified_value: number | null;
+  submitted_at: string | null;
+  certified_at: string | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CMIPCLineItem {
+  id: string;
+  ipc_id: string;
+  boq_item_id: string;
+  claimed_quantity: number;
+  unit_cost_snapshot: number;
+  certified_quantity: number | null;
+  created_at: string;
+}
+
+export function useCMIPCs(projectId: string | undefined) {
+  return useQuery<CMIPC[]>({
+    queryKey: ["cm_ipcs", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_ipcs").select("*").eq("project_id", projectId).order("ipc_number", { ascending: false });
+      if (error) throw error;
+      return data as CMIPC[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCMIPC(id: string | undefined) {
+  return useQuery<CMIPC | null>({
+    queryKey: ["cm_ipc", id],
+    enabled: !!id && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_ipcs").select("*").eq("id", id).maybeSingle();
+      if (error) throw error;
+      return data as CMIPC | null;
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export function useCMIPCLineItems(ipcId: string | undefined) {
+  return useQuery<CMIPCLineItem[]>({
+    queryKey: ["cm_ipc_line_items", ipcId],
+    enabled: !!ipcId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db().from("cm_ipc_line_items").select("*").eq("ipc_id", ipcId);
+      if (error) throw error;
+      return data as CMIPCLineItem[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+interface ClaimedDeliveryRef {
+  logId: string;
+  index: number;
+  boqItemId: string;
+  quantity: number;
+}
+
+/** Finds every delivery row across the project's logs that's eligible for a
+ *  new IPC: linked to a BOQ item, status "Claimed", within the period, and
+ *  not already pulled into an earlier IPC (`ipc_id` unset) — this last
+ *  check is what prevents a second IPC from double-counting a delivery a
+ *  prior IPC already claimed. */
+function findClaimableDeliveries(logs: CMDailyLog[], periodStart: string, periodEnd: string): ClaimedDeliveryRef[] {
+  const refs: ClaimedDeliveryRef[] = [];
+  for (const log of logs) {
+    if (log.log_date < periodStart || log.log_date > periodEnd) continue;
+    log.deliveries.forEach((row, index) => {
+      if (row.boq_item_id && row.status === "Claimed" && !row.ipc_id) {
+        refs.push({ logId: log.id, index, boqItemId: row.boq_item_id, quantity: parseFloat(row.quantity) || 0 });
+      }
+    });
+  }
+  return refs;
+}
+
+/** Creates a Draft IPC: snapshots currently-claimed deliveries into frozen
+ *  line items, then stamps those source deliveries with this IPC's id so
+ *  they can never be pulled into a later IPC too. */
+export async function createCMIPC(
+  ownerId: string, projectId: string, contractId: string,
+  periodStart: string, periodEnd: string,
+  boqItems: CMBOQItem[], logs: CMDailyLog[], previousIPCs: CMIPC[],
+  opts?: { retentionPct?: number; advanceRecovery?: number; otherDeductions?: CMIPCDeductionRow[] },
+): Promise<CMIPC> {
+  const retentionPct = opts?.retentionPct ?? 0;
+  const advanceRecovery = opts?.advanceRecovery ?? 0;
+  const otherDeductions = opts?.otherDeductions ?? [];
+
+  const claimable = findClaimableDeliveries(logs, periodStart, periodEnd);
+  const qtyByBoqItem = new Map<string, number>();
+  for (const ref of claimable) {
+    qtyByBoqItem.set(ref.boqItemId, (qtyByBoqItem.get(ref.boqItemId) ?? 0) + ref.quantity);
+  }
+
+  const boqById = new Map(boqItems.map((b) => [b.id, b]));
+  const lineItems: { boq_item_id: string; claimed_quantity: number; unit_cost_snapshot: number }[] = [];
+  let grossValue = 0;
+  for (const [boqItemId, qty] of qtyByBoqItem) {
+    const boq = boqById.get(boqItemId);
+    if (!boq) continue;
+    lineItems.push({ boq_item_id: boqItemId, claimed_quantity: qty, unit_cost_snapshot: boq.unit_cost });
+    grossValue += qty * boq.unit_cost;
+  }
+
+  const ipcNumber = previousIPCs.reduce((max, i) => Math.max(max, i.ipc_number), 0) + 1;
+  const priorGross = previousIPCs.reduce((s, i) => s + i.gross_value_this_period, 0);
+  const priorRetention = previousIPCs.reduce((s, i) => s + i.retention_held_this_period, 0);
+  const retentionHeld = grossValue * (retentionPct / 100);
+  const otherDeductionsTotal = otherDeductions.reduce((s, d) => s + d.amount, 0);
+  const netPayable = grossValue - retentionHeld - advanceRecovery - otherDeductionsTotal;
+
+  const { data: ipc, error } = await db().from("cm_ipcs").insert({
+    owner_id: ownerId, project_id: projectId, contract_id: contractId, ipc_number: ipcNumber,
+    period_start: periodStart, period_end: periodEnd, status: "Draft",
+    gross_value_this_period: grossValue, cumulative_gross_to_date: priorGross + grossValue,
+    retention_pct: retentionPct, retention_held_this_period: retentionHeld,
+    cumulative_retention_held: priorRetention + retentionHeld,
+    advance_recovery_this_period: advanceRecovery, other_deductions: otherDeductions,
+    net_payable_this_period: netPayable,
+  }).select().single();
+  if (error) throw error;
+
+  if (lineItems.length > 0) {
+    const { error: liError } = await db().from("cm_ipc_line_items").insert(lineItems.map((l) => ({ ipc_id: ipc.id, ...l })));
+    if (liError) throw liError;
+  }
+
+  // Stamp the source deliveries with this IPC's id, grouped by log so each
+  // log gets a single update rather than one per delivery row.
+  const refsByLog = new Map<string, ClaimedDeliveryRef[]>();
+  for (const ref of claimable) {
+    if (!refsByLog.has(ref.logId)) refsByLog.set(ref.logId, []);
+    refsByLog.get(ref.logId)!.push(ref);
+  }
+  for (const [logId, refs] of refsByLog) {
+    const log = logs.find((l) => l.id === logId);
+    if (!log) continue;
+    const indices = new Set(refs.map((r) => r.index));
+    const nextDeliveries = log.deliveries.map((row, i) => (indices.has(i) ? { ...row, ipc_id: ipc.id } : row));
+    await updateCMDailyLog(logId, { deliveries: nextDeliveries });
+  }
+
+  logCMActivity(projectId, ownerId, "created", "ipc", ipc.id, { ipc_number: ipcNumber, gross_value_this_period: grossValue });
+  return ipc as CMIPC;
+}
+
+export async function submitCMIPC(id: string, projectId: string, actorId: string, ipcNumber: number) {
+  const { error } = await db().from("cm_ipcs").update({ status: "Submitted", submitted_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+  logCMActivity(projectId, actorId, "submitted", "ipc", id, { ipc_number: ipcNumber });
+}
+
+/** Certifies an IPC: records the certified quantity per line item, then
+ *  writes that back onto every underlying CMDeliveryRow this IPC claimed —
+ *  proportionally scaling each row's own certified_quantity by how much of
+ *  its line's total was actually certified — and flips those rows' status
+ *  to "Certified" so they can never resurface in a later IPC. */
+export async function certifyCMIPC(
+  ipc: CMIPC, lineItems: CMIPCLineItem[], certifiedQuantities: Map<string, number>,
+  logs: CMDailyLog[], actorId: string,
+): Promise<void> {
+  let certifiedValue = 0;
+  for (const line of lineItems) {
+    const certifiedQty = certifiedQuantities.get(line.id) ?? line.claimed_quantity;
+    certifiedValue += certifiedQty * line.unit_cost_snapshot;
+    const { error } = await db().from("cm_ipc_line_items").update({ certified_quantity: certifiedQty }).eq("id", line.id);
+    if (error) throw error;
+
+    const ratio = line.claimed_quantity > 0 ? certifiedQty / line.claimed_quantity : 0;
+    for (const log of logs) {
+      let changed = false;
+      const nextDeliveries = log.deliveries.map((row) => {
+        if (row.ipc_id !== ipc.id || row.boq_item_id !== line.boq_item_id) return row;
+        changed = true;
+        const ownQty = parseFloat(row.quantity) || 0;
+        return { ...row, status: "Certified" as const, certified_quantity: (ownQty * ratio).toFixed(2) };
+      });
+      if (changed) await updateCMDailyLog(log.id, { deliveries: nextDeliveries });
+    }
+  }
+
+  const { error } = await db().from("cm_ipcs").update({
+    status: "Certified", certified_at: new Date().toISOString(), certified_value: certifiedValue,
+  }).eq("id", ipc.id);
+  if (error) throw error;
+  logCMActivity(ipc.project_id, actorId, "certified", "ipc", ipc.id, { ipc_number: ipc.ipc_number, certified_value: certifiedValue });
+}
+
+export async function payCMIPC(id: string, projectId: string, actorId: string, ipcNumber: number) {
+  const { error } = await db().from("cm_ipcs").update({ status: "Paid", paid_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw error;
+  logCMActivity(projectId, actorId, "paid", "ipc", id, { ipc_number: ipcNumber });
+}
+
+export interface CashFlowPoint {
+  date: string;
+  plannedValue: number;
+  submittedValue: number | null;
+  certifiedValue: number | null;
+}
+
+/** Cash-flow S-curve, sibling to buildSCurveSeries — reuses
+ *  projectPlanPercent unchanged for the planned $ line (× contract value),
+ *  with the actual line stepping at each IPC's certified_at (a dashed
+ *  "provisional" line steps at submitted_at). Coexists alongside the
+ *  existing percent-based S-curve rather than replacing it. */
+export function buildCashFlowSCurve(contract: CMContract, scheduleItems: CMScheduleItem[], ipcs: CMIPC[]): CashFlowPoint[] {
+  if (!contract.start_date || !contract.completion_date || !contract.contract_value) return [];
+  const dates = isoDateRange(contract.start_date, contract.completion_date);
+  const certified = ipcs.filter((i): i is CMIPC & { certified_at: string } => !!i.certified_at).sort((a, b) => a.certified_at.localeCompare(b.certified_at));
+  const submitted = ipcs.filter((i): i is CMIPC & { submitted_at: string } => !!i.submitted_at).sort((a, b) => a.submitted_at.localeCompare(b.submitted_at));
+
+  return dates.map((date) => {
+    const plannedValue = contract.contract_value! * (projectPlanPercent(scheduleItems, date) / 100);
+    const certifiedToDate = certified.filter((i) => i.certified_at <= date);
+    const submittedToDate = submitted.filter((i) => i.submitted_at <= date);
+    return {
+      date,
+      plannedValue,
+      certifiedValue: certifiedToDate.length > 0 ? certifiedToDate.reduce((s, i) => s + (i.certified_value ?? i.gross_value_this_period), 0) : null,
+      submittedValue: submittedToDate.length > 0 ? submittedToDate.reduce((s, i) => s + i.gross_value_this_period, 0) : null,
+    };
+  });
 }
 
 /* ── Instructions (Contract Administration — formal instructions issued

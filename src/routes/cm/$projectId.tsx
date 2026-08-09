@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
@@ -8,7 +8,7 @@ import { usePermission } from "@/lib/cm-permissions";
 import { ProjectSettingsView, PeopleSection } from "@/components/cm/ProjectSettingsView";
 import {
   BackButton, Card, EmptyState, SegmentedField, useCMTheme,
-  PROJECT_STATUS_COLOR, PROJECT_HEALTH_COLOR, setLastProject,
+  PROJECT_STATUS_COLOR, CM_HEALTH_BAND_COLOR, setLastProject,
 } from "@/components/cm/shared";
 import {
   useCMProject,
@@ -21,13 +21,16 @@ import {
   useCMSubmittals,
   useCMDailyLogs,
   useCMScheduleItems,
-  cmComputedHealth,
+  cmProjectHealthScore,
   useActiveCMBOQItems,
   useCMEquipment,
   useCMAuditLog,
   buildSCurveSeries,
   scheduleItemPlanPercent,
   jobRoleLabel,
+  updateCMProject,
+  notifyCMUser,
+  type CMHealthBand,
 } from "@/lib/cm-data";
 
 export const Route = createFileRoute("/cm/$projectId")({
@@ -45,9 +48,11 @@ const MODULE_SHORTCUTS: { to: string; labelKey: string; icon: React.ReactNode }[
   { to: "/cm/submittal", labelKey: "tile.submittal", icon: <svg {...iconProps}><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg> },
   { to: "/cm/schedule", labelKey: "tile.schedule", icon: <svg {...iconProps}><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" /><path d="M7 13h4M7 17h7" /></svg> },
   { to: "/cm/boq", labelKey: "tile.boq", icon: <svg {...iconProps}><path d="M6 2h9l3 3v17H6z" /><path d="M9 7h6M9 11h6M9 15h4" /></svg> },
+  { to: "/cm/wbs", labelKey: "tile.wbs", icon: <svg {...iconProps}><circle cx="6" cy="5" r="2" /><circle cx="6" cy="19" r="2" /><circle cx="18" cy="12" r="2" /><path d="M6 7v10M6 12h10" /></svg> },
   { to: "/cm/manpower", labelKey: "tile.manpower", icon: <svg {...iconProps}><path d="M12 3a7 7 0 0 0-7 7v3h14v-3a7 7 0 0 0-7-7z" /><path d="M3 16h18" /><path d="M12 3v3" /></svg> },
   { to: "/cm/equipment", labelKey: "tile.equipment", icon: <svg {...iconProps}><path d="M14.7 6.3a4 4 0 1 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4z" /></svg> },
   { to: "/cm/contracts", labelKey: "tile.contracts", icon: <svg {...iconProps}><path d="M8 3h8l3 3v15H5V6z" /><path d="M15 3v4h4" /><path d="M8 12h8M8 16h5" /></svg> },
+  { to: "/cm/ipc", labelKey: "tile.ipc", icon: <svg {...iconProps}><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M3 10h18" /><path d="M7 15h4" /></svg> },
   { to: "/cm/instructions", labelKey: "tile.instructions", icon: <svg {...iconProps}><path d="M4 4h16v13H8l-4 4z" /><path d="M8 9h8M8 12.5h5" /></svg> },
   { to: "/cm/photos", labelKey: "tile.photo", icon: <svg {...iconProps}><path d="M4 8h3l1.6-2.2h6.8L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13" r="3.4" /><circle cx="17.6" cy="10.4" r="0.6" fill="currentColor" stroke="none" /></svg> },
   { to: "/cm/directory", labelKey: "tile.directory", icon: <svg {...iconProps}><circle cx="9" cy="8" r="2.6" /><circle cx="16.5" cy="9.2" r="2.1" /><path d="M3.3 20c0-3.3 2.5-5.6 5.7-5.6s5.7 2.3 5.7 5.6" /><path d="M14.8 14.9c2.5.4 4.4 2.5 4.4 5.1" /></svg> },
@@ -135,6 +140,30 @@ function CMProjectPage() {
   const criticalSafety = useMemo(() => (safetyRecords ?? []).filter((x) => x.status === "Open" && x.severity === "Critical").length, [safetyRecords]);
   const pendingSubmittals = useMemo(() => (submittals ?? []).filter((x) => x.status === "Submitted" || x.status === "Under Review").length, [submittals]);
   const actionSubmittals = useMemo(() => (submittals ?? []).filter((x) => x.status === "Rejected" || x.status === "Revise & Resubmit").length, [submittals]);
+
+  // The one real cross-module signal: cost (BOQ delivery status) + schedule
+  // + quality/safety combined into a single score, instead of three numbers
+  // shown side by side. Quality here is failed inspections + open punch
+  // items — the two Quality-tab counters above.
+  const healthScore = useMemo(
+    () => cmProjectHealthScore(boqItems ?? [], logs ?? [], scheduleItems ?? [], openSafety, failedInspections + openPunch, criticalSafety, todayStr),
+    [boqItems, logs, scheduleItems, openSafety, failedInspections, openPunch, criticalSafety, todayStr],
+  );
+
+  // Fires a notification the first time a load sees the score drop into a
+  // worse band since the last snapshot — best-effort, client-side (no
+  // background job), so it only catches drops between visits to this page.
+  useEffect(() => {
+    if (!project || !ownerId) return;
+    const prevScore = project.last_health_score;
+    if (prevScore != null && healthScore.score < prevScore - 5) {
+      notifyCMUser(projectId, ownerId, "health_score_dropped", project.name, `${prevScore} → ${healthScore.score}`, "project", projectId);
+    }
+    if (prevScore !== healthScore.score) {
+      updateCMProject(projectId, { last_health_score: healthScore.score, last_health_checked_at: new Date().toISOString() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project?.id, healthScore.score]);
 
   const series = useMemo(() => (project ? buildSCurveSeries(project, logs ?? [], scheduleItems ?? []) : []), [project, logs, scheduleItems]);
   const todayPoint = useMemo(() => {
@@ -237,10 +266,7 @@ function CMProjectPage() {
   }
 
   const sc = PROJECT_STATUS_COLOR[project.status];
-  // Health is computed from the schedule (Ahead / On Schedule / Behind) so
-  // this chip can never contradict the plan-vs-actual numbers below it.
-  const computedHealth = cmComputedHealth(scheduleItems ?? [], new Date().toISOString().slice(0, 10)).health;
-  const hc = PROJECT_HEALTH_COLOR[computedHealth];
+  const hc = CM_HEALTH_BAND_COLOR[healthScore.band];
   const value = formatContractValue(project.contract_value, project.currency);
 
   const TAB_OPTIONS: { value: InsightTab; label: string }[] = [
@@ -288,7 +314,7 @@ function CMProjectPage() {
             </span>
             <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: `${hc}15` }}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: hc }}>{t(`health.${computedHealth}`)}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: hc }}>{t(`health.${healthScore.band}`)} · {healthScore.score}</span>
             </span>
             {project.sector && <span className="px-2.5 py-1 rounded-full bg-white/5 font-mono text-[9px] uppercase tracking-widest text-white/40">{t(`sector.${project.sector}`)}</span>}
           </div>

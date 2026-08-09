@@ -17,6 +17,7 @@ import {
   projectPlanPercent,
   cmScheduleStatus,
   cmBOQCategoryProgress,
+  cmBOQItemProgress,
   useActiveCMBOQItems,
   useCMDailyLogs,
   useCMProjectLocations,
@@ -25,6 +26,7 @@ import {
   useCMProject,
   type CMScheduleItem,
   type CMScheduleStatus,
+  type CMBOQItem,
 } from "@/lib/cm-data";
 import { resolveSetting, writeSettingAndSync, SETTING_DEFINITIONS } from "@/lib/cm-settings";
 import { parseWorkbookRows, type BoqSheet } from "@/lib/cm-boq-import";
@@ -52,8 +54,8 @@ function varianceColor(actual: number, plan: number): string {
   return "#f43f5e";
 }
 
-export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions, existing, backTo, onCreated }: {
-  ownerId: string; projectId: string; groupOptions: string[]; boqCategoryOptions: string[];
+export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategoryOptions, boqItems, existing, backTo, onCreated }: {
+  ownerId: string; projectId: string; groupOptions: string[]; boqCategoryOptions: string[]; boqItems?: CMBOQItem[];
   existing?: CMScheduleItem; backTo: string; onCreated: () => void;
 }) {
   const { t } = useCMLang();
@@ -61,6 +63,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
   const [title, setTitle] = useState(existing?.title ?? "");
   const [code, setCode] = useState(existing?.activity_code ?? "");
   const [boqCategory, setBoqCategory] = useState(existing?.boq_category ?? "");
+  const [boqItemId, setBoqItemId] = useState(existing?.boq_item_id ?? "");
   const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
   const [planStart, setPlanStart] = useState(existing?.plan_start ?? today());
   const [planFinish, setPlanFinish] = useState(existing?.plan_finish ?? today());
@@ -79,12 +82,14 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
         group_label: groupLabel.trim(), title: title.trim(),
         activity_code: code.trim() || null,
         boq_category: boqCategory || null,
+        boq_item_id: boqItemId || null,
         location_id: locationId,
         plan_start: planStart, plan_finish: planFinish,
         weight: Number(weight) || 1,
       };
       if (existing) {
         await updateCMScheduleItem(existing.id, patch);
+        logCMActivity(projectId, ownerId, "updated", "schedule", existing.id, { weight: patch.weight, title: patch.title });
       } else {
         await createCMScheduleItem(ownerId, projectId, patch);
       }
@@ -131,6 +136,19 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
                 options={[{ value: "", label: t("projectSettings.none") }, ...boqCategoryOptions.map((c) => ({ value: c, label: c }))]}
               />
             </label>
+            {boqItems && boqItems.length > 0 && (
+              <label className="flex flex-col gap-1.5">
+                <span className={labelCls}>{t("schedule.boqItem")}</span>
+                <FieldSelect
+                  value={boqItemId}
+                  onChange={setBoqItemId}
+                  disabled={saving}
+                  searchable
+                  placeholder={t("projectSettings.none")}
+                  options={[{ value: "", label: t("projectSettings.none") }, ...boqItems.map((b) => ({ value: b.id, label: b.description }))]}
+                />
+              </label>
+            )}
           </div>
         )}
 
@@ -300,8 +318,8 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
   );
 }
 
-function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, delayThresholdPct, onChanged }: {
-  item: CMScheduleItem; canEdit: boolean; canDelete: boolean;
+function ActivityRow({ item, projectId, actorId, canEdit, canDelete, locationLabel, suggestedPct, delayThresholdPct, onChanged }: {
+  item: CMScheduleItem; projectId: string; actorId: string; canEdit: boolean; canDelete: boolean;
   locationLabel: string | null; suggestedPct: number | null; delayThresholdPct: number; onChanged: () => void;
 }) {
   const { t } = useCMLang();
@@ -318,6 +336,7 @@ function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, de
     setBusy(true);
     try {
       await updateCMScheduleItem(item.id, { actual_percent: suggestedPct });
+      logCMActivity(projectId, actorId, "updated", "schedule", item.id, { actual_percent: suggestedPct, title: item.title });
       setActual(String(suggestedPct));
       onChanged();
     } finally { setBusy(false); }
@@ -327,7 +346,11 @@ function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, de
     const value = Math.max(0, Math.min(100, Number(actual) || 0));
     if (value === item.actual_percent) return;
     setBusy(true);
-    try { await updateCMScheduleItem(item.id, { actual_percent: value }); onChanged(); } finally { setBusy(false); }
+    try {
+      await updateCMScheduleItem(item.id, { actual_percent: value });
+      logCMActivity(projectId, actorId, "updated", "schedule", item.id, { actual_percent: value, title: item.title });
+      onChanged();
+    } finally { setBusy(false); }
   };
 
   const handleDelete = async () => {
@@ -391,9 +414,9 @@ function ActivityRow({ item, canEdit, canDelete, locationLabel, suggestedPct, de
   );
 }
 
-function GroupSection({ groupLabel, items, canEdit, canDelete, locationLabelById, suggestions, delayThresholdPct, onChanged }: {
-  groupLabel: string; items: CMScheduleItem[]; canEdit: boolean; canDelete: boolean;
-  locationLabelById: Map<string, string>; suggestions: Map<string, number>; delayThresholdPct: number; onChanged: () => void;
+function GroupSection({ groupLabel, items, projectId, actorId, canEdit, canDelete, locationLabelById, suggestions, itemSuggestions, delayThresholdPct, onChanged }: {
+  groupLabel: string; items: CMScheduleItem[]; projectId: string; actorId: string; canEdit: boolean; canDelete: boolean;
+  locationLabelById: Map<string, string>; suggestions: Map<string, number>; itemSuggestions: Map<string, number>; delayThresholdPct: number; onChanged: () => void;
 }) {
   const totalWeight = items.reduce((s, i) => s + i.weight, 0) || 1;
   const groupPlan = items.reduce((s, i) => s + i.weight * scheduleItemPlanPercent(i, today()), 0) / totalWeight;
@@ -407,9 +430,9 @@ function GroupSection({ groupLabel, items, canEdit, canDelete, locationLabelById
     }>
       <div className="flex flex-col gap-2">
         {items.map((item) => (
-          <ActivityRow key={item.id} item={item} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged}
+          <ActivityRow key={item.id} item={item} projectId={projectId} actorId={actorId} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged}
             locationLabel={item.location_id ? locationLabelById.get(item.location_id) ?? null : null}
-            suggestedPct={item.boq_category ? suggestions.get(item.boq_category) ?? null : null}
+            suggestedPct={item.boq_item_id ? itemSuggestions.get(item.boq_item_id) ?? null : item.boq_category ? suggestions.get(item.boq_category) ?? null : null}
             delayThresholdPct={delayThresholdPct} />
         ))}
       </div>
@@ -522,8 +545,11 @@ function CMSchedulePage() {
   }, [locations]);
 
   // Progress suggested by site records: delivered % of each activity's
-  // linked BOQ category, from Site Diary deliveries (spec §7-9).
+  // linked BOQ category, from Site Diary deliveries (spec §7-9). Activities
+  // with the real boq_item_id FK set prefer itemSuggestions instead — it
+  // isn't broken by a BOQ category rename the way the string match is.
   const suggestions = useMemo(() => cmBOQCategoryProgress(boqItems ?? [], logs ?? []), [boqItems, logs]);
+  const itemSuggestions = useMemo(() => cmBOQItemProgress(boqItems ?? [], logs ?? []), [boqItems, logs]);
 
   // Spec §2 main-screen numbers, computed from the same items the list shows.
   const summary = useMemo(() => {
@@ -621,8 +647,8 @@ function CMSchedulePage() {
             ) : (
               <div className="flex flex-col gap-3">
                 {groups.map(([groupLabel, groupItems]) => (
-                  <GroupSection key={groupLabel} groupLabel={groupLabel} items={groupItems} canEdit={canEdit} canDelete={canDelete}
-                    locationLabelById={locationLabelById} suggestions={suggestions} delayThresholdPct={delayThresholdPct} onChanged={invalidate} />
+                  <GroupSection key={groupLabel} groupLabel={groupLabel} items={groupItems} projectId={projectId ?? ""} actorId={user.id} canEdit={canEdit} canDelete={canDelete}
+                    locationLabelById={locationLabelById} suggestions={suggestions} itemSuggestions={itemSuggestions} delayThresholdPct={delayThresholdPct} onChanged={invalidate} />
                 ))}
               </div>
             )}

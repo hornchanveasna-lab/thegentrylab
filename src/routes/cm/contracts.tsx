@@ -208,6 +208,9 @@ function ContractCard({ item, userId, projectName, onChanged }: {
                 {t("contracts.edit")}
               </Link>
             )}
+            <Link to="/cm/ipc" search={{ contract: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+              {t("contracts.viewIpcs")}
+            </Link>
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
           </div>
         </div>

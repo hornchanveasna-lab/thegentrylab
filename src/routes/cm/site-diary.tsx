@@ -10,6 +10,7 @@ import {
   WeekCalendarStrip, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
   ManpowerEntrySheet, type RecordMenuItem,
 } from "@/components/cm/shared";
+import { captureOfflineAware, applyDailyLogWrite, enqueueDailyLogWriteJob, type DailyLogWritePurpose } from "@/lib/cm-offline/capture";
 import {
   useCMDailyLogs,
   useAllCMDailyLogs,
@@ -162,6 +163,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedFlash, setSavedFlash] = useState(false);
+  const [queuedFlash, setQueuedFlash] = useState(false);
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
@@ -174,46 +176,46 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
     if (!purpose || saving) return;
     setSaving(true);
     setError("");
+    setQueuedFlash(false);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, files);
-      const urls = uploaded.map((u) => u.url);
-      const thumbs = uploaded.map((u) => u.thumbUrl);
-      const log = await findOrCreateCMDailyLog(ownerId, projectId, today);
-      if (urls.length > 0) {
-        await updateCMDailyLog(log.id, { photos: [...log.photos, ...urls], photo_thumbs: [...log.photo_thumbs, ...thumbs] });
-      }
 
-      if (purpose === "progress") {
-        const text = [log.activities, note.trim()].filter(Boolean).join("\n");
-        await updateCMDailyLog(log.id, { activities: text || null });
-      } else if (purpose === "inspection") {
-        const created = await createCMInspection(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.inspection"), location_id: locationId, discipline, inspection_date: today });
-        if (urls.length > 0) await updateCMInspection(created.id, { photos: urls, photo_thumbs: thumbs });
-      } else if (purpose === "punchList") {
-        const created = await createCMTask(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.punchList"), location_id: locationId, priority: "Medium", status: "To Do" });
-        if (urls.length > 0) await updateCMTask(created.id, { photos: urls, photo_thumbs: thumbs });
-      } else if (purpose === "safety") {
-        const created = await createCMSafetyRecord(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.safety"), record_type: "Safety Observation", severity: "Low", record_date: today });
-        if (urls.length > 0) await updateCMSafetyRecord(created.id, { photos: urls, photo_thumbs: thumbs });
-      } else if (purpose === "delivery") {
-        const row: CMDeliveryRow = { material: note.trim() || t("siteDiary.capture.delivery"), quantity: "", unit: null, supplier: company.trim() || null, boq_item_id: null, photos: urls, photo_thumbs: thumbs, status: "Reported", certified_quantity: null };
-        await updateCMDailyLog(log.id, { deliveries: [...log.deliveries, row] });
-      } else if (purpose === "manpower") {
-        const row: CMManpowerRow = { trade: note.trim() || t("siteDiary.capture.manpower"), company: company.trim() || null, count: parseInt(count, 10) || 0, roster_item_id: null };
-        await updateCMDailyLog(log.id, { manpower: [...log.manpower, row] });
-      } else if (purpose === "equipment") {
-        const text = [log.equipment_used, note.trim()].filter(Boolean).join("\n");
-        await updateCMDailyLog(log.id, { equipment_used: text || null });
-      } else if (purpose === "delay") {
-        const row: CMDelayRow = { cause: delayCause, description: note.trim(), hours_lost: parseFloat(hoursLost) || 0 };
-        await updateCMDailyLog(log.id, { delays: [...log.delays, row] });
-      } else if (purpose === "visitor") {
-        const row: CMVisitorRow = { name: note.trim() || t("siteDiary.capture.visitor"), organization: company.trim() || null, kind: "visitor", note: "", photos: urls, photo_thumbs: thumbs };
-        await updateCMDailyLog(log.id, { visitors: [...log.visitors, row] });
+      if (purpose === "inspection" || purpose === "punchList" || purpose === "safety") {
+        // These purposes create records in other modules (not just the Site
+        // Diary log), so they stay online-only for now — Phase 1's offline
+        // scope is Site Diary + Photos, not Inspection/Punch List/Safety.
+        const uploaded = await stampAndUploadCMPhotos(ownerId, projectId, files);
+        const urls = uploaded.map((u) => u.url);
+        const thumbs = uploaded.map((u) => u.thumbUrl);
+        const log = await findOrCreateCMDailyLog(ownerId, projectId, today);
+        if (urls.length > 0) {
+          await updateCMDailyLog(log.id, { photos: [...log.photos, ...urls], photo_thumbs: [...log.photo_thumbs, ...thumbs] });
+        }
+        if (purpose === "inspection") {
+          const created = await createCMInspection(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.inspection"), location_id: locationId, discipline, inspection_date: today });
+          if (urls.length > 0) await updateCMInspection(created.id, { photos: urls, photo_thumbs: thumbs });
+        } else if (purpose === "punchList") {
+          const created = await createCMTask(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.punchList"), location_id: locationId, priority: "Medium", status: "To Do" });
+          if (urls.length > 0) await updateCMTask(created.id, { photos: urls, photo_thumbs: thumbs });
+        } else {
+          const created = await createCMSafetyRecord(ownerId, projectId, { title: note.trim() || t("siteDiary.capture.safety"), record_type: "Safety Observation", severity: "Low", record_date: today });
+          if (urls.length > 0) await updateCMSafetyRecord(created.id, { photos: urls, photo_thumbs: thumbs });
+        }
       } else {
-        const text = [log.notes, note.trim()].filter(Boolean).join("\n");
-        await updateCMDailyLog(log.id, { notes: text || null });
+        const dailyPurpose = purpose as DailyLogWritePurpose;
+        const noteText = dailyPurpose === "delivery" ? (note.trim() || t("siteDiary.capture.delivery"))
+          : dailyPurpose === "manpower" ? (note.trim() || t("siteDiary.capture.manpower"))
+          : dailyPurpose === "visitor" ? (note.trim() || t("siteDiary.capture.visitor"))
+          : note.trim();
+        const companyVal = company.trim() || null;
+        const countVal = parseInt(count, 10) || 0;
+        const hoursLostVal = parseFloat(hoursLost) || 0;
+        const result = await captureOfflineAware(
+          ownerId, projectId, files,
+          (urls, thumbs) => applyDailyLogWrite({ ownerId, projectId, date: today, purpose: dailyPurpose, noteText, company: companyVal, count: countVal, hoursLost: hoursLostVal, delayCause, urls, thumbs }),
+          () => enqueueDailyLogWriteJob({ id: crypto.randomUUID(), projectId, ownerId, createdAt: new Date().toISOString(), payload: { date: today, purpose: dailyPurpose, noteText, company: companyVal, count: countVal, hoursLost: hoursLostVal, delayCause, files } }),
+        );
+        setQueuedFlash(result === "queued");
       }
       if (purpose && REPEATABLE_PURPOSES.has(purpose)) {
         // Loop back to the photo step for the same purpose instead of
@@ -245,7 +247,9 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
       <Sheet title={t("siteDiary.capture.title")} onClose={onClose}>
         <div className="px-6 pb-8 pt-4 flex flex-col gap-3">
           {savedFlash && (
-            <p className="text-[12px] text-emerald-400">{t("siteDiary.capture.savedAddAnother")}</p>
+            <p className={`text-[12px] ${queuedFlash ? "text-amber-400" : "text-emerald-400"}`}>
+              {queuedFlash ? t("siteDiary.capture.queuedAddAnother") : t("siteDiary.capture.savedAddAnother")}
+            </p>
           )}
           {files.length > 0 && (
             <button type="button" onClick={() => setPickerOpen(false)}

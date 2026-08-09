@@ -29,6 +29,8 @@ import { Route as CmIndexRouteImport } from './routes/cm/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
+import { Route as CmWbsRouteImport } from './routes/cm/wbs'
+import { Route as CmSyncStatusRouteImport } from './routes/cm/sync-status'
 import { Route as CmSubmittalRouteImport } from './routes/cm/submittal'
 import { Route as CmSiteDiaryRouteImport } from './routes/cm/site-diary'
 import { Route as CmSettingsRouteImport } from './routes/cm/settings'
@@ -42,6 +44,7 @@ import { Route as CmProfileRouteImport } from './routes/cm/profile'
 import { Route as CmPhotosRouteImport } from './routes/cm/photos'
 import { Route as CmNotificationsRouteImport } from './routes/cm/notifications'
 import { Route as CmManpowerRouteImport } from './routes/cm/manpower'
+import { Route as CmIpcRouteImport } from './routes/cm/ipc'
 import { Route as CmInstructionsRouteImport } from './routes/cm/instructions'
 import { Route as CmInspectionRouteImport } from './routes/cm/inspection'
 import { Route as CmEquipmentRouteImport } from './routes/cm/equipment'
@@ -73,6 +76,8 @@ import { Route as CmManpowerSettingsRouteImport } from './routes/cm/manpower_.se
 import { Route as CmManpowerNewRouteImport } from './routes/cm/manpower_.new'
 import { Route as CmManpowerEditRouteImport } from './routes/cm/manpower_.edit'
 import { Route as CmJoinTokenRouteImport } from './routes/cm/join/$token'
+import { Route as CmIpcNewRouteImport } from './routes/cm/ipc_.new'
+import { Route as CmIpcIdRouteImport } from './routes/cm/ipc_.$id'
 import { Route as CmInstructionsSettingsRouteImport } from './routes/cm/instructions_.settings'
 import { Route as CmInstructionsNewRouteImport } from './routes/cm/instructions_.new'
 import { Route as CmInspectionSettingsRouteImport } from './routes/cm/inspection_.settings'
@@ -197,6 +202,16 @@ const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
   path: '/framework/$stageId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CmWbsRoute = CmWbsRouteImport.update({
+  id: '/wbs',
+  path: '/wbs',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmSyncStatusRoute = CmSyncStatusRouteImport.update({
+  id: '/sync-status',
+  path: '/sync-status',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmSubmittalRoute = CmSubmittalRouteImport.update({
   id: '/submittal',
   path: '/submittal',
@@ -260,6 +275,11 @@ const CmNotificationsRoute = CmNotificationsRouteImport.update({
 const CmManpowerRoute = CmManpowerRouteImport.update({
   id: '/manpower',
   path: '/manpower',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmIpcRoute = CmIpcRouteImport.update({
+  id: '/ipc',
+  path: '/ipc',
   getParentRoute: () => CmRoute,
 } as any)
 const CmInstructionsRoute = CmInstructionsRouteImport.update({
@@ -417,6 +437,16 @@ const CmJoinTokenRoute = CmJoinTokenRouteImport.update({
   path: '/join/$token',
   getParentRoute: () => CmRoute,
 } as any)
+const CmIpcNewRoute = CmIpcNewRouteImport.update({
+  id: '/ipc_/new',
+  path: '/ipc/new',
+  getParentRoute: () => CmRoute,
+} as any)
+const CmIpcIdRoute = CmIpcIdRouteImport.update({
+  id: '/ipc_/$id',
+  path: '/ipc/$id',
+  getParentRoute: () => CmRoute,
+} as any)
 const CmInstructionsSettingsRoute = CmInstructionsSettingsRouteImport.update({
   id: '/instructions_/settings',
   path: '/instructions/settings',
@@ -555,6 +585,7 @@ export interface FileRoutesByFullPath {
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
   '/cm/instructions': typeof CmInstructionsRoute
+  '/cm/ipc': typeof CmIpcRoute
   '/cm/manpower': typeof CmManpowerRoute
   '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
@@ -568,6 +599,8 @@ export interface FileRoutesByFullPath {
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
+  '/cm/sync-status': typeof CmSyncStatusRoute
+  '/cm/wbs': typeof CmWbsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -585,6 +618,8 @@ export interface FileRoutesByFullPath {
   '/cm/inspection/settings': typeof CmInspectionSettingsRoute
   '/cm/instructions/new': typeof CmInstructionsNewRoute
   '/cm/instructions/settings': typeof CmInstructionsSettingsRoute
+  '/cm/ipc/$id': typeof CmIpcIdRoute
+  '/cm/ipc/new': typeof CmIpcNewRoute
   '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/manpower/edit': typeof CmManpowerEditRoute
   '/cm/manpower/new': typeof CmManpowerNewRoute
@@ -641,6 +676,7 @@ export interface FileRoutesByTo {
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
   '/cm/instructions': typeof CmInstructionsRoute
+  '/cm/ipc': typeof CmIpcRoute
   '/cm/manpower': typeof CmManpowerRoute
   '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
@@ -654,6 +690,8 @@ export interface FileRoutesByTo {
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
+  '/cm/sync-status': typeof CmSyncStatusRoute
+  '/cm/wbs': typeof CmWbsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -671,6 +709,8 @@ export interface FileRoutesByTo {
   '/cm/inspection/settings': typeof CmInspectionSettingsRoute
   '/cm/instructions/new': typeof CmInstructionsNewRoute
   '/cm/instructions/settings': typeof CmInstructionsSettingsRoute
+  '/cm/ipc/$id': typeof CmIpcIdRoute
+  '/cm/ipc/new': typeof CmIpcNewRoute
   '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/manpower/edit': typeof CmManpowerEditRoute
   '/cm/manpower/new': typeof CmManpowerNewRoute
@@ -730,6 +770,7 @@ export interface FileRoutesById {
   '/cm/equipment': typeof CmEquipmentRoute
   '/cm/inspection': typeof CmInspectionRoute
   '/cm/instructions': typeof CmInstructionsRoute
+  '/cm/ipc': typeof CmIpcRoute
   '/cm/manpower': typeof CmManpowerRoute
   '/cm/notifications': typeof CmNotificationsRoute
   '/cm/photos': typeof CmPhotosRoute
@@ -743,6 +784,8 @@ export interface FileRoutesById {
   '/cm/settings': typeof CmSettingsRoute
   '/cm/site-diary': typeof CmSiteDiaryRoute
   '/cm/submittal': typeof CmSubmittalRoute
+  '/cm/sync-status': typeof CmSyncStatusRoute
+  '/cm/wbs': typeof CmWbsRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tools/advisor': typeof ToolsAdvisorRoute
@@ -760,6 +803,8 @@ export interface FileRoutesById {
   '/cm/inspection_/settings': typeof CmInspectionSettingsRoute
   '/cm/instructions_/new': typeof CmInstructionsNewRoute
   '/cm/instructions_/settings': typeof CmInstructionsSettingsRoute
+  '/cm/ipc_/$id': typeof CmIpcIdRoute
+  '/cm/ipc_/new': typeof CmIpcNewRoute
   '/cm/join/$token': typeof CmJoinTokenRoute
   '/cm/manpower_/edit': typeof CmManpowerEditRoute
   '/cm/manpower_/new': typeof CmManpowerNewRoute
@@ -820,6 +865,7 @@ export interface FileRouteTypes {
     | '/cm/equipment'
     | '/cm/inspection'
     | '/cm/instructions'
+    | '/cm/ipc'
     | '/cm/manpower'
     | '/cm/notifications'
     | '/cm/photos'
@@ -833,6 +879,8 @@ export interface FileRouteTypes {
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
+    | '/cm/sync-status'
+    | '/cm/wbs'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -850,6 +898,8 @@ export interface FileRouteTypes {
     | '/cm/inspection/settings'
     | '/cm/instructions/new'
     | '/cm/instructions/settings'
+    | '/cm/ipc/$id'
+    | '/cm/ipc/new'
     | '/cm/join/$token'
     | '/cm/manpower/edit'
     | '/cm/manpower/new'
@@ -906,6 +956,7 @@ export interface FileRouteTypes {
     | '/cm/equipment'
     | '/cm/inspection'
     | '/cm/instructions'
+    | '/cm/ipc'
     | '/cm/manpower'
     | '/cm/notifications'
     | '/cm/photos'
@@ -919,6 +970,8 @@ export interface FileRouteTypes {
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
+    | '/cm/sync-status'
+    | '/cm/wbs'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -936,6 +989,8 @@ export interface FileRouteTypes {
     | '/cm/inspection/settings'
     | '/cm/instructions/new'
     | '/cm/instructions/settings'
+    | '/cm/ipc/$id'
+    | '/cm/ipc/new'
     | '/cm/join/$token'
     | '/cm/manpower/edit'
     | '/cm/manpower/new'
@@ -994,6 +1049,7 @@ export interface FileRouteTypes {
     | '/cm/equipment'
     | '/cm/inspection'
     | '/cm/instructions'
+    | '/cm/ipc'
     | '/cm/manpower'
     | '/cm/notifications'
     | '/cm/photos'
@@ -1007,6 +1063,8 @@ export interface FileRouteTypes {
     | '/cm/settings'
     | '/cm/site-diary'
     | '/cm/submittal'
+    | '/cm/sync-status'
+    | '/cm/wbs'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
     | '/tools/advisor'
@@ -1024,6 +1082,8 @@ export interface FileRouteTypes {
     | '/cm/inspection_/settings'
     | '/cm/instructions_/new'
     | '/cm/instructions_/settings'
+    | '/cm/ipc_/$id'
+    | '/cm/ipc_/new'
     | '/cm/join/$token'
     | '/cm/manpower_/edit'
     | '/cm/manpower_/new'
@@ -1220,6 +1280,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FrameworkStageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cm/wbs': {
+      id: '/cm/wbs'
+      path: '/wbs'
+      fullPath: '/cm/wbs'
+      preLoaderRoute: typeof CmWbsRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/sync-status': {
+      id: '/cm/sync-status'
+      path: '/sync-status'
+      fullPath: '/cm/sync-status'
+      preLoaderRoute: typeof CmSyncStatusRouteImport
+      parentRoute: typeof CmRoute
+    }
     '/cm/submittal': {
       id: '/cm/submittal'
       path: '/submittal'
@@ -1309,6 +1383,13 @@ declare module '@tanstack/react-router' {
       path: '/manpower'
       fullPath: '/cm/manpower'
       preLoaderRoute: typeof CmManpowerRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/ipc': {
+      id: '/cm/ipc'
+      path: '/ipc'
+      fullPath: '/cm/ipc'
+      preLoaderRoute: typeof CmIpcRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/instructions': {
@@ -1526,6 +1607,20 @@ declare module '@tanstack/react-router' {
       path: '/join/$token'
       fullPath: '/cm/join/$token'
       preLoaderRoute: typeof CmJoinTokenRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/ipc_/new': {
+      id: '/cm/ipc_/new'
+      path: '/ipc/new'
+      fullPath: '/cm/ipc/new'
+      preLoaderRoute: typeof CmIpcNewRouteImport
+      parentRoute: typeof CmRoute
+    }
+    '/cm/ipc_/$id': {
+      id: '/cm/ipc_/$id'
+      path: '/ipc/$id'
+      fullPath: '/cm/ipc/$id'
+      preLoaderRoute: typeof CmIpcIdRouteImport
       parentRoute: typeof CmRoute
     }
     '/cm/instructions_/settings': {
@@ -1764,6 +1859,7 @@ interface CmRouteChildren {
   CmEquipmentRoute: typeof CmEquipmentRoute
   CmInspectionRoute: typeof CmInspectionRoute
   CmInstructionsRoute: typeof CmInstructionsRoute
+  CmIpcRoute: typeof CmIpcRoute
   CmManpowerRoute: typeof CmManpowerRoute
   CmNotificationsRoute: typeof CmNotificationsRoute
   CmPhotosRoute: typeof CmPhotosRoute
@@ -1777,6 +1873,8 @@ interface CmRouteChildren {
   CmSettingsRoute: typeof CmSettingsRoute
   CmSiteDiaryRoute: typeof CmSiteDiaryRoute
   CmSubmittalRoute: typeof CmSubmittalRoute
+  CmSyncStatusRoute: typeof CmSyncStatusRoute
+  CmWbsRoute: typeof CmWbsRoute
   CmIndexRoute: typeof CmIndexRoute
   CmAuthCallbackRoute: typeof CmAuthCallbackRoute
   CmBoqNewRoute: typeof CmBoqNewRoute
@@ -1790,6 +1888,8 @@ interface CmRouteChildren {
   CmInspectionSettingsRoute: typeof CmInspectionSettingsRoute
   CmInstructionsNewRoute: typeof CmInstructionsNewRoute
   CmInstructionsSettingsRoute: typeof CmInstructionsSettingsRoute
+  CmIpcIdRoute: typeof CmIpcIdRoute
+  CmIpcNewRoute: typeof CmIpcNewRoute
   CmJoinTokenRoute: typeof CmJoinTokenRoute
   CmManpowerEditRoute: typeof CmManpowerEditRoute
   CmManpowerNewRoute: typeof CmManpowerNewRoute
@@ -1826,6 +1926,7 @@ const CmRouteChildren: CmRouteChildren = {
   CmEquipmentRoute: CmEquipmentRoute,
   CmInspectionRoute: CmInspectionRoute,
   CmInstructionsRoute: CmInstructionsRoute,
+  CmIpcRoute: CmIpcRoute,
   CmManpowerRoute: CmManpowerRoute,
   CmNotificationsRoute: CmNotificationsRoute,
   CmPhotosRoute: CmPhotosRoute,
@@ -1839,6 +1940,8 @@ const CmRouteChildren: CmRouteChildren = {
   CmSettingsRoute: CmSettingsRoute,
   CmSiteDiaryRoute: CmSiteDiaryRoute,
   CmSubmittalRoute: CmSubmittalRoute,
+  CmSyncStatusRoute: CmSyncStatusRoute,
+  CmWbsRoute: CmWbsRoute,
   CmIndexRoute: CmIndexRoute,
   CmAuthCallbackRoute: CmAuthCallbackRoute,
   CmBoqNewRoute: CmBoqNewRoute,
@@ -1852,6 +1955,8 @@ const CmRouteChildren: CmRouteChildren = {
   CmInspectionSettingsRoute: CmInspectionSettingsRoute,
   CmInstructionsNewRoute: CmInstructionsNewRoute,
   CmInstructionsSettingsRoute: CmInstructionsSettingsRoute,
+  CmIpcIdRoute: CmIpcIdRoute,
+  CmIpcNewRoute: CmIpcNewRoute,
   CmJoinTokenRoute: CmJoinTokenRoute,
   CmManpowerEditRoute: CmManpowerEditRoute,
   CmManpowerNewRoute: CmManpowerNewRoute,

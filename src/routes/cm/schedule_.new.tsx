@@ -29,7 +29,7 @@ function NewScheduleActivityPage() {
 
   return (
     <NewActivitySheet
-      ownerId={user.id} projectId={projectId} groupOptions={groupOptions} boqCategoryOptions={boqCategoryOptions} backTo="/cm/schedule"
+      ownerId={user.id} projectId={projectId} groupOptions={groupOptions} boqCategoryOptions={boqCategoryOptions} boqItems={boqItems} backTo="/cm/schedule"
       onCreated={() => {
         queryClient.invalidateQueries({ queryKey: ["cm_schedule_items", projectId] });
         navigate({ to: "/cm/schedule" });

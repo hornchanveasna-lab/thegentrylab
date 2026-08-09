@@ -14,6 +14,7 @@ import {
   useCMDailyLogs,
   useCMPhotoBoqTags,
   updateCMDailyLog,
+  logCMActivity,
   QUANTITY_STATUS_ORDER,
   useCMBOQVersions,
   activeCMBOQVersion,
@@ -117,8 +118,8 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categ
   );
 }
 
-function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged, onOpenDetail }: {
-  item: CMBOQItem; delivered: number | undefined; canEdit: boolean; canDelete: boolean; onChanged: () => void; onOpenDetail: () => void;
+function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, onChanged, onOpenDetail }: {
+  item: CMBOQItem; projectId: string; actorId: string; delivered: number | undefined; canEdit: boolean; canDelete: boolean; onChanged: () => void; onOpenDetail: () => void;
 }) {
   const { t } = useCMLang();
   const [quantity, setQuantity] = useState(String(item.quantity));
@@ -128,7 +129,11 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged, onOpenDeta
 
   const commit = async (patch: Partial<CMBOQItem>) => {
     setBusy(true);
-    try { await updateCMBOQItem(item.id, patch); onChanged(); } finally { setBusy(false); }
+    try {
+      await updateCMBOQItem(item.id, patch);
+      logCMActivity(projectId, actorId, "updated", "boq", item.id, { ...patch, description: item.description });
+      onChanged();
+    } finally { setBusy(false); }
   };
 
   return (
@@ -194,8 +199,8 @@ function BoqItemRow({ item, delivered, canEdit, canDelete, onChanged, onOpenDeta
  *  "Expand and collapse sections"). Opens by default only when there's an
  *  active search/filter (so matches stay visible) or the BOQ has very few
  *  sections overall. */
-function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, canEdit, canDelete, onChanged, onOpenDetail, defaultOpen }: {
-  category: string; items: CMBOQItem[]; grandTotal: number; linkedCount: number; linkedAvgActual: number | null;
+function CategorySection({ category, items, projectId, actorId, grandTotal, linkedCount, linkedAvgActual, deliveredByBoqItem, canEdit, canDelete, onChanged, onOpenDetail, defaultOpen }: {
+  category: string; items: CMBOQItem[]; projectId: string; actorId: string; grandTotal: number; linkedCount: number; linkedAvgActual: number | null;
   deliveredByBoqItem: Map<string, number>; canEdit: boolean; canDelete: boolean; onChanged: () => void; onOpenDetail: (item: CMBOQItem) => void;
   defaultOpen: boolean;
 }) {
@@ -219,7 +224,7 @@ function CategorySection({ category, items, grandTotal, linkedCount, linkedAvgAc
       </button>
       {open && (
         <div className="flex flex-col gap-2 mt-4">
-          {items.map((item) => <BoqItemRow key={item.id} item={item} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} onOpenDetail={() => onOpenDetail(item)} />)}
+          {items.map((item) => <BoqItemRow key={item.id} item={item} projectId={projectId} actorId={actorId} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} onOpenDetail={() => onOpenDetail(item)} />)}
           <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
             <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
             <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
@@ -295,8 +300,8 @@ function DeliveryStatusRow({ logId, logDate, index, row, unit, canEdit, busy, on
  *  whatever photos and schedule activities are already connected. Status is
  *  stored per delivery row (inside cm_daily_logs.deliveries), so advancing
  *  a row's status patches the whole daily log it lives in. */
-function BoqItemDetailSheet({ item, projectId, dailyLogs, scheduleItems, canEdit, onClose }: {
-  item: CMBOQItem; projectId: string; dailyLogs: CMDailyLog[]; scheduleItems: CMScheduleItem[]; canEdit: boolean; onClose: () => void;
+function BoqItemDetailSheet({ item, projectId, actorId, dailyLogs, scheduleItems, canEdit, onClose }: {
+  item: CMBOQItem; projectId: string; actorId: string; dailyLogs: CMDailyLog[]; scheduleItems: CMScheduleItem[]; canEdit: boolean; onClose: () => void;
 }) {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
@@ -345,6 +350,7 @@ function BoqItemDetailSheet({ item, projectId, dailyLogs, scheduleItems, canEdit
         i === index ? { ...row, status, certified_quantity: status === "Certified" ? (certifiedQuantity ?? row.certified_quantity ?? row.quantity) : row.certified_quantity } : row,
       );
       await updateCMDailyLog(logId, { deliveries: nextDeliveries });
+      logCMActivity(projectId, actorId, "delivery_status_changed", "boq", item.id, { material: item.description, status });
       queryClient.invalidateQueries({ queryKey: ["cm_daily_logs", projectId] });
     } finally {
       setBusyKey(null);
@@ -790,7 +796,7 @@ function CMBoqPage() {
               {categories.map(([category, categoryItems]) => {
                 const linked = linkedByCategory.get(category);
                 return (
-                  <CategorySection key={category} category={category} items={categoryItems} grandTotal={grandTotal}
+                  <CategorySection key={category} category={category} items={categoryItems} projectId={projectId ?? ""} actorId={user.id} grandTotal={grandTotal}
                     linkedCount={linked?.count ?? 0} linkedAvgActual={linked?.avgActual ?? null}
                     deliveredByBoqItem={deliveredByBoqItem} canEdit={effectiveCanEdit} canDelete={effectiveCanDelete} onChanged={invalidate}
                     onOpenDetail={setDetailItem} defaultOpen={hasActiveSearch || categories.length <= 3} />
@@ -816,7 +822,7 @@ function CMBoqPage() {
           onClose={() => setShowImport(false)} onImported={invalidate} />
       )}
       {detailItem && projectId && (
-        <BoqItemDetailSheet item={detailItem} projectId={projectId} dailyLogs={dailyLogs ?? []} scheduleItems={scheduleItems ?? []}
+        <BoqItemDetailSheet item={detailItem} projectId={projectId} actorId={user.id} dailyLogs={dailyLogs ?? []} scheduleItems={scheduleItems ?? []}
           canEdit={canEdit} onClose={() => setDetailItem(null)} />
       )}
       {confirmingApprove && (

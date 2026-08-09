@@ -15,8 +15,6 @@ import {
   stampPhoto,
   uploadCMPhotoWithThumb,
   deleteCMPhoto,
-  findOrCreateCMDailyLog,
-  updateCMDailyLog,
   createCMInspection,
   updateCMInspection,
   createCMTask,
@@ -31,6 +29,7 @@ import {
   type CMPhotoWithContext,
   type CMProject,
 } from "@/lib/cm-data";
+import { captureOfflineAware, applyPhotoNoteWrite, enqueuePhotoNoteJob } from "@/lib/cm-offline/capture";
 
 interface CMPhotosSearch { new?: boolean }
 
@@ -107,6 +106,22 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
     setSaving(true);
     setError("");
     try {
+      // Site Diary captures go through the offline-aware outbox — the same
+      // capture used to keep working with no network. The other module
+      // targets here create a record in a different table (Inspection,
+      // Punch List, etc.), so — like the Site Diary CaptureSheet — they
+      // stay online-only for now.
+      if (moduleSel === "siteDiary") {
+        const captionVal = caption.trim();
+        await captureOfflineAware(
+          ownerId, projectId, files,
+          (urls, thumbs) => applyPhotoNoteWrite(ownerId, projectId, photoDate, captionVal, urls, thumbs),
+          () => enqueuePhotoNoteJob({ id: crypto.randomUUID(), projectId, ownerId, createdAt: new Date().toISOString(), payload: { date: photoDate, caption: captionVal, files } }),
+        );
+        onCreated();
+        return;
+      }
+
       const project = projects.find((p) => p.id === projectId);
       const stampOpts = {
         showCompanyLogo, showProjectInfo, showConsultantLogos, monotoneLogos, timestamp,
@@ -123,13 +138,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
       const thumbs = uploaded.map((u) => u.thumbUrl);
       const title = caption.trim() || `${t(`tile.${moduleSel}`)} — ${photoDate}`;
 
-      if (moduleSel === "siteDiary") {
-        const log = await findOrCreateCMDailyLog(ownerId, projectId, photoDate, { notes: caption.trim() || null });
-        await updateCMDailyLog(log.id, {
-          photos: [...log.photos, ...urls],
-          photo_thumbs: [...log.photo_thumbs, ...thumbs],
-        });
-      } else if (moduleSel === "inspection") {
+      if (moduleSel === "inspection") {
         const item = await createCMInspection(ownerId, projectId, { title, status: "Scheduled", inspection_date: photoDate });
         await updateCMInspection(item.id, { photos: urls, photo_thumbs: thumbs });
       } else if (moduleSel === "punchList") {
