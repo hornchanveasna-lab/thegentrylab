@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
@@ -218,6 +218,54 @@ function boqCategoryColor(index: number): string {
   return `color-mix(in srgb, var(--color-brand-accent) ${BOQ_TINT_STOPS[index % BOQ_TINT_STOPS.length]}%, white)`;
 }
 
+/** Category icon set — hand-rolled monochrome outline SVGs matching the
+ *  MODULE_ICON convention in shared.tsx, matched by keyword against the
+ *  Discipline/Work Package vocabulary. Falls back to a generic tag icon. */
+function BoqCategoryIcon({ name, size = 15 }: { name: string; size?: number }) {
+  const n = name.toLowerCase();
+  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none" as const, stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (/(concrete|structur|foundation)/.test(n)) return <svg {...p}><rect x="3" y="10" width="18" height="9" rx="1" /><path d="M3 10l9-6 9 6" /></svg>;
+  if (/(steel|frame)/.test(n)) return <svg {...p}><path d="M4 20V4h16v16" /><path d="M4 12h16M10 4v16M4 4l16 16M20 4L4 20" /></svg>;
+  if (/electric/.test(n)) return <svg {...p}><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" /></svg>;
+  if (/(mechanic|hvac|\bmep\b)/.test(n)) return <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg>;
+  if (/(plumb|water|drain|sanitary)/.test(n)) return <svg {...p}><path d="M12 2.5c3 4 6 7.5 6 11a6 6 0 1 1-12 0c0-3.5 3-7 6-11z" /></svg>;
+  if (/fire/.test(n)) return <svg {...p}><path d="M12 2.5c1.5 3 4.5 4 4.5 8a4.5 4.5 0 1 1-9 0c0-1 .3-1.8.8-2.5.4 1 1.2 1.5 1.7 1 .6-.6.2-1.8-.5-2.8C8.7 5 10 3.5 12 2.5z" /></svg>;
+  if (/roof/.test(n)) return <svg {...p}><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></svg>;
+  if (/(clad|facade|envelope)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="1" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>;
+  if (/(earthwork|excavat|grading)/.test(n)) return <svg {...p}><path d="M3 20h18" /><path d="M6 20l3-9 3 5 2-3 4 7" /></svg>;
+  if (/(external|landscape|paving)/.test(n)) return <svg {...p}><path d="M3 20h18" /><circle cx="8" cy="14" r="3" /><path d="M14 20l3-9 4 9" /></svg>;
+  if (/(finish|paint|floor|tile|ceiling)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 15l4-4 3 3 5-6 6 7" /></svg>;
+  if (/safety/.test(n)) return <svg {...p}><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" /></svg>;
+  if (/(test|commission|quality|civil)/.test(n)) return <svg {...p}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>;
+  return <svg {...p}><path d="M20.6 12.3L12.3 3.9a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2v5.9c0 .5.2 1 .6 1.4l8.4 8.4a2 2 0 0 0 2.8 0l5.8-5.8a2 2 0 0 0 0-2.9z" /><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" /></svg>;
+}
+
+/** Ranked horizontal bar chart, magnitude-comparison companion to the donut
+ *  (which reads proportion well but makes close values hard to compare). */
+function BoqCategoryBarChart({ data }: { data: { name: string; value: number; color: string }[] }) {
+  const { t } = useCMLang();
+  if (data.length < 2) return null;
+  return (
+    <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-3">{t("boq.categoryRanking")}</p>
+      <ResponsiveContainer width="100%" height={Math.max(140, data.length * 34)}>
+        <BarChart data={data} layout="vertical" barCategoryGap="28%" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+          <XAxis type="number" hide />
+          <YAxis type="category" dataKey="name" tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 10 }} axisLine={false} tickLine={false} width={112} />
+          <Tooltip
+            formatter={(v: number) => [Number(v).toLocaleString(undefined, { maximumFractionDigits: 0 }), t("boq.total")]}
+            contentStyle={{ background: "#161616", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 11 }}
+            itemStyle={{ color: "#fff" }} cursor={{ fill: "rgba(255,255,255,0.04)" }}
+          />
+          <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+            {data.map((d) => <Cell key={d.name} fill={d.color} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function BoqCostDonut({ data, total }: { data: { name: string; value: number; color: string }[]; total: number }) {
   const { t } = useCMLang();
   if (data.length === 0) return null;
@@ -242,11 +290,11 @@ function BoqCostDonut({ data, total }: { data: { name: string; value: number; co
           <span className="font-mono text-[16px] font-bold text-white">{total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
         </div>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-2">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
         {data.map((d) => (
-          <div key={d.name} className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
-            <span className="text-[10px] text-white/50 truncate max-w-[140px]">{d.name}</span>
+          <div key={d.name} className="flex items-center gap-1.5" style={{ color: d.color }}>
+            <BoqCategoryIcon name={d.name} size={12} />
+            <span className="text-[10px] text-white/50 truncate max-w-[130px]">{d.name}</span>
           </div>
         ))}
       </div>
@@ -264,8 +312,10 @@ function CategoryTile({ name, count, subtotal, pct, color, avgActual, onClick }:
   return (
     <button type="button" onClick={onClick}
       className="text-left rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-2.5 active:scale-[0.98] transition-transform">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
+          <BoqCategoryIcon name={name} size={15} />
+        </span>
         <p className="font-mono text-[9px] uppercase tracking-widest text-white/45 truncate">{name}</p>
       </div>
       <p className="font-mono text-[16px] font-bold truncate" style={{ color }}>
@@ -924,6 +974,7 @@ function CMBoqPage() {
             {!isLoading && categories.length > 0 && view === "tiles" && (
               <>
                 <BoqCostDonut data={categoryTotals.map((c) => ({ name: c.name, value: c.subtotal, color: c.color }))} total={visibleTotal} />
+                <BoqCategoryBarChart data={categoryTotals.map((c) => ({ name: c.name, value: c.subtotal, color: c.color }))} />
                 <div className="grid grid-cols-2 gap-3">
                   {categoryTotals.map((c) => (
                     <CategoryTile key={c.name} name={c.name} count={c.items.length} subtotal={c.subtotal}
@@ -977,6 +1028,12 @@ function CMBoqPage() {
       {drillCategoryData && projectId && (
         <Sheet title={drillCategoryData.name} onClose={() => setDrillCategory(null)}>
           <div className="px-6 pb-8 pt-2 flex flex-col gap-2">
+            <div className="flex items-center gap-2 px-1 pb-1" style={{ color: drillCategoryData.color }}>
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${drillCategoryData.color} 18%, transparent)` }}>
+                <BoqCategoryIcon name={drillCategoryData.name} size={13} />
+              </span>
+              <span className="text-[11px] text-white/40">{drillCategoryData.items.length === 1 ? t("boq.item") : t("boq.items", { count: String(drillCategoryData.items.length) })}</span>
+            </div>
             <div className="flex items-center justify-between px-1 pb-3 mb-1 border-b border-white/6">
               <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
               <span className="font-mono text-[14px] font-bold" style={{ color: drillCategoryData.color }}>
