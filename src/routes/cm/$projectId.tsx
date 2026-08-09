@@ -242,7 +242,8 @@ function CMProjectPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
-          className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-white font-bold bg-white/10 border border-white/15">
+          className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest font-bold"
+          style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -286,7 +287,8 @@ function CMProjectPage() {
           <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("insight.title")}</h1>
           <FavoriteButton active={favorites?.has(projectId) ?? false} onToggle={toggleFavorite} />
           <button type="button" onClick={() => setTab("settings")} aria-label={t("projectSettings.title")}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${tab === "settings" ? "bg-white/15 text-white" : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"}`}>
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${tab === "settings" ? "" : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"}`}
+            style={tab === "settings" ? { backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" } : undefined}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />

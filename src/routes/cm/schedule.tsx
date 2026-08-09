@@ -1880,7 +1880,8 @@ function CMSchedulePage() {
           extraAction={view === "cost" ? (
             <button type="button" aria-label={t("boq.editList")} aria-pressed={costDisplay === "list"}
               onClick={() => setCostDisplay((v) => (v === "list" ? "tiles" : "list"))}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${costDisplay === "list" ? "bg-white/15 text-white" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"}`}>
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${costDisplay === "list" ? "" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"}`}
+              style={costDisplay === "list" ? { backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" } : undefined}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
               </svg>

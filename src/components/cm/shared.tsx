@@ -218,7 +218,8 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
         <div className="flex gap-2">
           <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10">{t("common.cancel")}</button>
           <button onClick={onConfirm}
-            className={`flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest ${destructive ? "text-red-400 bg-red-500/10 hover:bg-red-500/15" : "text-white bg-white/15 hover:bg-white/20 border border-white/15"}`}>
+            className={`flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest ${destructive ? "text-red-400 bg-red-500/10 hover:bg-red-500/15" : ""}`}
+            style={destructive ? undefined : { backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>
             {confirmLabel}
           </button>
         </div>
@@ -1260,8 +1261,8 @@ export function FAB({ onClick, label }: { onClick: () => void; label: string }) 
     <button
       onClick={onClick}
       aria-label={label}
-      className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center text-white bg-[#0d0d0e] border border-white/15 shadow-[var(--shadow-md)] active:scale-95 transition-transform z-30"
-      style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+      className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-[var(--shadow-md)] active:scale-95 transition-transform z-30"
+      style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
     >
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
     </button>
@@ -1631,7 +1632,8 @@ export function QuickUploadButton({ label, onFilesSelected }: { label: string; o
   return (
     <>
       <button type="button" onClick={() => inputRef.current?.click()}
-        className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-white bg-white/10 border border-white/15 transition-transform active:scale-[0.98]">
+        className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest transition-transform active:scale-[0.98]"
+        style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
         </svg>
@@ -1763,12 +1765,12 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
         return (
           <button key={opt.value} type="button" disabled={disabled} onClick={() => onChange(opt.value)}
             className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors disabled:opacity-40 ${
-              opt.color ? "bg-white/5" : active ? "bg-white/15 text-white font-bold" : "bg-white/5 text-white/70 hover:bg-white/10"
+              opt.color ? "bg-white/5" : active ? "font-bold" : "bg-white/5 text-white/70 hover:bg-white/10"
             }`}
             style={
               opt.color
                 ? { color: opt.color, boxShadow: active ? `inset 0 0 0 1.5px ${opt.color}` : undefined }
-                : undefined
+                : active ? { backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" } : undefined
             }
           >
             {opt.icon}
