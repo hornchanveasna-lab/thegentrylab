@@ -135,6 +135,47 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
+/** A small fixed tint ramp of the single dynamic brand accent — mirrors the
+ *  main site's own cost-breakdown donut (`stageContent.ts`'s `ORANGE` ramp)
+ *  instead of an arbitrary rainbow palette. Shared by BOQ and Schedule so a
+ *  category/discipline reads the same way in both — a ranked list (BOQ's
+ *  donut/tiles) picks by rank so the largest reads strongest; a tree with
+ *  no natural rank (Schedule's WBS folders) picks by `categoryColorForName`
+ *  instead, so the same name lands on the same tint in both modules. */
+export const CATEGORY_TINT_STOPS = [100, 82, 66, 52, 40, 30];
+export function categoryTintColor(index: number): string {
+  return `color-mix(in srgb, var(--color-brand-accent) ${CATEGORY_TINT_STOPS[index % CATEGORY_TINT_STOPS.length]}%, white)`;
+}
+export function categoryColorForName(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return categoryTintColor(hash % CATEGORY_TINT_STOPS.length);
+}
+
+/** Category icon set — hand-rolled monochrome outline SVGs matching the
+ *  MODULE_ICON convention below, matched by keyword against the
+ *  Discipline/Work Package vocabulary. Falls back to a generic tag icon.
+ *  Shared by BOQ (category tiles) and Schedule (WBS folder rows) so the
+ *  same category name gets the same icon everywhere. */
+export function CategoryIcon({ name, size = 15 }: { name: string; size?: number }) {
+  const n = name.toLowerCase();
+  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none" as const, stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (/(concrete|structur|foundation)/.test(n)) return <svg {...p}><rect x="3" y="10" width="18" height="9" rx="1" /><path d="M3 10l9-6 9 6" /></svg>;
+  if (/(steel|frame)/.test(n)) return <svg {...p}><path d="M4 20V4h16v16" /><path d="M4 12h16M10 4v16M4 4l16 16M20 4L4 20" /></svg>;
+  if (/electric/.test(n)) return <svg {...p}><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" /></svg>;
+  if (/(mechanic|hvac|\bmep\b)/.test(n)) return <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg>;
+  if (/(plumb|water|drain|sanitary)/.test(n)) return <svg {...p}><path d="M12 2.5c3 4 6 7.5 6 11a6 6 0 1 1-12 0c0-3.5 3-7 6-11z" /></svg>;
+  if (/fire/.test(n)) return <svg {...p}><path d="M12 2.5c1.5 3 4.5 4 4.5 8a4.5 4.5 0 1 1-9 0c0-1 .3-1.8.8-2.5.4 1 1.2 1.5 1.7 1 .6-.6.2-1.8-.5-2.8C8.7 5 10 3.5 12 2.5z" /></svg>;
+  if (/roof/.test(n)) return <svg {...p}><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></svg>;
+  if (/(clad|facade|envelope)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="1" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>;
+  if (/(earthwork|excavat|grading)/.test(n)) return <svg {...p}><path d="M3 20h18" /><path d="M6 20l3-9 3 5 2-3 4 7" /></svg>;
+  if (/(external|landscape|paving)/.test(n)) return <svg {...p}><path d="M3 20h18" /><circle cx="8" cy="14" r="3" /><path d="M14 20l3-9 4 9" /></svg>;
+  if (/(finish|paint|floor|tile|ceiling)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 15l4-4 3 3 5-6 6 7" /></svg>;
+  if (/safety/.test(n)) return <svg {...p}><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" /></svg>;
+  if (/(test|commission|quality|civil)/.test(n)) return <svg {...p}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>;
+  return <svg {...p}><path d="M20.6 12.3L12.3 3.9a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2v5.9c0 .5.2 1 .6 1.4l8.4 8.4a2 2 0 0 0 2.8 0l5.8-5.8a2 2 0 0 0 0-2.9z" /><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" /></svg>;
+}
+
 /** Shown when a module's query fails — every module today only handled
  *  isLoading, so a failed fetch silently rendered nothing. */
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {

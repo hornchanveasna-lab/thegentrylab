@@ -5,7 +5,10 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, 
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
-import { ModuleHeader, Sheet, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls, ConfirmationDialog } from "@/components/cm/shared";
+import {
+  ModuleHeader, Sheet, FormPage, FAB, ProjectPicker, FieldSelect, SegmentedField, useSelectedProject, inputCls, labelCls, ConfirmationDialog,
+  categoryTintColor, CategoryIcon,
+} from "@/components/cm/shared";
 import {
   useCMBOQItems,
   createCMBOQItem,
@@ -208,38 +211,6 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
   );
 }
 
-/** A small fixed tint ramp of the single dynamic brand accent — mirrors the
- *  main site's own cost-breakdown donut (`stageContent.ts`'s `ORANGE` ramp)
- *  instead of an arbitrary rainbow palette, so the largest category reads
- *  strongest and smaller slices fade toward pale without introducing new
- *  hues. Cycles if a BOQ has more categories than stops. */
-const BOQ_TINT_STOPS = [100, 82, 66, 52, 40, 30];
-function boqCategoryColor(index: number): string {
-  return `color-mix(in srgb, var(--color-brand-accent) ${BOQ_TINT_STOPS[index % BOQ_TINT_STOPS.length]}%, white)`;
-}
-
-/** Category icon set — hand-rolled monochrome outline SVGs matching the
- *  MODULE_ICON convention in shared.tsx, matched by keyword against the
- *  Discipline/Work Package vocabulary. Falls back to a generic tag icon. */
-function BoqCategoryIcon({ name, size = 15 }: { name: string; size?: number }) {
-  const n = name.toLowerCase();
-  const p = { width: size, height: size, viewBox: "0 0 24 24", fill: "none" as const, stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  if (/(concrete|structur|foundation)/.test(n)) return <svg {...p}><rect x="3" y="10" width="18" height="9" rx="1" /><path d="M3 10l9-6 9 6" /></svg>;
-  if (/(steel|frame)/.test(n)) return <svg {...p}><path d="M4 20V4h16v16" /><path d="M4 12h16M10 4v16M4 4l16 16M20 4L4 20" /></svg>;
-  if (/electric/.test(n)) return <svg {...p}><path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z" /></svg>;
-  if (/(mechanic|hvac|\bmep\b)/.test(n)) return <svg {...p}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" /></svg>;
-  if (/(plumb|water|drain|sanitary)/.test(n)) return <svg {...p}><path d="M12 2.5c3 4 6 7.5 6 11a6 6 0 1 1-12 0c0-3.5 3-7 6-11z" /></svg>;
-  if (/fire/.test(n)) return <svg {...p}><path d="M12 2.5c1.5 3 4.5 4 4.5 8a4.5 4.5 0 1 1-9 0c0-1 .3-1.8.8-2.5.4 1 1.2 1.5 1.7 1 .6-.6.2-1.8-.5-2.8C8.7 5 10 3.5 12 2.5z" /></svg>;
-  if (/roof/.test(n)) return <svg {...p}><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /></svg>;
-  if (/(clad|facade|envelope)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="1" /><path d="M3 9h18M3 15h18M9 3v18M15 3v18" /></svg>;
-  if (/(earthwork|excavat|grading)/.test(n)) return <svg {...p}><path d="M3 20h18" /><path d="M6 20l3-9 3 5 2-3 4 7" /></svg>;
-  if (/(external|landscape|paving)/.test(n)) return <svg {...p}><path d="M3 20h18" /><circle cx="8" cy="14" r="3" /><path d="M14 20l3-9 4 9" /></svg>;
-  if (/(finish|paint|floor|tile|ceiling)/.test(n)) return <svg {...p}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 15l4-4 3 3 5-6 6 7" /></svg>;
-  if (/safety/.test(n)) return <svg {...p}><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z" /></svg>;
-  if (/(test|commission|quality|civil)/.test(n)) return <svg {...p}><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>;
-  return <svg {...p}><path d="M20.6 12.3L12.3 3.9a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2v5.9c0 .5.2 1 .6 1.4l8.4 8.4a2 2 0 0 0 2.8 0l5.8-5.8a2 2 0 0 0 0-2.9z" /><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" /></svg>;
-}
-
 /** Ranked horizontal bar chart, magnitude-comparison companion to the donut
  *  (which reads proportion well but makes close values hard to compare). */
 function BoqCategoryBarChart({ data }: { data: { name: string; value: number; color: string }[] }) {
@@ -293,7 +264,7 @@ function BoqCostDonut({ data, total }: { data: { name: string; value: number; co
       <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
         {data.map((d) => (
           <div key={d.name} className="flex items-center gap-1.5" style={{ color: d.color }}>
-            <BoqCategoryIcon name={d.name} size={12} />
+            <CategoryIcon name={d.name} size={12} />
             <span className="text-[10px] text-white/50 truncate max-w-[130px]">{d.name}</span>
           </div>
         ))}
@@ -314,7 +285,7 @@ function CategoryTile({ name, count, subtotal, pct, color, avgActual, onClick }:
       className="text-left rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-2.5 active:scale-[0.98] transition-transform">
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 18%, transparent)`, color }}>
-          <BoqCategoryIcon name={name} size={15} />
+          <CategoryIcon name={name} size={15} />
         </span>
         <p className="font-mono text-[9px] uppercase tracking-widest text-white/45 truncate">{name}</p>
       </div>
@@ -888,7 +859,7 @@ function CMBoqPage() {
       avgActual: linkedByCategory.get(name)?.avgActual ?? null,
     }));
     withTotals.sort((a, b) => b.subtotal - a.subtotal);
-    return withTotals.map((c, i) => ({ ...c, color: boqCategoryColor(i) }));
+    return withTotals.map((c, i) => ({ ...c, color: categoryTintColor(i) }));
   }, [categories, linkedByCategory]);
   const visibleTotal = useMemo(() => categoryTotals.reduce((s, c) => s + c.subtotal, 0), [categoryTotals]);
   const drillCategoryData = drillCategory ? categoryTotals.find((c) => c.name === drillCategory) ?? null : null;
@@ -1030,7 +1001,7 @@ function CMBoqPage() {
           <div className="px-6 pb-8 pt-2 flex flex-col gap-2">
             <div className="flex items-center gap-2 px-1 pb-1" style={{ color: drillCategoryData.color }}>
               <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${drillCategoryData.color} 18%, transparent)` }}>
-                <BoqCategoryIcon name={drillCategoryData.name} size={13} />
+                <CategoryIcon name={drillCategoryData.name} size={13} />
               </span>
               <span className="text-[11px] text-white/40">{drillCategoryData.items.length === 1 ? t("boq.item") : t("boq.items", { count: String(drillCategoryData.items.length) })}</span>
             </div>
