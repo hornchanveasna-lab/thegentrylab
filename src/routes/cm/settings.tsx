@@ -379,8 +379,7 @@ function CMSettingsPage() {
                   disabled={savingName}
                 />
                 <button onClick={handleSaveName} disabled={savingName}
-                  className="px-4 py-2 rounded-xl text-[11px] font-mono uppercase tracking-widest text-black font-bold disabled:opacity-40"
-                  style={{ backgroundColor: "var(--color-brand-accent)" }}>
+                  className="px-4 py-2 rounded-xl text-[11px] font-mono uppercase tracking-widest text-white font-bold bg-white/10 border border-white/15 disabled:opacity-40">
                   {savingName ? "…" : t("common.save")}
                 </button>
               </div>

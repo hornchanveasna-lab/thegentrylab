@@ -179,8 +179,7 @@ export function NewPunchItemSheet({ ownerId, projectId, existing, canApprove, de
         <FilePicker files={files} setFiles={setFiles} disabled={saving} />
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
-          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40 shadow-[var(--shadow-sm)]"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-white font-bold bg-white/10 border border-white/15 transition-all disabled:opacity-40 shadow-[var(--shadow-sm)]">
           {existing ? (saving ? t("punchList.saving") : t("punchList.saveChanges")) : (saving ? t("punchList.adding") : t("punchList.addToPunchList"))}
         </button>
       </form>
@@ -647,7 +646,7 @@ function CMPunchListPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-white font-bold bg-white/10 border border-white/15">{t("common.signInGoogle")}</button>
       </div>
     );
   }
