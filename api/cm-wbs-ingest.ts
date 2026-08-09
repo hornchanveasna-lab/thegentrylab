@@ -1,13 +1,16 @@
-/* Internal tool endpoint: proposes a Work Breakdown Structure (phases →
- * packages → activities) from a project's already-parsed BOQ and Schedule
- * rows, plus which existing rows should attach to which proposed node.
+/* Internal tool endpoint: turns one uploaded BOQ/schedule-style spreadsheet
+ * into a proposed, unlimited-depth WBS folder tree (Zone → Building →
+ * Floor → work category → ... — only as many levels as the sheet actually
+ * has) with BOQ line items (description/unit/quantity/unit_cost) attached
+ * to the correct leaf folder. This is the "one upload, AI analysis, create
+ * everything together" endpoint — WBS + BOQ in a single pass.
  *
- * Unlike api/advisor.ts this is not a public, credit-metered feature — it's
- * an authenticated CM-app internal tool, so there's no credit deduction and
- * no streaming. It never touches the CM Supabase project's tables itself:
- * auth is verified against the CM project's own auth server, structured
- * rows go to Claude, and the proposal comes back as one JSON response. All
- * writes happen client-side, after a human reviews and confirms.
+ * Not a public, credit-metered feature — an authenticated CM-app internal
+ * tool, so no credit deduction and no streaming. It never touches the CM
+ * Supabase project's tables itself: auth is verified against the CM
+ * project's own auth server, already-parsed spreadsheet rows go to Claude,
+ * and the proposal comes back as one JSON response. All writes happen
+ * client-side, after a human reviews and confirms.
  */
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -15,83 +18,68 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-interface BOQRow {
-  id: string;
-  description: string;
-  category: string | null;
-  unit: string | null;
-  quantity: number;
-  unit_cost: number;
-}
-
-interface ScheduleRow {
-  id: string;
-  title: string;
-  group_label: string;
-  boq_category: string | null;
-}
+const MAX_ROWS = 400;
 
 const PROPOSE_WBS_TOOL = {
   name: "propose_wbs",
-  description: "Propose a Work Breakdown Structure tree and assign existing BOQ/Schedule rows to it.",
+  description: "Propose an unlimited-depth WBS folder tree and the BOQ line items that belong under each leaf folder.",
   input_schema: {
     type: "object" as const,
     properties: {
       nodes: {
         type: "array" as const,
-        description: "The proposed WBS tree, flattened. Root nodes have parentTempId: null.",
+        description: "The proposed WBS tree, flattened, root-first. Only as many levels deep as the data actually supports — don't invent levels that aren't there.",
         items: {
           type: "object" as const,
           properties: {
-            tempId: { type: "string", description: "A short unique id for this node, e.g. 'p1', 'pkg1a'." },
-            parentTempId: { type: ["string", "null"], description: "tempId of the parent node, or null for a root phase." },
-            name: { type: "string" },
-            level: { type: "string", enum: ["phase", "package", "activity"] },
-            code: { type: ["string", "null"] },
+            tempId: { type: "string", description: "A short unique id for this node, e.g. 'n1', 'n2a'." },
+            parentTempId: { type: ["string", "null"], description: "tempId of the parent folder, or null for a root node." },
+            name: { type: "string", description: "e.g. 'Zone A', 'Car Parking', 'Earth Work'." },
+            level: { type: "string", description: "A short free-text label for what kind of grouping this is, e.g. 'Zone', 'Building', 'Floor', 'Discipline', 'Work Category'. Leave it generic ('Group') if unclear." },
           },
           required: ["tempId", "parentTempId", "name", "level"],
         },
       },
-      assignments: {
+      items: {
         type: "array" as const,
-        description: "Which existing BOQ/Schedule row attaches to which proposed node.",
+        description: "BOQ line items, each attached to the leaf (deepest) folder it belongs under. Every priced/quantified row in the sheet should appear here exactly once.",
         items: {
           type: "object" as const,
           properties: {
-            itemType: { type: "string", enum: ["boq", "schedule"] },
-            itemId: { type: "string", description: "The id of the existing BOQ or Schedule row." },
-            nodeTempId: { type: "string" },
-            confidence: { type: "number", description: "0 to 1." },
+            nodeTempId: { type: "string", description: "tempId of the leaf folder this item belongs to." },
+            description: { type: "string" },
+            unit: { type: ["string", "null"] },
+            quantity: { type: "number" },
+            unit_cost: { type: "number" },
+            confidence: { type: "number", description: "0 to 1 — how confident the folder placement is." },
           },
-          required: ["itemType", "itemId", "nodeTempId", "confidence"],
+          required: ["nodeTempId", "description", "quantity", "unit_cost", "confidence"],
         },
       },
       anomalies: {
         type: "array" as const,
-        description: "Rows that look inconsistent or don't fit cleanly (e.g. cost/progress mismatch, ambiguous category).",
+        description: "Rows that were ambiguous, skipped, or look inconsistent (e.g. missing rate, unclear grouping, duplicate-looking line).",
         items: {
           type: "object" as const,
-          properties: {
-            itemType: { type: "string", enum: ["boq", "schedule"] },
-            itemId: { type: "string" },
-            message: { type: "string" },
-          },
-          required: ["itemType", "itemId", "message"],
+          properties: { message: { type: "string" } },
+          required: ["message"],
         },
       },
     },
-    required: ["nodes", "assignments", "anomalies"],
+    required: ["nodes", "items", "anomalies"],
   },
 };
 
-const SYSTEM_PROMPT = `You are a construction cost/schedule analyst. Given a flat list of BOQ (Bill of Quantities) lines and Schedule activities from one construction project, propose a Work Breakdown Structure (WBS) that organizes the work into a shallow tree — phases at the top, packages under phases, activities under packages (skip levels where the project is small) — and assign every input row to the most appropriate node.
+const SYSTEM_PROMPT = `You are a construction cost engineer. You're given the raw rows of one uploaded spreadsheet (a Bill of Quantities, possibly with the project's physical/scope breakdown embedded in it — via indentation, outline numbering like "1.1.2", or dedicated columns such as Zone/Building/Floor/Area).
+
+Your job: propose a Work Breakdown Structure — unlimited-depth folders that mirror whatever real structure the sheet shows (for example Project > Zone > Building > Floor > Work Category, but use exactly the levels the data supports, no more, no fewer), and attach every priced/quantified BOQ line to the correct leaf folder.
 
 Rules:
-- Prefer grouping by existing BOQ "category" / schedule "group_label" / "boq_category" values where they're consistent — don't invent structure that ignores the data's own hints.
-- Keep the tree shallow: most projects need 3-8 phases, a handful of packages each.
-- Every BOQ row and every Schedule row must appear exactly once in "assignments".
-- Set confidence lower (below 0.6) when a row's category is missing, vague, or conflicts with its description.
-- Flag an anomaly when a schedule activity's boq_category doesn't match any BOQ category, or a BOQ line's cost looks inconsistent with similar lines (e.g. wildly different unit_cost for the same unit/description pattern).
+- Read the sheet's own hierarchy signals first: outline/numbering columns, indentation implied by leading blank cells, section header rows (bold-looking rows with no quantity that just label a group), or explicit Zone/Building/Floor/Area columns. Don't impose a fixed template — some sheets are flat (one folder, e.g. just a discipline, then straight to items), others are deep.
+- A "section header" row (a description with no quantity/rate) becomes a folder, not an item.
+- Every row that has both a quantity and a rate (or clearly represents priced work) becomes an item under the nearest enclosing folder — never under a non-leaf folder that itself has sub-folders.
+- If the sheet has no discernible hierarchy at all, propose a single root folder (level "Group") and put every item under it — don't fabricate structure that isn't there.
+- Keep folder names short and matching the sheet's own wording.
 - Call propose_wbs exactly once with your full proposal. Do not write any prose outside the tool call.`;
 
 export default async function handler(req: Request): Promise<Response> {
@@ -128,24 +116,26 @@ export default async function handler(req: Request): Promise<Response> {
     });
   }
 
-  let boqItems: BOQRow[], scheduleItems: ScheduleRow[];
+  let rows: (string | number)[][], sheetName: string;
   try {
     const body = await req.json();
-    boqItems = Array.isArray(body.boqItems) ? body.boqItems : [];
-    scheduleItems = Array.isArray(body.scheduleItems) ? body.scheduleItems : [];
+    rows = Array.isArray(body.rows) ? body.rows : [];
+    sheetName = typeof body.sheetName === "string" ? body.sheetName : "Sheet1";
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON" }), {
       status: 400, headers: { "Content-Type": "application/json", ...CORS },
     });
   }
 
-  if (boqItems.length === 0 && scheduleItems.length === 0) {
-    return new Response(JSON.stringify({ error: "No BOQ or Schedule rows to analyze" }), {
+  if (rows.length === 0) {
+    return new Response(JSON.stringify({ error: "No rows to analyze" }), {
       status: 400, headers: { "Content-Type": "application/json", ...CORS },
     });
   }
+  const truncated = rows.length > MAX_ROWS;
+  const capped = rows.slice(0, MAX_ROWS);
 
-  const userMessage = `BOQ rows (${boqItems.length}):\n${JSON.stringify(boqItems)}\n\nSchedule rows (${scheduleItems.length}):\n${JSON.stringify(scheduleItems)}\n\nPropose the WBS now.`;
+  const userMessage = `Sheet "${sheetName}" — ${capped.length} rows${truncated ? ` (truncated from ${rows.length}; analyze what's here)` : ""}, as a JSON array of row arrays (each row's cells in column order):\n\n${JSON.stringify(capped)}\n\nPropose the WBS + BOQ items now.`;
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -180,7 +170,11 @@ export default async function handler(req: Request): Promise<Response> {
       });
     }
 
-    return new Response(JSON.stringify(toolUse.input), {
+    const result = toolUse.input;
+    if (truncated) {
+      result.anomalies = [...(result.anomalies ?? []), { message: `Only the first ${MAX_ROWS} of ${rows.length} rows were analyzed — review the rest manually.` }];
+    }
+    return new Response(JSON.stringify(result), {
       status: 200, headers: { "Content-Type": "application/json", ...CORS },
     });
   } catch (err) {

@@ -21,6 +21,9 @@ import {
   createCMBOQVersion,
   createCMBOQRevision,
   approveCMBOQBaseline,
+  useCMWBSNodes,
+  wbsIsLeaf,
+  wbsBreadcrumb,
   type CMBOQItem,
   type CMDailyLog,
   type CMScheduleItem,
@@ -53,8 +56,13 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categ
   const [quantity, setQuantity] = useState(existing ? String(existing.quantity) : "");
   const [unitCost, setUnitCost] = useState(existing ? String(existing.unit_cost) : "");
   const [category, setCategory] = useState(existing?.category ?? "");
+  const [wbsNodeId, setWbsNodeId] = useState(existing?.wbs_node_id ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { data: wbsNodes } = useCMWBSNodes(projectId);
+  // Qty/rate only ever belong at a leaf WBS node — a folder (Zone, Building,
+  // work category, ...) exists purely to group other nodes.
+  const leafWbsNodes = useMemo(() => (wbsNodes ?? []).filter((n) => wbsIsLeaf(n, wbsNodes ?? [])), [wbsNodes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +73,7 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categ
       const patch = {
         description: description.trim(), unit: unit.trim() || null,
         quantity: quantity ? Number(quantity) : 0, unit_cost: unitCost ? Number(unitCost) : 0,
-        category: category.trim() || null,
+        category: category.trim() || null, wbs_node_id: wbsNodeId || null,
       };
       if (existing) {
         await updateCMBOQItem(existing.id, patch);
@@ -92,6 +100,11 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categ
           <datalist id="boq-category-options">
             {(categoryOptions ?? []).map((c) => <option key={c} value={c} />)}
           </datalist>
+        </label>
+        <label className="flex flex-col gap-1.5">
+          <span className={labelCls}>{t("boq.wbsNode")}</span>
+          <FieldSelect value={wbsNodeId} onChange={setWbsNodeId} disabled={saving} placeholder={t("boq.wbsNodeNone")}
+            options={[{ value: "", label: t("boq.wbsNodeNone") }, ...leafWbsNodes.map((n) => ({ value: n.id, label: wbsBreadcrumb(n, wbsNodes ?? []) }))]} />
         </label>
         <div className="grid grid-cols-3 gap-2">
           <label className="flex flex-col gap-1.5">

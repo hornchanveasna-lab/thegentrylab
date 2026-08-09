@@ -24,6 +24,8 @@ import {
   locationBreadcrumb,
   logCMActivity,
   useCMProject,
+  useCMWBSNodes,
+  wbsBreadcrumb,
   type CMScheduleItem,
   type CMScheduleStatus,
   type CMBOQItem,
@@ -64,7 +66,9 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
   const [code, setCode] = useState(existing?.activity_code ?? "");
   const [boqCategory, setBoqCategory] = useState(existing?.boq_category ?? "");
   const [boqItemId, setBoqItemId] = useState(existing?.boq_item_id ?? "");
+  const [wbsNodeId, setWbsNodeId] = useState(existing?.wbs_node_id ?? "");
   const [locationId, setLocationId] = useState<string | null>(existing?.location_id ?? null);
+  const { data: wbsNodes } = useCMWBSNodes(projectId);
   const [planStart, setPlanStart] = useState(existing?.plan_start ?? today());
   const [planFinish, setPlanFinish] = useState(existing?.plan_finish ?? today());
   const [weight, setWeight] = useState(existing ? String(existing.weight) : "1");
@@ -83,6 +87,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
         activity_code: code.trim() || null,
         boq_category: boqCategory || null,
         boq_item_id: boqItemId || null,
+        wbs_node_id: wbsNodeId || null,
         location_id: locationId,
         plan_start: planStart, plan_finish: planFinish,
         weight: Number(weight) || 1,
@@ -149,6 +154,14 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
                 />
               </label>
             )}
+            <label className="flex flex-col gap-1.5">
+              <span className={labelCls}>{t("schedule.wbsNode")}</span>
+              <FieldSelect
+                value={wbsNodeId} onChange={setWbsNodeId} disabled={saving} searchable
+                placeholder={t("projectSettings.none")}
+                options={[{ value: "", label: t("projectSettings.none") }, ...(wbsNodes ?? []).map((n) => ({ value: n.id, label: wbsBreadcrumb(n, wbsNodes ?? []) }))]}
+              />
+            </label>
           </div>
         )}
 

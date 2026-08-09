@@ -3099,12 +3099,24 @@ export function useCMAllScheduleItems(userId: string | undefined) {
 
 /* ── Work Breakdown Structure (parent_id tree, per project) ─────────────
  *  Same adjacency-list pattern as CMProjectLocation (§ above) — a
- *  construction WBS is shallow and human-edited, which parent_id handles as
- *  a single update per reparent, unlike nested-set's expensive renumbering.
+ *  construction WBS is human-edited, which parent_id handles as a single
+ *  update per reparent, unlike nested-set's expensive renumbering.
+ *
+ *  Unlimited-depth free-form folders, not a fixed taxonomy: a project can
+ *  nest Zone → Building → Floor → work category → as many levels as it
+ *  actually needs ("group group group like folder"). `level` is a free-text
+ *  label used only for display (e.g. "Zone", "Building", "Discipline") —
+ *  the tree shape and `wbsIsLeaf` (no children) are what the app reasons
+ *  about, not the label.
+ *
  *  BOQ items and Schedule items link here via their own wbs_node_id FK
  *  (many-to-one via a shared parent — one activity often spans several BOQ
- *  lines) rather than a direct 1:1 link between the two. */
-export type CMWBSLevel = "phase" | "package" | "activity";
+ *  lines) rather than a direct 1:1 link between the two. Schedule items may
+ *  link at any level (a folder-level activity can represent a whole work
+ *  package, or a leaf-level one a single item). BOQ items — and their
+ *  quantity/rate — are only meaningful at leaf nodes; the UI enforces this
+ *  since it's a modeling rule, not a database constraint. */
+export type CMWBSLevel = string;
 
 export interface CMWBSNode {
   id: string;
@@ -3135,7 +3147,7 @@ export function useCMWBSNodes(projectId: string | undefined) {
 
 export async function createCMWBSNode(
   ownerId: string, projectId: string,
-  input: Pick<CMWBSNode, "name" | "level"> & Partial<Pick<CMWBSNode, "parent_id" | "code" | "location_id" | "sort_order">>,
+  input: Pick<CMWBSNode, "name"> & Partial<Pick<CMWBSNode, "level" | "parent_id" | "code" | "location_id" | "sort_order">>,
 ) {
   const { data, error } = await db().from("cm_wbs_nodes").insert({ owner_id: ownerId, project_id: projectId, ...input }).select().single();
   if (error) throw error;
@@ -3164,6 +3176,34 @@ export function wbsBreadcrumb(node: CMWBSNode, all: CMWBSNode[]): string {
     current = parent;
   }
   return chain.join(" › ");
+}
+
+/** A leaf is a node no other node lists as its parent — the only level BOQ
+ *  quantity/rate should attach to. Folders (Zone, Building, work category,
+ *  ...) exist purely to group leaves and other folders. */
+export function wbsIsLeaf(node: CMWBSNode, all: CMWBSNode[]): boolean {
+  return !all.some((n) => n.parent_id === node.id);
+}
+
+/** Depth-first flatten with each node's indent depth, root-first — the
+ *  shape every WBS tree view (picker, review list) wants. */
+export function wbsFlatten(all: CMWBSNode[]): { node: CMWBSNode; depth: number }[] {
+  const byParent = new Map<string | null, CMWBSNode[]>();
+  for (const n of all) {
+    const key = n.parent_id;
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key)!.push(n);
+  }
+  for (const list of byParent.values()) list.sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at));
+  const out: { node: CMWBSNode; depth: number }[] = [];
+  const walk = (parentId: string | null, depth: number) => {
+    for (const n of byParent.get(parentId) ?? []) {
+      out.push({ node: n, depth });
+      walk(n.id, depth + 1);
+    }
+  };
+  walk(null, 0);
+  return out;
 }
 
 function isoDateRange(from: string, to: string): string[] {
