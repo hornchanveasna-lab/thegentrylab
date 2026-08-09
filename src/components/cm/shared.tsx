@@ -230,31 +230,13 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
 
 /** A titled card shell used by Project Settings and the new dedicated
  *  BOQ/Schedule/Manpower/Equipment/Dashboard pages, so every module-level
- *  "section" reads the same. `variant="hero"` swaps the flat dark surface
- *  for the brand gradient (`--gradient-brand`, defined per-theme in
- *  styles.css) and flips text to on-gradient-safe white — used for the one
- *  or two headline cards per screen (project/health summary), not every
- *  card, so the gradient stays a highlight rather than the whole page. */
-export function Card({ title, action, children, variant = "flat", icon, iconColor = "var(--color-brand-accent)" }: {
+ *  "section" reads the same. `variant` is kept for call-site compatibility
+ *  but no longer changes the rendering — every card uses the same flat
+ *  surface so page color lives only in the app-wide background wash. */
+export function Card({ title, action, children, icon, iconColor = "var(--color-brand-accent)" }: {
   title: string; action?: React.ReactNode; children: React.ReactNode; variant?: "flat" | "hero";
   icon?: React.ReactNode; iconColor?: string;
 }) {
-  if (variant === "hero") {
-    return (
-      <div className="rounded-2xl p-5 shadow-[var(--shadow-md)]" style={{ backgroundImage: "var(--gradient-brand)" }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            {icon && (
-              <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-white/15 text-white">{icon}</span>
-            )}
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/70">{title}</p>
-          </div>
-          {action}
-        </div>
-        <div className="text-white">{children}</div>
-      </div>
-    );
-  }
   return (
     <div className="rounded-2xl bg-[#0d0d0e] p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between mb-4">
