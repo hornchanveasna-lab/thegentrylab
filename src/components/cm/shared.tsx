@@ -49,6 +49,23 @@ export function useClickOutside<T extends HTMLElement>(active: boolean, onOutsid
   return ref;
 }
 
+/** Walks up from `el` to find the nearest ancestor that actually clips/
+ *  scrolls its content (a Sheet or modal's `overflow-y-auto` box, most
+ *  often in this app) — used by `FieldSelect` so its dropdown never sizes
+ *  itself against the full browser window when it's really confined to a
+ *  much shorter scrollable container. Falls back to `null` (caller then
+ *  treats the whole viewport as the bound) if nothing scrollable is found
+ *  before `<body>`. */
+function findScrollableAncestor(el: HTMLElement | null): HTMLElement | null {
+  let node = el?.parentElement ?? null;
+  while (node && node !== document.body) {
+    const overflowY = window.getComputedStyle(node).overflowY;
+    if (overflowY === "auto" || overflowY === "scroll") return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
 /** Reactive read of the `data-theme` attribute `settings.tsx`'s applyTheme()
  *  sets on <html> — for the rare case (Recharts inline style props) where a
  *  color can't be expressed as a CSS class the light-mode stylesheet can
@@ -490,16 +507,33 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
   const { t } = useCMLang();
   const [open, setOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
+  const [menuMaxHeight, setMenuMaxHeight] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const containerRef = useClickOutside<HTMLDivElement>(open, () => { setOpen(false); setSearch(""); });
   // A trigger near the bottom of a bottom-sheet form (very common in this
   // app) can otherwise push the panel off-screen with no way to reach the
   // options below the fold — flip it to open upward whenever there isn't
   // reasonably enough room below, so it always lands somewhere tappable.
+  // Both directions also cap the panel's height to the space actually free
+  // inside the nearest scrollable ancestor (the Sheet/modal box itself),
+  // not just the browser window — otherwise a panel that opens upward
+  // inside a short modal can render taller than the modal's own top edge
+  // and get silently clipped there, hiding its first row with no way to
+  // scroll it into view.
   const toggleOpen = () => {
     if (!open) {
       const rect = containerRef.current?.getBoundingClientRect();
-      if (rect) setOpenUpward(window.innerHeight - rect.bottom < 320 && rect.top > window.innerHeight - rect.bottom);
+      if (rect) {
+        const scrollParent = findScrollableAncestor(containerRef.current);
+        const boundsRect = scrollParent ? scrollParent.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+        const boundsTop = Math.max(0, boundsRect.top);
+        const boundsBottom = Math.min(window.innerHeight, boundsRect.bottom);
+        const spaceBelow = boundsBottom - rect.bottom - 8;
+        const spaceAbove = rect.top - boundsTop - 8;
+        const upward = spaceBelow < 320 && spaceAbove > spaceBelow;
+        setOpenUpward(upward);
+        setMenuMaxHeight(Math.max(120, Math.min(288, upward ? spaceAbove : spaceBelow)));
+      }
     }
     setOpen((v) => !v);
   };
@@ -537,7 +571,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
                   className="w-full bg-white/5 rounded-lg border border-white/10 px-3 py-2 text-[12px] text-white placeholder-white/25 focus:outline-none focus:border-[#ff5100]/60" />
               </div>
             )}
-            <div className="max-h-72 overflow-y-auto">
+            <div className="max-h-72 overflow-y-auto" style={menuMaxHeight != null ? { maxHeight: menuMaxHeight } : undefined}>
               {visibleOptions.length === 0 && !showCreateRow && (
                 <p className="px-4 py-3 text-[12px] text-white/30">—</p>
               )}
