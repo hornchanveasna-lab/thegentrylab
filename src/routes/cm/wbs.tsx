@@ -126,7 +126,18 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
       // runtime's timeout on large sheets), so a failure there still comes
       // back as HTTP 200 with an `error` field rather than a 4xx/5xx status.
       if (json.error) throw new Error(json.error);
-      setProposal(json as WBSProposal);
+      // Defensive: a large/truncated generation can come back missing a
+      // field the tool schema marks required — never let that crash the
+      // review screen, just show whatever did come through.
+      setProposal({
+        nodes: Array.isArray(json.nodes) ? json.nodes : [],
+        items: Array.isArray(json.items) ? json.items : [],
+        activities: Array.isArray(json.activities) ? json.activities : [],
+        scheduleSource: json.scheduleSource ?? "inferred",
+        anomalies: Array.isArray(json.anomalies) ? json.anomalies : [],
+        creditsCharged: json.creditsCharged,
+        creditsRemaining: json.creditsRemaining,
+      });
       qc.invalidateQueries({ queryKey: ["cm_ai_credits", projectId] });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze file");

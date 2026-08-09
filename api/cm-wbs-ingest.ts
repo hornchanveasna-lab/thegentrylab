@@ -227,7 +227,11 @@ export default async function handler(req: Request): Promise<Response> {
           },
           body: JSON.stringify({
             model: "claude-sonnet-4-6",
-            max_tokens: 8192,
+            // A full WBS+BOQ+Schedule proposal is JSON-heavy (property
+            // names/brackets/quotes per row) — 8192 was truncating mid-tool-
+            // call on real files in the ~100-row range and silently coming
+            // back with fields missing.
+            max_tokens: 16000,
             stream: true,
             system: SYSTEM_PROMPT,
             messages: [{ role: "user", content: userMessage }],
