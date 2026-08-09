@@ -122,6 +122,10 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
         if (res.status === 402) { setInsufficientBalance(json.balance ?? 0); return; }
         throw new Error(json.error ?? "Request failed");
       }
+      // The AI call itself streams internally (to stay under the edge
+      // runtime's timeout on large sheets), so a failure there still comes
+      // back as HTTP 200 with an `error` field rather than a 4xx/5xx status.
+      if (json.error) throw new Error(json.error);
       setProposal(json as WBSProposal);
       qc.invalidateQueries({ queryKey: ["cm_ai_credits", projectId] });
     } catch (err) {

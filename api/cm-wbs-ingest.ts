@@ -204,56 +204,111 @@ export default async function handler(req: Request): Promise<Response> {
 
   const userMessage = `Sheet "${sheetName}" — ${capped.length} rows${truncated ? ` (truncated from ${rows.length}; analyze what's here)` : ""}, as a JSON array of row arrays (each row's cells in column order):\n\n${JSON.stringify(capped)}\n\n${dateContext}\n\nPropose the WBS + BOQ items + schedule now.`;
 
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 8192,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userMessage }],
-        tools: [PROPOSE_WBS_TOOL],
-        tool_choice: { type: "tool", name: "propose_wbs" },
-      }),
-    });
+  /* ── The actual generation (WBS tree + BOQ items + time-phased schedule
+   *    for up to 400 rows) can easily run past the edge runtime's execution
+   *    limit for a single blocking call. Anthropic's own SSE stream keeps
+   *    this function actively doing work rather than idle-waiting, and a
+   *    periodic heartbeat byte on our own outbound stream keeps the
+   *    response itself from ever going quiet — the same mechanism
+   *    api/advisor.ts uses for its long-running calls. Whitespace outside
+   *    the final JSON payload is harmless; JSON.parse ignores it. ── */
+  const encoder = new TextEncoder();
+  const readable = new ReadableStream({
+    async start(controller) {
+      let heartbeat: ReturnType<typeof setInterval> | undefined;
+      const send = (body: unknown) => { try { controller.enqueue(encoder.encode(JSON.stringify(body))); } catch { /* stream already closed */ } };
+      try {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+            "anthropic-version": "2023-06-01",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-6",
+            max_tokens: 8192,
+            stream: true,
+            system: SYSTEM_PROMPT,
+            messages: [{ role: "user", content: userMessage }],
+            tools: [PROPOSE_WBS_TOOL],
+            tool_choice: { type: "tool", name: "propose_wbs" },
+          }),
+        });
 
-    if (!res.ok) {
-      const text = await res.text();
-      return json({ error: "AI request failed", detail: text }, 502);
-    }
+        if (!res.ok || !res.body) {
+          const text = await res.text();
+          send({ error: "AI request failed", detail: text });
+          return;
+        }
 
-    const data = await res.json();
-    const toolUse = data.content?.find((b: { type: string }) => b.type === "tool_use");
-    if (!toolUse) return json({ error: "AI did not return a structured proposal" }, 502);
+        heartbeat = setInterval(() => { try { controller.enqueue(encoder.encode(" ")); } catch { /* stream already closed */ } }, 8000);
 
-    const result = toolUse.input;
-    if (truncated) {
-      result.anomalies = [...(result.anomalies ?? []), { message: `Only the first ${MAX_ROWS} of ${rows.length} rows were analyzed — review the rest manually.` }];
-    }
+        let inputTokens = 0;
+        let outputTokens = 0;
+        let toolJson = "";
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        let buf = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += dec.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const data = line.slice(6).trim();
+            if (data === "[DONE]") continue;
+            try {
+              const evt = JSON.parse(data);
+              if (evt.type === "message_start" && evt.message?.usage) inputTokens = evt.message.usage.input_tokens ?? 0;
+              if (evt.type === "message_delta" && evt.usage) outputTokens = evt.usage.output_tokens ?? 0;
+              if (evt.type === "content_block_delta" && evt.delta?.type === "input_json_delta") {
+                toolJson += evt.delta.partial_json ?? "";
+              }
+            } catch { /* ignore malformed SSE line */ }
+          }
+        }
+        clearInterval(heartbeat);
+        heartbeat = undefined;
 
-    /* ── Post-charge based on actual token usage — only once we know the
-     *    call succeeded, so a failed/empty run never gets billed. ── */
-    const inputTokens = data.usage?.input_tokens ?? 0;
-    const outputTokens = data.usage?.output_tokens ?? 0;
-    const creditCost = calcCredits(inputTokens, outputTokens);
-    let creditsRemaining = balanceBefore - creditCost;
-    try {
-      const credits = await cmRpc(cmSupabaseUrl, cmAnonKey, auth, "cm_ai_charge_credits", {
-        p_project_id: projectId, p_amount: creditCost, p_input_tokens: inputTokens, p_output_tokens: outputTokens,
-        p_tool: "wbs_schedule_ingest", p_description: `${sheetName} (${capped.length} rows)`,
-      });
-      creditsRemaining = credits.balance;
-    } catch { /* non-fatal — proposal still returned, ledger just won't reflect this run */ }
+        let result: Record<string, unknown>;
+        try {
+          result = JSON.parse(toolJson);
+        } catch {
+          send({ error: "AI did not return a structured proposal" });
+          return;
+        }
 
-    return json({ ...result, creditsCharged: creditCost, creditsRemaining }, 200);
-  } catch (err) {
-    return json({ error: err instanceof Error ? err.message : "Unknown error" }, 500);
-  }
+        if (truncated) {
+          const anomalies = Array.isArray(result.anomalies) ? result.anomalies : [];
+          result.anomalies = [...anomalies, { message: `Only the first ${MAX_ROWS} of ${rows.length} rows were analyzed — review the rest manually.` }];
+        }
+
+        /* ── Post-charge based on actual token usage — only once we know
+         *    the call succeeded, so a failed/empty run never gets billed. ── */
+        const creditCost = calcCredits(inputTokens, outputTokens);
+        let creditsRemaining = balanceBefore - creditCost;
+        try {
+          const credits = await cmRpc(cmSupabaseUrl, cmAnonKey, auth, "cm_ai_charge_credits", {
+            p_project_id: projectId, p_amount: creditCost, p_input_tokens: inputTokens, p_output_tokens: outputTokens,
+            p_tool: "wbs_schedule_ingest", p_description: `${sheetName} (${capped.length} rows)`,
+          });
+          creditsRemaining = credits.balance;
+        } catch { /* non-fatal — proposal still returned, ledger just won't reflect this run */ }
+
+        send({ ...result, creditsCharged: creditCost, creditsRemaining });
+      } catch (err) {
+        send({ error: err instanceof Error ? err.message : "Unknown error" });
+      } finally {
+        if (heartbeat) clearInterval(heartbeat);
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, { status: 200, headers: { "Content-Type": "application/json", ...CORS } });
 }
 
 export const config = { runtime: "edge" };
