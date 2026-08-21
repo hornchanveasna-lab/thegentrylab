@@ -70,7 +70,7 @@ const LIGHT_STYLES: google.maps.MapTypeStyle[] = [
 ];
 
 /* ── Basemap definitions ─────────────────────────────────── */
-type BasemapKey = "standard" | "dark" | "light" | "terrain" | "satellite" | "flood";
+type BasemapKey = "standard" | "dark" | "light" | "terrain" | "satellite" | "flood" | "nicfi";
 interface BasemapDef {
   label: string;
   mapTypeId: string;
@@ -78,6 +78,7 @@ interface BasemapDef {
   isDark: boolean;
   swatch: string;
   floodOverlay?: boolean;
+  nicfiOverlay?: boolean;
 }
 
 const BASEMAPS: Record<BasemapKey, BasemapDef> = {
@@ -87,6 +88,7 @@ const BASEMAPS: Record<BasemapKey, BasemapDef> = {
   terrain:   { label: "Terrain",   mapTypeId: "terrain",  isDark: false, swatch: "#c5d5a0" },
   satellite: { label: "Satellite", mapTypeId: "hybrid",   isDark: true,  swatch: "#1a2f1a" },
   flood:     { label: "Flood",     mapTypeId: "hybrid",   isDark: true,  swatch: "#0a1a2f", floodOverlay: true },
+  nicfi:     { label: "NICFI (Recent)", mapTypeId: "roadmap", isDark: true, swatch: "#2d5a1f", nicfiOverlay: true },
 };
 
 function themeBasemap(): BasemapKey {
@@ -723,6 +725,83 @@ function FloodLayer() {
   return null;
 }
 
+/* ── Planet NICFI (free monthly tropical-belt satellite mosaic) ──
+ * Cambodia falls in NICFI's coverage area, refreshed monthly — far more
+ * current than a static cloud-free annual mosaic. Requires a free API
+ * key from planet.com/nicfi (VITE_PLANET_NICFI_API_KEY). Resolves the
+ * latest published mosaic via Planet's Mosaics API on mount so its
+ * acquisition date can be surfaced in the UI, then renders its tiles
+ * as a full-opacity overlay (fallback: the roadmap base shows through
+ * wherever a tile 404s or the resolve call fails). */
+export type NicfiMeta =
+  | { status: "missing-key" }
+  | { status: "loading" }
+  | { status: "ready"; name: string; lastAcquired: string }
+  | { status: "error"; message: string };
+
+function NicfiLayer({ onMeta }: { onMeta: (meta: NicfiMeta) => void }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const apiKey = import.meta.env.VITE_PLANET_NICFI_API_KEY as string | undefined;
+    if (!apiKey) {
+      onMeta({ status: "missing-key" });
+      return;
+    }
+
+    let cancelled = false;
+    let layer: google.maps.ImageMapType | null = null;
+    onMeta({ status: "loading" });
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://api.planet.com/basemaps/v1/mosaics?api_key=${apiKey}&name__contains=planet_medres_normalized_analytic&_page_size=12`
+        );
+        if (!res.ok) throw new Error(`Planet API responded ${res.status}`);
+        const data = await res.json();
+        const mosaics = (data.mosaics ?? []) as Array<{ name: string; last_acquired: string; _links: { tiles: string } }>;
+        if (!mosaics.length) throw new Error("No NICFI mosaics returned for this key");
+
+        // Mosaic names embed YYYY-MM (e.g. planet_medres_normalized_analytic_2026-07_mosaic),
+        // so sorting names descending puts the latest published month first.
+        const latest = [...mosaics].sort((a, b) => b.name.localeCompare(a.name))[0];
+        if (cancelled) return;
+
+        layer = new google.maps.ImageMapType({
+          getTileUrl: (coord, zoom) =>
+            latest._links.tiles
+              .replace("{z}", String(zoom))
+              .replace("{x}", String(coord.x))
+              .replace("{y}", String(coord.y)),
+          tileSize: new google.maps.Size(256, 256),
+          opacity: 1,
+          name: "Planet NICFI",
+        });
+        map.overlayMapTypes.push(layer);
+        onMeta({ status: "ready", name: latest.name, lastAcquired: latest.last_acquired });
+      } catch (err) {
+        if (!cancelled) {
+          onMeta({ status: "error", message: err instanceof Error ? err.message : "Failed to load NICFI mosaic" });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (layer) {
+        const arr = map.overlayMapTypes;
+        for (let i = 0; i < arr.getLength(); i++) {
+          if (arr.getAt(i) === layer) { arr.removeAt(i); break; }
+        }
+      }
+    };
+  }, [map, onMeta]);
+
+  return null;
+}
+
 /* ── Area layers (GADM boundaries + derived footprints) ──── */
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -1223,6 +1302,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [basemap, setBasemap]     = useState<BasemapKey>(themeBasemap);
   const [floodVisible, setFloodVisible] = useState(true);
+  const [nicfiMeta, setNicfiMeta] = useState<NicfiMeta | null>(null);
   const [areaActive, setAreaActive] = useState<Set<AreaKey>>(new Set(["protected", "sez_footprints", "railway", "road_network", "main_road"] as AreaKey[]));
   const [areaOpacity, setAreaOpacity] = useState<Record<AreaKey, number>>(
     () => Object.fromEntries(ALL_AREAS.map((k) => [k, AREA_LAYERS[k].defaultOpacity])) as Record<AreaKey, number>
@@ -1651,6 +1731,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
             <ZoomClassController wrapperRef={wrapperRef} />
 
             {(floodVisible || bm.floodOverlay) && <FloodLayer />}
+            {bm.nicfiOverlay && <NicfiLayer onMeta={setNicfiMeta} />}
 
             {/* deck.gl overlay — only mount when layers exist to avoid blank WebGL canvas */}
             {deckLayers.length > 0 && <DeckGlMapOverlay layers={deckLayers} onHover={setAreaHover} />}
@@ -2099,6 +2180,19 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
                 <span>GloFAS Flood Overlay</span>
                 <span className="ml-auto">{floodVisible ? "ON" : "OFF"}</span>
               </button>
+              {basemap === "nicfi" && (
+                <p className="font-mono text-[8px] uppercase tracking-wider px-1 pt-0.5" style={{ color: pc.label }}>
+                  {nicfiMeta?.status === "ready"
+                    ? `Imagery: ${nicfiMeta.name.match(/(\d{4}-\d{2})/)?.[1] ?? nicfiMeta.lastAcquired.slice(0, 7)} · acquired ${nicfiMeta.lastAcquired.slice(0, 10)}`
+                    : nicfiMeta?.status === "loading"
+                    ? "Resolving latest NICFI mosaic…"
+                    : nicfiMeta?.status === "missing-key"
+                    ? "Set VITE_PLANET_NICFI_API_KEY to enable"
+                    : nicfiMeta?.status === "error"
+                    ? `NICFI failed: ${nicfiMeta.message}`
+                    : ""}
+                </p>
+              )}
             </div>
           </div>
         </div>
