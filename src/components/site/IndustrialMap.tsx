@@ -756,17 +756,23 @@ function NicfiLayer({ onMeta }: { onMeta: (meta: NicfiMeta) => void }) {
 
     (async () => {
       try {
-        const res = await fetch(
-          `https://api.planet.com/basemaps/v1/mosaics?api_key=${apiKey}&name__contains=planet_medres_normalized_analytic&_page_size=12`
-        );
+        // No name filter — a NICFI trial/subscription's mosaic list is
+        // already scoped to whatever that key has access to, and Planet's
+        // mosaic-naming convention has changed over time (monthly, then
+        // bi-monthly ranges), so filtering by a guessed name substring
+        // silently returns zero results instead of the account's real
+        // mosaics. Sort by last_acquired (an actual date) instead of the
+        // name string so recency is correct regardless of naming scheme.
+        const res = await fetch(`https://api.planet.com/basemaps/v1/mosaics?api_key=${apiKey}&_page_size=50`);
         if (!res.ok) throw new Error(`Planet API responded ${res.status}`);
         const data = await res.json();
         const mosaics = (data.mosaics ?? []) as Array<{ name: string; last_acquired: string; _links: { tiles: string } }>;
-        if (!mosaics.length) throw new Error("No NICFI mosaics returned for this key");
+        // Left in deliberately — if the mosaic this picks looks wrong, check
+        // this list in the browser console for what the key actually has access to.
+        console.log("[NICFI] mosaics available to this API key:", mosaics.map((m) => ({ name: m.name, last_acquired: m.last_acquired })));
+        if (!mosaics.length) throw new Error("No mosaics returned for this key — check the key has an active NICFI/Basemaps subscription");
 
-        // Mosaic names embed YYYY-MM (e.g. planet_medres_normalized_analytic_2026-07_mosaic),
-        // so sorting names descending puts the latest published month first.
-        const latest = [...mosaics].sort((a, b) => b.name.localeCompare(a.name))[0];
+        const latest = [...mosaics].sort((a, b) => (b.last_acquired ?? "").localeCompare(a.last_acquired ?? ""))[0];
         if (cancelled) return;
 
         layer = new google.maps.ImageMapType({
