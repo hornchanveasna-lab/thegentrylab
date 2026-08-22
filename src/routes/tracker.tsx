@@ -495,150 +495,106 @@ function TrackerPage() {
         {/* Two-col layout: list always full-width on mobile; side panel only lg+ */}
         <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
 
-          {/* Project list
+          {/* Project card grid
               Desktop: constrained height + independent scroll so both columns
               are visible simultaneously without scrolling the page.
               Mobile: unconstrained — page scrolls naturally, sheet handles detail. */}
-          <div data-lenis-prevent className="border border-white/8 divide-y divide-white/8 bg-[#0d0d0e] lg:max-h-[calc(100vh-13rem)] lg:overflow-y-auto">
+          <div
+            data-lenis-prevent
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:max-h-[calc(100vh-13rem)] lg:overflow-y-auto lg:pr-1 content-start"
+          >
             {filtered.map((p) => {
               const vis = SECTOR_VISUAL[p.sector] ?? DEFAULT_VISUAL;
               const sc  = STATUS_COLOR[p.status] ?? "#94a3b8";
               const isSelected = selected?.id === p.id;
               const isNew = isNewThisWeek(p);
+              const statusIdx = STATUS_ORDER.indexOf(p.status as typeof STATUS_ORDER[number]);
+              const pct = statusIdx < 0 ? 0 : ((statusIdx + 1) / STATUS_ORDER.length) * 100;
               return (
                 <button
                   key={p.id}
                   onClick={() => setSelected(isSelected ? null : p)}
-                  className="w-full flex items-stretch text-left transition-colors duration-150 group cursor-pointer hover:bg-white/[0.03]"
+                  className="text-left flex flex-col overflow-hidden bg-[#0d0d0e] border transition-all duration-150 group cursor-pointer"
                   style={{
-                    /* Only apply accent bg when selected — lets hover:bg work when unselected */
-                    ...(isSelected ? { backgroundColor: `${vis.accent}0d` } : {}),
-                    touchAction: "pan-y",
+                    borderColor: isSelected ? vis.accent : "rgba(255,255,255,0.08)",
+                    boxShadow: isSelected ? `0 0 0 1px ${vis.accent}40` : "none",
                   }}
                 >
-                  {/* Sector thread — always visible at low opacity, brightens on hover, full gradient when selected */}
-                  <div
-                    className={`w-1 shrink-0 transition-all duration-200 ${
-                      isSelected
-                        ? "opacity-100"
-                        : "opacity-[0.18] group-hover:opacity-75"
-                    }`}
-                    style={{ background: isSelected ? vis.gradient : vis.accent }}
-                  />
+                  {/* Photo header */}
+                  <div className="relative overflow-hidden" style={{ height: 108 }}>
+                    <div className="absolute inset-0" style={{ background: vis.gradient }} />
+                    <img
+                      src={p.image_url || vis.photo} alt=""
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      style={{ opacity: p.image_url ? 0.55 : 0.32, mixBlendMode: p.image_url ? "normal" : "luminosity" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                    />
+                    <div className="absolute inset-0" style={{ background: `linear-gradient(180deg,transparent 30%,#0d0d0e 100%)` }} />
 
-                  {/* Row content */}
-                  <div className="flex-1 px-3 py-3 md:px-4 md:py-4">
-                    {/* Row 1: name + status */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-wrap min-w-0">
-                        <p
-                          className="font-bold text-[13px] transition-colors duration-150 leading-snug group-hover:text-white"
-                          style={{ color: isSelected ? "var(--tr-name-selected)" : "var(--tr-name)" }}
-                        >
-                          {p.name}
-                        </p>
-                        {isNew && (
-                          <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest font-bold rounded-sm"
-                            style={{ backgroundColor: "#34d39922", color: "#34d399", border: "1px solid #34d39944" }}>
-                            <span className="w-1 h-1 rounded-full bg-[#34d399] animate-pulse" />
-                            New
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
-                        <span className="w-1.5 h-1.5 rounded-full transition-transform duration-150 group-hover:scale-125" style={{ backgroundColor: sc }} />
-                        {/* md+: sector badge */}
-                        <span
-                          className="hidden md:inline-block px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest transition-colors duration-150"
-                          style={{
-                            backgroundColor: isSelected ? `${vis.accent}28` : `${vis.accent}14`,
-                            color: vis.accent,
-                          }}
-                        >
-                          {p.sector}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Row 2: CDC subtitle */}
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      {/* Mobile: sector badge */}
-                      <span
-                        className="md:hidden text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5"
-                        style={{ backgroundColor: `${vis.accent}14`, color: vis.accent }}
-                      >
+                    {/* Sector + New badges */}
+                    <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                      <span className="px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest font-bold"
+                        style={{ backgroundColor: vis.accent, color: "#000" }}>
                         {p.sector}
                       </span>
-                      {p.cdc_approval_date && (
-                        <span className="font-mono text-[10px] font-bold" style={{ color: "#ff5100" }}>
-                          {p.cdc_approval_date}
+                      {isNew && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-widest font-bold"
+                          style={{ backgroundColor: "#34d39922", color: "#34d399", border: "1px solid #34d39944" }}>
+                          <span className="w-1 h-1 rounded-full bg-[#34d399] animate-pulse" />
+                          New
                         </span>
                       )}
+                    </div>
+
+                    {/* Status badge */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/60 border border-white/10 px-1.5 py-1">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: sc }} />
+                      <span className="font-mono text-[8px] uppercase tracking-widest" style={{ color: sc }}>{p.status}</span>
+                    </div>
+
+                    {/* Name over photo */}
+                    <div className="absolute bottom-0 left-0 right-0 px-3 pb-2">
+                      <p className="font-extrabold text-[13px] uppercase tracking-tight text-white leading-tight line-clamp-2">
+                        {p.name}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress hook */}
+                  <div className="h-[3px] w-full bg-white/8">
+                    <div className="h-full transition-all duration-300" style={{ width: `${pct}%`, backgroundColor: sc }} />
+                  </div>
+
+                  {/* Info footer */}
+                  <div className="px-3 py-2.5 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {p.cdc_approval_date && (
+                        <span className="font-mono text-[9px] font-bold" style={{ color: "#ff5100" }}>{p.cdc_approval_date}</span>
+                      )}
                       {p.cdc_approval_date && <span className="w-0.5 h-0.5 rounded-full bg-white/20" />}
-                      <span className="font-mono text-[10px] text-white/40">{p.province}</span>
-                      {p.investment_usd && (
-                        <>
-                          <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                          <span className="font-mono text-[10px] text-white/55">{p.investment_usd}</span>
-                        </>
-                      )}
-                      {p.planned_finish && (
-                        <>
-                          <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                          <span className="font-mono text-[10px] text-white/35">→ {p.planned_finish}</span>
-                        </>
-                      )}
-                      {/* Latest news date */}
-                      {fmtNewsDate(p.latest_news_date) && (
-                        <>
-                          <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
-                          <span className="font-mono text-[9px] text-white/30">
-                            News {fmtNewsDate(p.latest_news_date)}
-                          </span>
-                        </>
-                      )}
-                      {/* Country code badge — works on all OSes including Windows */}
-                      <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                      <span className="font-mono text-[9px] text-white/40">{p.province}</span>
                       <span
-                        className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
+                        className="ml-auto font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5"
                         style={{ backgroundColor: "var(--tr-code-bg)", color: "var(--tr-code-text)" }}
                       >
                         {ORIGIN_CODE[p.origin] ?? p.origin.slice(0, 2).toUpperCase()}
                       </span>
                     </div>
-                  </div>
-
-                  {/* Desktop arrow — invisible until hover, accent-coloured when selected */}
-                  <div className="hidden lg:flex w-6 items-center justify-center shrink-0">
-                    <svg
-                      width="10" height="10" viewBox="0 0 10 10" fill="none"
-                      className="transition-all duration-150"
-                      style={{
-                        opacity: isSelected ? 1 : 0,
-                        color: vis.accent,
-                        transform: isSelected ? "translateX(1px)" : "translateX(-2px)",
-                      }}
-                    >
-                      <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
-                  </div>
-
-                  {/* Mobile chevron — brightens on hover */}
-                  <div className="lg:hidden flex w-8 items-center justify-center shrink-0">
-                    <svg
-                      width="10" height="10" viewBox="0 0 10 10" fill="none"
-                      className="transition-all duration-150 opacity-20 group-hover:opacity-60"
-                      style={{ color: "rgba(255,255,255,1)" }}
-                    >
-                      <path d="M3 1l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                    </svg>
+                    <div className="flex items-center justify-between gap-2">
+                      {p.investment_usd && (
+                        <span className="font-mono text-[11px] font-bold text-white/80">{p.investment_usd}</span>
+                      )}
+                      {p.planned_finish && (
+                        <span className="font-mono text-[9px] text-white/35">→ {p.planned_finish}</span>
+                      )}
+                    </div>
                   </div>
                 </button>
               );
             })}
 
             {filtered.length === 0 && (
-              <div className="px-6 py-14 text-center">
+              <div className="col-span-full border border-white/8 bg-[#0d0d0e] px-6 py-14 text-center">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-white/25">No projects match current filters</p>
               </div>
             )}
