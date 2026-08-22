@@ -450,6 +450,8 @@
   display: flex !important;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
   padding: 9pt 20mm 7pt;
   border-bottom: 0.75pt solid #e0e0e0;
 }
@@ -457,6 +459,8 @@
   display: flex !important;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  box-sizing: border-box;
   padding: 6pt 20mm 9pt;
   border-top: 0.75pt solid #e0e0e0;
 }
@@ -563,17 +567,26 @@
     color: #222; font-size: 9.5pt; font-weight: 300; line-height: 1.7;
   }
 
-  /* ── Running header ── */
+  /* ── Running header ──
+   * .pr-rh-logo and .pr-rh-title previously had no width constraints, so
+   * some print-to-PDF engines computed the repeating thead's row narrower
+   * than the body rows (a known table-header-group sizing quirk) — with
+   * no free space for justify-content: space-between to distribute, the
+   * title text rendered flush against the logo instead of right-aligned
+   * (confirmed in an actual exported PDF). flex-shrink:0 on the logo +
+   * flex:1/min-width:0/ellipsis on the title guarantees they can never
+   * overlap regardless of the container's actual computed width. */
   .pr-rh-logo {
     font-family: 'DM Sans', sans-serif; font-size: 7pt; font-weight: 600;
     letter-spacing: 0.2em; text-transform: uppercase; color: #cc3300;
-    display: flex; align-items: center; gap: 7pt;
+    display: flex; align-items: center; gap: 7pt; flex-shrink: 0;
   }
   .pr-rh-logo span { font-weight: 300; color: #aaa; letter-spacing: 0.06em; }
   .pr-rh-title {
     font-family: 'DM Sans', sans-serif; font-size: 6pt; color: #bbb;
     letter-spacing: 0.1em; text-transform: uppercase; text-align: right;
-    font-weight: 300;
+    font-weight: 300; flex: 1 1 auto; min-width: 0; margin-left: 12pt;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
 
   /* ── Running footer ── */
