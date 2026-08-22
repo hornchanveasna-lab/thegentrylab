@@ -40,7 +40,16 @@
       "PowerShell(cd \"D:\\\\Claude Ai\\\\TheGentryLab\" ; $proc = Start-Process -FilePath \"npm\" -ArgumentList \"run\",\"dev\" -PassThru -WindowStyle Hidden ; Start-Sleep -Seconds 18 ; Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue ; Write-Host \"Stopped\")",
       "WebFetch(domain:www.adb.org)",
       "mcp__2d9cdc4d-820f-40d1-b353-d5b5fe2deb29__list_tables",
-      "WebFetch(domain:opendevelopmentcambodia.net)"
+      "WebFetch(domain:opendevelopmentcambodia.net)",
+      "WebFetch(domain:www.business-humanrights.org)",
+      "WebFetch(domain:policy.trade.ec.europa.eu)",
+      "WebFetch(domain:www.tirereview.com)",
+      "WebFetch(domain:www.yicaiglobal.com)",
+      "WebFetch(domain:b2b-asianews.com)",
+      "WebFetch(domain:www.cdc.gov.kh)",
+      "WebFetch(domain:www.tyrepress.com)",
+      "Bash(mkdir -p \"C:\\\\Users\\\\ASUS\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--Claude-Ai-TheGentryLab\\\\10be2a18-2934-4bdb-af0d-d86161026be5\\\\scratchpad\")",
+      "WebFetch(domain:www.yuantacambodia.com.kh)"
     ]
   }
 }
