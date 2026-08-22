@@ -1,6 +1,7 @@
 import {
   extractKeywords, fetchRagContext, formatRagContext,
-  fetchZoneDirectory, formatZoneDirectory, logReport, friendlyApiError,
+  fetchZoneDirectory, formatZoneDirectory, fetchLegalContext, formatLegalContext,
+  logReport, friendlyApiError,
 } from "./lib/rag.js";
 
 const SYSTEM_PROMPT = `You are the GentryLab AI Industrial Advisor — Cambodia's most advanced industrial intelligence engine. You generate structured, decision-ready investment briefs for manufacturers, investors, developers, banks, and consultants.
@@ -388,14 +389,16 @@ export default async function handler(req: Request): Promise<Response> {
 
   let ragCtx = { news: [], projects: [], sites: [] } as Awaited<ReturnType<typeof fetchRagContext>>;
   let zones: Awaited<ReturnType<typeof fetchZoneDirectory>> = [];
+  let legal: Awaited<ReturnType<typeof fetchLegalContext>> = [];
   if (supabaseUrl && serviceKey) {
-    [ragCtx, zones] = await Promise.all([
+    [ragCtx, zones, legal] = await Promise.all([
       fetchRagContext(supabaseUrl, serviceKey, { keywords, province, sector }),
       fetchZoneDirectory(supabaseUrl, serviceKey),
+      fetchLegalContext(supabaseUrl, serviceKey, keywords),
     ]);
   }
 
-  const dynamicContext = formatZoneDirectory(zones) + formatRagContext(ragCtx);
+  const dynamicContext = formatZoneDirectory(zones) + formatRagContext(ragCtx) + formatLegalContext(legal);
   const systemPrompt   = SYSTEM_PROMPT + dynamicContext;
 
   // Fire-and-forget log

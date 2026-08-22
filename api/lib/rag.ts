@@ -59,6 +59,10 @@ export interface RagResult {
   projects: RagProject[];
   sites:    RagSite[];
 }
+export interface RagLegal {
+  title_en: string; law_type: string; reference_no?: string;
+  summary_en: string; key_provisions: { article: string; text: string }[];
+}
 export interface ZoneEntry {
   name: string; kind: string; province: string;
   status?: string; size?: string; utilities?: string; road?: string;
@@ -187,6 +191,50 @@ export async function fetchRagContext(
   } finally {
     clearTimeout(timer);
   }
+}
+
+// ── Legal knowledge: Cambodian construction/urbanization law & procedure,
+//    matched by keyword overlap against each entry's topic_keywords array.
+//    Kept separate from news/projects/sites since it's reference material,
+//    not time-sensitive live data. ────────────────────────────────────────────
+export async function fetchLegalContext(
+  supabaseUrl: string, serviceKey: string, keywords: string[],
+): Promise<RagLegal[]> {
+  if (!keywords.length) return [];
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), 3000);
+  try {
+    const overlap = `{${keywords.map(encodeURIComponent).join(",")}}`;
+    const rows = await sbGet<RagLegal>(
+      `${supabaseUrl}/rest/v1/legal_knowledge?topic_keywords=ov.${overlap}` +
+      `&select=title_en,law_type,reference_no,summary_en,key_provisions&limit=3`,
+      serviceKey, ac.signal,
+    );
+    return rows;
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function formatLegalContext(legal: RagLegal[]): string {
+  if (!legal.length) return "";
+  const lines: string[] = [
+    "",
+    "## ⚖️ CAMBODIAN LEGAL REFERENCE — sourced from official Prakas/Law/Sub-Decree texts (use for permit, licensing, and construction-law questions)",
+    "",
+  ];
+  for (const l of legal) {
+    lines.push(`### ${l.title_en}${l.reference_no ? ` (${l.reference_no})` : ""} [${l.law_type}]`);
+    lines.push(l.summary_en);
+    for (const p of l.key_provisions) {
+      lines.push(`- Art. ${p.article}: ${p.text}`);
+    }
+    lines.push("");
+  }
+  lines.push("Cite the specific Prakas/Law and article when giving legal/procedural answers. This is a summary of official Khmer-language legal texts — for anything with real legal consequence, tell the user to verify with MLMUPC or legal counsel before acting.");
+  return lines.join("\n");
 }
 
 // ── Zone directory: the FULL current SEZ/industrial-park list, always

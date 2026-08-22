@@ -1,6 +1,7 @@
 import {
   extractKeywords, extractProvince, fetchRagContext, formatRagContext,
-  fetchZoneDirectory, formatZoneDirectory, logChat, friendlyApiError,
+  fetchZoneDirectory, formatZoneDirectory, fetchLegalContext, formatLegalContext,
+  logChat, friendlyApiError,
 } from "./lib/rag.js";
 
 const SYSTEM_PROMPT = `You are GentryBot, the AI assistant for TheGentryLab — Cambodia's industrial intelligence platform. You help foreign manufacturers, investors, and developers make informed decisions about industrial development in Cambodia.
@@ -150,14 +151,19 @@ export default async function handler(req: Request): Promise<Response> {
 
   let ragCtx = { news: [], projects: [], sites: [] } as Awaited<ReturnType<typeof fetchRagContext>>;
   let zones: Awaited<ReturnType<typeof fetchZoneDirectory>> = [];
+  let legal: Awaited<ReturnType<typeof fetchLegalContext>> = [];
   if (supabaseUrl && serviceKey) {
     const ragPromise = (keywords.length || province)
       ? fetchRagContext(supabaseUrl, serviceKey, { keywords, province })
       : Promise.resolve(ragCtx);
-    [ragCtx, zones] = await Promise.all([ragPromise, fetchZoneDirectory(supabaseUrl, serviceKey)]);
+    [ragCtx, zones, legal] = await Promise.all([
+      ragPromise,
+      fetchZoneDirectory(supabaseUrl, serviceKey),
+      fetchLegalContext(supabaseUrl, serviceKey, keywords),
+    ]);
   }
 
-  const dynamicContext = formatZoneDirectory(zones) + formatRagContext(ragCtx);
+  const dynamicContext = formatZoneDirectory(zones) + formatRagContext(ragCtx) + formatLegalContext(legal);
   const systemPrompt   = SYSTEM_PROMPT + dynamicContext;
 
   // Fire-and-forget log (never awaited, never blocks)
