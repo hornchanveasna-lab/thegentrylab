@@ -1934,7 +1934,7 @@ function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClas
     <table className={`pr-cpage-table pr-page-break${extraClass ? " " + extraClass : ""}`}
       style={{ borderCollapse: "collapse", width: "100%", background: "#fff" }}>
       <thead className="pr-cpage-thead">
-        <tr><td style={{ padding: 0 }}><PRHeader title={title} refId={refId} dateStr={dateStr} /></td></tr>
+        <tr><td style={{ padding: 0, width: "100%" }}><PRHeader title={title} refId={refId} dateStr={dateStr} /></td></tr>
       </thead>
       <tbody className="pr-cpage-tbody">
         <tr>
@@ -1944,7 +1944,7 @@ function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClas
         </tr>
       </tbody>
       <tfoot className="pr-cpage-tfoot">
-        <tr><td style={{ padding: 0 }}><PRFooter pageNum={pageNum} refId={refId} year={year} /></td></tr>
+        <tr><td style={{ padding: 0, width: "100%" }}><PRFooter pageNum={pageNum} refId={refId} year={year} /></td></tr>
       </tfoot>
     </table>
   );
@@ -2537,7 +2537,7 @@ function PrintReport({
       {/* CSS table trick: thead/tfoot repeat on every printed page */}
       <table className="pr-cpage-table pr-page-break" style={{ borderCollapse: "collapse", width: "100%", background: "#fff" }}>
         <thead className="pr-cpage-thead">
-          <tr><td style={{ padding: 0 }}><PRHeader title={brief.title} refId={refId} dateStr={dateStr} /></td></tr>
+          <tr><td style={{ padding: 0, width: "100%" }}><PRHeader title={brief.title} refId={refId} dateStr={dateStr} /></td></tr>
         </thead>
         <tbody className="pr-cpage-tbody">
           <tr><td style={{ padding: "14pt 20mm 10pt", verticalAlign: "top" }}>
@@ -2563,7 +2563,7 @@ function PrintReport({
           </td></tr>
         </tbody>
         <tfoot className="pr-cpage-tfoot">
-          <tr><td style={{ padding: 0 }}><PRFooter pageNum={9} refId={refId} year={year} /></td></tr>
+          <tr><td style={{ padding: 0, width: "100%" }}><PRFooter pageNum={9} refId={refId} year={year} /></td></tr>
         </tfoot>
       </table>
 
