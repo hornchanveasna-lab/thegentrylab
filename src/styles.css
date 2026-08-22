@@ -481,12 +481,6 @@
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   }
 
-  /* JSX source order is thead, tfoot, tbody (valid HTML — a table's <tfoot> is
-     always rendered last regardless of source position). But once flex column
-     + display:block override table layout, flex arranges children by DOM order,
-     not table semantics — so without an explicit `order`, the footer was being
-     placed BETWEEN the header and the body on every short page (Foreword, TOC,
-     Acronyms...). Force the visual order explicitly so it always renders last. */
   .advisor-print .pr-cpage-thead { display: block !important; flex-shrink: 0; order: 1; }
   .advisor-print .pr-cpage-tbody { display: block !important; flex: 1; order: 2; }
   .advisor-print .pr-cpage-tfoot { display: block !important; flex-shrink: 0; margin-top: auto; order: 3; }
@@ -529,17 +523,31 @@
   .pr-page-break { page-break-before: always; break-before: page; }
   .pr-avoid-break { page-break-inside: avoid; break-inside: avoid; }
 
-  /* ── Unified CSS table approach — header/footer repeats on every page ──
-     height (not min-height) on a table with a single content row lets the
-     browser distribute leftover vertical space to that row, so the footer
-     (table-footer-group) lands at the true page bottom even when the page's
-     own content is short (Foreword, TOC/Acronyms, etc.) instead of trailing
-     right after the text. Overflowing content still grows past this height
-     and continues onto the next printed page as normal. */
-  .pr-cpage-table { display: table !important; width: 100%; height: 297mm; page-break-before: always; }
-  .pr-cpage-thead { display: table-header-group !important; }
-  .pr-cpage-tfoot { display: table-footer-group !important; }
-  .pr-cpage-tbody { display: table-row-group !important; }
+  /* ── Flex column per page (NOT CSS table-header/footer-group) ──
+     table-header-group / table-footer-group only pin a footer to the
+     bottom of a MULTI-PAGE table that overflows and repeats headers on
+     each new page. Here every ContentPage is already exactly one page
+     (manual page-break-before, one table per page) with short, single-
+     page content — so the footer just rendered directly under the text
+     with dead space below it on short pages (Foreword, TOC/Acronyms),
+     confirmed in the actual exported PDF. A flex column with the footer's
+     margin-top:auto reliably pins it to the true page bottom regardless
+     of content length — same technique already used for the on-screen
+     preview, applied here to the real print/PDF output too. */
+  .pr-cpage-table {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+    height: 297mm;
+    page-break-before: always;
+    break-before: page;
+    background: #fff;
+  }
+  .pr-cpage-thead { display: block !important; flex-shrink: 0; order: 1; }
+  .pr-cpage-tbody { display: block !important; flex: 1; order: 2; }
+  .pr-cpage-tfoot { display: block !important; flex-shrink: 0; margin-top: auto; order: 3; }
+  .pr-cpage-tbody > tr      { display: block !important; }
+  .pr-cpage-tbody > tr > td { display: block !important; box-sizing: border-box; }
 
   /* ── Disclaimer + Metadata — smaller body text ── */
   .pr-disclaimer-page .pr-p,
