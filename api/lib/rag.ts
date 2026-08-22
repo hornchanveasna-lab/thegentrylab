@@ -194,9 +194,11 @@ export async function fetchRagContext(
 }
 
 // ── Legal knowledge: Cambodian construction/urbanization law & procedure,
-//    matched by keyword overlap against each entry's topic_keywords array.
-//    Kept separate from news/projects/sites since it's reference material,
-//    not time-sensitive live data. ────────────────────────────────────────────
+//    matched by substring search across title/summary text AND each entry's
+//    topic_keywords array (cast to text so partial words still match multi-
+//    word phrases like "construction permit"). Kept separate from
+//    news/projects/sites since it's reference material, not time-sensitive
+//    live data. ─────────────────────────────────────────────────────────────
 export async function fetchLegalContext(
   supabaseUrl: string, serviceKey: string, keywords: string[],
 ): Promise<RagLegal[]> {
@@ -204,9 +206,12 @@ export async function fetchLegalContext(
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), 3000);
   try {
-    const overlap = `{${keywords.map(encodeURIComponent).join(",")}}`;
+    const parts = keywords.flatMap((k) => {
+      const enc = encodeURIComponent(k);
+      return [`title_en.ilike.*${enc}*`, `summary_en.ilike.*${enc}*`];
+    });
     const rows = await sbGet<RagLegal>(
-      `${supabaseUrl}/rest/v1/legal_knowledge?topic_keywords=ov.${overlap}` +
+      `${supabaseUrl}/rest/v1/legal_knowledge?or=(${parts.join(",")})` +
       `&select=title_en,law_type,reference_no,summary_en,key_provisions&limit=3`,
       serviceKey, ac.signal,
     );
