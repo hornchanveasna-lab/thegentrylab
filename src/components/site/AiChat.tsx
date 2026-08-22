@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -67,48 +68,115 @@ function loadChatSize(): { width: number; height: number } {
   } catch { return DEFAULT_SIZE; }
 }
 
-/* ── Simple markdown-lite renderer ───────────────────────── */
-function MdText({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`|\n)/g);
+/* ── Inline formatting: **bold**, `code` ───────────────────── */
+function MdInline({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return (
     <>
       {parts.map((p, i) => {
         if (p.startsWith("**") && p.endsWith("**"))
-          return <strong key={i}>{p.slice(2, -2)}</strong>;
+          return <strong key={i} className="font-semibold">{p.slice(2, -2)}</strong>;
         if (p.startsWith("`") && p.endsWith("`"))
-          return <code key={i} className="bg-white/10 px-1 rounded text-[11px] font-mono">{p.slice(1, -1)}</code>;
-        if (p === "\n") return <br key={i} />;
+          return <code key={i} className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded text-[11.5px] font-mono">{p.slice(1, -1)}</code>;
         return <span key={i}>{p}</span>;
       })}
     </>
   );
 }
 
-/* ── Chat bubble ──────────────────────────────────────────── */
+/* ── ChatGPT-style block markdown: paragraphs, lists, headings ── */
+function MdText({ text }: { text: string }) {
+  const lines = text.split("\n");
+  const blocks: ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (/^\s*$/.test(line)) { i++; continue; }
+
+    const heading = line.match(/^(#{1,3})\s+(.*)/);
+    if (heading) {
+      const level = heading[1].length;
+      blocks.push(
+        <p key={key++} className={`font-semibold ${level === 1 ? "text-[14px]" : "text-[13px]"} mt-3 mb-1 first:mt-0`}>
+          <MdInline text={heading[2]} />
+        </p>
+      );
+      i++;
+      continue;
+    }
+
+    const isBullet = /^\s*[-*]\s+/.test(line);
+    const isNumbered = /^\s*\d+\.\s+/.test(line);
+    if (isBullet || isNumbered) {
+      const items: string[] = [];
+      while (i < lines.length && (/^\s*[-*]\s+/.test(lines[i]) || /^\s*\d+\.\s+/.test(lines[i]))) {
+        items.push(lines[i].replace(/^\s*([-*]|\d+\.)\s+/, ""));
+        i++;
+      }
+      const ListTag = isNumbered ? "ol" : "ul";
+      blocks.push(
+        <ListTag key={key++} className={`${isNumbered ? "list-decimal" : "list-disc"} pl-5 space-y-1 my-1.5`}>
+          {items.map((it, idx) => <li key={idx}><MdInline text={it} /></li>)}
+        </ListTag>
+      );
+      continue;
+    }
+
+    // Paragraph: gather consecutive non-blank, non-list, non-heading lines
+    const para: string[] = [];
+    while (
+      i < lines.length &&
+      !/^\s*$/.test(lines[i]) &&
+      !/^(#{1,3})\s+/.test(lines[i]) &&
+      !/^\s*[-*]\s+/.test(lines[i]) &&
+      !/^\s*\d+\.\s+/.test(lines[i])
+    ) {
+      para.push(lines[i]);
+      i++;
+    }
+    blocks.push(
+      <p key={key++} className="my-1 first:mt-0 last:mb-0">
+        {para.map((l, idx) => (
+          <span key={idx}>{idx > 0 && <br />}<MdInline text={l} /></span>
+        ))}
+      </p>
+    );
+  }
+
+  return <>{blocks}</>;
+}
+
+/* ── Chat message — ChatGPT-style: user gets a subtle bubble on the
+   right, assistant flows full-width with no bubble/border ──────── */
 function ChatBubble({ msg }: { msg: Message }) {
   const isUser = msg.role === "user";
-  return (
-    <div className={`flex gap-2.5 ${isUser ? "flex-row-reverse" : ""}`}>
-      {!isUser && (
-        <div className="w-7 h-7 rounded-full bg-[#ff5100] flex items-center justify-center shrink-0 mt-0.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
-            <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
-            <circle cx="9" cy="13" r="1" fill="white" stroke="none"/>
-            <circle cx="15" cy="13" r="1" fill="white" stroke="none"/>
-          </svg>
+
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div
+          className="max-w-[85%] px-3.5 py-2.5 rounded-2xl rounded-tr-md text-[13px] leading-relaxed"
+          style={{ backgroundColor: "var(--chat-user-bubble-bg, rgba(120,120,128,0.16))", color: "var(--chat-bubble-text)" }}
+        >
+          <MdText text={msg.content} />
         </div>
-      )}
-      <div
-        className={`max-w-[82%] px-3.5 py-2.5 text-[12.5px] leading-relaxed ${
-          isUser
-            ? "rounded-2xl rounded-tr-sm"
-            : "rounded-2xl rounded-tl-sm"
-        }`}
-        style={isUser
-          ? { backgroundColor: "#ff5100", color: "#ffffff" }
-          : { backgroundColor: "var(--chat-bubble-bg)", color: "var(--chat-bubble-text)", border: "1px solid var(--chat-bubble-border)" }
-        }
-      >
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2.5">
+      <div className="w-7 h-7 rounded-full bg-[#ff5100] flex items-center justify-center shrink-0 mt-0.5">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+          <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3v-6a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/>
+          <circle cx="9" cy="13" r="1" fill="white" stroke="none"/>
+          <circle cx="15" cy="13" r="1" fill="white" stroke="none"/>
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0 pt-0.5 text-[13px] leading-relaxed" style={{ color: "var(--chat-bubble-text)" }}>
         {msg.pending ? (
           <span className="flex items-center gap-1">
             <span className="animate-bounce" style={{ animationDelay: "0ms" }}>·</span>
