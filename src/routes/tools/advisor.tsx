@@ -19,6 +19,93 @@ export const Route = createFileRoute("/tools/advisor")({
   component: AdvisorPage,
 });
 
+/* ════════════════════════════════════════════════════════════════
+   REPORT IMAGES — edit here to replace any picture used in the PDF
+   ════════════════════════════════════════════════════════════════
+   1. Cover background texture + team portrait: these are local files —
+      just replace the file on disk (same filename) and it updates
+      everywhere automatically:
+        src/assets/hero-blueprint.jpg      (imported as heroBlueprintImg above)
+        src/assets/principal-portrait.jpg  (imported as principalPortraitImg above)
+
+   2. Category banner photos (top of "Executive Summary" / "Analysis"
+      pages — one per advisory category): edit the URL below for the
+      category you want to change. Any public image URL works.
+   ════════════════════════════════════════════════════════════════ */
+const CAT_ANALYSIS_IMAGES: Record<string, string> = {
+  industrial_park: "https://images.unsplash.com/photo-1565598993988-b70c0e16f5b3?w=1400&h=500&fit=crop&auto=format&q=80",
+  food_processing: "https://images.unsplash.com/photo-1565598993988-b70c0e16f5b3?w=1400&h=500&fit=crop&auto=format&q=80",
+  epc:             "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1400&h=500&fit=crop&auto=format&q=80",
+  finance:         "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1400&h=500&fit=crop&auto=format&q=80",
+  garment:         "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1400&h=500&fit=crop&auto=format&q=80",
+  logistics:       "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1400&h=500&fit=crop&auto=format&q=80",
+  environmental:   "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1400&h=500&fit=crop&auto=format&q=80",
+  energy:          "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=1400&h=500&fit=crop&auto=format&q=80",
+};
+/* ════════════════════════════════════════════════════════════════ */
+
+/* ── Shared front/back-matter content — used by BOTH the PDF report
+   (PrintReport) and the PPTX export (downloadAsPPT) so the two always
+   stay in sync. Edit once, both formats update. ── */
+const REPORT_ACKNOWLEDGEMENTS_PARAS = [
+  "This report was produced using the GentryLab AI Industrial Advisor — a proprietary intelligence platform developed by The Gentry Lab to support foreign investors, development finance institutions, and government agencies engaged in industrial development across the Kingdom of Cambodia.",
+  "The analysis draws upon data compiled from official Cambodian government sources, multilateral development institution publications, and The Gentry Lab's proprietary site intelligence and EPC benchmarking databases. The Gentry Lab acknowledges the role of Cambodia's Council for the Development of Cambodia (CDC), the Special Economic Zone Board (SEZB), the Ministry of Industry, Science, Technology and Innovation (MISTI), and the Ministry of Environment (MoE) in making foundational regulatory and investment data publicly available.",
+  "We recognise the contributions of the World Bank Group, the Asian Development Bank (ADB), the International Finance Corporation (IFC), and Open Development Cambodia (ODC) whose published research and open data platforms inform the analytical framework applied in this report.",
+  "The Gentry Lab extends appreciation to the investors, developers, and operators whose field experience and ground-level insights have calibrated our benchmarking models over more than 60 delivered industrial development engagements in Southeast Asia.",
+];
+
+const REPORT_FOREWORD_PARAS = [
+  "Cambodia has undergone a remarkable industrial transformation over the past two decades. From a largely agrarian economy in the early 2000s to Southeast Asia's fastest-growing garment and electronics export platform, the Kingdom has consistently outperformed regional peers in attracting quality manufacturing investment.",
+  "Yet for all its momentum, Cambodia's industrial landscape remains navigable only to those with deep in-country intelligence. Land tenure complexity, utility bottlenecks, permit sequencing challenges, and the rapidly evolving regulatory environment conspire to extend timelines, inflate budgets, and discourage otherwise well-positioned investors.",
+  "The Gentry Lab was established precisely to close this gap. Our AI Industrial Advisor platform synthesises over a decade of on-the-ground advisory experience, 60-plus delivered industrial projects, and the most comprehensive spatial and regulatory intelligence database available for Cambodia's industrial sector.",
+  "The report you are reading represents our best analytical intelligence applied to your specific investment thesis. It is designed not merely as a reference document, but as an action-oriented advisory brief — identifying the most viable pathways, the critical risks requiring mitigation, and the concrete next steps that will determine the success of your engagement.",
+  "We trust it serves as a valuable foundation for your decision-making. The Gentry Lab team remains available to deepen this analysis, conduct site visits, and manage the full development advisory lifecycle on your behalf.",
+];
+
+const REPORT_ACRONYMS = [
+  { key: "ADB",   val: "Asian Development Bank" },
+  { key: "CDC",   val: "Council for the Development of Cambodia" },
+  { key: "CAPEX", val: "Capital Expenditure" },
+  { key: "EIA",   val: "Environmental Impact Assessment" },
+  { key: "EPC",   val: "Engineering, Procurement and Construction" },
+  { key: "EDC",   val: "Electricité du Cambodge" },
+  { key: "FDI",   val: "Foreign Direct Investment" },
+  { key: "GDCE",  val: "General Department of Customs and Excise" },
+  { key: "IFC",   val: "International Finance Corporation" },
+  { key: "JETRO", val: "Japan External Trade Organization" },
+  { key: "LMAP",  val: "Land Management and Administration Project" },
+  { key: "MISTI", val: "Ministry of Industry and Handicraft" },
+  { key: "MoE",   val: "Ministry of Environment" },
+  { key: "MoLVT", val: "Ministry of Labour and Vocational Training" },
+  { key: "MOWRAM",val: "Ministry of Water Resources and Meteorology" },
+  { key: "ODC",   val: "Open Development Cambodia" },
+  { key: "OPEX",  val: "Operating Expenditure" },
+  { key: "QIP",   val: "Qualified Investment Project" },
+  { key: "SEZ",   val: "Special Economic Zone" },
+  { key: "SEZB",  val: "Special Economic Zone Board of Cambodia" },
+  { key: "TGL",   val: "The Gentry Lab" },
+  { key: "WB",    val: "World Bank" },
+];
+
+const REPORT_REFERENCES = [
+  { ref: "1",  src: "Council for the Development of Cambodia (CDC). QIP Investment Registry. Phnom Penh: CDC, 2024.", url: "cdc.gov.kh" },
+  { ref: "2",  src: "Special Economic Zone Board (SEZB). Directory of Special Economic Zones. Phnom Penh: SEZB, 2024.", url: "sezb.gov.kh" },
+  { ref: "3",  src: "Ministry of Industry, Science, Technology and Innovation (MISTI). Industrial Development Policy 2015–2025. Phnom Penh: MISTI.", url: "https://www.misti.gov.kh/en/" },
+  { ref: "4",  src: "Ministry of Environment (MoE). Environmental Compliance Procedures Manual. Phnom Penh: MoE, 2023.", url: "moe.gov.kh" },
+  { ref: "5",  src: "Electricité du Cambodge (EDC). Industrial Tariff Schedule and Grid Expansion Plan. Phnom Penh: EDC, 2024.", url: "edc.com.kh" },
+  { ref: "6",  src: "Ministry of Labour and Vocational Training (MoLVT). Minimum Wage Prakas No. 429. Phnom Penh: MoLVT, 2024.", url: "molvt.gov.kh" },
+  { ref: "7",  src: "General Department of Customs and Excise (GDCE). HS Tariff Schedule — Kingdom of Cambodia. Phnom Penh: GDCE, 2024.", url: "customs.gov.kh" },
+  { ref: "8",  src: "World Bank Group. Cambodia Economic Update: Sustaining Growth Amid Global Headwinds. Washington, DC: World Bank, 2024.", url: "worldbank.org/cambodia" },
+  { ref: "9",  src: "Asian Development Bank (ADB). ADB Cambodia Country Portfolio and Pipeline. Manila: ADB, 2024.", url: "adb.org/cambodia" },
+  { ref: "10", src: "International Finance Corporation (IFC). Doing Business in Cambodia — Advisory Note. Washington, DC: IFC, 2023.", url: "ifc.org" },
+  { ref: "11", src: "Open Development Cambodia (ODC). Industrial Land & SEZ Spatial Database. Phnom Penh: ODC, 2024.", url: "opendevelopmentcambodia.net" },
+  { ref: "12", src: "Japan External Trade Organization (JETRO). Survey on Business Conditions of Japanese Companies in Asia — Cambodia Report. Tokyo: JETRO, 2024.", url: "jetro.go.jp/cambodia" },
+  { ref: "13", src: "The Gentry Lab. Site Intelligence Database — Cambodia Industrial Sites (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
+  { ref: "14", src: "The Gentry Lab. EPC Benchmark Database — Cambodian Industrial Construction (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
+  { ref: "15", src: "The Gentry Lab. Permit Timeline Tracker — Ministry Approval Sequences Cambodia (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
+  { ref: "16", src: "Cambodia Investment Review. Cambodia Business & Investment News. Phnom Penh: CIR, 2024–2025.", url: "cambodiainvestmentreview.com" },
+];
+
 /* ── Types ─────────────────────────────────────────────── */
 type Category = "INVEST" | "DEVELOP" | "FINANCE" | "COMPLY" | "PLAN";
 type Step = "select" | "form" | "generating" | "result" | "history";
@@ -1196,18 +1283,6 @@ function PrintFallbackViz({ output, catColor, form, brief }: { output: string; c
   );
 }
 
-/* ── Category-specific analysis images ── */
-const CAT_ANALYSIS_IMAGES: Record<string, string> = {
-  industrial_park: "https://images.unsplash.com/photo-1565598993988-b70c0e16f5b3?w=1400&h=500&fit=crop&auto=format&q=80",
-  food_processing: "https://images.unsplash.com/photo-1565598993988-b70c0e16f5b3?w=1400&h=500&fit=crop&auto=format&q=80",
-  epc: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=1400&h=500&fit=crop&auto=format&q=80",
-  finance: "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=1400&h=500&fit=crop&auto=format&q=80",
-  garment: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1400&h=500&fit=crop&auto=format&q=80",
-  logistics: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1400&h=500&fit=crop&auto=format&q=80",
-  environmental: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1400&h=500&fit=crop&auto=format&q=80",
-  energy: "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=1400&h=500&fit=crop&auto=format&q=80",
-};
-
 function detectTopicEmoji(text: string): string {
   const t = text.toLowerCase();
   if (/factory|manufactur|industrial|warehouse|facilit|production|assembl/.test(t)) return "🏭";
@@ -1861,9 +1936,6 @@ function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClas
       <thead className="pr-cpage-thead">
         <tr><td style={{ padding: 0 }}><PRHeader title={title} refId={refId} dateStr={dateStr} /></td></tr>
       </thead>
-      <tfoot className="pr-cpage-tfoot">
-        <tr><td style={{ padding: 0 }}><PRFooter pageNum={pageNum} refId={refId} year={year} /></td></tr>
-      </tfoot>
       <tbody className="pr-cpage-tbody">
         <tr>
           <td className="pr-content-body" style={{ verticalAlign: bottomAlign ? "bottom" : "top" }}>
@@ -1871,6 +1943,9 @@ function ContentPage({ title, refId, dateStr, pageNum, year, children, extraClas
           </td>
         </tr>
       </tbody>
+      <tfoot className="pr-cpage-tfoot">
+        <tr><td style={{ padding: 0 }}><PRFooter pageNum={pageNum} refId={refId} year={year} /></td></tr>
+      </tfoot>
     </table>
   );
 }
@@ -2091,49 +2166,8 @@ function PrintReport({
     { num: "VIII",title: "References & Data Sources", page: 12 },
   ];
 
-  const acronyms = [
-    { key: "ADB",   val: "Asian Development Bank" },
-    { key: "CDC",   val: "Council for the Development of Cambodia" },
-    { key: "CAPEX", val: "Capital Expenditure" },
-    { key: "EIA",   val: "Environmental Impact Assessment" },
-    { key: "EPC",   val: "Engineering, Procurement and Construction" },
-    { key: "EDC",   val: "Electricité du Cambodge" },
-    { key: "FDI",   val: "Foreign Direct Investment" },
-    { key: "GDCE",  val: "General Department of Customs and Excise" },
-    { key: "IFC",   val: "International Finance Corporation" },
-    { key: "JETRO", val: "Japan External Trade Organization" },
-    { key: "LMAP",  val: "Land Management and Administration Project" },
-    { key: "MISTI",   val: "Ministry of Industry and Handicraft" },
-    { key: "MoE",   val: "Ministry of Environment" },
-    { key: "MoLVT", val: "Ministry of Labour and Vocational Training" },
-    { key: "MOWRAM",val: "Ministry of Water Resources and Meteorology" },
-    { key: "ODC",   val: "Open Development Cambodia" },
-    { key: "OPEX",  val: "Operating Expenditure" },
-    { key: "QIP",   val: "Qualified Investment Project" },
-    { key: "SEZ",   val: "Special Economic Zone" },
-    { key: "SEZB",  val: "Special Economic Zone Board of Cambodia" },
-    { key: "TGL",   val: "The Gentry Lab" },
-    { key: "WB",    val: "World Bank" },
-  ];
-
-  const references = [
-    { ref: "1",  src: "Council for the Development of Cambodia (CDC). QIP Investment Registry. Phnom Penh: CDC, 2024.", url: "cdc.gov.kh" },
-    { ref: "2",  src: "Special Economic Zone Board (SEZB). Directory of Special Economic Zones. Phnom Penh: SEZB, 2024.", url: "sezb.gov.kh" },
-    { ref: "3",  src: "Ministry of Industry, Science, Technology and Innovation (MISTI). Industrial Development Policy 2015–2025. Phnom Penh: MISTI.", url: "https://www.misti.gov.kh/en/" },
-    { ref: "4",  src: "Ministry of Environment (MoE). Environmental Compliance Procedures Manual. Phnom Penh: MoE, 2023.", url: "moe.gov.kh" },
-    { ref: "5",  src: "Electricité du Cambodge (EDC). Industrial Tariff Schedule and Grid Expansion Plan. Phnom Penh: EDC, 2024.", url: "edc.com.kh" },
-    { ref: "6",  src: "Ministry of Labour and Vocational Training (MoLVT). Minimum Wage Prakas No. 429. Phnom Penh: MoLVT, 2024.", url: "molvt.gov.kh" },
-    { ref: "7",  src: "General Department of Customs and Excise (GDCE). HS Tariff Schedule — Kingdom of Cambodia. Phnom Penh: GDCE, 2024.", url: "customs.gov.kh" },
-    { ref: "8",  src: "World Bank Group. Cambodia Economic Update: Sustaining Growth Amid Global Headwinds. Washington, DC: World Bank, 2024.", url: "worldbank.org/cambodia" },
-    { ref: "9",  src: "Asian Development Bank (ADB). ADB Cambodia Country Portfolio and Pipeline. Manila: ADB, 2024.", url: "adb.org/cambodia" },
-    { ref: "10", src: "International Finance Corporation (IFC). Doing Business in Cambodia — Advisory Note. Washington, DC: IFC, 2023.", url: "ifc.org" },
-    { ref: "11", src: "Open Development Cambodia (ODC). Industrial Land & SEZ Spatial Database. Phnom Penh: ODC, 2024.", url: "opendevelopmentcambodia.net" },
-    { ref: "12", src: "Japan External Trade Organization (JETRO). Survey on Business Conditions of Japanese Companies in Asia — Cambodia Report. Tokyo: JETRO, 2024.", url: "jetro.go.jp/cambodia" },
-    { ref: "13", src: "The Gentry Lab. Site Intelligence Database — Cambodia Industrial Sites (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
-    { ref: "14", src: "The Gentry Lab. EPC Benchmark Database — Cambodian Industrial Construction (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
-    { ref: "15", src: "The Gentry Lab. Permit Timeline Tracker — Ministry Approval Sequences Cambodia (Proprietary). Phnom Penh: TGL, 2024.", url: "thegentrylab.io" },
-    { ref: "16", src: "Cambodia Investment Review. Cambodia Business & Investment News. Phnom Penh: CIR, 2024–2025.", url: "cambodiainvestmentreview.com" },
-  ];
+  const acronyms = REPORT_ACRONYMS;
+  const references = REPORT_REFERENCES;
 
   return (
     <div className="advisor-print pr-root" style={{ backgroundColor: "#ffffff", color: "#000000" }}>
@@ -2235,18 +2269,7 @@ function PrintReport({
         <div className="pr-section-number">Section I</div>
         <div className="pr-h1">Acknowledgements</div>
 
-        <p className="pr-p">
-          This report was produced using the GentryLab AI Industrial Advisor — a proprietary intelligence platform developed by The Gentry Lab to support foreign investors, development finance institutions, and government agencies engaged in industrial development across the Kingdom of Cambodia.
-        </p>
-        <p className="pr-p">
-          The analysis draws upon data compiled from official Cambodian government sources, multilateral development institution publications, and The Gentry Lab's proprietary site intelligence and EPC benchmarking databases. The Gentry Lab acknowledges the role of Cambodia's Council for the Development of Cambodia (CDC), the Special Economic Zone Board (SEZB), the Ministry of Industry, Science, Technology and Innovation (MISTI), and the Ministry of Environment (MoE) in making foundational regulatory and investment data publicly available.
-        </p>
-        <p className="pr-p">
-          We recognise the contributions of the World Bank Group, the Asian Development Bank (ADB), the International Finance Corporation (IFC), and Open Development Cambodia (ODC) whose published research and open data platforms inform the analytical framework applied in this report.
-        </p>
-        <p className="pr-p">
-          The Gentry Lab extends appreciation to the investors, developers, and operators whose field experience and ground-level insights have calibrated our benchmarking models over more than 60 delivered industrial development engagements in Southeast Asia.
-        </p>
+        {REPORT_ACKNOWLEDGEMENTS_PARAS.map((p, i) => <p key={i} className="pr-p">{p}</p>)}
 
         {/* Parameters strip */}
         {inputPairs.length > 0 && (
@@ -2273,21 +2296,7 @@ function PrintReport({
         <div className="pr-section-number">Section II</div>
         <div className="pr-h1">Foreword</div>
 
-        <p className="pr-p">
-          Cambodia has undergone a remarkable industrial transformation over the past two decades. From a largely agrarian economy in the early 2000s to Southeast Asia's fastest-growing garment and electronics export platform, the Kingdom has consistently outperformed regional peers in attracting quality manufacturing investment.
-        </p>
-        <p className="pr-p">
-          Yet for all its momentum, Cambodia's industrial landscape remains navigable only to those with deep in-country intelligence. Land tenure complexity, utility bottlenecks, permit sequencing challenges, and the rapidly evolving regulatory environment conspire to extend timelines, inflate budgets, and discourage otherwise well-positioned investors.
-        </p>
-        <p className="pr-p">
-          The Gentry Lab was established precisely to close this gap. Our AI Industrial Advisor platform synthesises over a decade of on-the-ground advisory experience, 60-plus delivered industrial projects, and the most comprehensive spatial and regulatory intelligence database available for Cambodia's industrial sector.
-        </p>
-        <p className="pr-p">
-          The report you are reading represents our best analytical intelligence applied to your specific investment thesis. It is designed not merely as a reference document, but as an action-oriented advisory brief — identifying the most viable pathways, the critical risks requiring mitigation, and the concrete next steps that will determine the success of your engagement.
-        </p>
-        <p className="pr-p">
-          We trust it serves as a valuable foundation for your decision-making. The Gentry Lab team remains available to deepen this analysis, conduct site visits, and manage the full development advisory lifecycle on your behalf.
-        </p>
+        {REPORT_FOREWORD_PARAS.map((p, i) => <p key={i} className="pr-p">{p}</p>)}
 
         <div className="pr-foreword-sig">
           <strong>The Gentry Lab Advisory Team</strong><br />
@@ -2530,9 +2539,6 @@ function PrintReport({
         <thead className="pr-cpage-thead">
           <tr><td style={{ padding: 0 }}><PRHeader title={brief.title} refId={refId} dateStr={dateStr} /></td></tr>
         </thead>
-        <tfoot className="pr-cpage-tfoot">
-          <tr><td style={{ padding: 0 }}><PRFooter pageNum={9} refId={refId} year={year} /></td></tr>
-        </tfoot>
         <tbody className="pr-cpage-tbody">
           <tr><td style={{ padding: "14pt 20mm 10pt", verticalAlign: "top" }}>
             {/* Analysis section opener — side-by-side satellite map + category image */}
@@ -2556,6 +2562,9 @@ function PrintReport({
             {renderPrintMarkdown(output, catColor)}
           </td></tr>
         </tbody>
+        <tfoot className="pr-cpage-tfoot">
+          <tr><td style={{ padding: 0 }}><PRFooter pageNum={9} refId={refId} year={year} /></td></tr>
+        </tfoot>
       </table>
 
       {/* ══════════════════════════════════════════════
@@ -3223,6 +3232,62 @@ export default function AdvisorPage() {
     s1.addText(`REF #${refId}  ·  AI INDUSTRIAL ADVISOR  ·  CAMBODIA`, { x: 0.6, y: 7.15, w: 9, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial" });
     s1.addText("thegentrylab.io", { x: 10.5, y: 7.15, w: 2.5, h: 0.3, fontSize: 7, color: "BBBBBB", fontFace: "Arial", align: "right" });
 
+    // ── Slide 1b: Category colour splash (mirrors PDF page 2) ──
+    const s1b = pptx.addSlide();
+    const catColorHex = (cat.id === "INVEST" ? "ff5100" : cat.id === "DEVELOP" ? "10b981" : cat.id === "FINANCE" ? "3b82f6" : cat.id === "COMPLY" ? "f59e0b" : "8b5cf6");
+    s1b.background = { color: catColorHex };
+    s1b.addText("ADVISORY CATEGORY", { x: 0.6, y: 1.6, w: 10, h: 0.35, fontSize: 10, color: WHITE, bold: true, charSpacing: 4, fontFace: "Arial", transparency: 30 });
+    s1b.addText(cat.label, { x: 0.6, y: 2.0, w: 11, h: 1.4, fontSize: 48, color: WHITE, bold: true, fontFace: "Arial" });
+    s1b.addShape(pptx.ShapeType.rect, { x: 0.6, y: 3.45, w: 0.8, h: 0.04, fill: { color: WHITE } } as any);
+    s1b.addText(selectedBrief.title, { x: 0.6, y: 3.65, w: 10, h: 0.8, fontSize: 16, color: WHITE, fontFace: "Arial" });
+    s1b.addText(`THE GENTRY LAB  ·  ${dateStr}`, { x: 0.6, y: 6.9, w: 10, h: 0.3, fontSize: 9, color: WHITE, fontFace: "Arial", transparency: 40 });
+
+    // ── Slide 1c: Acknowledgements (mirrors PDF Section I) ──
+    const s1c = pptx.addSlide();
+    s1c.background = { color: WHITE };
+    s1c.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
+    s1c.addText("SECTION I", { x: 0.4, y: 0.2, w: 12, h: 0.3, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
+    s1c.addText("Acknowledgements", { x: 0.4, y: 0.5, w: 12, h: 0.5, fontSize: 22, color: DARK, bold: true, fontFace: "Arial" });
+    s1c.addText(
+      REPORT_ACKNOWLEDGEMENTS_PARAS.map((p, i) => ({ text: p, options: { fontSize: 11, color: GRAY, fontFace: "Arial", breakLine: true, paraSpaceAfter: 10 } })),
+      { x: 0.4, y: 1.2, w: 12.5, h: 5.6, valign: "top" },
+    );
+
+    // ── Slide 1d: Foreword (mirrors PDF Section II) ──
+    const s1d = pptx.addSlide();
+    s1d.background = { color: WHITE };
+    s1d.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
+    s1d.addText("SECTION II", { x: 0.4, y: 0.2, w: 12, h: 0.3, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
+    s1d.addText("Foreword", { x: 0.4, y: 0.5, w: 12, h: 0.5, fontSize: 22, color: DARK, bold: true, fontFace: "Arial" });
+    s1d.addText(
+      REPORT_FOREWORD_PARAS.map((p, i) => ({ text: p, options: { fontSize: 10.5, color: GRAY, fontFace: "Arial", breakLine: true, paraSpaceAfter: 8 } })),
+      { x: 0.4, y: 1.2, w: 12.5, h: 5.0, valign: "top" },
+    );
+    s1d.addText("THE GENTRY LAB ADVISORY TEAM", { x: 0.4, y: 6.55, w: 8, h: 0.25, fontSize: 9, color: DARK, bold: true, fontFace: "Arial" });
+    s1d.addText("AI Industrial Advisor Platform · Phnom Penh, Cambodia · advisory@thegentrylab.io", { x: 0.4, y: 6.8, w: 10, h: 0.25, fontSize: 8, color: LGRAY, fontFace: "Arial" });
+
+    // ── Slide 1e: Table of Contents + Acronyms (mirrors PDF Section III) ──
+    const s1e = pptx.addSlide();
+    s1e.background = { color: WHITE };
+    s1e.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
+    s1e.addText("CONTENTS", { x: 0.4, y: 0.2, w: 6, h: 0.3, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
+    s1e.addText("Table of Contents", { x: 0.4, y: 0.5, w: 6, h: 0.4, fontSize: 16, color: DARK, bold: true, fontFace: "Arial" });
+    const tocItemsPpt = [
+      "I. Acknowledgements", "II. Foreword", "III. Acronyms & Abbreviations",
+      "IV. Analysis Parameters", "V. Key Market Indicators & Charts",
+      "VI. Analysis & Findings", "VII. References & Data Sources", "VIII. Disclaimer",
+    ];
+    s1e.addText(
+      tocItemsPpt.map(t => ({ text: t, options: { fontSize: 11, color: DARK, fontFace: "Arial", breakLine: true, paraSpaceAfter: 6 } })),
+      { x: 0.4, y: 1.1, w: 5.8, h: 5.5, valign: "top" },
+    );
+    s1e.addText("SECTION III", { x: 6.8, y: 0.2, w: 6, h: 0.3, fontSize: 9, color: RED, bold: true, charSpacing: 3, fontFace: "Arial" });
+    s1e.addText("Acronyms", { x: 6.8, y: 0.5, w: 6, h: 0.4, fontSize: 16, color: DARK, bold: true, fontFace: "Arial" });
+    s1e.addText(
+      REPORT_ACRONYMS.map(a => ({ text: `${a.key}  —  ${a.val}`, options: { fontSize: 9, color: GRAY, fontFace: "Arial", breakLine: true, paraSpaceAfter: 3 } })),
+      { x: 6.8, y: 1.1, w: 6.1, h: 5.9, valign: "top" },
+    );
+
     // ── Slide 2: Analysis Parameters ─────────────────────
     const labelMap2: Record<string, string> = {};
     selectedBrief.fields.forEach(f => { labelMap2[f.id] = f.label; });
@@ -3374,6 +3439,19 @@ export default function AdvisorPage() {
       });
       sc.addText(textRuns, { x: 0.4, y: 0.55, w: 12.5, h: 6.8, valign: "top" });
     }
+
+    // ── References & Data Sources (mirrors PDF Section VIII) ──
+    const sRef = pptx.addSlide();
+    sRef.background = { color: WHITE };
+    sRef.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: "100%", h: 0.07, fill: { color: RED } } as any);
+    sRef.addText("REFERENCES & DATA SOURCES", { x: 0.4, y: 0.15, w: 12, h: 0.35, fontSize: 9, color: RED, bold: true, charSpacing: 4, fontFace: "Arial" });
+    const refCols = [REPORT_REFERENCES.slice(0, 8), REPORT_REFERENCES.slice(8)];
+    refCols.forEach((col, ci) => {
+      sRef.addText(
+        col.map(r => ({ text: `[${r.ref}]  ${r.src}`, options: { fontSize: 7.5, color: GRAY, fontFace: "Arial", breakLine: true, paraSpaceAfter: 7 } })),
+        { x: 0.4 + ci * 6.4, y: 0.65, w: 6.1, h: 6.6, valign: "top" },
+      );
+    });
 
     // ── Last slide: Disclaimer ────────────────────────────
     const sLast = pptx.addSlide();
