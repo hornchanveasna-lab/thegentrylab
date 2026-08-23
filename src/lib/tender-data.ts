@@ -418,6 +418,24 @@ export interface TenderRequirement {
   updated_at: string;
 }
 
+/** Runs the Requirements Extraction Agent over any processed documents that
+ *  haven't been extracted yet (server tracks this via
+ *  tender_documents.requirements_extracted_at) — safe to call repeatedly,
+ *  e.g. after uploading more documents to an already-extracted tender. */
+export async function generateRequirements(tenderId: string): Promise<{ documentsProcessed: number; requirementsExtracted: number; errors?: string[] }> {
+  const { data } = await db().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  const res = await fetch("/api/tender/generate-requirements", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ tenderId }),
+  });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body?.error ?? "Failed to generate requirements");
+  return body;
+}
+
 export function useTenderRequirements(tenderId: string | undefined) {
   return useQuery<TenderRequirement[]>({
     queryKey: ["tender_requirements", tenderId],

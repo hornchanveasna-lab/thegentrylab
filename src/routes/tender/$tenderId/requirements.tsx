@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthTender } from "@/lib/auth-tender";
-import { useTenderRequirements, useRequirementSources, REQUIREMENT_CATEGORIES, type TenderRequirement } from "@/lib/tender-data";
+import { useTenderRequirements, useRequirementSources, generateRequirements, REQUIREMENT_CATEGORIES, type TenderRequirement } from "@/lib/tender-data";
 import { TenderShell, Card, DataTable, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
 
 export const Route = createFileRoute("/tender/$tenderId/requirements")({
@@ -14,26 +15,51 @@ function TenderRequirements() {
   const { data: requirements = [], isLoading } = useTenderRequirements(tenderId);
   const [category, setCategory] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   if (!user) return <div className="min-h-screen bg-[#0a0a0b]" />;
 
   const filtered = category === "all" ? requirements : requirements.filter((r) => r.category === category);
 
+  async function handleExtract() {
+    setExtracting(true); setExtractError(null);
+    try {
+      await generateRequirements(tenderId);
+      await queryClient.invalidateQueries({ queryKey: ["tender_requirements", tenderId] });
+      await queryClient.invalidateQueries({ queryKey: ["tender_checklist", tenderId] });
+    } catch (err) {
+      setExtractError(err instanceof Error ? err.message : "Failed to extract requirements");
+    } finally {
+      setExtracting(false);
+    }
+  }
+
   return (
     <TenderShell tenderId={tenderId} title="Requirements"
       action={
-        <select value={category} onChange={(e) => setCategory(e.target.value)}
-          className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white">
-          <option value="all" className="bg-[#0a0a0b] text-white">All categories</option>
-          {REQUIREMENT_CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{humanize(c)}</option>)}
-        </select>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExtract} disabled={extracting}
+            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest disabled:opacity-40"
+            style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+            {extracting ? "Extracting…" : "Extract Requirements"}
+          </button>
+          <select value={category} onChange={(e) => setCategory(e.target.value)}
+            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white">
+            <option value="all" className="bg-[#0a0a0b] text-white">All categories</option>
+            {REQUIREMENT_CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{humanize(c)}</option>)}
+          </select>
+        </div>
       }
     >
+      {extractError && <p className="text-[12px] text-red-400 mb-4">{extractError}</p>}
       {isLoading ? (
         <LoadingSpinner />
       ) : filtered.length === 0 ? (
         <EmptyState title="No requirements extracted yet"
-          hint="Requirements are extracted automatically once uploaded documents finish processing." />
+          hint="Click Extract Requirements once your documents finish processing — it reads every processed document and pulls out discrete, citable requirements."
+          action={<button onClick={handleExtract} disabled={extracting} className="font-mono text-[11px] uppercase tracking-widest disabled:opacity-40" style={{ color: "#2563eb" }}>{extracting ? "Extracting…" : "Extract Requirements →"}</button>} />
       ) : (
         <Card>
           <DataTable<TenderRequirement>
