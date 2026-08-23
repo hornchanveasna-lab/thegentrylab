@@ -22,6 +22,8 @@ function TenderDocuments() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const dragDepth = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,6 +47,27 @@ function TenderDocuments() {
     } finally {
       setUploading(false);
     }
+  }
+
+  function onDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    if (!e.dataTransfer.types.includes("Files")) return;
+    dragDepth.current += 1;
+    setDragOver(true);
+  }
+  function onDragOver(e: React.DragEvent) {
+    e.preventDefault(); // required for onDrop to fire
+  }
+  function onDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragOver(false);
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
   }
 
   async function handleLinkImport(url: string) {
@@ -105,24 +128,39 @@ function TenderDocuments() {
         />
       )}
 
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : documents.length === 0 ? (
-        <EmptyState title="No documents uploaded yet"
-          hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. ZIP archives aren't auto-expanded yet; use “Upload Folder” to preserve structure." />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {Array.from(groups.entries()).map(([folder, docs]) => (
-            <Card key={folder} title={folder}>
-              <div className="flex flex-col divide-y divide-white/6">
-                {docs.map((doc) => (
-                  <DocumentRow key={doc.id} doc={doc} tenderId={tenderId} onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })} />
-                ))}
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+      <div
+        onDragEnter={onDragEnter}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className="relative rounded-2xl transition-colors"
+      >
+        {dragOver && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed pointer-events-none"
+            style={{ borderColor: "#2563eb", backgroundColor: "color-mix(in srgb, #2563eb 8%, transparent)" }}>
+            <p className="text-[13px] font-bold" style={{ color: "#2563eb" }}>Drop files to upload</p>
+          </div>
+        )}
+
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : documents.length === 0 ? (
+          <EmptyState title="No documents uploaded yet"
+            hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP archives aren't auto-expanded yet; use “Upload Folder” to preserve structure." />
+        ) : (
+          <div className="flex flex-col gap-4">
+            {Array.from(groups.entries()).map(([folder, docs]) => (
+              <Card key={folder} title={folder}>
+                <div className="flex flex-col divide-y divide-white/6">
+                  {docs.map((doc) => (
+                    <DocumentRow key={doc.id} doc={doc} tenderId={tenderId} onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })} />
+                  ))}
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </TenderShell>
   );
 }
