@@ -80,4 +80,16 @@ export async function downloadStorageObject(env: TenderEnv, bucket: string, path
   return Buffer.from(await res.arrayBuffer());
 }
 
+export async function uploadStorageObject(env: TenderEnv, bucket: string, path: string, bytes: Buffer, contentType: string): Promise<void> {
+  const res = await fetch(`${env.supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
+    method: "POST",
+    headers: {
+      apikey: env.serviceKey, Authorization: `Bearer ${env.serviceKey}`,
+      "Content-Type": contentType || "application/octet-stream",
+    },
+    body: new Uint8Array(bytes),
+  });
+  if (!res.ok) throw new Error(`Storage upload failed (${res.status}): ${await res.text()}`);
+}
+
 export { sbGet };

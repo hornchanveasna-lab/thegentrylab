@@ -4,7 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthTender } from "@/lib/auth-tender";
 import {
   useCurrentOrg, useTenderDocuments, uploadTenderDocument, deleteTenderDocument,
-  updateTenderDocumentCategory, processTenderDocument, TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
+  updateTenderDocumentCategory, processTenderDocument, importTenderDocumentFromLink,
+  TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
 } from "@/lib/tender-data";
 import { TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
 
@@ -20,6 +21,7 @@ function TenderDocuments() {
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +42,20 @@ function TenderDocuments() {
       await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleLinkImport(url: string) {
+    if (!url.trim() || !orgId) return;
+    setUploading(true); setUploadError(null);
+    try {
+      await importTenderDocumentFromLink(tenderId, url.trim());
+      await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
+      setLinkModalOpen(false);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Import failed");
     } finally {
       setUploading(false);
     }
@@ -72,10 +88,22 @@ function TenderDocuments() {
             style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
             {uploading ? "Uploading…" : "Upload Folder"}
           </button>
+          <button onClick={() => setLinkModalOpen(true)} disabled={uploading}
+            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-white/5 hover:bg-white/10 disabled:opacity-40 transition-colors">
+            Add by Link
+          </button>
         </div>
       }
     >
       {uploadError && <p className="text-[12px] text-red-400 mb-4">{uploadError}</p>}
+
+      {linkModalOpen && (
+        <LinkImportModal
+          uploading={uploading}
+          onCancel={() => { setLinkModalOpen(false); setUploadError(null); }}
+          onSubmit={handleLinkImport}
+        />
+      )}
 
       {isLoading ? (
         <LoadingSpinner />
@@ -96,6 +124,42 @@ function TenderDocuments() {
         </div>
       )}
     </TenderShell>
+  );
+}
+
+function LinkImportModal({ uploading, onCancel, onSubmit }: {
+  uploading: boolean; onCancel: () => void; onSubmit: (url: string) => void;
+}) {
+  const [url, setUrl] = useState("");
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onCancel}>
+      <div className="w-full max-w-md rounded-2xl bg-[#0d0d10] border border-white/10 p-5" onClick={(e) => e.stopPropagation()}>
+        <p className="text-[14px] font-bold mb-1">Add document by link</p>
+        <p className="text-[11px] text-white/40 mb-4">
+          Paste a Google Drive or OneDrive/SharePoint share link. Make sure it's set to "Anyone with the link can view" — this only works for a single file, not a folder.
+        </p>
+        <input
+          autoFocus
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && url.trim() && !uploading) onSubmit(url); }}
+          placeholder="https://drive.google.com/file/d/..."
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-[12px] mb-4 outline-none focus:border-white/25"
+        />
+        <div className="flex items-center justify-end gap-2">
+          <button onClick={onCancel} disabled={uploading}
+            className="px-3.5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest text-white/50 hover:text-white transition-colors disabled:opacity-40">
+            Cancel
+          </button>
+          <button onClick={() => onSubmit(url)} disabled={uploading || !url.trim()}
+            className="px-3.5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest disabled:opacity-40"
+            style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+            {uploading ? "Importing…" : "Import"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
