@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { DockWorkspaceProvider, useDockWorkspace } from "@/components/tender/DockWorkspace";
 import { QuickDocumentsPanel } from "@/components/tender/QuickDocumentsPanel";
 import { ThemeToggleButton } from "@/components/tender/TenderTheme";
@@ -199,6 +199,65 @@ export function KpiTile({ icon, value, label, color = "#2563eb" }: {
       </div>
       <p className="text-xl font-extrabold font-mono leading-none">{value}</p>
       <p className="font-mono text-[8px] uppercase tracking-widest text-white/35 leading-tight">{label}</p>
+    </div>
+  );
+}
+
+/** Column-based dense table — the one list pattern every tender data page
+ *  (Requirements, Checklist, Gaps, Clarifications, Compliance, Risks) should
+ *  share once real data volume shows up, instead of each page inventing its
+ *  own flex-row or ad-hoc <table>. Matches Risks/Compliance's existing table
+ *  styling (font-mono uppercase headers, divide-y rows) so adopting it
+ *  elsewhere doesn't introduce a second visual language. */
+export interface DataTableColumn<T> {
+  header: string;
+  width?: string;
+  render: (row: T) => ReactNode;
+}
+
+export function DataTable<T>({ columns, rows, keyFn, onRowClick, expandedKey, renderExpanded }: {
+  columns: DataTableColumn<T>[];
+  rows: T[];
+  keyFn: (row: T) => string;
+  onRowClick?: (row: T) => void;
+  expandedKey?: string | null;
+  renderExpanded?: (row: T) => ReactNode;
+}) {
+  return (
+    <div className="overflow-x-auto -mx-5 -mt-1">
+      <table className="w-full text-[12px] border-collapse">
+        <thead>
+          <tr className="text-left border-b border-white/8">
+            {columns.map((c, i) => (
+              <th key={i} className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pl-5 pr-3 first:pl-5" style={c.width ? { width: c.width } : undefined}>
+                {c.header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-white/6">
+          {rows.map((row) => {
+            const key = keyFn(row);
+            return (
+              <Fragment key={key}>
+                <tr
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  className={onRowClick ? "cursor-pointer hover:bg-white/[0.02] transition-colors" : undefined}
+                >
+                  {columns.map((c, i) => (
+                    <td key={i} className="py-2.5 pl-5 pr-3 first:pl-5 align-top">{c.render(row)}</td>
+                  ))}
+                </tr>
+                {expandedKey === key && renderExpanded && (
+                  <tr>
+                    <td colSpan={columns.length} className="pb-3 pl-5 pr-3 bg-white/[0.015]">{renderExpanded(row)}</td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
