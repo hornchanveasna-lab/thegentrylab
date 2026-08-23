@@ -197,6 +197,7 @@ function TenderDocuments() {
   const { data: documents = [], isLoading } = useTenderDocuments(tenderId);
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
+  const [linkImporting, setLinkImporting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -204,41 +205,61 @@ function TenderDocuments() {
   const dragDepth = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  // Files picked while a batch is already uploading are appended to this
+  // queue (and folded into the same progress bar's totals) instead of
+  // starting a second overlapping upload loop that would reset the bar.
+  const uploadQueueRef = useRef<{ file: File; relativePath: string }[]>([]);
+  const processingRef = useRef(false);
+  const doneFilesRef = useRef(0);
+  const doneBytesRef = useRef(0);
 
   if (!user || !orgId) return <div className="min-h-screen bg-[#0a0a0b]" />;
 
-  async function handleFiles(fileList: FileList | null) {
-    if (!fileList || !fileList.length || !orgId) return;
-    setUploading(true); setUploadError(null);
-    const files = Array.from(fileList);
-    const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
-    let bytesDone = 0;
-    const startedAt = Date.now();
-    setUploadProgress({ filesDone: 0, filesTotal: files.length, bytesDone: 0, bytesTotal: totalBytes, startedAt });
+  async function processUploadQueue() {
+    if (!orgId) return;
+    processingRef.current = true;
+    setUploading(true);
     try {
-      let filesDone = 0;
-      let priorFilesBytes = 0;
-      for (const file of files) {
-        // webkitRelativePath is set for folder-picker uploads and preserves
-        // the original tender-package folder structure (e.g. "01 Instructions
-        // to Tenderers/ITT.pdf"); plain file picks fall back to just the name.
-        const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
-        const basisBytes = priorFilesBytes;
-        await uploadTenderDocument(orgId, tenderId, file, relativePath, (loaded) => {
+      while (uploadQueueRef.current.length > 0) {
+        const item = uploadQueueRef.current.shift()!;
+        const basisBytes = doneBytesRef.current;
+        await uploadTenderDocument(orgId, tenderId, item.file, item.relativePath, (loaded) => {
           setUploadProgress((prev) => prev ? { ...prev, bytesDone: basisBytes + loaded } : prev);
         });
-        filesDone += 1;
-        priorFilesBytes += file.size;
-        bytesDone = priorFilesBytes;
+        doneFilesRef.current += 1;
+        doneBytesRef.current += item.file.size;
+        const filesDone = doneFilesRef.current;
+        const bytesDone = doneBytesRef.current;
         setUploadProgress((prev) => prev ? { ...prev, filesDone, bytesDone } : prev);
+        await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
       }
-      await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
+      processingRef.current = false;
       setUploading(false);
       setUploadProgress(null);
+      doneFilesRef.current = 0;
+      doneBytesRef.current = 0;
     }
+  }
+
+  function handleFiles(fileList: FileList | null) {
+    if (!fileList || !fileList.length || !orgId) return;
+    setUploadError(null);
+    // webkitRelativePath is set for folder-picker uploads and preserves the
+    // original tender-package folder structure (e.g. "01 Instructions to
+    // Tenderers/ITT.pdf"); plain file picks fall back to just the name.
+    const items = Array.from(fileList).map((file) => ({
+      file,
+      relativePath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
+    }));
+    const addedBytes = items.reduce((sum, i) => sum + i.file.size, 0);
+    uploadQueueRef.current.push(...items);
+    setUploadProgress((prev) => prev
+      ? { ...prev, filesTotal: prev.filesTotal + items.length, bytesTotal: prev.bytesTotal + addedBytes }
+      : { filesDone: 0, filesTotal: items.length, bytesDone: 0, bytesTotal: addedBytes, startedAt: Date.now() });
+    if (!processingRef.current) processUploadQueue();
   }
 
   function onDragEnter(e: React.DragEvent) {
@@ -264,7 +285,7 @@ function TenderDocuments() {
 
   async function handleLinkImport(url: string) {
     if (!url.trim() || !orgId) return;
-    setUploading(true); setUploadError(null);
+    setLinkImporting(true); setUploadError(null);
     try {
       await importTenderDocumentFromLink(tenderId, url.trim());
       await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
@@ -272,7 +293,7 @@ function TenderDocuments() {
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Import failed");
     } finally {
-      setUploading(false);
+      setLinkImporting(false);
     }
   }
 
@@ -287,16 +308,16 @@ function TenderDocuments() {
           <input ref={folderInputRef} type="file" multiple className="hidden"
             {...{ webkitdirectory: "true", directory: "true" } as Record<string, string>}
             onChange={(e) => handleFiles(e.target.files)} />
-          <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-white/5 hover:bg-white/10 disabled:opacity-40 transition-colors">
+          <button onClick={() => fileInputRef.current?.click()}
+            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-white/5 hover:bg-white/10 transition-colors">
             Upload Files
           </button>
-          <button onClick={() => folderInputRef.current?.click()} disabled={uploading}
-            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest disabled:opacity-40"
+          <button onClick={() => folderInputRef.current?.click()}
+            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest"
             style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
-            {uploading ? "Uploading…" : "Upload Folder"}
+            {uploading ? "Add more…" : "Upload Folder"}
           </button>
-          <button onClick={() => setLinkModalOpen(true)} disabled={uploading}
+          <button onClick={() => setLinkModalOpen(true)} disabled={linkImporting}
             className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-white/5 hover:bg-white/10 disabled:opacity-40 transition-colors">
             Add by Link
           </button>
@@ -309,7 +330,7 @@ function TenderDocuments() {
 
       {linkModalOpen && (
         <LinkImportModal
-          uploading={uploading}
+          uploading={linkImporting}
           onCancel={() => { setLinkModalOpen(false); setUploadError(null); }}
           onSubmit={handleLinkImport}
         />
