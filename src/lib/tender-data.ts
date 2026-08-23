@@ -273,22 +273,23 @@ export async function uploadTenderDocument(orgId: string, tenderId: string, file
 }
 
 /** Imports a document from a share link (Google Drive, OneDrive/SharePoint, or any
- *  direct-download URL) instead of a local file — the server fetches the bytes itself,
- *  since a browser fetch to those hosts would be blocked by CORS. */
+ *  direct-download URL) instead of a local file. Handled by the same endpoint as
+ *  processTenderDocument (not its own function) to stay under Vercel's Hobby-plan
+ *  serverless-function-count cap — passing {tenderId, url} instead of {documentId}
+ *  tells it to fetch+store the file first, then run the same extraction/
+ *  classification pipeline before returning. */
 export async function importTenderDocumentFromLink(tenderId: string, url: string): Promise<TenderDocument> {
   const { data } = await db().auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Not signed in");
-  const res = await fetch("/api/tender/import-from-link", {
+  const res = await fetch("/api/tender/process-document", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
     body: JSON.stringify({ tenderId, url }),
   });
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? "Failed to import from link");
-  const doc = body.document as TenderDocument;
-  void processTenderDocument(doc.id); // fire-and-forget — UI polls tender_documents.status
-  return doc;
+  return body.document as TenderDocument;
 }
 
 /** Kicks off server-side extraction + classification for one document. Errors surface via the

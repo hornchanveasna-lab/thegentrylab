@@ -10,7 +10,80 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { extractByFileType, chunkSections } from "./lib/extract.js";
 import { callClaude, type ClaudeToolSchema } from "./lib/ai.js";
-import { getTenderEnv, getAuthedUserId, authorizeTenderAccess, sbGet, sbPatch, sbPost, downloadStorageObject } from "./lib/auth.js";
+import {
+  getTenderEnv, getAuthedUserId, authorizeTenderAccess, sbGet, sbPatch, sbPost,
+  downloadStorageObject, uploadStorageObject, type TenderEnv,
+} from "./lib/auth.js";
+
+/** Rewrite known share-link hosts (Google Drive, OneDrive/SharePoint) to their
+ *  direct-download URL. Anything else is used as-is. Folded into this endpoint
+ *  (rather than its own api/tender/import-from-link.ts) to stay under Vercel's
+ *  Hobby-plan 12-serverless-functions-per-deployment cap. */
+function toDirectDownloadUrl(rawUrl: string): string {
+  let url: URL;
+  try { url = new URL(rawUrl); } catch { return rawUrl; }
+
+  if (url.hostname === "drive.google.com") {
+    const match = url.pathname.match(/\/file\/d\/([^/]+)/);
+    const id = match?.[1] ?? url.searchParams.get("id");
+    if (id) return `https://drive.google.com/uc?export=download&id=${id}`;
+  }
+  if (url.hostname === "onedrive.live.com" || url.hostname === "1drv.ms") {
+    if (!url.searchParams.has("download")) url.searchParams.set("download", "1");
+    return url.toString();
+  }
+  if (url.hostname.endsWith(".sharepoint.com")) {
+    if (!url.searchParams.has("download")) url.searchParams.set("download", "1");
+    return url.toString();
+  }
+  return rawUrl;
+}
+
+function fileNameFromResponse(res: Response, fallbackUrl: string, providedName?: string): string {
+  if (providedName?.trim()) return providedName.trim();
+  const disposition = res.headers.get("content-disposition");
+  const match = disposition?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+  if (match?.[1]) {
+    try { return decodeURIComponent(match[1]); } catch { return match[1]; }
+  }
+  try {
+    const last = new URL(fallbackUrl).pathname.split("/").filter(Boolean).pop();
+    if (last) return decodeURIComponent(last);
+  } catch { /* fall through */ }
+  return "document";
+}
+
+/** Fetches a share link server-side (avoids the CORS block a browser fetch
+ *  would hit on Drive/OneDrive), stores it in the same "tender-documents"
+ *  bucket a normal upload uses, and inserts the same tender_documents row
+ *  shape — so it feeds into the same processing code below either way. */
+async function importFromLink(env: TenderEnv, orgId: string, tenderId: string, userId: string, linkUrl: string, relativePath: string | undefined): Promise<TenderDocumentRow> {
+  const fetched = await fetch(toDirectDownloadUrl(linkUrl), { redirect: "follow" });
+  if (!fetched.ok) {
+    throw new Error(`The link returned an error (${fetched.status}). Make sure it's set to "Anyone with the link can view".`);
+  }
+  const contentType = fetched.headers.get("content-type") ?? "application/octet-stream";
+  const fileName = fileNameFromResponse(fetched, linkUrl, relativePath?.split("/").pop());
+  const bytes = Buffer.from(await fetched.arrayBuffer());
+
+  if (contentType.includes("text/html") && !fileName.toLowerCase().endsWith(".html")) {
+    throw new Error("That link didn't return a downloadable file — it may require sign-in, be a folder link, or be a large Google Drive file needing a virus-scan confirmation. Share a direct single-file link with \"Anyone with the link can view\" access.");
+  }
+
+  const storagePath = `${orgId}/${tenderId}/${crypto.randomUUID()}-${fileName}`;
+  await uploadStorageObject(env, "tender-documents", storagePath, bytes, contentType);
+
+  const [doc] = await sbPost<TenderDocumentRow[]>(env, "tender_documents", {
+    tender_id: tenderId,
+    storage_path: storagePath,
+    relative_path: relativePath ?? fileName,
+    file_name: fileName,
+    file_type: (fileName.split(".").pop() ?? "other").toLowerCase(),
+    file_size_bytes: bytes.length,
+    uploaded_by: userId,
+  });
+  return doc;
+}
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -67,26 +140,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!userId) return res.status(401).json({ error: "Not authenticated" });
 
   const documentId = typeof req.body?.documentId === "string" ? req.body.documentId : "";
-  if (!documentId) return res.status(400).json({ error: "Missing documentId" });
-
-  let doc: TenderDocumentRow;
-  try {
-    const rows = await sbGet<TenderDocumentRow>(
-      env,
-      `tender_documents?id=eq.${documentId}&select=id,tender_id,storage_path,file_name,file_type,doc_category_source`,
-    );
-    if (!rows[0]) return res.status(404).json({ error: "Document not found" });
-    doc = rows[0];
-  } catch (err) {
-    return res.status(500).json({ error: "Failed to load document", detail: err instanceof Error ? err.message : String(err) });
+  const linkUrl = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+  const linkTenderId = typeof req.body?.tenderId === "string" ? req.body.tenderId : "";
+  const linkRelativePath = typeof req.body?.relativePath === "string" && req.body.relativePath.trim()
+    ? req.body.relativePath.trim() : undefined;
+  if (!documentId && !(linkUrl && linkTenderId)) {
+    return res.status(400).json({ error: "Missing documentId, or tenderId + url" });
   }
 
-  const orgId = await authorizeTenderAccess(env, doc.tender_id, userId).catch(() => null);
-  if (!orgId) return res.status(403).json({ error: "Not authorized for this tender" });
+  let doc: TenderDocumentRow;
+  let orgId: string | null;
+  if (documentId) {
+    try {
+      const rows = await sbGet<TenderDocumentRow>(
+        env,
+        `tender_documents?id=eq.${documentId}&select=id,tender_id,storage_path,file_name,file_type,doc_category_source`,
+      );
+      if (!rows[0]) return res.status(404).json({ error: "Document not found" });
+      doc = rows[0];
+    } catch (err) {
+      return res.status(500).json({ error: "Failed to load document", detail: err instanceof Error ? err.message : String(err) });
+    }
+    orgId = await authorizeTenderAccess(env, doc.tender_id, userId).catch(() => null);
+    if (!orgId) return res.status(403).json({ error: "Not authorized for this tender" });
+  } else {
+    orgId = await authorizeTenderAccess(env, linkTenderId, userId).catch(() => null);
+    if (!orgId) return res.status(403).json({ error: "Not authorized for this tender" });
+    try {
+      doc = await importFromLink(env, orgId, linkTenderId, userId, linkUrl, linkRelativePath);
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Failed to import from link" });
+    }
+  }
 
+  const resolvedDocumentId = doc.id;
   const startedAt = new Date().toISOString();
   const fail = async (message: string) => {
-    await sbPatch(env, `tender_documents?id=eq.${documentId}`, { status: "failed", processing_error: message }).catch(() => {});
+    await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, { status: "failed", processing_error: message }).catch(() => {});
     await sbPost(env, "ai_jobs", {
       tender_id: doc.tender_id, agent: "document_classifier", status: "failed",
       input_summary: { file_name: doc.file_name }, error: message, started_at: startedAt, finished_at: new Date().toISOString(),
@@ -95,20 +185,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   };
 
   try {
-    await sbPatch(env, `tender_documents?id=eq.${documentId}`, { status: "processing", processing_error: null });
+    await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, { status: "processing", processing_error: null });
 
     const fileBytes = await downloadStorageObject(env, "tender-documents", doc.storage_path);
     const sections = await extractByFileType(doc.file_type, fileBytes);
 
     if (!sections) {
       // Unsupported type (image, CAD, zip, etc.) — stored, not OCR'd, in Phase 1.
-      await sbPatch(env, `tender_documents?id=eq.${documentId}`, { status: "processed", processing_error: null });
+      await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, { status: "processed", processing_error: null });
       await sbPost(env, "ai_jobs", {
         tender_id: doc.tender_id, agent: "document_classifier", status: "succeeded",
         input_summary: { file_name: doc.file_name }, output_summary: { chunks: 0, note: "unsupported file type — no text extraction in Phase 1" },
         started_at: startedAt, finished_at: new Date().toISOString(),
       }).catch(() => {});
-      return res.status(200).json({ ok: true, chunks: 0, note: "unsupported file type" });
+      return res.status(200).json({ ok: true, document: doc, chunks: 0, note: "unsupported file type" });
     }
 
     let chunks = chunkSections(sections);
@@ -117,7 +207,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (chunks.length > 0) {
       await sbPost(env, "tender_document_chunks", chunks.map((c) => ({
-        document_id: documentId,
+        document_id: resolvedDocumentId,
         tender_id: doc.tender_id,
         chunk_index: c.chunkIndex,
         content: c.content,
@@ -144,7 +234,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (doc.doc_category_source !== "user") classifyUpdate.doc_category = input.doc_category;
     }
 
-    await sbPatch(env, `tender_documents?id=eq.${documentId}`, {
+    await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, {
       status: "processed", processing_error: truncated ? `Only the first ${MAX_CHUNKS} chunks were indexed (document is unusually large).` : null,
       ...classifyUpdate,
     });
@@ -157,11 +247,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await sbPost(env, "tender_activity_log", {
       tender_id: doc.tender_id, user_id: userId, action: "ai_generate",
-      entity_type: "tender_documents", entity_id: documentId,
+      entity_type: "tender_documents", entity_id: resolvedDocumentId,
       detail: { stage: "process_document", chunks: chunks.length, ...classifyUpdate },
     }).catch(() => {});
 
-    return res.status(200).json({ ok: true, chunks: chunks.length, ...classifyUpdate });
+    return res.status(200).json({ ok: true, document: { ...doc, ...classifyUpdate }, chunks: chunks.length, ...classifyUpdate });
   } catch (err) {
     return fail(err instanceof Error ? err.message : String(err));
   }
