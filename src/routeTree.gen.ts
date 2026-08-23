@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrackerRouteImport } from './routes/tracker'
+import { Route as TenderRouteImport } from './routes/tender'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -24,9 +25,12 @@ import { Route as CmRouteImport } from './routes/cm'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TenderIndexRouteImport } from './routes/tender/index'
 import { Route as ResearchIndexRouteImport } from './routes/research.index'
 import { Route as CmIndexRouteImport } from './routes/cm/index'
 import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
+import { Route as TenderNewRouteImport } from './routes/tender/new'
+import { Route as TenderListRouteImport } from './routes/tender/list'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
 import { Route as CmSyncStatusRouteImport } from './routes/cm/sync-status'
@@ -54,7 +58,16 @@ import { Route as CmProjectIdRouteImport } from './routes/cm/$projectId'
 import { Route as AuthStartRouteImport } from './routes/auth/start'
 import { Route as AuthCallbackRouteImport } from './routes/auth/callback'
 import { Route as AdminStagesRouteImport } from './routes/admin.stages'
+import { Route as TenderTenderIdIndexRouteImport } from './routes/tender/$tenderId/index'
 import { Route as CmProjectsIndexRouteImport } from './routes/cm/projects/index'
+import { Route as TenderAuthCallbackRouteImport } from './routes/tender/auth/callback'
+import { Route as TenderTenderIdRisksRouteImport } from './routes/tender/$tenderId/risks'
+import { Route as TenderTenderIdRequirementsRouteImport } from './routes/tender/$tenderId/requirements'
+import { Route as TenderTenderIdGapsRouteImport } from './routes/tender/$tenderId/gaps'
+import { Route as TenderTenderIdDocumentsRouteImport } from './routes/tender/$tenderId/documents'
+import { Route as TenderTenderIdComplianceRouteImport } from './routes/tender/$tenderId/compliance'
+import { Route as TenderTenderIdClarificationsRouteImport } from './routes/tender/$tenderId/clarifications'
+import { Route as TenderTenderIdChecklistRouteImport } from './routes/tender/$tenderId/checklist'
 import { Route as CmSubmittalSettingsRouteImport } from './routes/cm/submittal_.settings'
 import { Route as CmSubmittalNewRouteImport } from './routes/cm/submittal_.new'
 import { Route as CmSubmittalIdRouteImport } from './routes/cm/submittal_.$id'
@@ -102,6 +115,11 @@ import { Route as CmBoqIdEditRouteImport } from './routes/cm/boq_.$id.edit'
 const TrackerRoute = TrackerRouteImport.update({
   id: '/tracker',
   path: '/tracker',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TenderRoute = TenderRouteImport.update({
+  id: '/tender',
+  path: '/tender',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -174,6 +192,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TenderIndexRoute = TenderIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => TenderRoute,
+} as any)
 const ResearchIndexRoute = ResearchIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -188,6 +211,16 @@ const ToolsAdvisorRoute = ToolsAdvisorRouteImport.update({
   id: '/tools/advisor',
   path: '/tools/advisor',
   getParentRoute: () => rootRouteImport,
+} as any)
+const TenderNewRoute = TenderNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => TenderRoute,
+} as any)
+const TenderListRoute = TenderListRouteImport.update({
+  id: '/list',
+  path: '/list',
+  getParentRoute: () => TenderRoute,
 } as any)
 const ResearchSezLandscape2026Route =
   ResearchSezLandscape2026RouteImport.update({
@@ -325,10 +358,58 @@ const AdminStagesRoute = AdminStagesRouteImport.update({
   path: '/stages',
   getParentRoute: () => AdminRoute,
 } as any)
+const TenderTenderIdIndexRoute = TenderTenderIdIndexRouteImport.update({
+  id: '/$tenderId/',
+  path: '/$tenderId/',
+  getParentRoute: () => TenderRoute,
+} as any)
 const CmProjectsIndexRoute = CmProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
   getParentRoute: () => CmRoute,
+} as any)
+const TenderAuthCallbackRoute = TenderAuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => TenderRoute,
+} as any)
+const TenderTenderIdRisksRoute = TenderTenderIdRisksRouteImport.update({
+  id: '/$tenderId/risks',
+  path: '/$tenderId/risks',
+  getParentRoute: () => TenderRoute,
+} as any)
+const TenderTenderIdRequirementsRoute =
+  TenderTenderIdRequirementsRouteImport.update({
+    id: '/$tenderId/requirements',
+    path: '/$tenderId/requirements',
+    getParentRoute: () => TenderRoute,
+  } as any)
+const TenderTenderIdGapsRoute = TenderTenderIdGapsRouteImport.update({
+  id: '/$tenderId/gaps',
+  path: '/$tenderId/gaps',
+  getParentRoute: () => TenderRoute,
+} as any)
+const TenderTenderIdDocumentsRoute = TenderTenderIdDocumentsRouteImport.update({
+  id: '/$tenderId/documents',
+  path: '/$tenderId/documents',
+  getParentRoute: () => TenderRoute,
+} as any)
+const TenderTenderIdComplianceRoute =
+  TenderTenderIdComplianceRouteImport.update({
+    id: '/$tenderId/compliance',
+    path: '/$tenderId/compliance',
+    getParentRoute: () => TenderRoute,
+  } as any)
+const TenderTenderIdClarificationsRoute =
+  TenderTenderIdClarificationsRouteImport.update({
+    id: '/$tenderId/clarifications',
+    path: '/$tenderId/clarifications',
+    getParentRoute: () => TenderRoute,
+  } as any)
+const TenderTenderIdChecklistRoute = TenderTenderIdChecklistRouteImport.update({
+  id: '/$tenderId/checklist',
+  path: '/$tenderId/checklist',
+  getParentRoute: () => TenderRoute,
 } as any)
 const CmSubmittalSettingsRoute = CmSubmittalSettingsRouteImport.update({
   id: '/submittal_/settings',
@@ -561,6 +642,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/research': typeof ResearchRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/tender': typeof TenderRouteWithChildren
   '/tracker': typeof TrackerRoute
   '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -589,9 +671,12 @@ export interface FileRoutesByFullPath {
   '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
+  '/tender/list': typeof TenderListRoute
+  '/tender/new': typeof TenderNewRoute
   '/tools/advisor': typeof ToolsAdvisorRoute
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
+  '/tender/': typeof TenderIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
   '/cm/boq/new': typeof CmBoqNewRoute
   '/cm/boq/settings': typeof CmBoqSettingsRoute
@@ -625,7 +710,16 @@ export interface FileRoutesByFullPath {
   '/cm/submittal/$id': typeof CmSubmittalIdRouteWithChildren
   '/cm/submittal/new': typeof CmSubmittalNewRoute
   '/cm/submittal/settings': typeof CmSubmittalSettingsRoute
+  '/tender/$tenderId/checklist': typeof TenderTenderIdChecklistRoute
+  '/tender/$tenderId/clarifications': typeof TenderTenderIdClarificationsRoute
+  '/tender/$tenderId/compliance': typeof TenderTenderIdComplianceRoute
+  '/tender/$tenderId/documents': typeof TenderTenderIdDocumentsRoute
+  '/tender/$tenderId/gaps': typeof TenderTenderIdGapsRoute
+  '/tender/$tenderId/requirements': typeof TenderTenderIdRequirementsRoute
+  '/tender/$tenderId/risks': typeof TenderTenderIdRisksRoute
+  '/tender/auth/callback': typeof TenderAuthCallbackRoute
   '/cm/projects/': typeof CmProjectsIndexRoute
+  '/tender/$tenderId/': typeof TenderTenderIdIndexRoute
   '/cm/boq/$id/edit': typeof CmBoqIdEditRoute
   '/cm/contracts/$id/edit': typeof CmContractsIdEditRoute
   '/cm/equipment/$id/edit': typeof CmEquipmentIdEditRoute
@@ -678,9 +772,12 @@ export interface FileRoutesByTo {
   '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
+  '/tender/list': typeof TenderListRoute
+  '/tender/new': typeof TenderNewRoute
   '/tools/advisor': typeof ToolsAdvisorRoute
   '/cm': typeof CmIndexRoute
   '/research': typeof ResearchIndexRoute
+  '/tender': typeof TenderIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
   '/cm/boq/new': typeof CmBoqNewRoute
   '/cm/boq/settings': typeof CmBoqSettingsRoute
@@ -714,7 +811,16 @@ export interface FileRoutesByTo {
   '/cm/submittal/$id': typeof CmSubmittalIdRouteWithChildren
   '/cm/submittal/new': typeof CmSubmittalNewRoute
   '/cm/submittal/settings': typeof CmSubmittalSettingsRoute
+  '/tender/$tenderId/checklist': typeof TenderTenderIdChecklistRoute
+  '/tender/$tenderId/clarifications': typeof TenderTenderIdClarificationsRoute
+  '/tender/$tenderId/compliance': typeof TenderTenderIdComplianceRoute
+  '/tender/$tenderId/documents': typeof TenderTenderIdDocumentsRoute
+  '/tender/$tenderId/gaps': typeof TenderTenderIdGapsRoute
+  '/tender/$tenderId/requirements': typeof TenderTenderIdRequirementsRoute
+  '/tender/$tenderId/risks': typeof TenderTenderIdRisksRoute
+  '/tender/auth/callback': typeof TenderAuthCallbackRoute
   '/cm/projects': typeof CmProjectsIndexRoute
+  '/tender/$tenderId': typeof TenderTenderIdIndexRoute
   '/cm/boq/$id/edit': typeof CmBoqIdEditRoute
   '/cm/contracts/$id/edit': typeof CmContractsIdEditRoute
   '/cm/equipment/$id/edit': typeof CmEquipmentIdEditRoute
@@ -742,6 +848,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/research': typeof ResearchRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/tender': typeof TenderRouteWithChildren
   '/tracker': typeof TrackerRoute
   '/admin/stages': typeof AdminStagesRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -770,9 +877,12 @@ export interface FileRoutesById {
   '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
+  '/tender/list': typeof TenderListRoute
+  '/tender/new': typeof TenderNewRoute
   '/tools/advisor': typeof ToolsAdvisorRoute
   '/cm/': typeof CmIndexRoute
   '/research/': typeof ResearchIndexRoute
+  '/tender/': typeof TenderIndexRoute
   '/cm/auth/callback': typeof CmAuthCallbackRoute
   '/cm/boq_/new': typeof CmBoqNewRoute
   '/cm/boq_/settings': typeof CmBoqSettingsRoute
@@ -806,7 +916,16 @@ export interface FileRoutesById {
   '/cm/submittal_/$id': typeof CmSubmittalIdRouteWithChildren
   '/cm/submittal_/new': typeof CmSubmittalNewRoute
   '/cm/submittal_/settings': typeof CmSubmittalSettingsRoute
+  '/tender/$tenderId/checklist': typeof TenderTenderIdChecklistRoute
+  '/tender/$tenderId/clarifications': typeof TenderTenderIdClarificationsRoute
+  '/tender/$tenderId/compliance': typeof TenderTenderIdComplianceRoute
+  '/tender/$tenderId/documents': typeof TenderTenderIdDocumentsRoute
+  '/tender/$tenderId/gaps': typeof TenderTenderIdGapsRoute
+  '/tender/$tenderId/requirements': typeof TenderTenderIdRequirementsRoute
+  '/tender/$tenderId/risks': typeof TenderTenderIdRisksRoute
+  '/tender/auth/callback': typeof TenderAuthCallbackRoute
   '/cm/projects/': typeof CmProjectsIndexRoute
+  '/tender/$tenderId/': typeof TenderTenderIdIndexRoute
   '/cm/boq_/$id/edit': typeof CmBoqIdEditRoute
   '/cm/contracts_/$id/edit': typeof CmContractsIdEditRoute
   '/cm/equipment_/$id/edit': typeof CmEquipmentIdEditRoute
@@ -835,6 +954,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/research'
     | '/settings'
+    | '/tender'
     | '/tracker'
     | '/admin/stages'
     | '/auth/callback'
@@ -863,9 +983,12 @@ export interface FileRouteTypes {
     | '/cm/sync-status'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
+    | '/tender/list'
+    | '/tender/new'
     | '/tools/advisor'
     | '/cm/'
     | '/research/'
+    | '/tender/'
     | '/cm/auth/callback'
     | '/cm/boq/new'
     | '/cm/boq/settings'
@@ -899,7 +1022,16 @@ export interface FileRouteTypes {
     | '/cm/submittal/$id'
     | '/cm/submittal/new'
     | '/cm/submittal/settings'
+    | '/tender/$tenderId/checklist'
+    | '/tender/$tenderId/clarifications'
+    | '/tender/$tenderId/compliance'
+    | '/tender/$tenderId/documents'
+    | '/tender/$tenderId/gaps'
+    | '/tender/$tenderId/requirements'
+    | '/tender/$tenderId/risks'
+    | '/tender/auth/callback'
     | '/cm/projects/'
+    | '/tender/$tenderId/'
     | '/cm/boq/$id/edit'
     | '/cm/contracts/$id/edit'
     | '/cm/equipment/$id/edit'
@@ -952,9 +1084,12 @@ export interface FileRouteTypes {
     | '/cm/sync-status'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
+    | '/tender/list'
+    | '/tender/new'
     | '/tools/advisor'
     | '/cm'
     | '/research'
+    | '/tender'
     | '/cm/auth/callback'
     | '/cm/boq/new'
     | '/cm/boq/settings'
@@ -988,7 +1123,16 @@ export interface FileRouteTypes {
     | '/cm/submittal/$id'
     | '/cm/submittal/new'
     | '/cm/submittal/settings'
+    | '/tender/$tenderId/checklist'
+    | '/tender/$tenderId/clarifications'
+    | '/tender/$tenderId/compliance'
+    | '/tender/$tenderId/documents'
+    | '/tender/$tenderId/gaps'
+    | '/tender/$tenderId/requirements'
+    | '/tender/$tenderId/risks'
+    | '/tender/auth/callback'
     | '/cm/projects'
+    | '/tender/$tenderId'
     | '/cm/boq/$id/edit'
     | '/cm/contracts/$id/edit'
     | '/cm/equipment/$id/edit'
@@ -1015,6 +1159,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/research'
     | '/settings'
+    | '/tender'
     | '/tracker'
     | '/admin/stages'
     | '/auth/callback'
@@ -1043,9 +1188,12 @@ export interface FileRouteTypes {
     | '/cm/sync-status'
     | '/framework/$stageId'
     | '/research/sez-landscape-2026'
+    | '/tender/list'
+    | '/tender/new'
     | '/tools/advisor'
     | '/cm/'
     | '/research/'
+    | '/tender/'
     | '/cm/auth/callback'
     | '/cm/boq_/new'
     | '/cm/boq_/settings'
@@ -1079,7 +1227,16 @@ export interface FileRouteTypes {
     | '/cm/submittal_/$id'
     | '/cm/submittal_/new'
     | '/cm/submittal_/settings'
+    | '/tender/$tenderId/checklist'
+    | '/tender/$tenderId/clarifications'
+    | '/tender/$tenderId/compliance'
+    | '/tender/$tenderId/documents'
+    | '/tender/$tenderId/gaps'
+    | '/tender/$tenderId/requirements'
+    | '/tender/$tenderId/risks'
+    | '/tender/auth/callback'
     | '/cm/projects/'
+    | '/tender/$tenderId/'
     | '/cm/boq_/$id/edit'
     | '/cm/contracts_/$id/edit'
     | '/cm/equipment_/$id/edit'
@@ -1107,6 +1264,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   ResearchRoute: typeof ResearchRouteWithChildren
   SettingsRoute: typeof SettingsRoute
+  TenderRoute: typeof TenderRouteWithChildren
   TrackerRoute: typeof TrackerRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   AuthStartRoute: typeof AuthStartRoute
@@ -1121,6 +1279,13 @@ declare module '@tanstack/react-router' {
       path: '/tracker'
       fullPath: '/tracker'
       preLoaderRoute: typeof TrackerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tender': {
+      id: '/tender'
+      path: '/tender'
+      fullPath: '/tender'
+      preLoaderRoute: typeof TenderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -1221,6 +1386,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tender/': {
+      id: '/tender/'
+      path: '/'
+      fullPath: '/tender/'
+      preLoaderRoute: typeof TenderIndexRouteImport
+      parentRoute: typeof TenderRoute
+    }
     '/research/': {
       id: '/research/'
       path: '/'
@@ -1241,6 +1413,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/tools/advisor'
       preLoaderRoute: typeof ToolsAdvisorRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/tender/new': {
+      id: '/tender/new'
+      path: '/new'
+      fullPath: '/tender/new'
+      preLoaderRoute: typeof TenderNewRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/list': {
+      id: '/tender/list'
+      path: '/list'
+      fullPath: '/tender/list'
+      preLoaderRoute: typeof TenderListRouteImport
+      parentRoute: typeof TenderRoute
     }
     '/research/sez-landscape-2026': {
       id: '/research/sez-landscape-2026'
@@ -1431,12 +1617,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminStagesRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/tender/$tenderId/': {
+      id: '/tender/$tenderId/'
+      path: '/$tenderId'
+      fullPath: '/tender/$tenderId/'
+      preLoaderRoute: typeof TenderTenderIdIndexRouteImport
+      parentRoute: typeof TenderRoute
+    }
     '/cm/projects/': {
       id: '/cm/projects/'
       path: '/projects'
       fullPath: '/cm/projects/'
       preLoaderRoute: typeof CmProjectsIndexRouteImport
       parentRoute: typeof CmRoute
+    }
+    '/tender/auth/callback': {
+      id: '/tender/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/tender/auth/callback'
+      preLoaderRoute: typeof TenderAuthCallbackRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/$tenderId/risks': {
+      id: '/tender/$tenderId/risks'
+      path: '/$tenderId/risks'
+      fullPath: '/tender/$tenderId/risks'
+      preLoaderRoute: typeof TenderTenderIdRisksRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/$tenderId/requirements': {
+      id: '/tender/$tenderId/requirements'
+      path: '/$tenderId/requirements'
+      fullPath: '/tender/$tenderId/requirements'
+      preLoaderRoute: typeof TenderTenderIdRequirementsRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/$tenderId/gaps': {
+      id: '/tender/$tenderId/gaps'
+      path: '/$tenderId/gaps'
+      fullPath: '/tender/$tenderId/gaps'
+      preLoaderRoute: typeof TenderTenderIdGapsRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/$tenderId/documents': {
+      id: '/tender/$tenderId/documents'
+      path: '/$tenderId/documents'
+      fullPath: '/tender/$tenderId/documents'
+      preLoaderRoute: typeof TenderTenderIdDocumentsRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/$tenderId/compliance': {
+      id: '/tender/$tenderId/compliance'
+      path: '/$tenderId/compliance'
+      fullPath: '/tender/$tenderId/compliance'
+      preLoaderRoute: typeof TenderTenderIdComplianceRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/$tenderId/clarifications': {
+      id: '/tender/$tenderId/clarifications'
+      path: '/$tenderId/clarifications'
+      fullPath: '/tender/$tenderId/clarifications'
+      preLoaderRoute: typeof TenderTenderIdClarificationsRouteImport
+      parentRoute: typeof TenderRoute
+    }
+    '/tender/$tenderId/checklist': {
+      id: '/tender/$tenderId/checklist'
+      path: '/$tenderId/checklist'
+      fullPath: '/tender/$tenderId/checklist'
+      preLoaderRoute: typeof TenderTenderIdChecklistRouteImport
+      parentRoute: typeof TenderRoute
     }
     '/cm/submittal_/settings': {
       id: '/cm/submittal_/settings'
@@ -1958,6 +2207,39 @@ const ResearchRouteWithChildren = ResearchRoute._addFileChildren(
   ResearchRouteChildren,
 )
 
+interface TenderRouteChildren {
+  TenderListRoute: typeof TenderListRoute
+  TenderNewRoute: typeof TenderNewRoute
+  TenderIndexRoute: typeof TenderIndexRoute
+  TenderTenderIdChecklistRoute: typeof TenderTenderIdChecklistRoute
+  TenderTenderIdClarificationsRoute: typeof TenderTenderIdClarificationsRoute
+  TenderTenderIdComplianceRoute: typeof TenderTenderIdComplianceRoute
+  TenderTenderIdDocumentsRoute: typeof TenderTenderIdDocumentsRoute
+  TenderTenderIdGapsRoute: typeof TenderTenderIdGapsRoute
+  TenderTenderIdRequirementsRoute: typeof TenderTenderIdRequirementsRoute
+  TenderTenderIdRisksRoute: typeof TenderTenderIdRisksRoute
+  TenderAuthCallbackRoute: typeof TenderAuthCallbackRoute
+  TenderTenderIdIndexRoute: typeof TenderTenderIdIndexRoute
+}
+
+const TenderRouteChildren: TenderRouteChildren = {
+  TenderListRoute: TenderListRoute,
+  TenderNewRoute: TenderNewRoute,
+  TenderIndexRoute: TenderIndexRoute,
+  TenderTenderIdChecklistRoute: TenderTenderIdChecklistRoute,
+  TenderTenderIdClarificationsRoute: TenderTenderIdClarificationsRoute,
+  TenderTenderIdComplianceRoute: TenderTenderIdComplianceRoute,
+  TenderTenderIdDocumentsRoute: TenderTenderIdDocumentsRoute,
+  TenderTenderIdGapsRoute: TenderTenderIdGapsRoute,
+  TenderTenderIdRequirementsRoute: TenderTenderIdRequirementsRoute,
+  TenderTenderIdRisksRoute: TenderTenderIdRisksRoute,
+  TenderAuthCallbackRoute: TenderAuthCallbackRoute,
+  TenderTenderIdIndexRoute: TenderTenderIdIndexRoute,
+}
+
+const TenderRouteWithChildren =
+  TenderRoute._addFileChildren(TenderRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
@@ -1973,6 +2255,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   ResearchRoute: ResearchRouteWithChildren,
   SettingsRoute: SettingsRoute,
+  TenderRoute: TenderRouteWithChildren,
   TrackerRoute: TrackerRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   AuthStartRoute: AuthStartRoute,
