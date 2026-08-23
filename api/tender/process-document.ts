@@ -419,31 +419,34 @@ async function extractDocumentRequirements(env: TenderEnv, apiKey: string, doc: 
   return { count: inserted };
 }
 
-async function generateRequirementsForTender(env: TenderEnv, apiKey: string, tenderId: string) {
-  const startedAt = new Date().toISOString();
-  const docs = await sbGet<TenderDocumentRow>(
+/** Returns the ids of a tender's documents that are processed but not yet
+ *  requirement-extracted — the client loops over these one at a time
+ *  (see the "generate_requirements" action below), rather than this
+ *  endpoint looping over all of them in one request. Confirmed live on a
+ *  5-document tender: extracting every document's requirements in one
+ *  request hit Vercel's 60s Hobby-plan function limit ("Task timed out
+ *  after 60 seconds") since each document needs its own sequential Claude
+ *  call — one request per document keeps each call comfortably under
+ *  that limit instead. */
+async function listPendingRequirementDocuments(env: TenderEnv, tenderId: string): Promise<TenderDocumentRow[]> {
+  return sbGet<TenderDocumentRow>(
     env,
     `tender_documents?tender_id=eq.${tenderId}&status=eq.processed&requirements_extracted_at=is.null&select=id,tender_id,file_name`,
   ).catch(() => []);
+}
 
-  if (docs.length === 0) return { documentsProcessed: 0, requirementsExtracted: 0 };
-
-  let totalRequirements = 0;
-  const errors: string[] = [];
-  for (const doc of docs) {
-    const result = await extractDocumentRequirements(env, apiKey, doc);
-    totalRequirements += result.count;
-    if (result.error) errors.push(`${doc.file_name}: ${result.error}`);
-    await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { requirements_extracted_at: new Date().toISOString() }).catch(() => {});
-  }
+async function generateRequirementsForDocument(env: TenderEnv, apiKey: string, doc: TenderDocumentRow) {
+  const startedAt = new Date().toISOString();
+  const result = await extractDocumentRequirements(env, apiKey, doc);
+  await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { requirements_extracted_at: new Date().toISOString() }).catch(() => {});
 
   await sbPost(env, "ai_jobs", {
-    tender_id: tenderId, agent: "requirements_extractor", status: "succeeded",
-    input_summary: { documentCount: docs.length }, output_summary: { requirementsExtracted: totalRequirements, errors },
+    tender_id: doc.tender_id, agent: "requirements_extractor", status: result.error ? "failed" : "succeeded",
+    input_summary: { file_name: doc.file_name }, output_summary: { requirementsExtracted: result.count, error: result.error },
     started_at: startedAt, finished_at: new Date().toISOString(),
   }).catch(() => {});
 
-  return { documentsProcessed: docs.length, requirementsExtracted: totalRequirements, errors };
+  return { documentsProcessed: 1, requirementsExtracted: result.count, errors: result.error ? [`${doc.file_name}: ${result.error}`] : [] };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -462,13 +465,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // its own api/tender/generate-requirements.ts file, same reason as
   // import-from-link above: the Vercel Hobby team is capped at 12
   // serverless functions per deployment.
-  if (req.body?.action === "generate_requirements") {
+  // List which of a tender's documents still need requirements extracted —
+  // the client calls this once, then loops "generate_requirements" below
+  // over the returned ids one request at a time.
+  if (req.body?.action === "list_pending_requirements") {
     const tenderId = typeof req.body?.tenderId === "string" ? req.body.tenderId : "";
     if (!tenderId) return res.status(400).json({ error: "Missing tenderId" });
     const orgId = await authorizeTenderAccess(env, tenderId, userId).catch(() => null);
     if (!orgId) return res.status(403).json({ error: "Not authorized for this tender" });
-    const result = await generateRequirementsForTender(env, apiKey, tenderId);
-    return res.status(200).json({ ok: true, ...result });
+    const docs = await listPendingRequirementDocuments(env, tenderId);
+    return res.status(200).json({ ok: true, documents: docs.map((d) => ({ id: d.id, fileName: d.file_name })) });
+  }
+
+  if (req.body?.action === "generate_requirements") {
+    const tenderId = typeof req.body?.tenderId === "string" ? req.body.tenderId : "";
+    const reqDocumentId = typeof req.body?.documentId === "string" ? req.body.documentId : "";
+    if (!tenderId) return res.status(400).json({ error: "Missing tenderId" });
+    const orgId = await authorizeTenderAccess(env, tenderId, userId).catch(() => null);
+    if (!orgId) return res.status(403).json({ error: "Not authorized for this tender" });
+
+    if (reqDocumentId) {
+      const rows = await sbGet<TenderDocumentRow>(env, `tender_documents?id=eq.${reqDocumentId}&tender_id=eq.${tenderId}&select=id,tender_id,storage_path,file_name,file_type,doc_category_source`);
+      if (!rows[0]) return res.status(404).json({ error: "Document not found" });
+      const result = await generateRequirementsForDocument(env, apiKey, rows[0]);
+      return res.status(200).json({ ok: true, ...result });
+    }
+
+    // No documentId — legacy whole-tender path, kept for small tenders
+    // (few enough documents to finish under 60s) so nothing calling the
+    // old shape breaks; the client now prefers the list+loop path above.
+    const docs = await listPendingRequirementDocuments(env, tenderId);
+    let totalRequirements = 0;
+    const errors: string[] = [];
+    for (const doc of docs) {
+      const result = await generateRequirementsForDocument(env, apiKey, doc);
+      totalRequirements += result.requirementsExtracted;
+      errors.push(...result.errors);
+    }
+    return res.status(200).json({ ok: true, documentsProcessed: docs.length, requirementsExtracted: totalRequirements, errors });
   }
 
   const documentId = typeof req.body?.documentId === "string" ? req.body.documentId : "";

@@ -418,24 +418,51 @@ export interface TenderRequirement {
   updated_at: string;
 }
 
-/** Runs the Requirements Extraction Agent over any processed documents that
- *  haven't been extracted yet (server tracks this via
- *  tender_documents.requirements_extracted_at) — safe to call repeatedly,
- *  e.g. after uploading more documents to an already-extracted tender. */
-export async function generateRequirements(tenderId: string): Promise<{ documentsProcessed: number; requirementsExtracted: number; errors?: string[] }> {
+async function tenderApiCall(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data } = await db().auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Not signed in");
-  // Folded into process-document.ts rather than its own endpoint — Vercel's
-  // Hobby plan caps a deployment at 12 serverless functions.
   const res = await fetch("/api/tender/process-document", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ action: "generate_requirements", tenderId }),
+    body: JSON.stringify(body),
   });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body?.error ?? "Failed to generate requirements");
-  return body;
+  const responseBody = await res.json();
+  if (!res.ok) throw new Error(responseBody?.error ?? "Request failed");
+  return responseBody;
+}
+
+/** Runs the Requirements Extraction Agent over any processed documents that
+ *  haven't been extracted yet (server tracks this via
+ *  tender_documents.requirements_extracted_at) — safe to call repeatedly,
+ *  e.g. after uploading more documents to an already-extracted tender.
+ *
+ *  Calls one document at a time (list_pending_requirements, then a
+ *  generate_requirements request per document) rather than one request
+ *  for the whole tender — confirmed live that extracting several
+ *  documents in a single request hit Vercel's 60s Hobby-plan function
+ *  limit ("Task timed out after 60 seconds"), since each document needs
+ *  its own sequential Claude call. onProgress reports after each
+ *  document finishes so the UI can show "Extracting 2/5…". */
+export async function generateRequirements(
+  tenderId: string,
+  onProgress?: (done: number, total: number) => void,
+): Promise<{ documentsProcessed: number; requirementsExtracted: number; errors: string[] }> {
+  const { documents } = await tenderApiCall({ action: "list_pending_requirements", tenderId }) as { documents: { id: string; fileName: string }[] };
+  const total = documents.length;
+  let requirementsExtracted = 0;
+  const errors: string[] = [];
+  for (let i = 0; i < documents.length; i++) {
+    try {
+      const result = await tenderApiCall({ action: "generate_requirements", tenderId, documentId: documents[i].id }) as { requirementsExtracted: number; errors?: string[] };
+      requirementsExtracted += result.requirementsExtracted;
+      errors.push(...(result.errors ?? []));
+    } catch (err) {
+      errors.push(`${documents[i].fileName}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    onProgress?.(i + 1, total);
+  }
+  return { documentsProcessed: total, requirementsExtracted, errors };
 }
 
 export function useTenderRequirements(tenderId: string | undefined) {

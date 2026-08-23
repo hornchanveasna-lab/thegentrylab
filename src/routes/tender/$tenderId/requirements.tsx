@@ -16,6 +16,7 @@ function TenderRequirements() {
   const [category, setCategory] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
+  const [extractProgress, setExtractProgress] = useState<{ done: number; total: number } | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
@@ -24,15 +25,17 @@ function TenderRequirements() {
   const filtered = category === "all" ? requirements : requirements.filter((r) => r.category === category);
 
   async function handleExtract() {
-    setExtracting(true); setExtractError(null);
+    setExtracting(true); setExtractError(null); setExtractProgress(null);
     try {
-      await generateRequirements(tenderId);
+      const result = await generateRequirements(tenderId, (done, total) => setExtractProgress({ done, total }));
+      if (result.errors.length > 0) setExtractError(`${result.errors.length} document${result.errors.length !== 1 ? "s" : ""} had errors: ${result.errors.join("; ")}`);
       await queryClient.invalidateQueries({ queryKey: ["tender_requirements", tenderId] });
       await queryClient.invalidateQueries({ queryKey: ["tender_checklist", tenderId] });
     } catch (err) {
       setExtractError(err instanceof Error ? err.message : "Failed to extract requirements");
     } finally {
       setExtracting(false);
+      setExtractProgress(null);
     }
   }
 
@@ -43,7 +46,9 @@ function TenderRequirements() {
           <button onClick={handleExtract} disabled={extracting}
             className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest disabled:opacity-40"
             style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
-            {extracting ? "Extracting…" : "Extract Requirements"}
+            {extracting
+              ? (extractProgress ? `Extracting ${extractProgress.done}/${extractProgress.total}…` : "Starting…")
+              : "Extract Requirements"}
           </button>
           <select value={category} onChange={(e) => setCategory(e.target.value)}
             className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white">
