@@ -9,6 +9,7 @@ import {
 import { lazy, Suspense, useEffect, useState } from "react";
 import { AuthProvider } from "@/lib/auth";
 import { AuthCMProvider, useAuthCM } from "@/lib/auth-cm";
+import { AuthTenderProvider } from "@/lib/auth-tender";
 import { CMLangProvider, useCMLang } from "@/lib/cm-i18n";
 import { useCMAccountSettings, makeSquareIconDataUrl, extractDominantColor } from "@/lib/cm-data";
 import {
@@ -231,31 +232,34 @@ function RootComponent() {
   const isCMApp =
     (typeof window !== "undefined" && window.location.hostname.startsWith("cm.")) ||
     pathname.startsWith("/cm");
+  const isTenderApp = pathname.startsWith("/tender");
 
-  // Marks <html> so styles.css can scope CM-only rules (like its gradient
+  // Marks <html> so styles.css can scope per-app rules (like CM's gradient
   // page background) without touching the main marketing site, which reuses
   // several of the same literal utility classes (e.g. bg-[#0a0a0b]) for its
   // own flat-color page backgrounds.
   useEffect(() => {
-    document.documentElement.setAttribute("data-app", isCMApp ? "cm" : "site");
-  }, [isCMApp]);
+    document.documentElement.setAttribute("data-app", isCMApp ? "cm" : isTenderApp ? "tender" : "site");
+  }, [isCMApp, isTenderApp]);
 
   return (
     <AuthProvider>
       <AuthCMProvider>
-        <CMLangProvider>
-          <QueryClientProvider client={queryClient}>
-            <Outlet />
-            {isCMApp && <CMAppIconSync />}
-            {isCMApp && <CMBrandColorSync />}
-            {isCMApp && <CMSyncStatusBadge />}
-            {!isCMApp && (
-              <Suspense fallback={null}>
-                <AiChat />
-              </Suspense>
-            )}
-          </QueryClientProvider>
-        </CMLangProvider>
+        <AuthTenderProvider>
+          <CMLangProvider>
+            <QueryClientProvider client={queryClient}>
+              <Outlet />
+              {isCMApp && <CMAppIconSync />}
+              {isCMApp && <CMBrandColorSync />}
+              {isCMApp && <CMSyncStatusBadge />}
+              {!isCMApp && !isTenderApp && (
+                <Suspense fallback={null}>
+                  <AiChat />
+                </Suspense>
+              )}
+            </QueryClientProvider>
+          </CMLangProvider>
+        </AuthTenderProvider>
       </AuthCMProvider>
     </AuthProvider>
   );
