@@ -64,6 +64,97 @@ function UploadProgressBar({ progress }: { progress: UploadProgress }) {
   );
 }
 
+interface DocTreeFolder {
+  name: string;
+  path: string;
+  folders: DocTreeFolder[];
+  files: TenderDocument[];
+}
+
+function buildDocTree(documents: TenderDocument[]): DocTreeFolder {
+  const root: DocTreeFolder = { name: "", path: "", folders: [], files: [] };
+  const byPath = new Map<string, DocTreeFolder>([["", root]]);
+  for (const doc of documents) {
+    const parts = doc.relative_path.split("/");
+    parts.pop();
+    let current = root;
+    let currentPath = "";
+    for (const part of parts) {
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      let folder = byPath.get(currentPath);
+      if (!folder) {
+        folder = { name: part, path: currentPath, folders: [], files: [] };
+        byPath.set(currentPath, folder);
+        current.folders.push(folder);
+      }
+      current = folder;
+    }
+    current.files.push(doc);
+  }
+  function sortRec(f: DocTreeFolder) {
+    f.folders.sort((a, b) => a.name.localeCompare(b.name));
+    f.files.sort((a, b) => a.file_name.localeCompare(b.file_name));
+    f.folders.forEach(sortRec);
+  }
+  sortRec(root);
+  return root;
+}
+
+function countTreeFiles(f: DocTreeFolder): number {
+  return f.files.length + f.folders.reduce((sum, sub) => sum + countTreeFiles(sub), 0);
+}
+
+function DocTree({ tree, tenderId, onChanged }: { tree: DocTreeFolder; tenderId: string; onChanged: () => void }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  function toggle(path: string) {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path); else next.add(path);
+      return next;
+    });
+  }
+  return <DocTreeLevel folder={tree} depth={0} collapsed={collapsed} onToggle={toggle} tenderId={tenderId} onChanged={onChanged} />;
+}
+
+function DocTreeLevel({ folder, depth, collapsed, onToggle, tenderId, onChanged }: {
+  folder: DocTreeFolder; depth: number; collapsed: Set<string>; onToggle: (path: string) => void;
+  tenderId: string; onChanged: () => void;
+}) {
+  return (
+    <div className="flex flex-col divide-y divide-white/6">
+      {folder.folders.map((sub) => {
+        const isCollapsed = collapsed.has(sub.path);
+        return (
+          <div key={sub.path}>
+            <button
+              onClick={() => onToggle(sub.path)}
+              className="w-full flex items-center gap-2 py-2.5 hover:bg-white/[0.03] transition-colors text-left"
+              style={{ paddingLeft: `${depth * 18}px` }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" className={`shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}>
+                <path d="M2 1 L8 5 L2 9" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: "#2563eb" }}>
+                <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.5" />
+              </svg>
+              <span className="text-[12px] font-semibold truncate">{sub.name}</span>
+              <span className="ml-auto font-mono text-[9px] text-white/30 shrink-0 pr-2">{countTreeFiles(sub)}</span>
+            </button>
+            {!isCollapsed && (
+              <DocTreeLevel folder={sub} depth={depth + 1} collapsed={collapsed} onToggle={onToggle} tenderId={tenderId} onChanged={onChanged} />
+            )}
+          </div>
+        );
+      })}
+      {folder.files.map((doc) => (
+        <div key={doc.id} style={{ paddingLeft: `${depth * 18 + 22}px` }}>
+          <DocumentRow doc={doc} tenderId={tenderId} onChanged={onChanged} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function TenderDocuments() {
   const { tenderId } = Route.useParams();
   const { user } = useAuthTender();
@@ -150,14 +241,7 @@ function TenderDocuments() {
     }
   }
 
-  // Group by top-level folder (first path segment) to mirror the uploaded
-  // structure in the UI, e.g. "01 Instructions to Tenderers/", "07 BOQ/".
-  const groups = new Map<string, TenderDocument[]>();
-  for (const doc of documents) {
-    const folder = doc.relative_path.includes("/") ? doc.relative_path.split("/")[0] : "(root)";
-    if (!groups.has(folder)) groups.set(folder, []);
-    groups.get(folder)!.push(doc);
-  }
+  const tree = buildDocTree(documents);
 
   return (
     <TenderShell tenderId={tenderId} title="Documents"
@@ -214,19 +298,15 @@ function TenderDocuments() {
           <LoadingSpinner />
         ) : documents.length === 0 ? (
           <EmptyState title="No documents uploaded yet"
-            hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP archives aren't auto-expanded yet; use “Upload Folder” to preserve structure." />
+            hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP archives auto-expand into their own folder once processed." />
         ) : (
-          <div className="flex flex-col gap-4">
-            {Array.from(groups.entries()).map(([folder, docs]) => (
-              <Card key={folder} title={folder}>
-                <div className="flex flex-col divide-y divide-white/6">
-                  {docs.map((doc) => (
-                    <DocumentRow key={doc.id} doc={doc} tenderId={tenderId} onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })} />
-                  ))}
-                </div>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <DocTree
+              tree={tree}
+              tenderId={tenderId}
+              onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })}
+            />
+          </Card>
         )}
       </div>
     </TenderShell>
