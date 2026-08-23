@@ -254,6 +254,21 @@ export function useTenderDocuments(tenderId: string | undefined) {
   });
 }
 
+/** getSession() returns the locally cached session even if its "exp" claim
+ *  has already passed (or is about to, e.g. a large upload started right
+ *  before expiry) — the background auto-refresh timer doesn't always win
+ *  that race. Explicitly refresh whenever the token isn't safely valid for
+ *  at least another minute, so the Storage server's own JWT check doesn't
+ *  reject it mid-request with "exp claim timestamp check failed". */
+async function getFreshAccessToken(): Promise<string | undefined> {
+  const { data } = await db().auth.getSession();
+  const expiresAt = data.session?.expires_at; // unix seconds
+  const safelyValid = expiresAt !== undefined && expiresAt * 1000 > Date.now() + 60_000;
+  if (safelyValid) return data.session!.access_token;
+  const { data: refreshed } = await db().auth.refreshSession();
+  return refreshed.session?.access_token ?? data.session?.access_token ?? TENDER_SUPABASE_ANON_KEY;
+}
+
 /** Uploads a file straight to Supabase Storage's REST endpoint via XHR
  *  instead of supabase-js's storage.upload() (which wraps fetch and has no
  *  progress callback) — XHR's upload.onprogress gives real byte-level
@@ -266,9 +281,7 @@ function uploadFileWithProgress(storagePath: string, file: File, onProgress?: (l
       reject(new Error("TenderAI's Supabase client is not configured"));
       return;
     }
-    const session = db().auth.getSession();
-    session.then(({ data }) => {
-      const token = data.session?.access_token ?? TENDER_SUPABASE_ANON_KEY;
+    getFreshAccessToken().then((token) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${TENDER_SUPABASE_URL}/storage/v1/object/tender-documents/${storagePath}`);
       xhr.setRequestHeader("apikey", TENDER_SUPABASE_ANON_KEY!);
