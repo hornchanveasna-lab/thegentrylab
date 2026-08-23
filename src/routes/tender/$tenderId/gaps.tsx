@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuthTender } from "@/lib/auth-tender";
-import { useTenderGaps, resolveGapItem } from "@/lib/tender-data";
-import { TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
+import { useTenderGaps, resolveGapItem, type TenderGapItem } from "@/lib/tender-data";
+import { TenderShell, Card, DataTable, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
 
 export const Route = createFileRoute("/tender/$tenderId/gaps")({
   component: GapAnalysis,
@@ -25,36 +25,46 @@ function GapAnalysis() {
       ) : (
         <div className="flex flex-col gap-4">
           <Card title={`Open (${open.length})`}>
-            <div className="flex flex-col divide-y divide-white/6">
-              {open.map((g) => (
-                <div key={g.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] text-white/85">{g.description}</p>
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mt-0.5">{humanize(g.category)}</p>
-                  </div>
-                  <StatusBadge value={g.severity} />
-                  <button onClick={() => resolveGapItem(g.id, true).then(() => refetch())}
-                    className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors shrink-0">
-                    Resolve
-                  </button>
-                </div>
-              ))}
-              {open.length === 0 && <p className="text-[12px] text-white/30 py-2">No open gaps.</p>}
-            </div>
+            {open.length === 0 ? (
+              <p className="text-[12px] text-white/30 py-2">No open gaps.</p>
+            ) : (
+              <DataTable<TenderGapItem>
+                rows={open}
+                keyFn={(g) => g.id}
+                columns={[
+                  { header: "Description", render: (g) => <p className="text-white/85">{g.description}</p> },
+                  { header: "Category", width: "160px", render: (g) => <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">{humanize(g.category)}</span> },
+                  { header: "Severity", width: "100px", render: (g) => <StatusBadge value={g.severity} /> },
+                  {
+                    header: "", width: "80px", render: (g) => (
+                      <button onClick={() => resolveGapItem(g.id, true).then(() => refetch())}
+                        className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors">
+                        Resolve
+                      </button>
+                    ),
+                  },
+                ]}
+              />
+            )}
           </Card>
           {resolved.length > 0 && (
             <Card title={`Resolved (${resolved.length})`}>
-              <div className="flex flex-col divide-y divide-white/6">
-                {resolved.map((g) => (
-                  <div key={g.id} className="flex items-center justify-between gap-3 py-2.5 opacity-50">
-                    <p className="text-[12px] flex-1">{g.description}</p>
-                    <button onClick={() => resolveGapItem(g.id, false).then(() => refetch())}
-                      className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors shrink-0">
-                      Reopen
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <DataTable<TenderGapItem>
+                rows={resolved}
+                keyFn={(g) => g.id}
+                columns={[
+                  { header: "Description", render: (g) => <p className="text-white/50">{g.description}</p> },
+                  { header: "Category", width: "160px", render: (g) => <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{humanize(g.category)}</span> },
+                  {
+                    header: "", width: "80px", render: (g) => (
+                      <button onClick={() => resolveGapItem(g.id, false).then(() => refetch())}
+                        className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors">
+                        Reopen
+                      </button>
+                    ),
+                  },
+                ]}
+              />
             </Card>
           )}
         </div>

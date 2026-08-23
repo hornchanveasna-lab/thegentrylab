@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAuthTender } from "@/lib/auth-tender";
 import { useTenderRequirements, useRequirementSources, REQUIREMENT_CATEGORIES, type TenderRequirement } from "@/lib/tender-data";
-import { TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
+import { TenderShell, Card, DataTable, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
 
 export const Route = createFileRoute("/tender/$tenderId/requirements")({
   component: TenderRequirements,
@@ -35,52 +35,53 @@ function TenderRequirements() {
         <EmptyState title="No requirements extracted yet"
           hint="Requirements are extracted automatically once uploaded documents finish processing." />
       ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map((r) => (
-            <RequirementRow key={r.id} req={r} expanded={expanded === r.id} onToggle={() => setExpanded(expanded === r.id ? null : r.id)} />
-          ))}
-        </div>
+        <Card>
+          <DataTable<TenderRequirement>
+            rows={filtered}
+            keyFn={(r) => r.id}
+            onRowClick={(r) => setExpanded(expanded === r.id ? null : r.id)}
+            expandedKey={expanded}
+            renderExpanded={(r) => <RequirementSources requirementId={r.id} />}
+            columns={[
+              { header: "Code", width: "90px", render: (r) => <span className="font-mono text-[10px] text-white/40">{r.requirement_code}</span> },
+              {
+                header: "Requirement", render: (r) => (
+                  <div>
+                    <p className="text-white/85">{r.description}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">{humanize(r.category)}</span>
+                      {r.is_mandatory && <span className="font-mono text-[9px] uppercase tracking-widest text-orange-400">Mandatory</span>}
+                      {r.ai_confidence && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{r.ai_confidence} confidence</span>}
+                    </div>
+                  </div>
+                ),
+              },
+              { header: "Status", width: "120px", render: (r) => <StatusBadge value={r.status} /> },
+            ]}
+          />
+        </Card>
       )}
     </TenderShell>
   );
 }
 
-function RequirementRow({ req, expanded, onToggle }: { req: TenderRequirement; expanded: boolean; onToggle: () => void }) {
-  const { data: sources = [] } = useRequirementSources(expanded ? req.id : undefined);
-
+function RequirementSources({ requirementId }: { requirementId: string }) {
+  const { data: sources = [] } = useRequirementSources(requirementId);
   return (
-    <Card>
-      <button onClick={onToggle} className="w-full text-left">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-mono text-[9px] text-white/30">{req.requirement_code}</span>
-              <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">{humanize(req.category)}</span>
-              {req.is_mandatory && <span className="font-mono text-[9px] uppercase tracking-widest text-orange-400">Mandatory</span>}
-              {req.ai_confidence && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{req.ai_confidence} confidence</span>}
+    <div className="pt-1">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-2">Sources</p>
+      {sources.length === 0 ? (
+        <p className="text-[11px] text-white/25">No source citation on file.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {sources.map((s) => (
+            <div key={s.id} className="text-[11px] text-white/50">
+              <span className="text-white/70">{s.section_label ?? (s.page_number ? `Page ${s.page_number}` : "Source")}</span>
+              {s.quoted_text && <span className="italic"> — "{s.quoted_text}"</span>}
             </div>
-            <p className="text-[13px] text-white/85">{req.description}</p>
-          </div>
-          <StatusBadge value={req.status} />
-        </div>
-      </button>
-      {expanded && (
-        <div className="mt-3 pt-3 border-t border-white/8">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 mb-2">Sources</p>
-          {sources.length === 0 ? (
-            <p className="text-[11px] text-white/25">No source citation on file.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {sources.map((s) => (
-                <div key={s.id} className="text-[11px] text-white/50">
-                  <span className="text-white/70">{s.section_label ?? (s.page_number ? `Page ${s.page_number}` : "Source")}</span>
-                  {s.quoted_text && <span className="italic"> — "{s.quoted_text}"</span>}
-                </div>
-              ))}
-            </div>
-          )}
+          ))}
         </div>
       )}
-    </Card>
+    </div>
   );
 }
