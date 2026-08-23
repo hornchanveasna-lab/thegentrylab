@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { DockWorkspaceProvider, useDockWorkspace } from "@/components/tender/DockWorkspace";
 import { QuickDocumentsPanel } from "@/components/tender/QuickDocumentsPanel";
 import { ThemeToggleButton } from "@/components/tender/TenderTheme";
+import { useTender } from "@/lib/tender-data";
 
 /* ── Shared design-system primitives for TenderAI (/tender/*) ──────────
  * Lean, Phase 1 subset — mirrors src/components/cm/shared.tsx's role for
@@ -84,14 +85,27 @@ function NavIcon({ name }: { name: string }) {
 
 /** Left sidebar navigation for a tender workspace — mirrors Autodesk
  *  Insight's persistent icon+label rail (Dashboards, Risk, Design, ...)
- *  in place of the horizontal tab strip the module started with. */
-function TenderSidebar({ tenderId }: { tenderId: string }) {
+ *  in place of the horizontal tab strip the module started with.
+ *
+ *  Every tab except Overview passes its own section name (e.g.
+ *  "Documents") as TenderShell's page title, which meant the tender's
+ *  own name only ever showed up on Overview — once you clicked into any
+ *  other tab there was nothing on screen identifying which tender you
+ *  were in. Showing it here, once, persistently, fixes that regardless
+ *  of which tab is active. */
+function TenderSidebar({ tenderId, tenderName }: { tenderId: string; tenderName?: string }) {
   return (
     <aside className="w-56 shrink-0 border-r border-white/8 bg-[#0d0d0e] flex flex-col h-screen sticky top-0">
       <Link to="/tender" className="h-14 flex items-center gap-2 px-4 border-b border-white/8 shrink-0">
         <span className="w-6 h-6 rounded-md bg-[#2563eb] flex items-center justify-center text-[11px] font-black">T</span>
         <span className="font-extrabold tracking-tight text-[14px]">TenderAI</span>
       </Link>
+      {tenderName && (
+        <div className="px-4 py-3 border-b border-white/8 shrink-0">
+          <p className="font-mono text-[8px] uppercase tracking-widest text-white/30 mb-0.5">Current Tender</p>
+          <p className="text-[12px] font-semibold truncate" title={tenderName}>{tenderName}</p>
+        </div>
+      )}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {TENDER_TABS.map((tab) => (
           <Link key={tab.key} to={tab.to} params={{ tenderId }}
@@ -115,10 +129,11 @@ function TenderSidebar({ tenderId }: { tenderId: string }) {
 export function TenderShell({ tenderId, title, subtitle, action, children }: {
   tenderId: string; title: string; subtitle?: ReactNode; action?: ReactNode; children: ReactNode;
 }) {
+  const { data: tender } = useTender(tenderId);
   return (
     <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans flex">
       <DockWorkspaceProvider>
-        <TenderSidebar tenderId={tenderId} />
+        <TenderSidebar tenderId={tenderId} tenderName={tender?.name} />
         <div className="flex-1 min-w-0 flex flex-col pb-14">
           <div className="border-b border-white/8 bg-[#0d0d0e] sticky top-0 z-10">
             <div className="px-6 h-16 flex items-center justify-between gap-3">
@@ -133,7 +148,7 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
             {children}
           </main>
         </div>
-        <DockToolbar tenderId={tenderId} />
+        <DockToolbar tenderId={tenderId} tenderName={tender?.name} />
       </DockWorkspaceProvider>
     </div>
   );
@@ -144,13 +159,13 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
  *  Autodesk's viewer, applied to document-oriented panels instead of
  *  3D navigation tools. Offset by the sidebar width so it doesn't
  *  overlap the nav rail. */
-function DockToolbar({ tenderId }: { tenderId: string }) {
+function DockToolbar({ tenderId, tenderName }: { tenderId: string; tenderName?: string }) {
   const { openPanel } = useDockWorkspace();
   return (
     <div className="fixed bottom-0 left-56 right-0 z-50 border-t border-white/8 bg-[#0d0d0e]/95 backdrop-blur">
       <div className="px-6 h-11 flex items-center gap-1">
         <button
-          onClick={() => openPanel("documents", "Documents", <QuickDocumentsPanel tenderId={tenderId} />)}
+          onClick={() => openPanel("documents", `Documents — ${tenderName ?? "…"}`, <QuickDocumentsPanel tenderId={tenderId} />)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 transition-colors"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: "#2563eb" }}>

@@ -160,42 +160,54 @@ function FolderBrowser({ tree, tenderId, onChanged, selectedId, onSelectFile }: 
   const [currentPath, setCurrentPath] = useState("");
   const current = findDocFolder(tree, currentPath) ?? tree;
 
+  const isEmpty = current.folders.length === 0 && current.files.length === 0;
+
   return (
     <div>
       <Breadcrumbs rootLabel="Documents" path={currentPath} onNavigate={setCurrentPath} />
       <Card>
-        <div className="flex flex-col divide-y divide-white/6">
-          {current.folders.length === 0 && current.files.length === 0 ? (
-            <p className="text-[12px] text-white/30 py-6 text-center">This folder is empty.</p>
-          ) : (
-            <>
-              {current.folders.map((sub) => (
-                <button
-                  key={sub.path}
-                  onClick={() => setCurrentPath(sub.path)}
-                  className="w-full flex items-center gap-2.5 py-3 hover:bg-white/[0.03] transition-colors text-left"
-                >
-                  <FolderIcon />
-                  <span className="text-[12px] font-semibold truncate flex-1">{sub.name}</span>
-                  <span className="font-mono text-[9px] text-white/30 shrink-0">{countTreeFiles(sub)} file{countTreeFiles(sub) !== 1 ? "s" : ""}</span>
-                  <svg width="14" height="14" viewBox="0 0 10 10" className="shrink-0">
-                    <path d="M2 1 L8 5 L2 9" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-              ))}
-              {current.files.map((doc) => (
-                <DocumentRow
-                  key={doc.id}
-                  doc={doc}
-                  tenderId={tenderId}
-                  onChanged={onChanged}
-                  selected={doc.id === selectedId}
-                  onSelect={() => onSelectFile(doc)}
-                />
-              ))}
-            </>
-          )}
-        </div>
+        {isEmpty ? (
+          <p className="text-[12px] text-white/30 py-6 text-center">This folder is empty.</p>
+        ) : (
+          <div className="overflow-x-auto -mx-5 -mt-1">
+            <table className="w-full text-[12px] border-collapse">
+              <thead>
+                <tr className="text-left border-b border-white/8">
+                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pl-5 pr-3">Name</th>
+                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-3 w-[170px]">Category</th>
+                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-3 w-[100px]">Status</th>
+                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-5 w-[110px] text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/6">
+                {current.folders.map((sub) => (
+                  <tr key={sub.path} onClick={() => setCurrentPath(sub.path)} className="cursor-pointer hover:bg-white/[0.03] transition-colors">
+                    <td colSpan={4} className="py-2 pl-5 pr-3">
+                      <div className="flex items-center gap-2">
+                        <FolderIcon size={14} />
+                        <span className="font-semibold truncate flex-1">{sub.name}</span>
+                        <span className="font-mono text-[9px] text-white/30 shrink-0">{countTreeFiles(sub)} file{countTreeFiles(sub) !== 1 ? "s" : ""}</span>
+                        <svg width="12" height="12" viewBox="0 0 10 10" className="shrink-0">
+                          <path d="M2 1 L8 5 L2 9" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {current.files.map((doc) => (
+                  <DocumentRow
+                    key={doc.id}
+                    doc={doc}
+                    tenderId={tenderId}
+                    onChanged={onChanged}
+                    selected={doc.id === selectedId}
+                    onSelect={() => onSelectFile(doc)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );
@@ -572,54 +584,57 @@ function DocumentRow({ doc, onChanged, selected, onSelect }: {
   }
 
   return (
-    <div className={`flex items-center justify-between gap-3 py-3 px-2 -mx-2 rounded-lg transition-colors ${selected ? "bg-white/[0.05]" : ""}`}>
-      <div className="min-w-0 flex-1 flex items-start gap-2.5">
-        <div className="mt-0.5"><FileIcon fileType={doc.file_type} /></div>
-        <div className="min-w-0 flex-1">
-        <button onClick={onSelect} title="Preview document"
-          className={`text-[12px] font-medium truncate text-left transition-colors ${selected ? "text-[#2563eb]" : "hover:text-[#2563eb]"}`}>
-          {doc.file_name}
+    <tr className={`transition-colors ${selected ? "bg-white/[0.05]" : "hover:bg-white/[0.02]"}`}>
+      <td className="py-2 pl-5 pr-3 min-w-0">
+        <button onClick={onSelect} title="Preview document" className="flex items-center gap-2 w-full text-left min-w-0">
+          <FileIcon fileType={doc.file_type} />
+          <span className={`truncate font-medium transition-colors ${selected ? "text-[#2563eb]" : "hover:text-[#2563eb]"}`}>
+            {doc.file_name}
+          </span>
         </button>
-        <div className="flex items-center gap-2 mt-1">
+        {doc.status === "failed" && doc.processing_error && (
+          <p className="text-[9px] text-red-400/70 mt-0.5 truncate pl-[22px]" title={doc.processing_error}>{doc.processing_error}</p>
+        )}
+      </td>
+      <td className="py-2 pr-3">
+        <div className="flex items-center gap-1.5">
           <select
             value={doc.doc_category ?? ""}
             onChange={(e) => updateTenderDocumentCategory(doc.id, e.target.value as TenderDocCategory).then(onChanged)}
-            className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/60"
+            className="bg-white/5 border border-white/10 rounded-lg px-1.5 py-1 text-[10px] text-white/60 max-w-full"
           >
             <option value="" className="bg-[#0a0a0b] text-white">Uncategorized</option>
             {TENDER_DOC_CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{humanize(c)}</option>)}
           </select>
-          {doc.discipline && <span className="font-mono text-[9px] text-white/30">{doc.discipline}</span>}
         </div>
-        {doc.status === "failed" && doc.processing_error && (
-          <p className="text-[10px] text-red-400/80 mt-1 truncate" title={doc.processing_error}>{doc.processing_error}</p>
+        {doc.discipline && <span className="font-mono text-[9px] text-white/30">{doc.discipline}</span>}
+      </td>
+      <td className="py-2 pr-3"><StatusBadge value={doc.status} /></td>
+      <td className="py-2 pr-5 text-right whitespace-nowrap">
+        {doc.status === "failed" && (
+          <button
+            disabled={retrying}
+            onClick={async () => { setRetrying(true); await processTenderDocument(doc.id); onChanged(); setRetrying(false); }}
+            className="text-white/40 hover:text-white transition-colors text-[10px] font-mono uppercase tracking-widest mr-2.5"
+          >
+            {retrying ? "Retrying…" : "Retry"}
+          </button>
         )}
-        </div>
-      </div>
-      <StatusBadge value={doc.status} />
-      {doc.status === "failed" && (
         <button
-          disabled={retrying}
-          onClick={async () => { setRetrying(true); await processTenderDocument(doc.id); onChanged(); setRetrying(false); }}
-          className="text-white/40 hover:text-white transition-colors text-[11px] font-mono uppercase tracking-widest shrink-0"
+          disabled={deleting}
+          onClick={() => setConfirmOpen(true)}
+          className="transition-colors text-[10px] font-mono uppercase tracking-widest text-white/25 hover:text-red-400"
         >
-          {retrying ? "Retrying…" : "Retry"}
+          {deleting ? "Removing…" : "Remove"}
         </button>
-      )}
-      <button
-        disabled={deleting}
-        onClick={() => setConfirmOpen(true)}
-        className="transition-colors text-[11px] font-mono uppercase tracking-widest shrink-0 text-white/25 hover:text-red-400"
-      >
-        {deleting ? "Removing…" : "Remove"}
-      </button>
-      {confirmOpen && (
-        <RemoveConfirmModal
-          fileName={doc.file_name}
-          onCancel={() => setConfirmOpen(false)}
-          onConfirm={handleConfirmedRemove}
-        />
-      )}
-    </div>
+        {confirmOpen && (
+          <RemoveConfirmModal
+            fileName={doc.file_name}
+            onCancel={() => setConfirmOpen(false)}
+            onConfirm={handleConfirmedRemove}
+          />
+        )}
+      </td>
+    </tr>
   );
 }
