@@ -61,6 +61,7 @@
     "leaflet": "^1.9.4",
     "lenis": "^1.3.25",
     "lucide-react": "^0.575.0",
+    "mammoth": "^1.12.1",
     "pdfjs-dist": "^6.1.200",
     "pptxgenjs": "^4.0.1",
     "qrcode.react": "^4.2.0",
