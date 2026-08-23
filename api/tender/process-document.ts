@@ -8,7 +8,7 @@
  * 'processed' or 'failed' (see useTenderDocuments's refetchInterval).
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { extractByFileType, chunkSections } from "./lib/extract.js";
+import { extractByFileType, chunkSections, unzipEntries } from "./lib/extract.js";
 import { callClaude, type ClaudeToolSchema } from "./lib/ai.js";
 import {
   getTenderEnv, getAuthedUserId, authorizeTenderAccess, sbGet, sbPatch, sbPost,
@@ -127,6 +127,160 @@ interface TenderDocumentRow {
   id: string; tender_id: string; storage_path: string; file_name: string; file_type: string; doc_category_source: string;
 }
 
+interface ProcessResult {
+  status: "processed" | "failed";
+  chunks: number;
+  error?: string;
+  note?: string;
+  classifyUpdate?: Record<string, unknown>;
+}
+
+/** Extract + chunk + classify one already-uploaded document. Patches its own
+ *  status/processing_error and logs ai_jobs — pulled out of the HTTP handler
+ *  so the zip-expansion path below can run it once per extracted file
+ *  without going through a separate request per file. */
+async function processOneDocument(env: TenderEnv, apiKey: string, doc: TenderDocumentRow): Promise<ProcessResult> {
+  const startedAt = new Date().toISOString();
+  const fail = async (message: string): Promise<ProcessResult> => {
+    await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { status: "failed", processing_error: message }).catch(() => {});
+    await sbPost(env, "ai_jobs", {
+      tender_id: doc.tender_id, agent: "document_classifier", status: "failed",
+      input_summary: { file_name: doc.file_name }, error: message, started_at: startedAt, finished_at: new Date().toISOString(),
+    }).catch(() => {});
+    return { status: "failed", chunks: 0, error: message };
+  };
+
+  try {
+    await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { status: "processing", processing_error: null });
+
+    const fileBytes = await downloadStorageObject(env, "tender-documents", doc.storage_path);
+    const sections = await extractByFileType(doc.file_type, fileBytes);
+
+    if (!sections) {
+      // Unsupported type (image, CAD, etc.) — stored, not OCR'd, in Phase 1.
+      await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { status: "processed", processing_error: null });
+      await sbPost(env, "ai_jobs", {
+        tender_id: doc.tender_id, agent: "document_classifier", status: "succeeded",
+        input_summary: { file_name: doc.file_name }, output_summary: { chunks: 0, note: "unsupported file type — no text extraction in Phase 1" },
+        started_at: startedAt, finished_at: new Date().toISOString(),
+      }).catch(() => {});
+      return { status: "processed", chunks: 0, note: "unsupported file type" };
+    }
+
+    let chunks = chunkSections(sections);
+    const truncated = chunks.length > MAX_CHUNKS;
+    if (truncated) chunks = chunks.slice(0, MAX_CHUNKS);
+
+    if (chunks.length > 0) {
+      await sbPost(env, "tender_document_chunks", chunks.map((c) => ({
+        document_id: doc.id,
+        tender_id: doc.tender_id,
+        chunk_index: c.chunkIndex,
+        content: c.content,
+        page_number: c.pageNumber,
+        section_label: c.sectionLabel,
+      })));
+    }
+
+    const fullText = sections.map((s) => s.text).join("\n\n").slice(0, CLASSIFY_INPUT_CHARS);
+    let classifyUpdate: Record<string, unknown> = {};
+    if (fullText.trim()) {
+      const { input } = await callClaude({
+        apiKey, system: CLASSIFY_SYSTEM,
+        userMessage: `Document filename: "${doc.file_name}"\n\nExtracted text (may be truncated):\n\n${fullText}`,
+        tool: CLASSIFY_TOOL, maxTokens: 512,
+      });
+      classifyUpdate = {
+        doc_number: input.doc_number ?? null,
+        revision: input.revision ?? null,
+        doc_date: input.doc_date ?? null,
+        discipline: input.discipline ?? null,
+      };
+      // Never overwrite a category a human already corrected.
+      if (doc.doc_category_source !== "user") classifyUpdate.doc_category = input.doc_category;
+    }
+
+    await sbPatch(env, `tender_documents?id=eq.${doc.id}`, {
+      status: "processed", processing_error: truncated ? `Only the first ${MAX_CHUNKS} chunks were indexed (document is unusually large).` : null,
+      ...classifyUpdate,
+    });
+
+    await sbPost(env, "ai_jobs", {
+      tender_id: doc.tender_id, agent: "document_classifier", status: "succeeded",
+      input_summary: { file_name: doc.file_name }, output_summary: { chunks: chunks.length, ...classifyUpdate },
+      started_at: startedAt, finished_at: new Date().toISOString(),
+    }).catch(() => {});
+
+    return { status: "processed", chunks: chunks.length, classifyUpdate };
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : String(err));
+  }
+}
+
+/** Unpacks a zip document into its individual files, uploads each to Storage
+ *  under a folder named after the zip (so the Documents UI groups them the
+ *  same way "Upload Folder" does), inserts a tender_documents row per file,
+ *  then runs processOneDocument on each — so a single zip upload ends up
+ *  fully extracted and processed without the user re-uploading via Upload
+ *  Folder by hand. */
+async function expandAndProcessZip(env: TenderEnv, apiKey: string, orgId: string, userId: string, zipDoc: TenderDocumentRow): Promise<ProcessResult & { childCount: number }> {
+  const startedAt = new Date().toISOString();
+  const zipBaseName = zipDoc.file_name.replace(/\.zip$/i, "");
+
+  let entries: Awaited<ReturnType<typeof unzipEntries>>;
+  try {
+    const zipBytes = await downloadStorageObject(env, "tender-documents", zipDoc.storage_path);
+    entries = await unzipEntries(zipBytes);
+  } catch (err) {
+    const message = `Failed to unpack zip: ${err instanceof Error ? err.message : String(err)}`;
+    await sbPatch(env, `tender_documents?id=eq.${zipDoc.id}`, { status: "failed", processing_error: message }).catch(() => {});
+    return { status: "failed", chunks: 0, error: message, childCount: 0 };
+  }
+
+  if (entries.length === 0) {
+    await sbPatch(env, `tender_documents?id=eq.${zipDoc.id}`, { status: "processed", processing_error: "Zip archive was empty (or contained only unsupported junk files)." });
+    return { status: "processed", chunks: 0, note: "empty zip", childCount: 0 };
+  }
+
+  let totalChunks = 0;
+  let failedCount = 0;
+  for (const entry of entries) {
+    const fileName = entry.path.split("/").pop() ?? entry.path;
+    const fileType = (fileName.split(".").pop() ?? "other").toLowerCase();
+    const storagePath = `${orgId}/${zipDoc.tender_id}/${crypto.randomUUID()}-${fileName}`;
+    try {
+      await uploadStorageObject(env, "tender-documents", storagePath, entry.buf, "application/octet-stream");
+      const [childDoc] = await sbPost<TenderDocumentRow[]>(env, "tender_documents", {
+        tender_id: zipDoc.tender_id,
+        storage_path: storagePath,
+        relative_path: `${zipBaseName}/${entry.path}`,
+        file_name: fileName,
+        file_type: fileType,
+        file_size_bytes: entry.buf.length,
+        uploaded_by: userId,
+      });
+      // Nested zips inside the zip are left as-is (one level of unpacking only).
+      if (fileType !== "zip") {
+        const result = await processOneDocument(env, apiKey, childDoc);
+        totalChunks += result.chunks;
+        if (result.status === "failed") failedCount += 1;
+      }
+    } catch {
+      failedCount += 1;
+    }
+  }
+
+  const note = `Expanded into ${entries.length} file${entries.length !== 1 ? "s" : ""}${failedCount > 0 ? ` (${failedCount} failed)` : ""}.`;
+  await sbPatch(env, `tender_documents?id=eq.${zipDoc.id}`, { status: "processed", processing_error: note });
+  await sbPost(env, "ai_jobs", {
+    tender_id: zipDoc.tender_id, agent: "document_classifier", status: "succeeded",
+    input_summary: { file_name: zipDoc.file_name }, output_summary: { childCount: entries.length, chunks: totalChunks, failedCount },
+    started_at: startedAt, finished_at: new Date().toISOString(),
+  }).catch(() => {});
+
+  return { status: "processed", chunks: totalChunks, note, childCount: entries.length };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   for (const [k, v] of Object.entries(CORS)) res.setHeader(k, v);
   if (req.method === "OPTIONS") return res.status(200).end();
@@ -173,88 +327,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  const resolvedDocumentId = doc.id;
-  const startedAt = new Date().toISOString();
-  const fail = async (message: string) => {
-    await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, { status: "failed", processing_error: message }).catch(() => {});
-    await sbPost(env, "ai_jobs", {
-      tender_id: doc.tender_id, agent: "document_classifier", status: "failed",
-      input_summary: { file_name: doc.file_name }, error: message, started_at: startedAt, finished_at: new Date().toISOString(),
-    }).catch(() => {});
-    return res.status(500).json({ error: message });
-  };
-
-  try {
-    await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, { status: "processing", processing_error: null });
-
-    const fileBytes = await downloadStorageObject(env, "tender-documents", doc.storage_path);
-    const sections = await extractByFileType(doc.file_type, fileBytes);
-
-    if (!sections) {
-      // Unsupported type (image, CAD, zip, etc.) — stored, not OCR'd, in Phase 1.
-      await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, { status: "processed", processing_error: null });
-      await sbPost(env, "ai_jobs", {
-        tender_id: doc.tender_id, agent: "document_classifier", status: "succeeded",
-        input_summary: { file_name: doc.file_name }, output_summary: { chunks: 0, note: "unsupported file type — no text extraction in Phase 1" },
-        started_at: startedAt, finished_at: new Date().toISOString(),
-      }).catch(() => {});
-      return res.status(200).json({ ok: true, document: doc, chunks: 0, note: "unsupported file type" });
-    }
-
-    let chunks = chunkSections(sections);
-    const truncated = chunks.length > MAX_CHUNKS;
-    if (truncated) chunks = chunks.slice(0, MAX_CHUNKS);
-
-    if (chunks.length > 0) {
-      await sbPost(env, "tender_document_chunks", chunks.map((c) => ({
-        document_id: resolvedDocumentId,
-        tender_id: doc.tender_id,
-        chunk_index: c.chunkIndex,
-        content: c.content,
-        page_number: c.pageNumber,
-        section_label: c.sectionLabel,
-      })));
-    }
-
-    const fullText = sections.map((s) => s.text).join("\n\n").slice(0, CLASSIFY_INPUT_CHARS);
-    let classifyUpdate: Record<string, unknown> = {};
-    if (fullText.trim()) {
-      const { input } = await callClaude({
-        apiKey, system: CLASSIFY_SYSTEM,
-        userMessage: `Document filename: "${doc.file_name}"\n\nExtracted text (may be truncated):\n\n${fullText}`,
-        tool: CLASSIFY_TOOL, maxTokens: 512,
-      });
-      classifyUpdate = {
-        doc_number: input.doc_number ?? null,
-        revision: input.revision ?? null,
-        doc_date: input.doc_date ?? null,
-        discipline: input.discipline ?? null,
-      };
-      // Never overwrite a category a human already corrected.
-      if (doc.doc_category_source !== "user") classifyUpdate.doc_category = input.doc_category;
-    }
-
-    await sbPatch(env, `tender_documents?id=eq.${resolvedDocumentId}`, {
-      status: "processed", processing_error: truncated ? `Only the first ${MAX_CHUNKS} chunks were indexed (document is unusually large).` : null,
-      ...classifyUpdate,
-    });
-
-    await sbPost(env, "ai_jobs", {
-      tender_id: doc.tender_id, agent: "document_classifier", status: "succeeded",
-      input_summary: { file_name: doc.file_name }, output_summary: { chunks: chunks.length, ...classifyUpdate },
-      started_at: startedAt, finished_at: new Date().toISOString(),
-    }).catch(() => {});
-
-    await sbPost(env, "tender_activity_log", {
-      tender_id: doc.tender_id, user_id: userId, action: "ai_generate",
-      entity_type: "tender_documents", entity_id: resolvedDocumentId,
-      detail: { stage: "process_document", chunks: chunks.length, ...classifyUpdate },
-    }).catch(() => {});
-
-    return res.status(200).json({ ok: true, document: { ...doc, ...classifyUpdate }, chunks: chunks.length, ...classifyUpdate });
-  } catch (err) {
-    return fail(err instanceof Error ? err.message : String(err));
+  if (doc.file_type.toLowerCase() === "zip") {
+    const result = await expandAndProcessZip(env, apiKey, orgId, userId, doc);
+    if (result.status === "failed") return res.status(500).json({ error: result.error });
+    return res.status(200).json({ ok: true, document: doc, ...result });
   }
+
+  const result = await processOneDocument(env, apiKey, doc);
+  if (result.status === "failed") return res.status(500).json({ error: result.error });
+
+  await sbPost(env, "tender_activity_log", {
+    tender_id: doc.tender_id, user_id: userId, action: "ai_generate",
+    entity_type: "tender_documents", entity_id: doc.id,
+    detail: { stage: "process_document", chunks: result.chunks, ...result.classifyUpdate },
+  }).catch(() => {});
+
+  return res.status(200).json({ ok: true, document: { ...doc, ...result.classifyUpdate }, ...result });
 }
 
 export const config = { maxDuration: 60 };

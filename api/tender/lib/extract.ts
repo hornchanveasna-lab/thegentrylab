@@ -7,6 +7,7 @@
  */
 import mammoth from "mammoth";
 import * as XLSX from "xlsx";
+import JSZip from "jszip";
 
 export interface ExtractedSection {
   pageNumber: number | null;
@@ -60,6 +61,36 @@ export function extractSpreadsheet(buf: Buffer): ExtractedSection[] {
 
 export function extractPlainText(buf: Buffer): ExtractedSection[] {
   return [{ pageNumber: null, sectionLabel: null, text: buf.toString("utf8") }];
+}
+
+export interface ZipEntry {
+  /** Path inside the zip, e.g. "01 Instructions to Tenderers/ITT.pdf" — used
+   *  as the child document's relative_path (prefixed with the zip's own name)
+   *  so the Documents UI groups extracted files under a folder matching the
+   *  original archive, the same way "Upload Folder" preserves structure. */
+  path: string;
+  buf: Buffer;
+}
+
+const ZIP_JUNK_RE = /(^|\/)(__MACOSX|\.DS_Store|Thumbs\.db)(\/|$)/i;
+
+/** Unpacks a zip into its individual file entries (skips directories, macOS/
+ *  Windows junk files, and dotfiles). Nested zips inside a zip are kept as
+ *  opaque entries, not recursively expanded — one level of unpacking is
+ *  enough for the "tender package emailed as a single zip" case this exists
+ *  for. */
+export async function unzipEntries(buf: Buffer): Promise<ZipEntry[]> {
+  const zip = await JSZip.loadAsync(buf);
+  const entries: ZipEntry[] = [];
+  for (const [path, file] of Object.entries(zip.files)) {
+    if (file.dir) continue;
+    if (ZIP_JUNK_RE.test(path)) continue;
+    const basename = path.split("/").pop() ?? path;
+    if (basename.startsWith(".")) continue;
+    const content = await file.async("nodebuffer");
+    entries.push({ path, buf: content });
+  }
+  return entries;
 }
 
 /** Types with no text-extraction path yet (images, drawings-as-image, CAD, unknown binaries).
