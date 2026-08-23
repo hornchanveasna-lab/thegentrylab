@@ -8,6 +8,7 @@ import {
   getTenderDocumentUrl, TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
 } from "@/lib/tender-data";
 import { TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
+import { PdfCanvasViewer, type PdfScrollTarget } from "@/components/tender/PdfCanvasViewer";
 
 export const Route = createFileRoute("/tender/$tenderId/documents")({
   component: TenderDocuments,
@@ -203,7 +204,11 @@ function FolderBrowser({ tree, tenderId, onChanged, selectedId, onSelectFile }: 
 const OFFICE_VIEWABLE_TYPES = new Set(["doc", "docx", "ppt", "pptx", "xls", "xlsx"]);
 const IMAGE_TYPES = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg"]);
 
-function DocumentPreviewPane({ doc }: { doc: TenderDocument | null }) {
+function DocumentPreviewPane({ doc, scrollTarget, onScrollTargetConsumed }: {
+  doc: TenderDocument | null;
+  scrollTarget?: PdfScrollTarget | null;
+  onScrollTargetConsumed?: () => void;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,7 +250,7 @@ function DocumentPreviewPane({ doc }: { doc: TenderDocument | null }) {
           </a>
         )}
       </div>
-      <div className="h-[70vh] rounded-xl overflow-hidden bg-black/20 border border-white/8">
+      <div className={`rounded-xl overflow-hidden bg-black/20 border border-white/8 ${ext === "pdf" ? "h-[75vh]" : "h-[70vh]"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center"><LoadingSpinner /></div>
         ) : error ? (
@@ -253,7 +258,15 @@ function DocumentPreviewPane({ doc }: { doc: TenderDocument | null }) {
             <p className="text-[12px] text-red-400">{error}</p>
           </div>
         ) : !url ? null : ext === "pdf" ? (
-          <iframe src={url} title={doc.file_name} className="w-full h-full border-0" />
+          <div className="h-full p-3">
+            <PdfCanvasViewer
+              url={url}
+              fileName={doc.file_name}
+              onUrlExpired={() => getTenderDocumentUrl(doc)}
+              scrollTarget={scrollTarget}
+              onScrollTargetConsumed={onScrollTargetConsumed}
+            />
+          </div>
         ) : IMAGE_TYPES.has(ext) ? (
           <div className="h-full flex items-center justify-center p-4">
             <img src={url} alt={doc.file_name} className="max-w-full max-h-full object-contain" />
@@ -290,7 +303,10 @@ function TenderDocuments() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // Multi-tab document workspace is a known near-term follow-up; for now
+  // only one document is open for preview at a time.
   const [selectedDoc, setSelectedDoc] = useState<TenderDocument | null>(null);
+  const [scrollTarget, setScrollTarget] = useState<PdfScrollTarget | null>(null);
   const dragDepth = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -456,7 +472,11 @@ function TenderDocuments() {
               />
             </div>
             <div className="flex-1 min-w-0 w-full">
-              <DocumentPreviewPane doc={selectedDoc} />
+              <DocumentPreviewPane
+                doc={selectedDoc}
+                scrollTarget={scrollTarget}
+                onScrollTargetConsumed={() => setScrollTarget(null)}
+              />
             </div>
           </div>
         )}
