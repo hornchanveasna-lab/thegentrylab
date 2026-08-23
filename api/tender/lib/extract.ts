@@ -28,12 +28,26 @@ const standardFontDataUrl = new URL("../../../node_modules/pdfjs-dist/standard_f
  *  transform math while walking a PDF's structure — confirmed live via
  *  "DOMMatrix is not defined" on the Vercel Node runtime, which has no DOM.
  *  A minimal polyfill is enough since we only ever call getTextContent(),
- *  never render to canvas. */
+ *  never render to canvas.
+ *
+ *  Separately, in Node pdfjs-dist always runs its "fake worker" (main-thread)
+ *  path, which loads the worker's WorkerMessageHandler via a *dynamic*
+ *  `import(this.workerSrc)` — a runtime string, not a static specifier, so
+ *  Vercel's serverless bundler can't trace it and leaves it out of the
+ *  deployed function. Confirmed live: "Setting up fake worker failed:
+ *  Cannot find module '/var/task/node_modules/pdfjs-dist/legacy...'".
+ *  pdfjs checks `globalThis.pdfjsWorker.WorkerMessageHandler` first and
+ *  skips the dynamic import entirely if it's already set — so importing the
+ *  worker module ourselves (a static import Vercel *does* trace and bundle)
+ *  and stashing it there avoids the dynamic import ever running. */
 async function ensurePdfjsPolyfills() {
-  const g = globalThis as unknown as { DOMMatrix?: unknown };
+  const g = globalThis as unknown as { DOMMatrix?: unknown; pdfjsWorker?: unknown };
   if (typeof g.DOMMatrix === "undefined") {
     const { default: DOMMatrix } = await import("dommatrix");
     g.DOMMatrix = DOMMatrix;
+  }
+  if (typeof g.pdfjsWorker === "undefined") {
+    g.pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
   }
 }
 
