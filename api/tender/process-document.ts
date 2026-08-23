@@ -211,6 +211,22 @@ async function processOneDocument(env: TenderEnv, apiKey: string, doc: TenderDoc
       started_at: startedAt, finished_at: new Date().toISOString(),
     }).catch(() => {});
 
+    // Auto-extract this document's requirements right here rather than
+    // waiting for a manual "Extract Requirements" click — the whole point
+    // of the product is AI working quietly in the background, and
+    // classification-only automation left extraction as the one step a
+    // user had to remember to trigger themselves. A single document's
+    // requirement extraction already fits comfortably under Vercel's 60s
+    // limit on its own (confirmed — see listPendingRequirementDocuments'
+    // comment), so chaining it after this document's own (fast) classify
+    // step should still fit for the vast majority of documents. If it
+    // doesn't, this fails silently and requirements_extracted_at stays
+    // null — the Requirements tab's button remains a working catch-up
+    // path for anything this misses.
+    if (chunks.length > 0) {
+      await generateRequirementsForDocument(env, apiKey, doc).catch(() => {});
+    }
+
     return { status: "processed", chunks: chunks.length, classifyUpdate };
   } catch (err) {
     return fail(err instanceof Error ? err.message : String(err));

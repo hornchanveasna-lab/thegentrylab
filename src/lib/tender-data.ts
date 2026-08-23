@@ -326,6 +326,12 @@ export async function uploadTenderDocument(
   }).select().single();
   if (error) throw error;
   const doc = data as TenderDocument;
+  // processTenderDocument (the server's process-document endpoint) now also
+  // auto-triggers requirement extraction for the document once it finishes
+  // classifying — see process-document.ts's processOneDocument. That covers
+  // every upload path (direct upload, zip/rar children, link import)
+  // uniformly since it's server-side, so no separate client-side trigger is
+  // needed here.
   void processTenderDocument(doc.id); // fire-and-forget — UI polls tender_documents.status
   return doc;
 }
