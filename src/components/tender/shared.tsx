@@ -2,13 +2,25 @@ import { Link } from "@tanstack/react-router";
 import { Fragment, type ReactNode } from "react";
 import { DockWorkspaceProvider, useDockWorkspace } from "@/components/tender/DockWorkspace";
 import { QuickDocumentsPanel } from "@/components/tender/QuickDocumentsPanel";
-import { ThemeToggleButton } from "@/components/tender/TenderTheme";
 import { useTender } from "@/lib/tender-data";
 
 /* ── Shared design-system primitives for TenderAI (/tender/*) ──────────
  * Lean, Phase 1 subset — mirrors src/components/cm/shared.tsx's role for
  * the CM app. Grows as each new tender page needs a new primitive, rather
- * than speculatively building the whole set up front. */
+ * than speculatively building the whole set up front.
+ *
+ * Design direction (per the full product spec): one fixed professional
+ * look — dark-navy sidebar/chrome + light-neutral main workspace, always
+ * — not a user-toggled dark/light theme. `data-theme="light"` is forced
+ * on the root regardless of the site's global theme toggle, which lets
+ * every existing dark-styled class (bg-[#0d0d0e], text-white,
+ * border-white/N — used throughout Card/DataTable/StatusBadge/etc.)
+ * invert to a light-on-white reading via the [data-theme="light"]
+ * override sweep in styles.css, without having to rewrite every route
+ * file's classNames by hand. `.tender-dark-chrome` re-inverts specific
+ * elements (the sidebar, the bottom dock toolbar) back to dark navy so
+ * they stay visually anchored as permanent chrome against the light
+ * content area — see the matching CSS block in styles.css. */
 
 export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[#2563eb]/70 focus:ring-2 focus:ring-[#2563eb]/15 transition-all";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
@@ -16,22 +28,28 @@ export const btnPrimaryCls = "px-4 py-2.5 rounded-xl text-[12px] font-bold upper
 
 export function PageShell({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <TenderTopNav />
-      <main className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-8 pb-24">
-        <div className="flex items-center justify-between mb-6 gap-3">
-          <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{title}</h1>
-          {action}
-        </div>
-        {children}
-      </main>
+    // Wrapped (rather than putting data-theme directly on .tenderai-scope)
+    // so the existing "[data-theme=light] .tenderai-scope ..." override
+    // selectors — written when data-theme lived on <html> via the global
+    // toggle — still match via the descendant combinator.
+    <div data-theme="light">
+      <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans">
+        <TenderTopNav />
+        <main className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-8 pb-24">
+          <div className="flex items-center justify-between mb-6 gap-3">
+            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{title}</h1>
+            {action}
+          </div>
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
 
 export function TenderTopNav() {
   return (
-    <header className="border-b border-white/8 bg-[#0d0d0e]">
+    <header className="tender-dark-chrome border-b border-white/8 bg-[#0d0d0e]">
       <div className="max-w-6xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between">
         <Link to="/tender" className="flex items-center gap-2">
           <span className="w-6 h-6 rounded-md bg-[#2563eb] flex items-center justify-center text-[11px] font-black">T</span>
@@ -40,7 +58,6 @@ export function TenderTopNav() {
         <nav className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-widest text-white/50">
           <Link to="/tender" className="hover:text-white transition-colors">Dashboard</Link>
           <Link to="/tender/list" className="hover:text-white transition-colors">Tenders</Link>
-          <ThemeToggleButton />
         </nav>
       </div>
     </header>
@@ -95,7 +112,7 @@ function NavIcon({ name }: { name: string }) {
  *  of which tab is active. */
 function TenderSidebar({ tenderId, tenderName }: { tenderId: string; tenderName?: string }) {
   return (
-    <aside className="w-56 shrink-0 border-r border-white/8 bg-[#0d0d0e] flex flex-col h-screen sticky top-0">
+    <aside className="tender-dark-chrome w-56 shrink-0 border-r border-white/8 bg-[#0d0d0e] flex flex-col h-screen sticky top-0">
       <Link to="/tender" className="h-14 flex items-center gap-2 px-4 border-b border-white/8 shrink-0">
         <span className="w-6 h-6 rounded-md bg-[#2563eb] flex items-center justify-center text-[11px] font-black">T</span>
         <span className="font-extrabold tracking-tight text-[14px]">TenderAI</span>
@@ -118,9 +135,8 @@ function TenderSidebar({ tenderId, tenderName }: { tenderId: string; tenderName?
           </Link>
         ))}
       </nav>
-      <div className="p-3 border-t border-white/8 flex items-center justify-between shrink-0">
+      <div className="p-3 border-t border-white/8 shrink-0">
         <Link to="/tender/list" className="font-mono text-[9px] uppercase tracking-widest text-white/40 hover:text-white transition-colors">← All Tenders</Link>
-        <ThemeToggleButton />
       </div>
     </aside>
   );
@@ -131,25 +147,27 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
 }) {
   const { data: tender } = useTender(tenderId);
   return (
-    <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans flex">
-      <DockWorkspaceProvider>
-        <TenderSidebar tenderId={tenderId} tenderName={tender?.name} />
-        <div className="flex-1 min-w-0 flex flex-col pb-14">
-          <div className="border-b border-white/8 bg-[#0d0d0e] sticky top-0 z-10">
-            <div className="px-6 h-16 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="text-lg md:text-xl font-extrabold tracking-tight truncate">{title}</h1>
-                {subtitle && <div className="text-[12px] text-white/40 mt-0.5">{subtitle}</div>}
+    <div data-theme="light">
+      <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans flex">
+        <DockWorkspaceProvider>
+          <TenderSidebar tenderId={tenderId} tenderName={tender?.name} />
+          <div className="flex-1 min-w-0 flex flex-col pb-14">
+            <div className="border-b border-white/8 bg-[#0d0d0e] sticky top-0 z-10">
+              <div className="px-6 h-16 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h1 className="text-lg md:text-xl font-extrabold tracking-tight truncate">{title}</h1>
+                  {subtitle && <div className="text-[12px] text-white/40 mt-0.5">{subtitle}</div>}
+                </div>
+                {action}
               </div>
-              {action}
             </div>
+            <main className="flex-1 w-full px-6 py-6">
+              {children}
+            </main>
           </div>
-          <main className="flex-1 w-full px-6 py-6">
-            {children}
-          </main>
-        </div>
-        <DockToolbar tenderId={tenderId} tenderName={tender?.name} />
-      </DockWorkspaceProvider>
+          <DockToolbar tenderId={tenderId} tenderName={tender?.name} />
+        </DockWorkspaceProvider>
+      </div>
     </div>
   );
 }
@@ -162,7 +180,7 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
 function DockToolbar({ tenderId, tenderName }: { tenderId: string; tenderName?: string }) {
   const { openPanel } = useDockWorkspace();
   return (
-    <div className="fixed bottom-0 left-56 right-0 z-50 border-t border-white/8 bg-[#0d0d0e]/95 backdrop-blur">
+    <div className="tender-dark-chrome fixed bottom-0 left-56 right-0 z-50 border-t border-white/8 bg-[#0d0d0e]/95 backdrop-blur">
       <div className="px-6 h-11 flex items-center gap-1">
         <button
           onClick={() => openPanel("documents", `Documents — ${tenderName ?? "…"}`, <QuickDocumentsPanel tenderId={tenderId} />)}
