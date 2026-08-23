@@ -456,9 +456,10 @@
   border-bottom: 0.75pt solid #e0e0e0;
 }
 .advisor-print .pr-running-footer {
-  display: flex !important;
+  display: grid !important;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
+  column-gap: 10pt;
   width: 100%;
   box-sizing: border-box;
   padding: 6pt 20mm 9pt;
@@ -590,9 +591,9 @@
   }
 
   /* ── Running footer ── */
-  .pr-rf-left  { font-family: 'DM Sans', sans-serif; font-size: 6pt; color: #ccc; font-weight: 300; }
-  .pr-rf-right { font-family: 'DM Sans', sans-serif; font-size: 6pt; color: #ccc; text-align: right; font-weight: 300; }
-  .pr-rf-page  { font-family: 'DM Sans', sans-serif; font-size: 6.5pt; color: #999; font-weight: 500; text-align: center; }
+  .pr-rf-left  { font-family: 'DM Sans', sans-serif; font-size: 6pt; color: #ccc; font-weight: 300; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-rf-right { font-family: 'DM Sans', sans-serif; font-size: 6pt; color: #ccc; text-align: right; font-weight: 300; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pr-rf-page  { font-family: 'DM Sans', sans-serif; font-size: 6.5pt; color: #999; font-weight: 500; text-align: center; white-space: nowrap; }
 
   /* ── Section headings — WB style ── */
   .pr-section-number {
