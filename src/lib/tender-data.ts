@@ -353,6 +353,14 @@ export async function processTenderDocument(documentId: string): Promise<void> {
   } catch { /* non-fatal — document stays in 'uploaded' status, user can retry from the UI */ }
 }
 
+/** Signed URL so a document can be opened/previewed straight from the browser
+ *  (the tender-documents bucket is private, RLS-gated by org membership). */
+export async function getTenderDocumentUrl(doc: TenderDocument): Promise<string> {
+  const { data, error } = await db().storage.from("tender-documents").createSignedUrl(doc.storage_path, 60 * 10);
+  if (error) throw error;
+  return data.signedUrl;
+}
+
 export async function deleteTenderDocument(doc: TenderDocument) {
   await db().storage.from("tender-documents").remove([doc.storage_path]);
   const { error } = await db().from("tender_documents").delete().eq("id", doc.id);

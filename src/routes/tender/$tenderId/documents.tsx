@@ -5,7 +5,7 @@ import { useAuthTender } from "@/lib/auth-tender";
 import {
   useCurrentOrg, useTenderDocuments, uploadTenderDocument, deleteTenderDocument,
   updateTenderDocumentCategory, processTenderDocument, importTenderDocumentFromLink,
-  TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
+  getTenderDocumentUrl, TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
 } from "@/lib/tender-data";
 import { TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
 
@@ -104,53 +104,88 @@ function countTreeFiles(f: DocTreeFolder): number {
   return f.files.length + f.folders.reduce((sum, sub) => sum + countTreeFiles(sub), 0);
 }
 
-function DocTree({ tree, tenderId, onChanged }: { tree: DocTreeFolder; tenderId: string; onChanged: () => void }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  function toggle(path: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path); else next.add(path);
-      return next;
-    });
+function findDocFolder(tree: DocTreeFolder, path: string): DocTreeFolder | undefined {
+  if (!path) return tree;
+  let current = tree;
+  for (const part of path.split("/")) {
+    const next = current.folders.find((f) => f.name === part);
+    if (!next) return undefined;
+    current = next;
   }
-  return <DocTreeLevel folder={tree} depth={0} collapsed={collapsed} onToggle={toggle} tenderId={tenderId} onChanged={onChanged} />;
+  return current;
 }
 
-function DocTreeLevel({ folder, depth, collapsed, onToggle, tenderId, onChanged }: {
-  folder: DocTreeFolder; depth: number; collapsed: Set<string>; onToggle: (path: string) => void;
-  tenderId: string; onChanged: () => void;
-}) {
+function FolderIcon({ size = 16 }: { size?: number }) {
   return (
-    <div className="flex flex-col divide-y divide-white/6">
-      {folder.folders.map((sub) => {
-        const isCollapsed = collapsed.has(sub.path);
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: "#2563eb" }}>
+      <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function Breadcrumbs({ rootLabel, path, onNavigate }: { rootLabel: string; path: string; onNavigate: (path: string) => void }) {
+  const crumbs = path ? path.split("/") : [];
+  return (
+    <div className="flex items-center gap-1.5 mb-3 flex-wrap text-[12px]">
+      <button
+        onClick={() => onNavigate("")}
+        className={`font-semibold transition-colors ${crumbs.length === 0 ? "text-white" : "text-white/50 hover:text-[#2563eb]"}`}
+      >
+        {rootLabel}
+      </button>
+      {crumbs.map((c, i) => {
+        const segPath = crumbs.slice(0, i + 1).join("/");
+        const isLast = i === crumbs.length - 1;
         return (
-          <div key={sub.path}>
+          <span key={segPath} className="flex items-center gap-1.5">
+            <span className="text-white/20">/</span>
             <button
-              onClick={() => onToggle(sub.path)}
-              className="w-full flex items-center gap-2 py-2.5 hover:bg-white/[0.03] transition-colors text-left"
-              style={{ paddingLeft: `${depth * 18}px` }}
+              onClick={() => onNavigate(segPath)}
+              className={`transition-colors truncate max-w-[220px] ${isLast ? "text-white font-semibold" : "text-white/50 hover:text-[#2563eb]"}`}
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" className={`shrink-0 transition-transform ${isCollapsed ? "" : "rotate-90"}`}>
-                <path d="M2 1 L8 5 L2 9" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: "#2563eb" }}>
-                <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-              <span className="text-[12px] font-semibold truncate">{sub.name}</span>
-              <span className="ml-auto font-mono text-[9px] text-white/30 shrink-0 pr-2">{countTreeFiles(sub)}</span>
+              {c}
             </button>
-            {!isCollapsed && (
-              <DocTreeLevel folder={sub} depth={depth + 1} collapsed={collapsed} onToggle={onToggle} tenderId={tenderId} onChanged={onChanged} />
-            )}
-          </div>
+          </span>
         );
       })}
-      {folder.files.map((doc) => (
-        <div key={doc.id} style={{ paddingLeft: `${depth * 18 + 22}px` }}>
-          <DocumentRow doc={doc} tenderId={tenderId} onChanged={onChanged} />
+    </div>
+  );
+}
+
+function FolderBrowser({ tree, tenderId, onChanged }: { tree: DocTreeFolder; tenderId: string; onChanged: () => void }) {
+  const [currentPath, setCurrentPath] = useState("");
+  const current = findDocFolder(tree, currentPath) ?? tree;
+
+  return (
+    <div>
+      <Breadcrumbs rootLabel="Documents" path={currentPath} onNavigate={setCurrentPath} />
+      <Card>
+        <div className="flex flex-col divide-y divide-white/6">
+          {current.folders.length === 0 && current.files.length === 0 ? (
+            <p className="text-[12px] text-white/30 py-6 text-center">This folder is empty.</p>
+          ) : (
+            <>
+              {current.folders.map((sub) => (
+                <button
+                  key={sub.path}
+                  onClick={() => setCurrentPath(sub.path)}
+                  className="w-full flex items-center gap-2.5 py-3 hover:bg-white/[0.03] transition-colors text-left"
+                >
+                  <FolderIcon />
+                  <span className="text-[12px] font-semibold truncate flex-1">{sub.name}</span>
+                  <span className="font-mono text-[9px] text-white/30 shrink-0">{countTreeFiles(sub)} file{countTreeFiles(sub) !== 1 ? "s" : ""}</span>
+                  <svg width="14" height="14" viewBox="0 0 10 10" className="shrink-0">
+                    <path d="M2 1 L8 5 L2 9" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              ))}
+              {current.files.map((doc) => (
+                <DocumentRow key={doc.id} doc={doc} tenderId={tenderId} onChanged={onChanged} />
+              ))}
+            </>
+          )}
         </div>
-      ))}
+      </Card>
     </div>
   );
 }
@@ -300,13 +335,11 @@ function TenderDocuments() {
           <EmptyState title="No documents uploaded yet"
             hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP archives auto-expand into their own folder once processed." />
         ) : (
-          <Card>
-            <DocTree
-              tree={tree}
-              tenderId={tenderId}
-              onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })}
-            />
-          </Card>
+          <FolderBrowser
+            tree={tree}
+            tenderId={tenderId}
+            onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })}
+          />
         )}
       </div>
     </TenderShell>
@@ -374,10 +407,23 @@ function RemoveConfirmModal({ fileName, onCancel, onConfirm }: {
   );
 }
 
+function FileIcon({ fileType }: { fileType: string }) {
+  const ext = fileType.toLowerCase();
+  const color = ext === "pdf" ? "#ef4444" : ext === "xlsx" || ext === "xls" || ext === "csv" ? "#22c55e"
+    : ext === "docx" || ext === "doc" ? "#3b82f6" : ext === "zip" ? "#f59e0b" : "rgba(255,255,255,0.35)";
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color }}>
+      <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M14 2v6h6" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
 function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string; onChanged: () => void }) {
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [opening, setOpening] = useState(false);
 
   function handleConfirmedRemove() {
     setDeleting(true);
@@ -385,10 +431,25 @@ function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string
     deleteTenderDocument(doc).then(onChanged);
   }
 
+  async function handleOpen() {
+    setOpening(true);
+    try {
+      const url = await getTenderDocumentUrl(doc);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } finally {
+      setOpening(false);
+    }
+  }
+
   return (
     <div className="flex items-center justify-between gap-3 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-medium truncate">{doc.file_name}</p>
+      <div className="min-w-0 flex-1 flex items-start gap-2.5">
+        <div className="mt-0.5"><FileIcon fileType={doc.file_type} /></div>
+        <div className="min-w-0 flex-1">
+        <button onClick={handleOpen} disabled={opening} title="Open document"
+          className="text-[12px] font-medium truncate text-left hover:text-[#2563eb] hover:underline transition-colors disabled:opacity-50">
+          {opening ? "Opening…" : doc.file_name}
+        </button>
         <div className="flex items-center gap-2 mt-1">
           <select
             value={doc.doc_category ?? ""}
@@ -403,6 +464,7 @@ function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string
         {doc.status === "failed" && doc.processing_error && (
           <p className="text-[10px] text-red-400/80 mt-1 truncate" title={doc.processing_error}>{doc.processing_error}</p>
         )}
+        </div>
       </div>
       <StatusBadge value={doc.status} />
       {doc.status === "failed" && (
