@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthTender } from "@/lib/auth-tender";
 import {
   useCurrentOrg, useTenderDocuments, uploadTenderDocument, deleteTenderDocument,
-  updateTenderDocumentCategory, TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
+  updateTenderDocumentCategory, processTenderDocument, TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
 } from "@/lib/tender-data";
 import { TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
 
@@ -101,6 +101,7 @@ function TenderDocuments() {
 
 function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string; onChanged: () => void }) {
   const [deleting, setDeleting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   return (
     <div className="flex items-center justify-between gap-3 py-3">
@@ -117,8 +118,20 @@ function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string
           </select>
           {doc.discipline && <span className="font-mono text-[9px] text-white/30">{doc.discipline}</span>}
         </div>
+        {doc.status === "failed" && doc.processing_error && (
+          <p className="text-[10px] text-red-400/80 mt-1 truncate" title={doc.processing_error}>{doc.processing_error}</p>
+        )}
       </div>
       <StatusBadge value={doc.status} />
+      {doc.status === "failed" && (
+        <button
+          disabled={retrying}
+          onClick={async () => { setRetrying(true); await processTenderDocument(doc.id); onChanged(); setRetrying(false); }}
+          className="text-white/40 hover:text-white transition-colors text-[11px] font-mono uppercase tracking-widest shrink-0"
+        >
+          {retrying ? "Retrying…" : "Retry"}
+        </button>
+      )}
       <button
         disabled={deleting}
         onClick={async () => { setDeleting(true); await deleteTenderDocument(doc); onChanged(); }}

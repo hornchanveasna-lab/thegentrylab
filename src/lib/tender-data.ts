@@ -256,7 +256,24 @@ export async function uploadTenderDocument(orgId: string, tenderId: string, file
     file_size_bytes: file.size,
   }).select().single();
   if (error) throw error;
-  return data as TenderDocument;
+  const doc = data as TenderDocument;
+  void processTenderDocument(doc.id); // fire-and-forget — UI polls tender_documents.status
+  return doc;
+}
+
+/** Kicks off server-side extraction + classification for one document. Errors surface via the
+ *  document's own `status`/`processing_error` fields (polled by useTenderDocuments), not a thrown exception. */
+export async function processTenderDocument(documentId: string): Promise<void> {
+  const { data } = await db().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return;
+  try {
+    await fetch("/api/tender/process-document", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ documentId }),
+    });
+  } catch { /* non-fatal — document stays in 'uploaded' status, user can retry from the UI */ }
 }
 
 export async function deleteTenderDocument(doc: TenderDocument) {
