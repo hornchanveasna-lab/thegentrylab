@@ -90,14 +90,21 @@ function TenderDocuments() {
     const startedAt = Date.now();
     setUploadProgress({ filesDone: 0, filesTotal: files.length, bytesDone: 0, bytesTotal: totalBytes, startedAt });
     try {
+      let filesDone = 0;
+      let priorFilesBytes = 0;
       for (const file of files) {
         // webkitRelativePath is set for folder-picker uploads and preserves
         // the original tender-package folder structure (e.g. "01 Instructions
         // to Tenderers/ITT.pdf"); plain file picks fall back to just the name.
         const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
-        await uploadTenderDocument(orgId, tenderId, file, relativePath);
-        bytesDone += file.size;
-        setUploadProgress((prev) => prev ? { ...prev, filesDone: prev.filesDone + 1, bytesDone } : prev);
+        const basisBytes = priorFilesBytes;
+        await uploadTenderDocument(orgId, tenderId, file, relativePath, (loaded) => {
+          setUploadProgress((prev) => prev ? { ...prev, bytesDone: basisBytes + loaded } : prev);
+        });
+        filesDone += 1;
+        priorFilesBytes += file.size;
+        bytesDone = priorFilesBytes;
+        setUploadProgress((prev) => prev ? { ...prev, filesDone, bytesDone } : prev);
       }
       await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
     } catch (err) {

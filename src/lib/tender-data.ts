@@ -6,7 +6,7 @@
  */
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabaseTender } from "./supabase-tender";
+import { supabaseTender, TENDER_SUPABASE_URL, TENDER_SUPABASE_ANON_KEY } from "./supabase-tender";
 
 const STALE_TIME = 30 * 1000;
 
@@ -254,10 +254,43 @@ export function useTenderDocuments(tenderId: string | undefined) {
   });
 }
 
-export async function uploadTenderDocument(orgId: string, tenderId: string, file: File, relativePath: string): Promise<TenderDocument> {
+/** Uploads a file straight to Supabase Storage's REST endpoint via XHR
+ *  instead of supabase-js's storage.upload() (which wraps fetch and has no
+ *  progress callback) — XHR's upload.onprogress gives real byte-level
+ *  progress, which matters for large tender packages (single files can run
+ *  into the hundreds of MB) rather than only updating once a whole file
+ *  finishes. */
+function uploadFileWithProgress(storagePath: string, file: File, onProgress?: (loaded: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!TENDER_SUPABASE_URL || !TENDER_SUPABASE_ANON_KEY) {
+      reject(new Error("TenderAI's Supabase client is not configured"));
+      return;
+    }
+    const session = db().auth.getSession();
+    session.then(({ data }) => {
+      const token = data.session?.access_token ?? TENDER_SUPABASE_ANON_KEY;
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${TENDER_SUPABASE_URL}/storage/v1/object/tender-documents/${storagePath}`);
+      xhr.setRequestHeader("apikey", TENDER_SUPABASE_ANON_KEY!);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.setRequestHeader("x-upsert", "false");
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded); };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve();
+        else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText || xhr.statusText}`));
+      };
+      xhr.onerror = () => reject(new Error("Upload failed — network error"));
+      xhr.send(file);
+    }).catch(reject);
+  });
+}
+
+export async function uploadTenderDocument(
+  orgId: string, tenderId: string, file: File, relativePath: string,
+  onProgress?: (loaded: number) => void,
+): Promise<TenderDocument> {
   const storagePath = `${orgId}/${tenderId}/${crypto.randomUUID()}-${file.name}`;
-  const { error: uploadError } = await db().storage.from("tender-documents").upload(storagePath, file);
-  if (uploadError) throw uploadError;
+  await uploadFileWithProgress(storagePath, file, onProgress);
   const { data, error } = await db().from("tender_documents").insert({
     tender_id: tenderId,
     storage_path: storagePath,
