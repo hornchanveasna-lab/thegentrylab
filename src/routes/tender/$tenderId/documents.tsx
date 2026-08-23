@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthTender } from "@/lib/auth-tender";
 import {
@@ -272,6 +272,20 @@ function LinkImportModal({ uploading, onCancel, onSubmit }: {
 function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string; onChanged: () => void }) {
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const confirmTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current); }, []);
+
+  function handleRemoveClick() {
+    if (!confirmingRemove) {
+      setConfirmingRemove(true);
+      confirmTimeoutRef.current = setTimeout(() => setConfirmingRemove(false), 4000);
+      return;
+    }
+    if (confirmTimeoutRef.current) clearTimeout(confirmTimeoutRef.current);
+    setDeleting(true);
+    deleteTenderDocument(doc).then(onChanged);
+  }
 
   return (
     <div className="flex items-center justify-between gap-3 py-3">
@@ -304,10 +318,13 @@ function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string
       )}
       <button
         disabled={deleting}
-        onClick={async () => { setDeleting(true); await deleteTenderDocument(doc); onChanged(); }}
-        className="text-white/25 hover:text-red-400 transition-colors text-[11px] font-mono uppercase tracking-widest shrink-0"
+        onClick={handleRemoveClick}
+        onBlur={() => setConfirmingRemove(false)}
+        className={`transition-colors text-[11px] font-mono uppercase tracking-widest shrink-0 ${
+          confirmingRemove ? "text-red-400 font-bold" : "text-white/25 hover:text-red-400"
+        }`}
       >
-        Remove
+        {deleting ? "Removing…" : confirmingRemove ? "Confirm remove?" : "Remove"}
       </button>
     </div>
   );
