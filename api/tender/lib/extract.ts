@@ -24,7 +24,21 @@ export interface DocChunk {
 
 const standardFontDataUrl = new URL("../../../node_modules/pdfjs-dist/standard_fonts/", import.meta.url).toString();
 
+/** pdfjs-dist (even its "legacy" Node build) touches DOMMatrix for glyph/text
+ *  transform math while walking a PDF's structure — confirmed live via
+ *  "DOMMatrix is not defined" on the Vercel Node runtime, which has no DOM.
+ *  A minimal polyfill is enough since we only ever call getTextContent(),
+ *  never render to canvas. */
+async function ensurePdfjsPolyfills() {
+  const g = globalThis as unknown as { DOMMatrix?: unknown };
+  if (typeof g.DOMMatrix === "undefined") {
+    const { default: DOMMatrix } = await import("dommatrix");
+    g.DOMMatrix = DOMMatrix;
+  }
+}
+
 export async function extractPdf(buf: Buffer): Promise<ExtractedSection[]> {
+  await ensurePdfjsPolyfills();
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
   const doc = await getDocument({
     data: new Uint8Array(buf),

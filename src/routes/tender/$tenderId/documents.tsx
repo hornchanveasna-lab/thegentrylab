@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthTender } from "@/lib/auth-tender";
 import {
@@ -152,7 +152,10 @@ function Breadcrumbs({ rootLabel, path, onNavigate }: { rootLabel: string; path:
   );
 }
 
-function FolderBrowser({ tree, tenderId, onChanged }: { tree: DocTreeFolder; tenderId: string; onChanged: () => void }) {
+function FolderBrowser({ tree, tenderId, onChanged, selectedId, onSelectFile }: {
+  tree: DocTreeFolder; tenderId: string; onChanged: () => void;
+  selectedId: string | null; onSelectFile: (doc: TenderDocument) => void;
+}) {
   const [currentPath, setCurrentPath] = useState("");
   const current = findDocFolder(tree, currentPath) ?? tree;
 
@@ -180,13 +183,98 @@ function FolderBrowser({ tree, tenderId, onChanged }: { tree: DocTreeFolder; ten
                 </button>
               ))}
               {current.files.map((doc) => (
-                <DocumentRow key={doc.id} doc={doc} tenderId={tenderId} onChanged={onChanged} />
+                <DocumentRow
+                  key={doc.id}
+                  doc={doc}
+                  tenderId={tenderId}
+                  onChanged={onChanged}
+                  selected={doc.id === selectedId}
+                  onSelect={() => onSelectFile(doc)}
+                />
               ))}
             </>
           )}
         </div>
       </Card>
     </div>
+  );
+}
+
+const OFFICE_VIEWABLE_TYPES = new Set(["doc", "docx", "ppt", "pptx", "xls", "xlsx"]);
+const IMAGE_TYPES = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg"]);
+
+function DocumentPreviewPane({ doc }: { doc: TenderDocument | null }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!doc) { setUrl(null); return; }
+    let cancelled = false;
+    setLoading(true); setError(null); setUrl(null);
+    getTenderDocumentUrl(doc)
+      .then((u) => { if (!cancelled) setUrl(u); })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load preview"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [doc?.id]);
+
+  if (!doc) {
+    return (
+      <Card>
+        <div className="h-[70vh] flex items-center justify-center">
+          <p className="text-[12px] text-white/30">Select a document to view it here.</p>
+        </div>
+      </Card>
+    );
+  }
+
+  const ext = doc.file_type.toLowerCase();
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="min-w-0 flex items-center gap-2">
+          <FileIcon fileType={doc.file_type} />
+          <p className="text-[12px] font-semibold truncate">{doc.file_name}</p>
+        </div>
+        {url && (
+          <a href={url} target="_blank" rel="noopener noreferrer"
+            className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-white/40 hover:text-[#2563eb] transition-colors">
+            Open in new tab ↗
+          </a>
+        )}
+      </div>
+      <div className="h-[70vh] rounded-xl overflow-hidden bg-black/20 border border-white/8">
+        {loading ? (
+          <div className="h-full flex items-center justify-center"><LoadingSpinner /></div>
+        ) : error ? (
+          <div className="h-full flex items-center justify-center px-6 text-center">
+            <p className="text-[12px] text-red-400">{error}</p>
+          </div>
+        ) : !url ? null : ext === "pdf" ? (
+          <iframe src={url} title={doc.file_name} className="w-full h-full border-0" />
+        ) : IMAGE_TYPES.has(ext) ? (
+          <div className="h-full flex items-center justify-center p-4">
+            <img src={url} alt={doc.file_name} className="max-w-full max-h-full object-contain" />
+          </div>
+        ) : OFFICE_VIEWABLE_TYPES.has(ext) ? (
+          <iframe
+            src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`}
+            title={doc.file_name}
+            className="w-full h-full border-0"
+          />
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center">
+            <p className="text-[12px] text-white/40">Preview isn't available for .{ext} files.</p>
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#2563eb" }}>
+              Open in new tab ↗
+            </a>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -202,6 +290,7 @@ function TenderDocuments() {
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<TenderDocument | null>(null);
   const dragDepth = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -356,11 +445,20 @@ function TenderDocuments() {
           <EmptyState title="No documents uploaded yet"
             hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP archives auto-expand into their own folder once processed." />
         ) : (
-          <FolderBrowser
-            tree={tree}
-            tenderId={tenderId}
-            onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })}
-          />
+          <div className="flex flex-col lg:flex-row gap-4 items-start">
+            <div className="w-full lg:w-[380px] shrink-0">
+              <FolderBrowser
+                tree={tree}
+                tenderId={tenderId}
+                onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })}
+                selectedId={selectedDoc?.id ?? null}
+                onSelectFile={setSelectedDoc}
+              />
+            </div>
+            <div className="flex-1 min-w-0 w-full">
+              <DocumentPreviewPane doc={selectedDoc} />
+            </div>
+          </div>
         )}
       </div>
     </TenderShell>
@@ -440,11 +538,12 @@ function FileIcon({ fileType }: { fileType: string }) {
   );
 }
 
-function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string; onChanged: () => void }) {
+function DocumentRow({ doc, onChanged, selected, onSelect }: {
+  doc: TenderDocument; tenderId: string; onChanged: () => void; selected: boolean; onSelect: () => void;
+}) {
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [opening, setOpening] = useState(false);
 
   function handleConfirmedRemove() {
     setDeleting(true);
@@ -452,24 +551,14 @@ function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string
     deleteTenderDocument(doc).then(onChanged);
   }
 
-  async function handleOpen() {
-    setOpening(true);
-    try {
-      const url = await getTenderDocumentUrl(doc);
-      window.open(url, "_blank", "noopener,noreferrer");
-    } finally {
-      setOpening(false);
-    }
-  }
-
   return (
-    <div className="flex items-center justify-between gap-3 py-3">
+    <div className={`flex items-center justify-between gap-3 py-3 px-2 -mx-2 rounded-lg transition-colors ${selected ? "bg-white/[0.05]" : ""}`}>
       <div className="min-w-0 flex-1 flex items-start gap-2.5">
         <div className="mt-0.5"><FileIcon fileType={doc.file_type} /></div>
         <div className="min-w-0 flex-1">
-        <button onClick={handleOpen} disabled={opening} title="Open document"
-          className="text-[12px] font-medium truncate text-left hover:text-[#2563eb] hover:underline transition-colors disabled:opacity-50">
-          {opening ? "Opening…" : doc.file_name}
+        <button onClick={onSelect} title="Preview document"
+          className={`text-[12px] font-medium truncate text-left transition-colors ${selected ? "text-[#2563eb]" : "hover:text-[#2563eb]"}`}>
+          {doc.file_name}
         </button>
         <div className="flex items-center gap-2 mt-1">
           <select
