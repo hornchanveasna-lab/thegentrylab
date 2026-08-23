@@ -275,13 +275,23 @@ async function getFreshAccessToken(): Promise<string | undefined> {
  *  progress, which matters for large tender packages (single files can run
  *  into the hundreds of MB) rather than only updating once a whole file
  *  finishes. */
-function uploadFileWithProgress(storagePath: string, file: File, onProgress?: (loaded: number) => void): Promise<void> {
+function uploadFileWithProgress(
+  storagePath: string, file: File, onProgress?: (loaded: number) => void, signal?: AbortSignal,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!TENDER_SUPABASE_URL || !TENDER_SUPABASE_ANON_KEY) {
       reject(new Error("TenderAI's Supabase client is not configured"));
       return;
     }
+    if (signal?.aborted) {
+      reject(new DOMException("Upload cancelled", "AbortError"));
+      return;
+    }
     getFreshAccessToken().then((token) => {
+      if (signal?.aborted) {
+        reject(new DOMException("Upload cancelled", "AbortError"));
+        return;
+      }
       const xhr = new XMLHttpRequest();
       xhr.open("POST", `${TENDER_SUPABASE_URL}/storage/v1/object/tender-documents/${storagePath}`);
       xhr.setRequestHeader("apikey", TENDER_SUPABASE_ANON_KEY!);
@@ -293,6 +303,8 @@ function uploadFileWithProgress(storagePath: string, file: File, onProgress?: (l
         else reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText || xhr.statusText}`));
       };
       xhr.onerror = () => reject(new Error("Upload failed — network error"));
+      xhr.onabort = () => reject(new DOMException("Upload cancelled", "AbortError"));
+      signal?.addEventListener("abort", () => xhr.abort());
       xhr.send(file);
     }).catch(reject);
   });
@@ -300,10 +312,10 @@ function uploadFileWithProgress(storagePath: string, file: File, onProgress?: (l
 
 export async function uploadTenderDocument(
   orgId: string, tenderId: string, file: File, relativePath: string,
-  onProgress?: (loaded: number) => void,
+  onProgress?: (loaded: number) => void, signal?: AbortSignal,
 ): Promise<TenderDocument> {
   const storagePath = `${orgId}/${tenderId}/${crypto.randomUUID()}-${file.name}`;
-  await uploadFileWithProgress(storagePath, file, onProgress);
+  await uploadFileWithProgress(storagePath, file, onProgress, signal);
   const { data, error } = await db().from("tender_documents").insert({
     tender_id: tenderId,
     storage_path: storagePath,

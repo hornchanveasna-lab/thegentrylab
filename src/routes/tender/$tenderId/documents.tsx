@@ -37,7 +37,7 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function UploadProgressBar({ progress }: { progress: UploadProgress }) {
+function UploadProgressBar({ progress, onCancel }: { progress: UploadProgress; onCancel: () => void }) {
   const { filesDone, filesTotal, bytesDone, bytesTotal, startedAt } = progress;
   const pct = bytesTotal > 0 ? Math.min(100, (bytesDone / bytesTotal) * 100) : (filesDone / filesTotal) * 100;
   const elapsedSec = (Date.now() - startedAt) / 1000;
@@ -47,13 +47,21 @@ function UploadProgressBar({ progress }: { progress: UploadProgress }) {
 
   return (
     <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 gap-3">
         <p className="text-[11px] font-mono text-white/60">
           Uploading {filesDone}/{filesTotal} file{filesTotal !== 1 ? "s" : ""} · {formatBytes(bytesDone)} / {formatBytes(bytesTotal)}
         </p>
-        <p className="text-[11px] font-mono text-white/40">
-          {etaSec !== null ? `~${formatEta(etaSec)} left` : "estimating…"}
-        </p>
+        <div className="flex items-center gap-3 shrink-0">
+          <p className="text-[11px] font-mono text-white/40">
+            {etaSec !== null ? `~${formatEta(etaSec)} left` : "estimating…"}
+          </p>
+          <button
+            onClick={onCancel}
+            className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-red-400 transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
       <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
         <div
@@ -329,6 +337,7 @@ function TenderDocuments() {
   const processingRef = useRef(false);
   const doneFilesRef = useRef(0);
   const doneBytesRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   if (!user || !orgId) return <div className="min-h-screen bg-[#0a0a0b]" />;
 
@@ -336,13 +345,15 @@ function TenderDocuments() {
     if (!orgId) return;
     processingRef.current = true;
     setUploading(true);
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     try {
       while (uploadQueueRef.current.length > 0) {
         const item = uploadQueueRef.current.shift()!;
         const basisBytes = doneBytesRef.current;
         await uploadTenderDocument(orgId, tenderId, item.file, item.relativePath, (loaded) => {
           setUploadProgress((prev) => prev ? { ...prev, bytesDone: basisBytes + loaded } : prev);
-        });
+        }, controller.signal);
         doneFilesRef.current += 1;
         doneBytesRef.current += item.file.size;
         const filesDone = doneFilesRef.current;
@@ -351,14 +362,24 @@ function TenderDocuments() {
         await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
       }
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : "Upload failed");
+      if (err instanceof DOMException && err.name === "AbortError") {
+        uploadQueueRef.current = [];
+        setUploadError(`Upload cancelled — ${doneFilesRef.current} file${doneFilesRef.current !== 1 ? "s" : ""} already uploaded stay in place.`);
+      } else {
+        setUploadError(err instanceof Error ? err.message : "Upload failed");
+      }
     } finally {
+      abortControllerRef.current = null;
       processingRef.current = false;
       setUploading(false);
       setUploadProgress(null);
       doneFilesRef.current = 0;
       doneBytesRef.current = 0;
     }
+  }
+
+  function cancelUpload() {
+    abortControllerRef.current?.abort();
   }
 
   function handleFiles(fileList: FileList | null) {
@@ -443,7 +464,7 @@ function TenderDocuments() {
     >
       {uploadError && <p className="text-[12px] text-red-400 mb-4">{uploadError}</p>}
 
-      {uploadProgress && <UploadProgressBar progress={uploadProgress} />}
+      {uploadProgress && <UploadProgressBar progress={uploadProgress} onCancel={cancelUpload} />}
 
       {linkModalOpen && (
         <LinkImportModal
