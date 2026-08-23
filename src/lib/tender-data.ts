@@ -426,10 +426,12 @@ export async function generateRequirements(tenderId: string): Promise<{ document
   const { data } = await db().auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error("Not signed in");
-  const res = await fetch("/api/tender/generate-requirements", {
+  // Folded into process-document.ts rather than its own endpoint — Vercel's
+  // Hobby plan caps a deployment at 12 serverless functions.
+  const res = await fetch("/api/tender/process-document", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ tenderId }),
+    body: JSON.stringify({ action: "generate_requirements", tenderId }),
   });
   const body = await res.json();
   if (!res.ok) throw new Error(body?.error ?? "Failed to generate requirements");

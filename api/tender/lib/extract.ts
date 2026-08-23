@@ -47,6 +47,10 @@ async function ensurePdfjsPolyfills() {
     g.DOMMatrix = DOMMatrix;
   }
   if (typeof g.pdfjsWorker === "undefined") {
+    // @ts-ignore — pdfjs-dist ships no .d.ts for this internal worker entry
+    // point under some moduleResolution settings; runtime import is fine,
+    // this is a type-only gap. (@ts-ignore, not @ts-expect-error, since
+    // whether this actually errors varies by moduleResolution.)
     g.pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs");
   }
 }
