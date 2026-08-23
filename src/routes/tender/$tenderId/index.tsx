@@ -4,7 +4,7 @@ import {
   useTender, useTenderDocuments, useTenderRequirements, useTenderGaps, useTenderRisks,
   PROJECT_TYPE_LABELS, riskBand,
 } from "@/lib/tender-data";
-import { TenderShell, Card, StatusBadge, LoadingSpinner } from "@/components/tender/shared";
+import { TenderShell, Card, KpiPanel, KpiTile, StatusBadge, LoadingSpinner } from "@/components/tender/shared";
 
 export const Route = createFileRoute("/tender/$tenderId/")({
   component: TenderOverview,
@@ -41,26 +41,32 @@ function TenderOverview() {
       }
       action={<StatusBadge value={tender.status} />}
     >
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <Card>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">Documents</p>
-          <p className="text-2xl font-extrabold font-mono">{docsProcessed}<span className="text-white/30 text-base">/{documents.length}</span></p>
-          <p className="text-[10px] text-white/30 mt-0.5">processed</p>
-        </Card>
-        <Card>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">Requirements</p>
-          <p className="text-2xl font-extrabold font-mono">{reqReady}<span className="text-white/30 text-base">/{requirements.length}</span></p>
-          <p className="text-[10px] text-white/30 mt-0.5">ready</p>
-        </Card>
-        <Card>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">Critical Gaps</p>
-          <p className="text-2xl font-extrabold font-mono" style={{ color: criticalGaps > 0 ? "#ef4444" : undefined }}>{criticalGaps}</p>
-          <p className="text-[10px] text-white/30 mt-0.5">{highGaps} high</p>
-        </Card>
-        <Card>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">Deadline</p>
-          <p className="text-lg font-extrabold font-mono">{tender.submission_deadline ? new Date(tender.submission_deadline).toLocaleDateString() : "—"}</p>
-        </Card>
+      <div className="mb-4">
+        <KpiPanel title="Project Health">
+          <KpiTile
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" /><path d="M14 2v6h6" /></svg>}
+            value={<>{docsProcessed}<span className="text-white/30 text-sm">/{documents.length}</span></>}
+            label="Documents processed"
+          />
+          <KpiTile
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M8 12.5l2.5 2.5L16 9" /></svg>}
+            value={<>{reqReady}<span className="text-white/30 text-sm">/{requirements.length}</span></>}
+            label="Requirements ready"
+            color="#22c55e"
+          />
+          <KpiTile
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3 2 20h20L12 3Z" /><path d="M12 10v4" /></svg>}
+            value={criticalGaps}
+            label={`Critical gaps · ${highGaps} high`}
+            color="#ef4444"
+          />
+          <KpiTile
+            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>}
+            value={tender.submission_deadline ? new Date(tender.submission_deadline).toLocaleDateString() : "—"}
+            label="Submission deadline"
+            color="#f97316"
+          />
+        </KpiPanel>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">

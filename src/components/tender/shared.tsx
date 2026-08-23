@@ -50,49 +50,89 @@ export function TenderTopNav() {
 // endpoints exist (they need TENDER_SUPABASE_SERVICE_ROLE_KEY, not yet
 // configured — see docs/mvp-roadmap.md's ship order). Every tab below is
 // wired to real, currently-empty-until-processed data — no placeholder UI.
-const TENDER_TABS: { key: string; label: string; to: string }[] = [
-  { key: "overview", label: "Overview", to: "/tender/$tenderId" },
-  { key: "documents", label: "Documents", to: "/tender/$tenderId/documents" },
-  { key: "requirements", label: "Requirements", to: "/tender/$tenderId/requirements" },
-  { key: "checklist", label: "Checklist", to: "/tender/$tenderId/checklist" },
-  { key: "compliance", label: "Compliance", to: "/tender/$tenderId/compliance" },
-  { key: "gaps", label: "Gaps", to: "/tender/$tenderId/gaps" },
-  { key: "risks", label: "Risks", to: "/tender/$tenderId/risks" },
-  { key: "clarifications", label: "Clarifications", to: "/tender/$tenderId/clarifications" },
+const TENDER_TABS: { key: string; label: string; to: string; icon: string }[] = [
+  { key: "overview", label: "Overview", to: "/tender/$tenderId", icon: "grid" },
+  { key: "documents", label: "Documents", to: "/tender/$tenderId/documents", icon: "file" },
+  { key: "requirements", label: "Requirements", to: "/tender/$tenderId/requirements", icon: "list" },
+  { key: "checklist", label: "Checklist", to: "/tender/$tenderId/checklist", icon: "check" },
+  { key: "compliance", label: "Compliance", to: "/tender/$tenderId/compliance", icon: "shield" },
+  { key: "gaps", label: "Gaps", to: "/tender/$tenderId/gaps", icon: "alert" },
+  { key: "risks", label: "Risks", to: "/tender/$tenderId/risks", icon: "octagon" },
+  { key: "clarifications", label: "Clarifications", to: "/tender/$tenderId/clarifications", icon: "message" },
 ];
+
+/** Minimal line-icon set for the sidebar nav — one path per TENDER_TABS
+ *  icon key, kept as plain <path> strokes so they inherit currentColor
+ *  and stay crisp at the small sidebar size without an icon-library dep. */
+function NavIcon({ name }: { name: string }) {
+  const paths: Record<string, ReactNode> = {
+    grid: <><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>,
+    file: <><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" /><path d="M14 2v6h6" /></>,
+    list: <><path d="M8 6h13M8 12h13M8 18h13" /><circle cx="3.5" cy="6" r="1.2" fill="currentColor" stroke="none" /><circle cx="3.5" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="3.5" cy="18" r="1.2" fill="currentColor" stroke="none" /></>,
+    check: <><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M8 12.5l2.5 2.5L16 9" /></>,
+    shield: <path d="M12 2l8 3.5v6c0 5-3.5 8-8 10.5C7.5 19.5 4 16.5 4 11.5v-6L12 2Z" />,
+    alert: <><path d="M12 3 2 20h20L12 3Z" /><path d="M12 10v4" /><circle cx="12" cy="17" r="0.6" fill="currentColor" stroke="none" /></>,
+    octagon: <><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8l6-6Z" /><path d="M12 8v5" /><circle cx="12" cy="16" r="0.6" fill="currentColor" stroke="none" /></>,
+    message: <path d="M4 4h16v12H8l-4 4V4Z" />,
+  };
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      {paths[name]}
+    </svg>
+  );
+}
+
+/** Left sidebar navigation for a tender workspace — mirrors Autodesk
+ *  Insight's persistent icon+label rail (Dashboards, Risk, Design, ...)
+ *  in place of the horizontal tab strip the module started with. */
+function TenderSidebar({ tenderId }: { tenderId: string }) {
+  return (
+    <aside className="w-56 shrink-0 border-r border-white/8 bg-[#0d0d0e] flex flex-col h-screen sticky top-0">
+      <Link to="/tender" className="h-14 flex items-center gap-2 px-4 border-b border-white/8 shrink-0">
+        <span className="w-6 h-6 rounded-md bg-[#2563eb] flex items-center justify-center text-[11px] font-black">T</span>
+        <span className="font-extrabold tracking-tight text-[14px]">TenderAI</span>
+      </Link>
+      <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
+        {TENDER_TABS.map((tab) => (
+          <Link key={tab.key} to={tab.to} params={{ tenderId }}
+            activeOptions={{ exact: tab.key === "overview" }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/50 transition-colors hover:text-white hover:bg-white/5"
+            activeProps={{ className: "flex items-center gap-2.5 px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest whitespace-nowrap", style: { color: "#2563eb", backgroundColor: "color-mix(in srgb, #2563eb 12%, transparent)" } }}
+          >
+            <NavIcon name={tab.icon} />
+            {tab.label}
+          </Link>
+        ))}
+      </nav>
+      <div className="p-3 border-t border-white/8 flex items-center justify-between shrink-0">
+        <Link to="/tender/list" className="font-mono text-[9px] uppercase tracking-widest text-white/40 hover:text-white transition-colors">← All Tenders</Link>
+        <ThemeToggleButton />
+      </div>
+    </aside>
+  );
+}
 
 export function TenderShell({ tenderId, title, subtitle, action, children }: {
   tenderId: string; title: string; subtitle?: ReactNode; action?: ReactNode; children: ReactNode;
 }) {
   return (
-    <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans pb-14">
+    <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans flex">
       <DockWorkspaceProvider>
-        <TenderTopNav />
-        <div className="border-b border-white/8 bg-[#0d0d0e]">
-          <div className="max-w-6xl mx-auto px-4 md:px-8 pt-6 pb-0">
-            <div className="flex items-center justify-between gap-3 mb-4">
+        <TenderSidebar tenderId={tenderId} />
+        <div className="flex-1 min-w-0 flex flex-col pb-14">
+          <div className="border-b border-white/8 bg-[#0d0d0e] sticky top-0 z-10">
+            <div className="px-6 h-16 flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <h1 className="text-lg md:text-xl font-extrabold tracking-tight truncate">{title}</h1>
                 {subtitle && <div className="text-[12px] text-white/40 mt-0.5">{subtitle}</div>}
               </div>
               {action}
             </div>
-            <div className="flex items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-              {TENDER_TABS.map((tab) => (
-                <Link key={tab.key} to={tab.to} params={{ tenderId }}
-                  activeOptions={{ exact: tab.key === "overview" }}
-                  className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-white/45 border-b-2 border-transparent whitespace-nowrap transition-colors hover:text-white"
-                  activeProps={{ className: "px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-[#2563eb] border-b-2 border-[#2563eb] whitespace-nowrap" }}
-                >
-                  {tab.label}
-                </Link>
-              ))}
-            </div>
           </div>
+          <main className="flex-1 w-full px-6 py-6">
+            {children}
+          </main>
         </div>
-        <main className="max-w-6xl mx-auto w-full px-4 md:px-8 py-8">
-          {children}
-        </main>
         <DockToolbar tenderId={tenderId} />
       </DockWorkspaceProvider>
     </div>
@@ -102,12 +142,13 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
 /** Bottom-docked launcher bar for floating panels — visible on every
  *  tender tab, mirroring the always-available toolbar pattern from
  *  Autodesk's viewer, applied to document-oriented panels instead of
- *  3D navigation tools. */
+ *  3D navigation tools. Offset by the sidebar width so it doesn't
+ *  overlap the nav rail. */
 function DockToolbar({ tenderId }: { tenderId: string }) {
   const { openPanel } = useDockWorkspace();
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/8 bg-[#0d0d0e]/95 backdrop-blur">
-      <div className="max-w-6xl mx-auto px-4 md:px-8 h-11 flex items-center gap-1">
+    <div className="fixed bottom-0 left-56 right-0 z-50 border-t border-white/8 bg-[#0d0d0e]/95 backdrop-blur">
+      <div className="px-6 h-11 flex items-center gap-1">
         <button
           onClick={() => openPanel("documents", "Documents", <QuickDocumentsPanel tenderId={tenderId} />)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 transition-colors"
@@ -118,6 +159,31 @@ function DockToolbar({ tenderId }: { tenderId: string }) {
           Documents
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Grouped panel of icon+number tiles — mirrors Autodesk Insight's
+ *  "Design Review Risk Factors" / "Quality Risk Factors" style panels:
+ *  a labeled card containing a row of compact stat tiles. */
+export function KpiPanel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
+  return (
+    <Card title={title} action={action}>
+      <div className="flex flex-wrap gap-3">{children}</div>
+    </Card>
+  );
+}
+
+export function KpiTile({ icon, value, label, color = "#2563eb" }: {
+  icon: ReactNode; value: ReactNode; label: string; color?: string;
+}) {
+  return (
+    <div className="flex-1 min-w-[110px] rounded-xl border border-white/8 p-3 flex flex-col gap-2">
+      <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: `${color}18`, color }}>
+        {icon}
+      </div>
+      <p className="text-xl font-extrabold font-mono leading-none">{value}</p>
+      <p className="font-mono text-[8px] uppercase tracking-widest text-white/35 leading-tight">{label}</p>
     </div>
   );
 }

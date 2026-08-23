@@ -50,7 +50,9 @@ export function DockWorkspaceProvider({ children }: { children: ReactNode }) {
       cascadeOffset = (cascadeOffset + 32) % 200;
       const next: OpenPanel = {
         id, title, content,
-        x: 80 + cascadeOffset, y: 100 + cascadeOffset,
+        // 260px base x clears TenderShell's 224px-wide sidebar so new
+        // panels don't spawn hidden underneath it.
+        x: 260 + cascadeOffset, y: 100 + cascadeOffset,
         width: 640, height: 560,
         zIndex: zCounter.current,
         minimized: false,
