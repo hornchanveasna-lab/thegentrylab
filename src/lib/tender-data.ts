@@ -99,12 +99,23 @@ export function useTenderOrgs(userId: string | undefined) {
 }
 
 export async function createTenderOrg(userId: string, name: string): Promise<TenderOrg> {
-  const { data: org, error } = await db().from("organizations").insert({ name }).select().single();
+  // The org_select RLS policy only allows reading orgs you're already a
+  // member of, and that membership row doesn't exist until the second
+  // insert below. Asking Postgres to return a representation of either
+  // insert (the default when you chain .select()) forces it to evaluate
+  // that SELECT policy against the just-inserted row and fails with "new
+  // row violates row-level security policy" even though the insert itself
+  // succeeded. So: generate the id client-side, insert both rows with no
+  // representation requested, then fetch the org once membership exists.
+  const id = crypto.randomUUID();
+  const { error } = await db().from("organizations").insert({ id, name });
   if (error) throw error;
   const { error: memberError } = await db()
     .from("organization_members")
-    .insert({ org_id: org.id, user_id: userId, role: "owner" });
+    .insert({ org_id: id, user_id: userId, role: "owner" });
   if (memberError) throw memberError;
+  const { data: org, error: fetchError } = await db().from("organizations").select().eq("id", id).single();
+  if (fetchError) throw fetchError;
   return org as TenderOrg;
 }
 
