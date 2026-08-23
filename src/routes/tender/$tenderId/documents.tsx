@@ -471,7 +471,7 @@ function TenderDocuments() {
           <LoadingSpinner />
         ) : documents.length === 0 ? (
           <EmptyState title="No documents uploaded yet"
-            hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP archives auto-expand into their own folder once processed." />
+            hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP and RAR archives auto-expand into their own folder once processed." />
         ) : (
           <div className="flex flex-col lg:flex-row gap-4 items-start">
             <div className="w-full lg:w-[380px] shrink-0">
@@ -561,7 +561,7 @@ function RemoveConfirmModal({ fileName, onCancel, onConfirm }: {
 function FileIcon({ fileType }: { fileType: string }) {
   const ext = fileType.toLowerCase();
   const color = ext === "pdf" ? "#ef4444" : ext === "xlsx" || ext === "xls" || ext === "csv" ? "#22c55e"
-    : ext === "docx" || ext === "doc" ? "#3b82f6" : ext === "zip" ? "#f59e0b" : "rgba(255,255,255,0.35)";
+    : ext === "docx" || ext === "doc" ? "#3b82f6" : ext === "zip" || ext === "rar" ? "#f59e0b" : "rgba(255,255,255,0.35)";
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color }}>
       <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />

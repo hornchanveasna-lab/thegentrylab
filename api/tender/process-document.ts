@@ -8,7 +8,7 @@
  * 'processed' or 'failed' (see useTenderDocuments's refetchInterval).
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { extractByFileType, chunkSections, unzipEntries } from "./lib/extract.js";
+import { extractByFileType, chunkSections, unzipEntries, unrarEntries } from "./lib/extract.js";
 import { callClaude, type ClaudeToolSchema } from "./lib/ai.js";
 import {
   getTenderEnv, getAuthedUserId, authorizeTenderAccess, sbGet, sbPatch, sbPost,
@@ -217,29 +217,36 @@ async function processOneDocument(env: TenderEnv, apiKey: string, doc: TenderDoc
   }
 }
 
-/** Unpacks a zip document into its individual files, uploads each to Storage
- *  under a folder named after the zip (so the Documents UI groups them the
- *  same way "Upload Folder" does), inserts a tender_documents row per file,
- *  then runs processOneDocument on each — so a single zip upload ends up
- *  fully extracted and processed without the user re-uploading via Upload
- *  Folder by hand. */
-async function expandAndProcessZip(env: TenderEnv, apiKey: string, orgId: string, userId: string, zipDoc: TenderDocumentRow): Promise<ProcessResult & { childCount: number }> {
+const ARCHIVE_EXTRACTORS: Record<string, (buf: Buffer) => Promise<Awaited<ReturnType<typeof unzipEntries>>>> = {
+  zip: unzipEntries,
+  rar: unrarEntries,
+};
+
+/** Unpacks a zip/rar document into its individual files, uploads each to
+ *  Storage under a folder named after the archive (so the Documents UI
+ *  groups them the same way "Upload Folder" does), inserts a
+ *  tender_documents row per file, then runs processOneDocument on each — so
+ *  a single archive upload ends up fully extracted and processed without
+ *  the user re-uploading via Upload Folder by hand. */
+async function expandAndProcessArchive(env: TenderEnv, apiKey: string, orgId: string, userId: string, archiveDoc: TenderDocumentRow): Promise<ProcessResult & { childCount: number }> {
   const startedAt = new Date().toISOString();
-  const zipBaseName = zipDoc.file_name.replace(/\.zip$/i, "");
+  const archiveType = archiveDoc.file_type.toLowerCase();
+  const archiveBaseName = archiveDoc.file_name.replace(/\.(zip|rar)$/i, "");
+  const extractEntries = ARCHIVE_EXTRACTORS[archiveType];
 
   let entries: Awaited<ReturnType<typeof unzipEntries>>;
   try {
-    const zipBytes = await downloadStorageObject(env, "tender-documents", zipDoc.storage_path);
-    entries = await unzipEntries(zipBytes);
+    const archiveBytes = await downloadStorageObject(env, "tender-documents", archiveDoc.storage_path);
+    entries = await extractEntries(archiveBytes);
   } catch (err) {
-    const message = `Failed to unpack zip: ${err instanceof Error ? err.message : String(err)}`;
-    await sbPatch(env, `tender_documents?id=eq.${zipDoc.id}`, { status: "failed", processing_error: message }).catch(() => {});
+    const message = `Failed to unpack ${archiveType}: ${err instanceof Error ? err.message : String(err)}`;
+    await sbPatch(env, `tender_documents?id=eq.${archiveDoc.id}`, { status: "failed", processing_error: message }).catch(() => {});
     return { status: "failed", chunks: 0, error: message, childCount: 0 };
   }
 
   if (entries.length === 0) {
-    await sbPatch(env, `tender_documents?id=eq.${zipDoc.id}`, { status: "processed", processing_error: "Zip archive was empty (or contained only unsupported junk files)." });
-    return { status: "processed", chunks: 0, note: "empty zip", childCount: 0 };
+    await sbPatch(env, `tender_documents?id=eq.${archiveDoc.id}`, { status: "processed", processing_error: `Archive was empty (or contained only unsupported junk files).` });
+    return { status: "processed", chunks: 0, note: "empty archive", childCount: 0 };
   }
 
   let totalChunks = 0;
@@ -247,20 +254,20 @@ async function expandAndProcessZip(env: TenderEnv, apiKey: string, orgId: string
   for (const entry of entries) {
     const fileName = entry.path.split("/").pop() ?? entry.path;
     const fileType = (fileName.split(".").pop() ?? "other").toLowerCase();
-    const storagePath = `${orgId}/${zipDoc.tender_id}/${crypto.randomUUID()}-${fileName}`;
+    const storagePath = `${orgId}/${archiveDoc.tender_id}/${crypto.randomUUID()}-${fileName}`;
     try {
       await uploadStorageObject(env, "tender-documents", storagePath, entry.buf, "application/octet-stream");
       const [childDoc] = await sbPost<TenderDocumentRow[]>(env, "tender_documents", {
-        tender_id: zipDoc.tender_id,
+        tender_id: archiveDoc.tender_id,
         storage_path: storagePath,
-        relative_path: `${zipBaseName}/${entry.path}`,
+        relative_path: `${archiveBaseName}/${entry.path}`,
         file_name: fileName,
         file_type: fileType,
         file_size_bytes: entry.buf.length,
         uploaded_by: userId,
       });
-      // Nested zips inside the zip are left as-is (one level of unpacking only).
-      if (fileType !== "zip") {
+      // Nested archives inside the archive are left as-is (one level of unpacking only).
+      if (!(fileType in ARCHIVE_EXTRACTORS)) {
         const result = await processOneDocument(env, apiKey, childDoc);
         totalChunks += result.chunks;
         if (result.status === "failed") failedCount += 1;
@@ -271,10 +278,10 @@ async function expandAndProcessZip(env: TenderEnv, apiKey: string, orgId: string
   }
 
   const note = `Expanded into ${entries.length} file${entries.length !== 1 ? "s" : ""}${failedCount > 0 ? ` (${failedCount} failed)` : ""}.`;
-  await sbPatch(env, `tender_documents?id=eq.${zipDoc.id}`, { status: "processed", processing_error: note });
+  await sbPatch(env, `tender_documents?id=eq.${archiveDoc.id}`, { status: "processed", processing_error: note });
   await sbPost(env, "ai_jobs", {
-    tender_id: zipDoc.tender_id, agent: "document_classifier", status: "succeeded",
-    input_summary: { file_name: zipDoc.file_name }, output_summary: { childCount: entries.length, chunks: totalChunks, failedCount },
+    tender_id: archiveDoc.tender_id, agent: "document_classifier", status: "succeeded",
+    input_summary: { file_name: archiveDoc.file_name }, output_summary: { childCount: entries.length, chunks: totalChunks, failedCount },
     started_at: startedAt, finished_at: new Date().toISOString(),
   }).catch(() => {});
 
@@ -327,8 +334,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
   }
 
-  if (doc.file_type.toLowerCase() === "zip") {
-    const result = await expandAndProcessZip(env, apiKey, orgId, userId, doc);
+  if (["zip", "rar"].includes(doc.file_type.toLowerCase())) {
+    const result = await expandAndProcessArchive(env, apiKey, orgId, userId, doc);
     if (result.status === "failed") return res.status(500).json({ error: result.error });
     return res.status(200).json({ ok: true, document: doc, ...result });
   }

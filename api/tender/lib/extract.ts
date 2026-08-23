@@ -121,9 +121,49 @@ export async function unzipEntries(buf: Buffer): Promise<ZipEntry[]> {
   return entries;
 }
 
+let unrarWasmBinary: ArrayBuffer | null = null;
+/** node-unrar-js's Emscripten wasm module resolves its own .wasm file via a
+ *  runtime-constructed fs path — the same class of bug already hit with
+ *  pdfjs-dist's worker (Vercel's serverless bundler can't trace it, so the
+ *  binary is missing from the deployed function). Reading it ourselves via a
+ *  static, literal import.meta.url-relative path (a pattern Vercel's tracer
+ *  does follow — already used for pdfjs's standardFontDataUrl above) and
+ *  passing it explicitly as wasmBinary avoids relying on that internal path
+ *  resolution at all. */
+async function getUnrarWasmBinary(): Promise<ArrayBuffer> {
+  if (!unrarWasmBinary) {
+    const { readFile } = await import("node:fs/promises");
+    const { fileURLToPath } = await import("node:url");
+    const wasmUrl = new URL("../../../node_modules/node-unrar-js/dist/js/unrar.wasm", import.meta.url);
+    const buf = await readFile(fileURLToPath(wasmUrl));
+    unrarWasmBinary = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+  }
+  return unrarWasmBinary;
+}
+
+/** Unpacks a rar archive the same way unzipEntries does for zip — one level
+ *  of unpacking, directories/junk/dotfiles skipped. */
+export async function unrarEntries(buf: Buffer): Promise<ZipEntry[]> {
+  const { createExtractorFromData } = await import("node-unrar-js");
+  const wasmBinary = await getUnrarWasmBinary();
+  const dataCopy = new Uint8Array(buf).buffer as ArrayBuffer;
+  const extractor = await createExtractorFromData({ data: dataCopy, wasmBinary });
+  const { files } = extractor.extract();
+  const entries: ZipEntry[] = [];
+  for (const file of files) {
+    const path = file.fileHeader.name;
+    if (file.fileHeader.flags.directory || !file.extraction) continue;
+    if (ZIP_JUNK_RE.test(path)) continue;
+    const basename = path.split("/").pop() ?? path;
+    if (basename.startsWith(".")) continue;
+    entries.push({ path, buf: Buffer.from(file.extraction) });
+  }
+  return entries;
+}
+
 /** Types with no text-extraction path yet (images, drawings-as-image, CAD, unknown binaries).
  *  Stored as-is per docs/ai-agent-architecture.md — classified from filename only, not OCR'd, in Phase 1. */
-export const UNSUPPORTED_TYPES = new Set(["image", "zip", "dwg", "jpg", "jpeg", "png", "other"]);
+export const UNSUPPORTED_TYPES = new Set(["image", "zip", "rar", "dwg", "jpg", "jpeg", "png", "other"]);
 
 export async function extractByFileType(fileType: string, buf: Buffer): Promise<ExtractedSection[] | null> {
   switch (fileType.toLowerCase()) {
