@@ -13,6 +13,57 @@ export const Route = createFileRoute("/tender/$tenderId/documents")({
   component: TenderDocuments,
 });
 
+interface UploadProgress {
+  filesDone: number;
+  filesTotal: number;
+  bytesDone: number;
+  bytesTotal: number;
+  startedAt: number;
+}
+
+function formatEta(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "";
+  if (seconds < 1) return "<1s";
+  if (seconds < 60) return `${Math.ceil(seconds)}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.ceil(seconds % 60);
+  return `${mins}m ${secs}s`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function UploadProgressBar({ progress }: { progress: UploadProgress }) {
+  const { filesDone, filesTotal, bytesDone, bytesTotal, startedAt } = progress;
+  const pct = bytesTotal > 0 ? Math.min(100, (bytesDone / bytesTotal) * 100) : (filesDone / filesTotal) * 100;
+  const elapsedSec = (Date.now() - startedAt) / 1000;
+  const rate = bytesDone > 0 ? bytesDone / elapsedSec : 0; // bytes/sec
+  const remainingBytes = Math.max(0, bytesTotal - bytesDone);
+  const etaSec = rate > 0 ? remainingBytes / rate : null;
+
+  return (
+    <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[11px] font-mono text-white/60">
+          Uploading {filesDone}/{filesTotal} file{filesTotal !== 1 ? "s" : ""} · {formatBytes(bytesDone)} / {formatBytes(bytesTotal)}
+        </p>
+        <p className="text-[11px] font-mono text-white/40">
+          {etaSec !== null ? `~${formatEta(etaSec)} left` : "estimating…"}
+        </p>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${pct}%`, backgroundColor: "#2563eb" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function TenderDocuments() {
   const { tenderId } = Route.useParams();
   const { user } = useAuthTender();
@@ -21,6 +72,7 @@ function TenderDocuments() {
   const queryClient = useQueryClient();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const dragDepth = useRef(0);
@@ -32,20 +84,27 @@ function TenderDocuments() {
   async function handleFiles(fileList: FileList | null) {
     if (!fileList || !fileList.length || !orgId) return;
     setUploading(true); setUploadError(null);
+    const files = Array.from(fileList);
+    const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+    let bytesDone = 0;
+    const startedAt = Date.now();
+    setUploadProgress({ filesDone: 0, filesTotal: files.length, bytesDone: 0, bytesTotal: totalBytes, startedAt });
     try {
-      const files = Array.from(fileList);
       for (const file of files) {
         // webkitRelativePath is set for folder-picker uploads and preserves
         // the original tender-package folder structure (e.g. "01 Instructions
         // to Tenderers/ITT.pdf"); plain file picks fall back to just the name.
         const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
         await uploadTenderDocument(orgId, tenderId, file, relativePath);
+        bytesDone += file.size;
+        setUploadProgress((prev) => prev ? { ...prev, filesDone: prev.filesDone + 1, bytesDone } : prev);
       }
       await queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] });
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -119,6 +178,8 @@ function TenderDocuments() {
       }
     >
       {uploadError && <p className="text-[12px] text-red-400 mb-4">{uploadError}</p>}
+
+      {uploadProgress && <UploadProgressBar progress={uploadProgress} />}
 
       {linkModalOpen && (
         <LinkImportModal
