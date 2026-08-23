@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { DockWorkspaceProvider, useDockWorkspace } from "@/components/tender/DockWorkspace";
+import { QuickDocumentsPanel } from "@/components/tender/QuickDocumentsPanel";
 
 /* ── Shared design-system primitives for TenderAI (/tender/*) ──────────
  * Lean, Phase 1 subset — mirrors src/components/cm/shared.tsx's role for
@@ -61,33 +63,59 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
   tenderId: string; title: string; subtitle?: ReactNode; action?: ReactNode; children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
-      <TenderTopNav />
-      <div className="border-b border-white/8 bg-[#0d0d0e]">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 pt-6 pb-0">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="min-w-0">
-              <h1 className="text-lg md:text-xl font-extrabold tracking-tight truncate">{title}</h1>
-              {subtitle && <div className="text-[12px] text-white/40 mt-0.5">{subtitle}</div>}
+    <DockWorkspaceProvider>
+      <div className="min-h-screen bg-[#0a0a0b] text-white font-sans pb-14">
+        <TenderTopNav />
+        <div className="border-b border-white/8 bg-[#0d0d0e]">
+          <div className="max-w-6xl mx-auto px-4 md:px-8 pt-6 pb-0">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <h1 className="text-lg md:text-xl font-extrabold tracking-tight truncate">{title}</h1>
+                {subtitle && <div className="text-[12px] text-white/40 mt-0.5">{subtitle}</div>}
+              </div>
+              {action}
             </div>
-            {action}
-          </div>
-          <div className="flex items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            {TENDER_TABS.map((tab) => (
-              <Link key={tab.key} to={tab.to} params={{ tenderId }}
-                activeOptions={{ exact: tab.key === "overview" }}
-                className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-white/45 border-b-2 border-transparent whitespace-nowrap transition-colors hover:text-white"
-                activeProps={{ className: "px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-[#2563eb] border-b-2 border-[#2563eb] whitespace-nowrap" }}
-              >
-                {tab.label}
-              </Link>
-            ))}
+            <div className="flex items-center gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+              {TENDER_TABS.map((tab) => (
+                <Link key={tab.key} to={tab.to} params={{ tenderId }}
+                  activeOptions={{ exact: tab.key === "overview" }}
+                  className="px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-white/45 border-b-2 border-transparent whitespace-nowrap transition-colors hover:text-white"
+                  activeProps={{ className: "px-3 py-2.5 font-mono text-[10px] uppercase tracking-widest text-[#2563eb] border-b-2 border-[#2563eb] whitespace-nowrap" }}
+                >
+                  {tab.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
+        <main className="max-w-6xl mx-auto w-full px-4 md:px-8 py-8">
+          {children}
+        </main>
+        <DockToolbar tenderId={tenderId} />
       </div>
-      <main className="max-w-6xl mx-auto w-full px-4 md:px-8 py-8">
-        {children}
-      </main>
+    </DockWorkspaceProvider>
+  );
+}
+
+/** Bottom-docked launcher bar for floating panels — visible on every
+ *  tender tab, mirroring the always-available toolbar pattern from
+ *  Autodesk's viewer, applied to document-oriented panels instead of
+ *  3D navigation tools. */
+function DockToolbar({ tenderId }: { tenderId: string }) {
+  const { openPanel } = useDockWorkspace();
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/8 bg-[#0d0d0e]/95 backdrop-blur">
+      <div className="max-w-6xl mx-auto px-4 md:px-8 h-11 flex items-center gap-1">
+        <button
+          onClick={() => openPanel("documents", "Documents", <QuickDocumentsPanel tenderId={tenderId} />)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: "#2563eb" }}>
+            <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+          Documents
+        </button>
+      </div>
     </div>
   );
 }
