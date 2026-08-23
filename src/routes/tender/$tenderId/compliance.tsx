@@ -43,7 +43,7 @@ function ComplianceMatrix() {
                         onChange={(e) => user && updateComplianceItem(item.id, user.id, { compliance: e.target.value as typeof item.compliance }).then(() => refetch())}
                         className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-white"
                       >
-                        {COMPLIANCE_VALUES.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}
+                        {COMPLIANCE_VALUES.map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{humanize(c)}</option>)}
                       </select>
                     </td>
                     <td className="py-2.5 text-white/40 max-w-xs truncate">{item.comment ?? "—"}</td>

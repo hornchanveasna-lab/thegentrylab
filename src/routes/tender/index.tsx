@@ -103,7 +103,7 @@ function Dashboard({ orgId, orgName, orgs, onSwitchOrg }: {
           {orgs.length > 1 && (
             <select value={orgId} onChange={(e) => onSwitchOrg(e.target.value)}
               className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white">
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              {orgs.map((o) => <option key={o.id} value={o.id} className="bg-[#0a0a0b] text-white">{o.name}</option>)}
             </select>
           )}
           <Link to="/tender/new" className="px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-widest"

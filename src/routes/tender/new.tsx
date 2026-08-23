@@ -76,8 +76,8 @@ function NewTender() {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Project type">
             <select className={inputCls} value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)}>
-              <option value="">— Select —</option>
-              {PROJECT_TYPES.map((pt) => <option key={pt} value={pt}>{PROJECT_TYPE_LABELS[pt]}</option>)}
+              <option value="" className="bg-[#0a0a0b] text-white">— Select —</option>
+              {PROJECT_TYPES.map((pt) => <option key={pt} value={pt} className="bg-[#0a0a0b] text-white">{PROJECT_TYPE_LABELS[pt]}</option>)}
             </select>
           </Field>
           <Field label="Contract type"><input className={inputCls} value={contractType} onChange={(e) => setContractType(e.target.value)} placeholder="Lump Sum, D&B, EPC…" /></Field>
@@ -86,7 +86,7 @@ function NewTender() {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Currency">
             <select className={inputCls} value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {["USD", "KHR", "EUR", "GBP", "SGD"].map((c) => <option key={c} value={c}>{c}</option>)}
+              {["USD", "KHR", "EUR", "GBP", "SGD"].map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{c}</option>)}
             </select>
           </Field>
           <Field label="Bidding company"><input className={inputCls} value={biddingCompany} onChange={(e) => setBiddingCompany(e.target.value)} placeholder="Defaults to your company if blank" /></Field>

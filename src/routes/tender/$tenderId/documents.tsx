@@ -297,8 +297,8 @@ function DocumentRow({ doc, onChanged }: { doc: TenderDocument; tenderId: string
             onChange={(e) => updateTenderDocumentCategory(doc.id, e.target.value as TenderDocCategory).then(onChanged)}
             className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white/60"
           >
-            <option value="">Uncategorized</option>
-            {TENDER_DOC_CATEGORIES.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}
+            <option value="" className="bg-[#0a0a0b] text-white">Uncategorized</option>
+            {TENDER_DOC_CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{humanize(c)}</option>)}
           </select>
           {doc.discipline && <span className="font-mono text-[9px] text-white/30">{doc.discipline}</span>}
         </div>

@@ -56,7 +56,7 @@ function ChecklistRow({ item, onChanged }: { item: TenderChecklistItem; onChange
         className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white shrink-0"
       >
         {["not_started", "ai_drafted", "in_review", "missing_information", "ready", "approved", "submitted"].map((s) => (
-          <option key={s} value={s}>{humanize(s)}</option>
+          <option key={s} value={s} className="bg-[#0a0a0b] text-white">{humanize(s)}</option>
         ))}
       </select>
       <StatusBadge value={item.status} />

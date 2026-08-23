@@ -24,8 +24,8 @@ function TenderRequirements() {
       action={
         <select value={category} onChange={(e) => setCategory(e.target.value)}
           className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-white">
-          <option value="all">All categories</option>
-          {REQUIREMENT_CATEGORIES.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}
+          <option value="all" className="bg-[#0a0a0b] text-white">All categories</option>
+          {REQUIREMENT_CATEGORIES.map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{humanize(c)}</option>)}
         </select>
       }
     >
