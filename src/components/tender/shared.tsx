@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { DockWorkspaceProvider, useDockWorkspace } from "@/components/tender/DockWorkspace";
 import { QuickDocumentsPanel } from "@/components/tender/QuickDocumentsPanel";
+import { ThemeToggleButton } from "@/components/tender/TenderTheme";
 
 /* ── Shared design-system primitives for TenderAI (/tender/*) ──────────
  * Lean, Phase 1 subset — mirrors src/components/cm/shared.tsx's role for
@@ -14,7 +15,7 @@ export const btnPrimaryCls = "px-4 py-2.5 rounded-xl text-[12px] font-bold upper
 
 export function PageShell({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans">
       <TenderTopNav />
       <main className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-8 pb-24">
         <div className="flex items-center justify-between mb-6 gap-3">
@@ -38,6 +39,7 @@ export function TenderTopNav() {
         <nav className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-widest text-white/50">
           <Link to="/tender" className="hover:text-white transition-colors">Dashboard</Link>
           <Link to="/tender/list" className="hover:text-white transition-colors">Tenders</Link>
+          <ThemeToggleButton />
         </nav>
       </div>
     </header>
@@ -63,8 +65,8 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
   tenderId: string; title: string; subtitle?: ReactNode; action?: ReactNode; children: ReactNode;
 }) {
   return (
-    <DockWorkspaceProvider>
-      <div className="min-h-screen bg-[#0a0a0b] text-white font-sans pb-14">
+    <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans pb-14">
+      <DockWorkspaceProvider>
         <TenderTopNav />
         <div className="border-b border-white/8 bg-[#0d0d0e]">
           <div className="max-w-6xl mx-auto px-4 md:px-8 pt-6 pb-0">
@@ -92,8 +94,8 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
           {children}
         </main>
         <DockToolbar tenderId={tenderId} />
-      </div>
-    </DockWorkspaceProvider>
+      </DockWorkspaceProvider>
+    </div>
   );
 }
 
