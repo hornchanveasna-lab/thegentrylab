@@ -178,12 +178,16 @@ function FolderBrowser({ tree, tenderId, onChanged, selectedId, onSelectFile }: 
           <p className="text-[12px] text-white/30 py-6 text-center">This folder is empty.</p>
         ) : (
           <div className="overflow-x-auto -mx-5 -mt-1">
-            <table className="w-full text-[12px] border-collapse">
+            {/* table-fixed makes the unwidthed Name column actually shrink
+                (and truncate) to fit, instead of the browser sizing every
+                column by content and pushing Category/Status/Actions off
+                to the right behind a horizontal scrollbar. */}
+            <table className="w-full text-[12px] border-collapse table-fixed">
               <thead>
                 <tr className="text-left border-b border-white/8">
                   <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pl-5 pr-3">Name</th>
-                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-3 w-[170px]">Category</th>
-                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-3 w-[100px]">Status</th>
+                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-3 w-[150px]">Category</th>
+                  <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-3 w-[90px]">Status</th>
                   <th className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pr-5 w-[110px] text-right">Actions</th>
                 </tr>
               </thead>
@@ -388,10 +392,23 @@ function TenderDocuments() {
     // webkitRelativePath is set for folder-picker uploads and preserves the
     // original tender-package folder structure (e.g. "01 Instructions to
     // Tenderers/ITT.pdf"); plain file picks fall back to just the name.
-    const items = Array.from(fileList).map((file) => ({
+    const allItems = Array.from(fileList).map((file) => ({
       file,
       relativePath: (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name,
     }));
+
+    // Guard against uploading the same file twice — e.g. clicking Upload
+    // again while a large file/zip is still mid-processing. Checks both
+    // already-uploaded documents and anything already queued this batch.
+    const existingPaths = new Set(documents.map((d) => d.relative_path));
+    const queuedPaths = new Set(uploadQueueRef.current.map((q) => q.relativePath));
+    const items = allItems.filter((i) => !existingPaths.has(i.relativePath) && !queuedPaths.has(i.relativePath));
+    const skipped = allItems.filter((i) => existingPaths.has(i.relativePath) || queuedPaths.has(i.relativePath));
+    if (skipped.length > 0) {
+      setUploadError(`Skipped ${skipped.length} file${skipped.length !== 1 ? "s" : ""} already in this tender: ${skipped.map((s) => s.file.name).join(", ")}`);
+    }
+    if (items.length === 0) return;
+
     const addedBytes = items.reduce((sum, i) => sum + i.file.size, 0);
     uploadQueueRef.current.push(...items);
     setUploadProgress((prev) => prev
@@ -632,9 +649,10 @@ function DocumentRow({ doc, onChanged, selected, onSelect }: {
       </td>
       <td className="py-2 pr-3"><StatusBadge value={doc.status} /></td>
       <td className="py-2 pr-5 text-right whitespace-nowrap">
-        {doc.status === "failed" && (
+        {(doc.status === "failed" || doc.status === "uploaded") && (
           <button
             disabled={retrying}
+            title={doc.status === "uploaded" ? "Still shows Uploaded? Processing may have timed out (large zip/rar archives can exceed the 60s limit) — click to retry." : undefined}
             onClick={async () => { setRetrying(true); await processTenderDocument(doc.id); onChanged(); setRetrying(false); }}
             className="text-white/40 hover:text-white transition-colors text-[10px] font-mono uppercase tracking-widest mr-2.5"
           >

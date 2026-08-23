@@ -243,7 +243,7 @@ export function DataTable<T>({ columns, rows, keyFn, onRowClick, expandedKey, re
 }) {
   return (
     <div className="overflow-x-auto -mx-5 -mt-1">
-      <table className="w-full text-[12px] border-collapse">
+      <table className="w-full text-[12px] border-collapse table-fixed">
         <thead>
           <tr className="text-left border-b border-white/8">
             {columns.map((c, i) => (
