@@ -45,7 +45,7 @@ const PROVINCES = [
 ];
 
 export interface RagNews {
-  headline: string; date: string; sector: string; province: string; summary: string; url: string;
+  headline: string; date: string; sector: string; province: string; summary: string; url: string; content?: string;
 }
 export interface RagProject {
   name: string; sector: string; province: string; status: string;
@@ -167,7 +167,7 @@ export async function fetchRagContext(
     const [news, projects, sites] = await Promise.all([
       newsFilters.length || sector || province
         ? sbGet<RagNews>(
-            `${base}/news?${newsOr}order=date.desc&limit=6&select=headline,date,sector,province,summary,url`,
+            `${base}/news?${newsOr}order=date.desc&limit=6&select=headline,date,sector,province,summary,url,content`,
             serviceKey, ac.signal,
           )
         : Promise.resolve<RagNews[]>([]),
@@ -314,6 +314,12 @@ export function formatRagContext(ctx: RagResult): string {
     lines.push("### Recent News");
     for (const n of ctx.news) {
       lines.push(`- [${n.date}] **${n.headline}** (${n.sector} · ${n.province}): ${n.summary}`);
+      // Full article body (when captured) gives the model the actual reported
+      // facts/quotes instead of just the one-line summary — capped so 6 news
+      // items can't balloon the prompt.
+      if (n.content) {
+        lines.push(`  Full article: ${n.content.slice(0, 1000).replace(/\n+/g, " ")}${n.content.length > 1000 ? "…" : ""}`);
+      }
     }
     lines.push("");
   }
