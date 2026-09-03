@@ -139,7 +139,7 @@ interface ProcessResult {
  *  status/processing_error and logs ai_jobs — pulled out of the HTTP handler
  *  so the zip-expansion path below can run it once per extracted file
  *  without going through a separate request per file. */
-async function processOneDocument(env: TenderEnv, apiKey: string, doc: TenderDocumentRow): Promise<ProcessResult> {
+async function processOneDocument(env: TenderEnv, apiKey: string, doc: TenderDocumentRow, autoExtractRequirements = true): Promise<ProcessResult> {
   const startedAt = new Date().toISOString();
   const fail = async (message: string): Promise<ProcessResult> => {
     await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { status: "failed", processing_error: message }).catch(() => {});
@@ -223,7 +223,16 @@ async function processOneDocument(env: TenderEnv, apiKey: string, doc: TenderDoc
     // doesn't, this fails silently and requirements_extracted_at stays
     // null — the Requirements tab's button remains a working catch-up
     // path for anything this misses.
-    if (chunks.length > 0) {
+    //
+    // Skipped when called per-file from expandAndProcessArchive: that loop
+    // already runs processOneDocument synchronously for every file inside
+    // one archive upload's single request, so chaining a second Claude call
+    // per file on top would reintroduce the exact multi-document 60s
+    // timeout this same file's list-and-loop pattern exists to avoid —
+    // just via the archive path instead of the manual "Extract
+    // Requirements" path. Archive-derived documents fall back to that
+    // catch-up path instead.
+    if (chunks.length > 0 && autoExtractRequirements) {
       await generateRequirementsForDocument(env, apiKey, doc).catch(() => {});
     }
 
@@ -284,7 +293,7 @@ async function expandAndProcessArchive(env: TenderEnv, apiKey: string, orgId: st
       });
       // Nested archives inside the archive are left as-is (one level of unpacking only).
       if (!(fileType in ARCHIVE_EXTRACTORS)) {
-        const result = await processOneDocument(env, apiKey, childDoc);
+        const result = await processOneDocument(env, apiKey, childDoc, false);
         totalChunks += result.chunks;
         if (result.status === "failed") failedCount += 1;
       }
@@ -454,7 +463,15 @@ async function listPendingRequirementDocuments(env: TenderEnv, tenderId: string)
 async function generateRequirementsForDocument(env: TenderEnv, apiKey: string, doc: TenderDocumentRow) {
   const startedAt = new Date().toISOString();
   const result = await extractDocumentRequirements(env, apiKey, doc);
-  await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { requirements_extracted_at: new Date().toISOString() }).catch(() => {});
+  // Only mark done when the call actually completed — a zero-result with no
+  // error is a legitimately requirement-free document (e.g. a cover letter)
+  // and should stay marked done, but a transient failure (rate limit,
+  // network error, malformed response) must NOT set this, or the document
+  // silently drops off listPendingRequirementDocuments forever with no way
+  // to retry it.
+  if (!result.error) {
+    await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { requirements_extracted_at: new Date().toISOString() }).catch(() => {});
+  }
 
   await sbPost(env, "ai_jobs", {
     tender_id: doc.tender_id, agent: "requirements_extractor", status: result.error ? "failed" : "succeeded",
