@@ -12,7 +12,7 @@ function Checklist() {
   const { user } = useAuthTender();
   const { data: items = [], isLoading, refetch } = useTenderChecklist(tenderId);
 
-  if (!user) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (!user) return <div className="min-h-screen bg-white" />;
 
   const bySection = CHECKLIST_SECTIONS.map((section) => ({
     section,
@@ -36,10 +36,10 @@ function Checklist() {
                   {
                     header: "Item", render: (item) => (
                       <div>
-                        <p className="text-white/85">{item.item_label}</p>
+                        <p className="text-gray-800">{item.item_label}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          {item.is_required && <span className="font-mono text-[9px] uppercase tracking-widest text-orange-400">Required</span>}
-                          {item.needs_human_input && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">Needs input</span>}
+                          {item.is_required && <span className="text-[9px] text-orange-400">Required</span>}
+                          {item.needs_human_input && <span className="text-[9px] text-gray-400">Needs input</span>}
                         </div>
                       </div>
                     ),
@@ -49,10 +49,10 @@ function Checklist() {
                       <select
                         value={item.status}
                         onChange={(e) => updateChecklistItem(item.id, { status: e.target.value as TenderChecklistItem["status"] }).then(() => refetch())}
-                        className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-white"
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-[10px] text-gray-900"
                       >
                         {["not_started", "ai_drafted", "in_review", "missing_information", "ready", "approved", "submitted"].map((s) => (
-                          <option key={s} value={s} className="bg-[#0a0a0b] text-white">{humanize(s)}</option>
+                          <option key={s} value={s} className="bg-white text-gray-900">{humanize(s)}</option>
                         ))}
                       </select>
                     ),

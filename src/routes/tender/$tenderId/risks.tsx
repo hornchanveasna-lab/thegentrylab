@@ -12,7 +12,7 @@ function RiskRegister() {
   const { user } = useAuthTender();
   const { data: risks = [], isLoading } = useTenderRisks(tenderId);
 
-  if (!user) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (!user) return <div className="min-h-screen bg-white" />;
 
   return (
     <TenderShell tenderId={tenderId} title="Risk Register">
@@ -26,14 +26,15 @@ function RiskRegister() {
             rows={risks}
             keyFn={(r) => r.id}
             columns={[
-              { header: "Category", width: "120px", render: (r) => <span className="text-white/60 whitespace-nowrap">{humanize(r.category)}</span> },
-              { header: "Description", render: (r) => <p className="text-white/85">{r.description}</p> },
-              { header: "Clause", width: "90px", render: (r) => <span className="font-mono text-white/40">{r.clause_ref ?? "—"}</span> },
-              { header: "P × I", width: "70px", render: (r) => <span className="font-mono text-white/50">{r.probability} × {r.impact}</span> },
+              { header: "Category", width: "120px", render: (r) => <span className="text-gray-500 whitespace-nowrap">{humanize(r.category)}</span> },
+              { header: "Description", render: (r) => <p className="text-gray-800">{r.description}</p> },
+              { header: "Clause", width: "90px", render: (r) => <span className="text-gray-400">{r.clause_ref ?? "—"}</span> },
+              { header: "P × I", width: "70px", render: (r) => <span className="text-gray-500">{r.probability} × {r.impact}</span> },
               { header: "Score", width: "150px", render: (r) => <StatusBadge value={riskBand(r.risk_score).toLowerCase()} label={`${r.risk_score} · ${riskBand(r.risk_score)}`} /> },
-              { header: "Exposure", width: "110px", render: (r) => <span className="font-mono text-white/50">{r.financial_exposure ? `$${r.financial_exposure.toLocaleString()}` : "—"}</span> },
-              { header: "Recommendation", render: (r) => <p className="text-white/40">{r.recommendation ?? "—"}</p> },
+              { header: "Exposure", width: "110px", render: (r) => <span className="text-gray-500">{r.financial_exposure ? `$${r.financial_exposure.toLocaleString()}` : "—"}</span> },
+              { header: "Recommendation", render: (r) => <p className="text-gray-400">{r.recommendation ?? "—"}</p> },
             ]}
+            footerCount
           />
         )}
       </Card>

@@ -14,7 +14,7 @@ function GapAnalysis() {
   const open = gaps.filter((g) => !g.resolved);
   const resolved = gaps.filter((g) => g.resolved);
 
-  if (!user) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (!user) return <div className="min-h-screen bg-white" />;
 
   return (
     <TenderShell tenderId={tenderId} title="Gap Analysis">
@@ -26,19 +26,19 @@ function GapAnalysis() {
         <div className="flex flex-col gap-4">
           <Card title={`Open (${open.length})`}>
             {open.length === 0 ? (
-              <p className="text-[12px] text-white/30 py-2">No open gaps.</p>
+              <p className="text-[12px] text-gray-400 py-2">No open gaps.</p>
             ) : (
               <DataTable<TenderGapItem>
                 rows={open}
                 keyFn={(g) => g.id}
                 columns={[
-                  { header: "Description", render: (g) => <p className="text-white/85">{g.description}</p> },
-                  { header: "Category", width: "160px", render: (g) => <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">{humanize(g.category)}</span> },
+                  { header: "Description", render: (g) => <p className="text-gray-800">{g.description}</p> },
+                  { header: "Category", width: "160px", render: (g) => <span className="text-[9px] text-gray-400">{humanize(g.category)}</span> },
                   { header: "Severity", width: "100px", render: (g) => <StatusBadge value={g.severity} /> },
                   {
                     header: "", width: "80px", render: (g) => (
                       <button onClick={() => resolveGapItem(g.id, true).then(() => refetch())}
-                        className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors">
+                        className="text-[10px] text-gray-400 hover:text-gray-900 transition-colors">
                         Resolve
                       </button>
                     ),
@@ -53,12 +53,12 @@ function GapAnalysis() {
                 rows={resolved}
                 keyFn={(g) => g.id}
                 columns={[
-                  { header: "Description", render: (g) => <p className="text-white/50">{g.description}</p> },
-                  { header: "Category", width: "160px", render: (g) => <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{humanize(g.category)}</span> },
+                  { header: "Description", render: (g) => <p className="text-gray-500">{g.description}</p> },
+                  { header: "Category", width: "160px", render: (g) => <span className="text-[9px] text-gray-400">{humanize(g.category)}</span> },
                   {
                     header: "", width: "80px", render: (g) => (
                       <button onClick={() => resolveGapItem(g.id, false).then(() => refetch())}
-                        className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white transition-colors">
+                        className="text-[10px] text-gray-400 hover:text-gray-900 transition-colors">
                         Reopen
                       </button>
                     ),

@@ -5,26 +5,23 @@ import { QuickDocumentsPanel } from "@/components/tender/QuickDocumentsPanel";
 import { useTender } from "@/lib/tender-data";
 
 /* ── Shared design-system primitives for TenderAI (/tender/*) ──────────
- * Lean, Phase 1 subset — mirrors src/components/cm/shared.tsx's role for
- * the CM app. Grows as each new tender page needs a new primitive, rather
- * than speculatively building the whole set up front.
- *
- * Design direction (per the full product spec): one fixed professional
- * look — dark-navy sidebar/chrome + light-neutral main workspace, always
- * — not a user-toggled dark/light theme. `data-theme="light"` is forced
- * on the root regardless of the site's global theme toggle, which lets
- * every existing dark-styled class (bg-[#0d0d0e], text-white,
- * border-white/N — used throughout Card/DataTable/StatusBadge/etc.)
- * invert to a light-on-white reading via the [data-theme="light"]
- * override sweep in styles.css, without having to rewrite every route
- * file's classNames by hand. `.tender-dark-chrome` re-inverts specific
- * elements (the sidebar, the bottom dock toolbar) back to dark navy so
- * they stay visually anchored as permanent chrome against the light
- * content area — see the matching CSS block in styles.css. */
+ * Design direction: matches Autodesk Construction Cloud's Docs module —
+ * white/light-gray surfaces, thin 1px borders (never card shadows), one
+ * restrained accent color, dense tables. `data-theme="light"` is forced on
+ * the root regardless of the site's global theme toggle (this should always
+ * render light, it's not a user-facing dark/light choice) — but unlike the
+ * previous "always dark chrome" design, every primitive here now writes
+ * real light-native Tailwind classes directly (bg-white, text-gray-900,
+ * border-gray-200) rather than dark-hex shorthand that depended on a CSS
+ * override sweep to invert it. That override sweep (.tenderai-scope in
+ * src/styles.css) still exists for DockPanel/QuickDocumentsPanel/
+ * PdfCanvasViewer, which keep their existing approach. */
 
-export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[#ff5100]/70 focus:ring-2 focus:ring-[#ff5100]/15 transition-all";
-export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
-export const btnPrimaryCls = "px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-widest transition-colors";
+const ACCENT = "#0696D7"; // Autodesk's actual brand blue (brand.autodesk.com/visual-system/color)
+
+export const inputCls = "w-full bg-white border border-gray-300 rounded-lg px-3.5 py-2.5 text-[13px] text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0696D7] focus:ring-2 focus:ring-[#0696D7]/15 transition-all";
+export const labelCls = "text-[11px] font-medium text-gray-500";
+export const btnPrimaryCls = "px-4 py-2.5 rounded-lg text-[13px] font-semibold transition-colors";
 
 export function PageShell({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
@@ -33,11 +30,11 @@ export function PageShell({ title, action, children }: { title: string; action?:
     // selectors — written when data-theme lived on <html> via the global
     // toggle — still match via the descendant combinator.
     <div data-theme="light">
-      <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans">
+      <div className="tenderai-scope min-h-screen bg-white text-gray-900 font-sans">
         <TenderTopNav />
         <main className="max-w-6xl mx-auto w-full px-4 md:px-8 pt-8 pb-24">
           <div className="flex items-center justify-between mb-6 gap-3">
-            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{title}</h1>
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight">{title}</h1>
             {action}
           </div>
           {children}
@@ -49,15 +46,15 @@ export function PageShell({ title, action, children }: { title: string; action?:
 
 export function TenderTopNav() {
   return (
-    <header className="tender-dark-chrome border-b border-white/8 bg-[#0d0d0e]">
+    <header className="border-b border-gray-200 bg-white">
       <div className="max-w-6xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between">
         <Link to="/tender" className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-md bg-[#ff5100] flex items-center justify-center text-[11px] font-black">T</span>
-          <span className="font-extrabold tracking-tight text-[14px]">TenderAI</span>
+          <span className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white" style={{ backgroundColor: ACCENT }}>T</span>
+          <span className="font-semibold tracking-tight text-[14px] text-gray-900">TenderAI</span>
         </Link>
-        <nav className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-widest text-white/50">
-          <Link to="/tender" className="hover:text-white transition-colors">Dashboard</Link>
-          <Link to="/tender/list" className="hover:text-white transition-colors">Tenders</Link>
+        <nav className="flex items-center gap-5 text-[12px] font-medium text-gray-500">
+          <Link to="/tender" className="hover:text-gray-900 transition-colors">Dashboard</Link>
+          <Link to="/tender/list" className="hover:text-gray-900 transition-colors">Tenders</Link>
         </nav>
       </div>
     </header>
@@ -100,9 +97,10 @@ function NavIcon({ name }: { name: string }) {
   );
 }
 
-/** Left sidebar navigation for a tender workspace — mirrors Autodesk
- *  Insight's persistent icon+label rail (Dashboards, Risk, Design, ...)
- *  in place of the horizontal tab strip the module started with.
+/** Left sidebar navigation for a tender workspace — white background with
+ *  a light-blue tinted active state, matching Autodesk Construction
+ *  Cloud's Docs sidebar (Files/Reviews/Transmittals/... rail) rather than
+ *  the dark-chrome look this used previously.
  *
  *  Every tab except Overview passes its own section name (e.g.
  *  "Documents") as TenderShell's page title, which meant the tender's
@@ -112,31 +110,31 @@ function NavIcon({ name }: { name: string }) {
  *  of which tab is active. */
 function TenderSidebar({ tenderId, tenderName }: { tenderId: string; tenderName?: string }) {
   return (
-    <aside className="tender-dark-chrome w-56 shrink-0 border-r border-white/8 bg-[#0d0d0e] flex flex-col h-screen sticky top-0">
-      <Link to="/tender" className="h-14 flex items-center gap-2 px-4 border-b border-white/8 shrink-0">
-        <span className="w-6 h-6 rounded-md bg-[#ff5100] flex items-center justify-center text-[11px] font-black">T</span>
-        <span className="font-extrabold tracking-tight text-[14px]">TenderAI</span>
+    <aside className="w-56 shrink-0 border-r border-gray-200 bg-white flex flex-col h-screen sticky top-0">
+      <Link to="/tender" className="h-14 flex items-center gap-2 px-4 border-b border-gray-200 shrink-0">
+        <span className="w-6 h-6 rounded-md flex items-center justify-center text-[11px] font-bold text-white" style={{ backgroundColor: ACCENT }}>T</span>
+        <span className="font-semibold tracking-tight text-[14px] text-gray-900">TenderAI</span>
       </Link>
       {tenderName && (
-        <div className="px-4 py-3 border-b border-white/8 shrink-0">
-          <p className="font-mono text-[8px] uppercase tracking-widest text-white/30 mb-0.5">Current Tender</p>
-          <p className="text-[12px] font-semibold truncate" title={tenderName}>{tenderName}</p>
+        <div className="px-4 py-3 border-b border-gray-200 shrink-0">
+          <p className="text-[10px] uppercase tracking-wide text-gray-400 mb-0.5">Current Tender</p>
+          <p className="text-[12px] font-medium text-gray-900 truncate" title={tenderName}>{tenderName}</p>
         </div>
       )}
       <nav className="flex-1 overflow-y-auto py-3 px-2 flex flex-col gap-0.5">
         {TENDER_TABS.map((tab) => (
           <Link key={tab.key} to={tab.to} params={{ tenderId }}
             activeOptions={{ exact: tab.key === "overview" }}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/50 transition-colors hover:text-white hover:bg-white/5"
-            activeProps={{ className: "flex items-center gap-2.5 px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest whitespace-nowrap", style: { color: "#ff5100", backgroundColor: "color-mix(in srgb, #ff5100 12%, transparent)" } }}
+            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium text-gray-500 transition-colors hover:text-gray-900 hover:bg-gray-50"
+            activeProps={{ className: "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium whitespace-nowrap", style: { color: ACCENT, backgroundColor: `color-mix(in srgb, ${ACCENT} 8%, white)` } }}
           >
             <NavIcon name={tab.icon} />
             {tab.label}
           </Link>
         ))}
       </nav>
-      <div className="p-3 border-t border-white/8 shrink-0">
-        <Link to="/tender/list" className="font-mono text-[9px] uppercase tracking-widest text-white/40 hover:text-white transition-colors">← All Tenders</Link>
+      <div className="p-3 border-t border-gray-200 shrink-0">
+        <Link to="/tender/list" className="text-[11px] font-medium text-gray-400 hover:text-gray-900 transition-colors">← All Tenders</Link>
       </div>
     </aside>
   );
@@ -148,15 +146,15 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
   const { data: tender } = useTender(tenderId);
   return (
     <div data-theme="light">
-      <div className="tenderai-scope min-h-screen bg-[#0a0a0b] text-white font-sans flex">
+      <div className="tenderai-scope min-h-screen bg-white text-gray-900 font-sans flex">
         <DockWorkspaceProvider>
           <TenderSidebar tenderId={tenderId} tenderName={tender?.name} />
           <div className="flex-1 min-w-0 flex flex-col pb-14">
-            <div className="border-b border-white/8 bg-[#0d0d0e] sticky top-0 z-10">
+            <div className="border-b border-gray-200 bg-white sticky top-0 z-10">
               <div className="px-6 h-16 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-extrabold tracking-tight truncate">{title}</h1>
-                  {subtitle && <div className="text-[12px] text-white/40 mt-0.5">{subtitle}</div>}
+                  <h1 className="text-lg md:text-xl font-semibold tracking-tight truncate text-gray-900">{title}</h1>
+                  {subtitle && <div className="text-[12px] text-gray-500 mt-0.5">{subtitle}</div>}
                 </div>
                 {action}
               </div>
@@ -180,13 +178,13 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
 function DockToolbar({ tenderId, tenderName }: { tenderId: string; tenderName?: string }) {
   const { openPanel } = useDockWorkspace();
   return (
-    <div className="tender-dark-chrome fixed bottom-0 left-56 right-0 z-50 border-t border-white/8 bg-[#0d0d0e]/95 backdrop-blur">
+    <div className="fixed bottom-0 left-56 right-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
       <div className="px-6 h-11 flex items-center gap-1">
         <button
           onClick={() => openPanel("documents", `Documents — ${tenderName ?? "…"}`, <QuickDocumentsPanel tenderId={tenderId} />)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: "#ff5100" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: ACCENT }}>
             <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
           </svg>
           Documents
@@ -196,9 +194,7 @@ function DockToolbar({ tenderId, tenderName }: { tenderId: string; tenderName?: 
   );
 }
 
-/** Grouped panel of icon+number tiles — mirrors Autodesk Insight's
- *  "Design Review Risk Factors" / "Quality Risk Factors" style panels:
- *  a labeled card containing a row of compact stat tiles. */
+/** Grouped panel of icon+number tiles for the Overview page's stat row. */
 export function KpiPanel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
   return (
     <Card title={title} action={action}>
@@ -207,85 +203,134 @@ export function KpiPanel({ title, action, children }: { title: string; action?: 
   );
 }
 
-export function KpiTile({ icon, value, label, color = "#ff5100" }: {
+export function KpiTile({ icon, value, label, color = ACCENT }: {
   icon: ReactNode; value: ReactNode; label: string; color?: string;
 }) {
   return (
-    <div className="flex-1 min-w-[110px] rounded-2xl p-3.5 flex flex-col gap-2.5" style={{ backgroundColor: `${color}14` }}>
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}22`, color }}>
+    <div className="flex-1 min-w-[110px] rounded-lg border border-gray-200 bg-white p-3.5 flex flex-col gap-2.5">
+      <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ color }}>
         {icon}
       </div>
-      <p className="text-xl font-extrabold font-mono leading-none">{value}</p>
-      <p className="font-mono text-[8px] uppercase tracking-widest text-white/35 leading-tight">{label}</p>
+      <p className="text-xl font-semibold leading-none text-gray-900">{value}</p>
+      <p className="text-[11px] text-gray-500 leading-tight">{label}</p>
     </div>
   );
 }
 
 /** Column-based dense table — the one list pattern every tender data page
- *  (Requirements, Checklist, Gaps, Clarifications, Compliance, Risks) should
- *  share once real data volume shows up, instead of each page inventing its
- *  own flex-row or ad-hoc <table>. Matches Risks/Compliance's existing table
- *  styling (font-mono uppercase headers, divide-y rows) so adopting it
- *  elsewhere doesn't introduce a second visual language. */
+ *  (Requirements, Checklist, Gaps, Clarifications, Compliance, Risks)
+ *  shares, matching Autodesk Docs' file-list table: plain-weight gray
+ *  headers, thin row borders, light-gray hover, an optional sortable
+ *  column (click header → toggle asc/desc, shows an arrow) and an
+ *  optional "Showing N items" footer. */
 export interface DataTableColumn<T> {
   header: string;
   width?: string;
   render: (row: T) => ReactNode;
+  /** Enables click-to-sort on this column. `sortKey` extracts the
+   *  comparable value from a row (string or number). */
+  sortKey?: (row: T) => string | number;
 }
 
-export function DataTable<T>({ columns, rows, keyFn, onRowClick, expandedKey, renderExpanded }: {
+export function DataTable<T>({ columns, rows, keyFn, onRowClick, expandedKey, renderExpanded, footerCount, sort, onSortChange }: {
   columns: DataTableColumn<T>[];
   rows: T[];
   keyFn: (row: T) => string;
   onRowClick?: (row: T) => void;
   expandedKey?: string | null;
   renderExpanded?: (row: T) => ReactNode;
+  /** Shows a "Showing N items" footer under the table, matching Autodesk
+   *  Docs' file-list footer. */
+  footerCount?: boolean;
+  /** Current sort state, for columns with `sortKey` set. Omit if the page
+   *  doesn't want sorting even though a column defines `sortKey`. */
+  sort?: { columnIndex: number; direction: "asc" | "desc" };
+  onSortChange?: (next: { columnIndex: number; direction: "asc" | "desc" }) => void;
 }) {
   return (
-    <div className="overflow-x-auto -mx-5 -mt-1">
-      <table className="w-full text-[12px] border-collapse table-fixed">
-        <thead>
-          <tr className="text-left border-b border-white/8">
-            {columns.map((c, i) => (
-              <th key={i} className="font-mono text-[9px] font-medium uppercase tracking-widest text-white/35 pb-2 pl-5 pr-3 first:pl-5" style={c.width ? { width: c.width } : undefined}>
-                {c.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/6">
-          {rows.map((row) => {
-            const key = keyFn(row);
-            return (
-              <Fragment key={key}>
-                <tr
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  className={onRowClick ? "cursor-pointer hover:bg-white/[0.02] transition-colors" : undefined}
-                >
-                  {columns.map((c, i) => (
-                    <td key={i} className="py-2.5 pl-5 pr-3 first:pl-5 align-top">{c.render(row)}</td>
-                  ))}
-                </tr>
-                {expandedKey === key && renderExpanded && (
-                  <tr>
-                    <td colSpan={columns.length} className="pb-3 pl-5 pr-3 bg-white/[0.015]">{renderExpanded(row)}</td>
+    <div>
+      <div className="overflow-x-auto -mx-5 -mt-1">
+        <table className="w-full text-[13px] border-collapse table-fixed">
+          <thead>
+            <tr className="text-left border-b border-gray-200">
+              {columns.map((c, i) => {
+                const isSorted = sort?.columnIndex === i;
+                const canSort = !!c.sortKey && !!onSortChange;
+                return (
+                  <th key={i} className="font-medium text-gray-500 pb-2 pl-5 pr-3 first:pl-5" style={c.width ? { width: c.width } : undefined}>
+                    {canSort ? (
+                      <button
+                        type="button"
+                        onClick={() => onSortChange!({ columnIndex: i, direction: isSorted && sort!.direction === "asc" ? "desc" : "asc" })}
+                        className="flex items-center gap-1 hover:text-gray-900 transition-colors"
+                      >
+                        {c.header}
+                        {isSorted && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={sort!.direction === "desc" ? "rotate-180" : undefined}>
+                            <path d="M12 19V5M5 12l7-7 7 7" />
+                          </svg>
+                        )}
+                      </button>
+                    ) : c.header}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((row) => {
+              const key = keyFn(row);
+              return (
+                <Fragment key={key}>
+                  <tr
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={onRowClick ? "cursor-pointer hover:bg-gray-50 transition-colors" : undefined}
+                  >
+                    {columns.map((c, i) => (
+                      <td key={i} className="py-2.5 pl-5 pr-3 first:pl-5 align-top text-gray-700">{c.render(row)}</td>
+                    ))}
                   </tr>
-                )}
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+                  {expandedKey === key && renderExpanded && (
+                    <tr>
+                      <td colSpan={columns.length} className="pb-3 pl-5 pr-3 bg-gray-50">{renderExpanded(row)}</td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {footerCount && (
+        <p className="text-[11px] text-gray-400 mt-3">Showing {rows.length} item{rows.length !== 1 ? "s" : ""}</p>
+      )}
     </div>
   );
 }
 
+/** Sorts `rows` per a DataTable `sort` state and the same columns array
+ *  passed to DataTable — pulled out as a helper so pages don't each
+ *  re-implement the same comparator logic. */
+export function sortRows<T>(rows: T[], columns: DataTableColumn<T>[], sort: { columnIndex: number; direction: "asc" | "desc" } | undefined): T[] {
+  if (!sort) return rows;
+  const col = columns[sort.columnIndex];
+  if (!col?.sortKey) return rows;
+  const sorted = [...rows].sort((a, b) => {
+    const av = col.sortKey!(a);
+    const bv = col.sortKey!(b);
+    if (av < bv) return -1;
+    if (av > bv) return 1;
+    return 0;
+  });
+  return sort.direction === "desc" ? sorted.reverse() : sorted;
+}
+
 export function Card({ title, action, children }: { title?: string; action?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] border border-white/7 p-5">
+    <div className="rounded-lg bg-white border border-gray-200 p-5">
       {(title || action) && (
         <div className="flex items-center justify-between mb-4">
-          {title && <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 font-bold">{title}</p>}
+          {title && <p className="text-[12px] font-semibold text-gray-500">{title}</p>}
           {action}
         </div>
       )}
@@ -295,11 +340,11 @@ export function Card({ title, action, children }: { title?: string; action?: Rea
 }
 
 // Deliberately keeps blue as its own hue here, separate from the brand
-// orange (#ff5100) used everywhere else — these badges mean "info /
-// AI-in-progress / needs clarification", which needs to read as visually
-// distinct from "high severity" and "deviation" (both already #f97316).
-// Collapsing all of these to orange would make very different states look
-// almost identical in a StatusBadge chip.
+// accent (also blue, but a different shade — #0696D7 vs #2563eb) — these
+// badges mean "info / AI-in-progress / needs clarification", which needs
+// to read as visually distinct from "high severity" and "deviation" (both
+// already #f97316). Collapsing all of these into the same hue as the
+// accent would make very different states look almost identical.
 const STATUS_COLOR: Record<string, string> = {
   // tender status
   draft: "#71717a", processing: "#eab308", analysis: "#2563eb", submission: "#f97316", submitted: "#22c55e", archived: "#52525b",
@@ -315,21 +360,24 @@ const STATUS_COLOR: Record<string, string> = {
   need_clarification: "#2563eb", missing: "#ef4444",
 };
 
+/** Autodesk's Issues panel shows status as a small colored bar + plain
+ *  text ("In progress • Clash"), not a rounded pill — matches that instead
+ *  of the previous colored-background chip. */
 export function StatusBadge({ value, label }: { value: string; label?: string }) {
   const color = STATUS_COLOR[value] ?? "#71717a";
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ backgroundColor: `${color}18` }}>
-      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-      <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color }}>{label ?? value.replace(/_/g, " ")}</span>
+    <span className="inline-flex items-center gap-1.5">
+      <span className="w-1 h-3.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      <span className="text-[12px] font-medium text-gray-700">{label ?? value.replace(/_/g, " ")}</span>
     </span>
   );
 }
 
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
-    <div className="border border-dashed border-white/10 rounded-2xl py-14 px-6 text-center">
-      <p className="text-[13px] text-white/50 mb-1">{title}</p>
-      {hint && <p className="text-[11px] text-white/25 mb-4">{hint}</p>}
+    <div className="border border-dashed border-gray-300 rounded-lg py-14 px-6 text-center">
+      <p className="text-[13px] text-gray-700 mb-1">{title}</p>
+      {hint && <p className="text-[12px] text-gray-400 mb-4">{hint}</p>}
       {action}
     </div>
   );
@@ -337,8 +385,8 @@ export function EmptyState({ title, hint, action }: { title: string; hint?: stri
 
 export function ErrorState({ message }: { message: string }) {
   return (
-    <div className="border border-red-500/20 bg-red-500/5 rounded-2xl py-6 px-5 text-center">
-      <p className="text-[12px] text-red-400">{message}</p>
+    <div className="border border-red-200 bg-red-50 rounded-lg py-6 px-5 text-center">
+      <p className="text-[12px] text-red-600">{message}</p>
     </div>
   );
 }
@@ -346,7 +394,7 @@ export function ErrorState({ message }: { message: string }) {
 export function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center py-14">
-      <div className="w-6 h-6 border-2 border-[#ff5100] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-gray-200 rounded-full animate-spin" style={{ borderTopColor: ACCENT }} />
     </div>
   );
 }

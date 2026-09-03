@@ -384,26 +384,6 @@
 [data-theme="light"] .tenderai-scope .border-white\/40 { border-color: rgba(0,0,0,0.32) !important; }
 [data-theme="light"] .tenderai-scope .divide-white\/6 > * { border-color: rgba(0,0,0,0.06) !important; }
 
-/* ── TenderAI dark chrome ────────────────────────────────
-   Per the product spec: one fixed look, dark-navy sidebar/top-nav/dock-
-   toolbar against an always-light main workspace (not a user toggle).
-   `.tenderai-scope` is forced to data-theme="light" (see shared.tsx),
-   which inverts every dark-styled class site-wide via the sweep above —
-   `.tender-dark-chrome` (on TenderTopNav, TenderSidebar, DockToolbar)
-   re-inverts those same classes back to dark navy so that chrome stays
-   visually anchored instead of going light with the rest of the page. */
-[data-theme="light"] .tenderai-scope .tender-dark-chrome.bg-\[\#0d0d0e\],
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .bg-\[\#0d0d0e\] { background-color: #0f172a !important; }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome { color: rgba(255,255,255,0.85); }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome.border-white\/8,
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .border-white\/8 { border-color: rgba(255,255,255,0.08) !important; }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .text-white\/30 { color: rgba(255,255,255,0.30) !important; }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .text-white\/40 { color: rgba(255,255,255,0.40) !important; }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .text-white\/50 { color: rgba(255,255,255,0.50) !important; }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .text-white\/60 { color: rgba(255,255,255,0.60) !important; }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .hover\:text-white:hover { color: #ffffff !important; }
-[data-theme="light"] .tenderai-scope .tender-dark-chrome .hover\:bg-white\/5:hover { background-color: rgba(255,255,255,0.05) !important; }
-
 /* ── Map: lock to dark regardless of page theme ─────────── */
 /* Apply data-theme="dark" to the IndustrialMap root div to keep map always dark */
 
