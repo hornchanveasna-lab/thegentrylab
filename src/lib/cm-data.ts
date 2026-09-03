@@ -3016,14 +3016,26 @@ function linearRamp(start: string, finish: string, date: string): number {
   return (elapsed / span) * 100;
 }
 
+/** The only fields the plan/actual/health math below actually touches —
+ *  `CMScheduleItem` satisfies this structurally, so the Schedule page's full
+ *  objects still work here unchanged, but a caller that only has these 4
+ *  columns (e.g. a cross-project health query) doesn't need to fetch or
+ *  build a full CMScheduleItem just to call these functions. */
+export interface CMScheduleHealthInput {
+  weight: number;
+  actual_percent: number;
+  plan_start: string;
+  plan_finish: string;
+}
+
 /** A single activity's plan-completion ramp for a given day. */
-export function scheduleItemPlanPercent(item: CMScheduleItem, date: string): number {
+export function scheduleItemPlanPercent(item: CMScheduleHealthInput, date: string): number {
   return linearRamp(item.plan_start, item.plan_finish, date);
 }
 
 /** Weighted-average plan% across all of a project's schedule items for a
  *  given day — the "Plan" line of the S-curve. */
-export function projectPlanPercent(items: CMScheduleItem[], date: string): number {
+export function projectPlanPercent(items: CMScheduleHealthInput[], date: string): number {
   if (items.length === 0) return 0;
   const totalWeight = items.reduce((s, i) => s + i.weight, 0) || 1;
   return items.reduce((s, i) => s + i.weight * scheduleItemPlanPercent(i, date), 0) / totalWeight;
@@ -3036,7 +3048,7 @@ export function projectPlanPercent(items: CMScheduleItem[], date: string): numbe
  *  a project has no activities to judge by. */
 export type CMComputedHealth = "Ahead" | "OnSchedule" | "Behind" | "NoSchedule";
 
-export function cmComputedHealth(items: CMScheduleItem[], date: string): { health: CMComputedHealth; planned: number; actual: number; variance: number } {
+export function cmComputedHealth(items: CMScheduleHealthInput[], date: string): { health: CMComputedHealth; planned: number; actual: number; variance: number } {
   if (items.length === 0) return { health: "NoSchedule", planned: 0, actual: 0, variance: 0 };
   const planned = projectPlanPercent(items, date);
   const totalWeight = items.reduce((s, i) => s + i.weight, 0) || 1;
@@ -3130,18 +3142,34 @@ export function cmProjectHealthScore(
   };
 }
 
-/** Schedule items across every project the signed-in user can see (RLS
- *  scopes the unfiltered select) — lets the Portfolio compute each card's
- *  health in one query instead of one per project. */
-export function useCMAllScheduleItems(userId: string | undefined) {
-  return useQuery<CMScheduleItem[]>({
-    queryKey: ["cm_schedule_items_all", userId],
+/** Per-project Ahead/OnSchedule/Behind health across every project the
+ *  signed-in user can see, in one query instead of one per project —
+ *  selects only the 5 columns cmComputedHealth() needs (not every
+ *  CMWBSNode column) and skips toScheduleItem()'s per-row parent-name
+ *  lookup (group_label isn't used for a health dot), which was previously
+ *  making Portfolio load pay for the same O(n²) work the Schedule page's
+ *  full CMScheduleItem view actually needs, on every project's schedule
+ *  combined. */
+export function useCMAllScheduleHealth(userId: string | undefined) {
+  return useQuery<Map<string, CMComputedHealth>>({
+    queryKey: ["cm_schedule_health_all", userId],
     enabled: !!userId && !!supabaseCM,
     queryFn: async () => {
-      const { data, error } = await db().from("cm_wbs_nodes").select("*").not("plan_start", "is", null);
+      const { data, error } = await db()
+        .from("cm_wbs_nodes")
+        .select("project_id, weight, actual_percent, plan_start, plan_finish")
+        .not("plan_start", "is", null);
       if (error) throw error;
-      const nodes = data as CMWBSNode[];
-      return nodes.map((n) => toScheduleItem(n, nodes));
+      const rows = data as { project_id: string; weight: number | null; actual_percent: number; plan_start: string; plan_finish: string }[];
+      const itemsByProject = new Map<string, CMScheduleHealthInput[]>();
+      for (const r of rows) {
+        const item: CMScheduleHealthInput = { weight: r.weight ?? 0, actual_percent: r.actual_percent, plan_start: r.plan_start, plan_finish: r.plan_finish };
+        itemsByProject.set(r.project_id, [...(itemsByProject.get(r.project_id) ?? []), item]);
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      const result = new Map<string, CMComputedHealth>();
+      for (const [projectId, items] of itemsByProject) result.set(projectId, cmComputedHealth(items, today).health);
+      return result;
     },
     staleTime: STALE_TIME,
   });

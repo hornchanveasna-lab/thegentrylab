@@ -12,10 +12,8 @@ import {
   useCMAccountSettings,
   upsertCMAccountSettings,
   CM_PROJECT_SECTORS,
-  useCMAllScheduleItems,
-  cmComputedHealth,
+  useCMAllScheduleHealth,
   type CMProject,
-  type CMScheduleItem,
   type ProjectStatus,
   type CMComputedHealth,
   type ProjectSector,
@@ -355,7 +353,7 @@ export function CMProjectsPage() {
   const { data: projects, isLoading, error } = useCMProjects(user?.id);
   const { data: favorites } = useCMProjectFavorites(user?.id);
   const { data: account } = useCMAccountSettings(user?.id);
-  const { data: allScheduleItems } = useCMAllScheduleItems(user?.id);
+  const { data: scheduleHealth } = useCMAllScheduleHealth(user?.id);
   const [showNew, setShowNew] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
@@ -384,18 +382,7 @@ export function CMProjectsPage() {
 
   // Health computed per project from its schedule (Ahead / On Schedule /
   // Behind) — one cross-project query, never a hand-set label.
-  const healthByProject = useMemo(() => {
-    const itemsByProject = new Map<string, CMScheduleItem[]>();
-    for (const item of allScheduleItems ?? []) {
-      itemsByProject.set(item.project_id, [...(itemsByProject.get(item.project_id) ?? []), item]);
-    }
-    const today = new Date().toISOString().slice(0, 10);
-    const map = new Map<string, CMComputedHealth>();
-    for (const p of projects ?? []) {
-      map.set(p.id, cmComputedHealth(itemsByProject.get(p.id) ?? [], today).health);
-    }
-    return map;
-  }, [allScheduleItems, projects]);
+  const healthByProject = useMemo(() => scheduleHealth ?? new Map<string, CMComputedHealth>(), [scheduleHealth]);
   const healthOf = (p: CMProject): CMComputedHealth => healthByProject.get(p.id) ?? "NoSchedule";
 
   const q = search.trim().toLowerCase();
