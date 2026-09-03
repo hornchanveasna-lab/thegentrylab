@@ -45,7 +45,7 @@ function TenderRequirements() {
         <div className="flex items-center gap-2">
           <button onClick={handleExtract} disabled={extracting}
             className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest disabled:opacity-40"
-            style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+            style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
             {extracting
               ? (extractProgress ? `Extracting ${extractProgress.done}/${extractProgress.total}…` : "Starting…")
               : "Extract Requirements"}
@@ -64,7 +64,7 @@ function TenderRequirements() {
       ) : filtered.length === 0 ? (
         <EmptyState title="No requirements extracted yet"
           hint="Click Extract Requirements once your documents finish processing — it reads every processed document and pulls out discrete, citable requirements."
-          action={<button onClick={handleExtract} disabled={extracting} className="font-mono text-[11px] uppercase tracking-widest disabled:opacity-40" style={{ color: "#2563eb" }}>{extracting ? "Extracting…" : "Extract Requirements →"}</button>} />
+          action={<button onClick={handleExtract} disabled={extracting} className="font-mono text-[11px] uppercase tracking-widest disabled:opacity-40" style={{ color: "#ff5100" }}>{extracting ? "Extracting…" : "Extract Requirements →"}</button>} />
       ) : (
         <Card>
           <DataTable<TenderRequirement>

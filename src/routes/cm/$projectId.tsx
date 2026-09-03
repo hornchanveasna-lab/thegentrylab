@@ -12,6 +12,7 @@ import {
 } from "@/components/cm/shared";
 import {
   useCMProject,
+  useCMProjects,
   useCMProjectMembers,
   useCMProjectFavorites,
   setCMProjectFavorite,
@@ -33,11 +34,15 @@ import {
   type CMHealthBand,
 } from "@/lib/cm-data";
 
+type InsightTab = "overview" | "progress" | "quality" | "safety" | "documents" | "commercial" | "team" | "activity" | "settings";
+const INSIGHT_TABS: InsightTab[] = ["overview", "progress", "quality", "safety", "documents", "commercial", "team", "activity", "settings"];
+
 export const Route = createFileRoute("/cm/$projectId")({
+  validateSearch: (search: Record<string, unknown>): { tab?: InsightTab } => ({
+    tab: INSIGHT_TABS.includes(search.tab as InsightTab) ? (search.tab as InsightTab) : undefined,
+  }),
   component: CMProjectPage,
 });
-
-type InsightTab = "overview" | "progress" | "quality" | "safety" | "documents" | "commercial" | "team" | "activity" | "settings";
 
 const iconProps = { width: 20, height: 20, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 const MODULE_SHORTCUTS: { to: string; labelKey: string; icon: React.ReactNode }[] = [
@@ -101,12 +106,14 @@ function AttentionRow({ label, count, to, projectId }: { label: string; count: n
 
 function CMProjectPage() {
   const { projectId } = Route.useParams();
+  const searchParams = Route.useSearch();
   const { user, signInWithGoogle } = useAuthCM();
   const { t } = useCMLang();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const theme = useCMTheme();
   const { data: project, isLoading: projectLoading } = useCMProject(projectId);
+  const { data: allProjects } = useCMProjects(user?.id);
   const { data: favorites } = useCMProjectFavorites(user?.id);
   const { data: members } = useCMProjectMembers(projectId);
   const { data: tasks } = useCMTasks(projectId);
@@ -118,13 +125,31 @@ function CMProjectPage() {
   const { data: boqItems } = useActiveCMBOQItems(projectId);
   const { data: equipment } = useCMEquipment(projectId);
   const { data: auditLog } = useCMAuditLog(projectId);
-  const [tab, setTab] = useState<InsightTab>("overview");
+  const [tab, setTab] = useState<InsightTab>(searchParams.tab ?? "overview");
+
+  // Switching projects without leaving Insight (CLAUDE.md's "Persistent
+  // Project Context") keeps the current tab where the target project
+  // actually has it (e.g. no "commercial" tab if the new project hides
+  // it) — carried through the URL so a fresh mount on the new projectId
+  // still lands on the right tab instead of resetting to Overview.
+  const switchProject = (newProjectId: string) => {
+    if (newProjectId === projectId) return;
+    setLastProject(newProjectId);
+    navigate({ to: "/cm/$projectId", params: { projectId: newProjectId }, search: { tab } });
+  };
 
   const ownerId = project?.owner_id;
   const peopleCanCreate = usePermission(projectId, ownerId, "people", "create");
   const peopleCanEdit = usePermission(projectId, ownerId, "people", "edit");
   const peopleCanDelete = usePermission(projectId, ownerId, "people", "delete");
   const commercialVisible = usePermission(projectId, ownerId, "boq", "view");
+
+  // A tab carried over from switchProject (or a stale bookmark) can point at
+  // a tab this project's permissions hide — fall back rather than render
+  // nothing.
+  useEffect(() => {
+    if (tab === "commercial" && !commercialVisible) setTab("overview");
+  }, [tab, commercialVisible]);
 
   const todayStr = today();
 
@@ -284,7 +309,22 @@ function CMProjectPage() {
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-4">
           <BackButton to="/cm/projects" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("insight.title")}</h1>
+          {allProjects && allProjects.length > 1 ? (
+            <label className="flex-1 min-w-0 flex items-center gap-1.5">
+              <span className="sr-only">{t("insight.title")}</span>
+              <select
+                value={projectId}
+                onChange={(e) => switchProject(e.target.value)}
+                className="w-full bg-transparent text-xl font-extrabold tracking-tight text-white truncate focus:outline-none cursor-pointer"
+              >
+                {allProjects.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-[#0d0d0e] text-white text-base font-normal">{p.name}</option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("insight.title")}</h1>
+          )}
           <FavoriteButton active={favorites?.has(projectId) ?? false} onToggle={toggleFavorite} />
           <button type="button" onClick={() => setTab("settings")} aria-label={t("projectSettings.title")}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${tab === "settings" ? "" : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"}`}

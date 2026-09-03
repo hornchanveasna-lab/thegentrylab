@@ -36,7 +36,7 @@ export function QuickDocumentsPanel({ tenderId }: { tenderId: string }) {
               <button
                 key={doc.id}
                 onClick={() => select(doc)}
-                className={`text-left px-3 py-2 text-[11px] truncate transition-colors ${selected?.id === doc.id ? "bg-white/[0.06] text-[#2563eb]" : "text-white/70 hover:bg-white/[0.03]"}`}
+                className={`text-left px-3 py-2 text-[11px] truncate transition-colors ${selected?.id === doc.id ? "bg-white/[0.06] text-[#ff5100]" : "text-white/70 hover:bg-white/[0.03]"}`}
                 title={doc.file_name}
               >
                 {doc.file_name}
@@ -57,7 +57,7 @@ export function QuickDocumentsPanel({ tenderId }: { tenderId: string }) {
         ) : (
           <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
             <p className="text-[11px] text-white/40">Preview isn't available here for .{selected.file_type.toLowerCase()} files.</p>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#2563eb" }}>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
               Open in new tab ↗
             </a>
           </div>

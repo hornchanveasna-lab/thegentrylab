@@ -19,7 +19,7 @@ function TenderList() {
       title="Tenders"
       action={
         <Link to="/tender/new" className="px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-widest"
-          style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+          style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
           + New Tender
         </Link>
       }
@@ -43,7 +43,7 @@ function TenderList() {
                 {tenders.map((t) => (
                   <tr key={t.id}>
                     <td className="py-3 pr-4">
-                      <Link to="/tender/$tenderId" params={{ tenderId: t.id }} className="font-bold hover:text-[#2563eb] transition-colors">{t.name}</Link>
+                      <Link to="/tender/$tenderId" params={{ tenderId: t.id }} className="font-bold hover:text-[#ff5100] transition-colors">{t.name}</Link>
                     </td>
                     <td className="py-3 pr-4 text-white/60">{t.client ?? "—"}</td>
                     <td className="py-3 pr-4 text-white/60">{t.project_type ? PROJECT_TYPE_LABELS[t.project_type] : "—"}</td>

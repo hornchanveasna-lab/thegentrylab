@@ -115,7 +115,7 @@ function TenderOverview() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Card title="Top risks" action={<Link to="/tender/$tenderId/risks" params={{ tenderId }} className="font-mono text-[10px] uppercase tracking-widest text-[#2563eb]">View all →</Link>}>
+        <Card title="Top risks" action={<Link to="/tender/$tenderId/risks" params={{ tenderId }} className="font-mono text-[10px] uppercase tracking-widest text-[#ff5100]">View all →</Link>}>
           {topRisks.length === 0 ? (
             <p className="text-[12px] text-white/30">No risks identified yet — run the Risk Register once documents are processed.</p>
           ) : (
