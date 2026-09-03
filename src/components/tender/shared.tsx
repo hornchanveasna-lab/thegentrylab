@@ -294,19 +294,25 @@ export function Card({ title, action, children }: { title?: string; action?: Rea
   );
 }
 
+// Deliberately keeps blue as its own hue here, separate from the brand
+// orange (#ff5100) used everywhere else — these badges mean "info /
+// AI-in-progress / needs clarification", which needs to read as visually
+// distinct from "high severity" and "deviation" (both already #f97316).
+// Collapsing all of these to orange would make very different states look
+// almost identical in a StatusBadge chip.
 const STATUS_COLOR: Record<string, string> = {
   // tender status
-  draft: "#71717a", processing: "#eab308", analysis: "#ff5100", submission: "#f97316", submitted: "#22c55e", archived: "#52525b",
+  draft: "#71717a", processing: "#eab308", analysis: "#2563eb", submission: "#f97316", submitted: "#22c55e", archived: "#52525b",
   // document status
   uploaded: "#71717a", failed: "#ef4444",
   // requirement / checklist status
   open: "#71717a", in_progress: "#eab308", missing_info: "#ef4444", missing_information: "#ef4444",
-  ready: "#22c55e", approved: "#22c55e", not_started: "#71717a", ai_drafted: "#ff5100", in_review: "#eab308",
+  ready: "#22c55e", approved: "#22c55e", not_started: "#71717a", ai_drafted: "#2563eb", in_review: "#eab308",
   // severity
   critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#22c55e",
   // compliance
   comply: "#22c55e", partially_comply: "#eab308", deviation: "#f97316", not_applicable: "#71717a",
-  need_clarification: "#ff5100", missing: "#ef4444",
+  need_clarification: "#2563eb", missing: "#ef4444",
 };
 
 export function StatusBadge({ value, label }: { value: string; label?: string }) {
