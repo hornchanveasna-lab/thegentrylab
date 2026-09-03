@@ -16,19 +16,19 @@ function TenderDashboard() {
   const { user, loading: authLoading, signInWithGoogle } = useAuthTender();
 
   if (authLoading) {
-    return <div className="min-h-screen bg-[#0a0a0b]" />;
+    return <div className="min-h-screen bg-white" />;
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center px-4 font-sans">
         <div className="text-center max-w-sm">
-          <span className="w-10 h-10 rounded-xl bg-[#ff5100] flex items-center justify-center text-[16px] font-black mx-auto mb-4">T</span>
+          <span className="w-10 h-10 rounded-xl bg-[#0696D7] text-white flex items-center justify-center text-[16px] font-black mx-auto mb-4">T</span>
           <h1 className="text-2xl font-extrabold tracking-tight mb-2">TenderAI</h1>
-          <p className="text-white/45 text-sm mb-8">Upload a tender package. Get structured requirements, compliance, risk, and a draft submission — every claim traced back to its source.</p>
+          <p className="text-gray-400 text-sm mb-8">Upload a tender package. Get structured requirements, compliance, risk, and a draft submission — every claim traced back to its source.</p>
           <button onClick={() => signInWithGoogle()}
-            className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest font-bold"
-            style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
+            className="px-7 py-3 rounded-2xl text-[12px] font-bold"
+            style={{ backgroundColor: "#0696D7", color: "#ffffff" }}>
             Sign in with Google
           </button>
         </div>
@@ -46,18 +46,18 @@ function OrgGate({ userId }: { userId: string }) {
   const [orgName, setOrgName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  if (loading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (loading) return <div className="min-h-screen bg-white" />;
 
   if (orgs.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-white text-gray-900 flex items-center justify-center px-4 font-sans">
         <div className="w-full max-w-sm">
           <p className={labelCls + " mb-2"}>Get started</p>
           <h1 className="text-xl font-extrabold tracking-tight mb-1">Create your company</h1>
-          <p className="text-white/45 text-[13px] mb-6">This is the bidding entity your tenders belong to — you can invite teammates to it later.</p>
+          <p className="text-gray-400 text-[13px] mb-6">This is the bidding entity your tenders belong to — you can invite teammates to it later.</p>
           <div className="flex flex-col gap-3">
             <input className={inputCls} placeholder="Company name" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
-            {error && <p className="text-[12px] text-red-400">{error}</p>}
+            {error && <p className="text-[12px] text-red-600">{error}</p>}
             <button
               disabled={creating || !orgName.trim()}
               onClick={async () => {
@@ -71,8 +71,8 @@ function OrgGate({ userId }: { userId: string }) {
                   setCreating(false);
                 }
               }}
-              className="py-3 rounded-2xl text-[13px] uppercase tracking-widest font-bold disabled:opacity-40"
-              style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}
+              className="py-3 rounded-2xl text-[13px] font-bold disabled:opacity-40"
+              style={{ backgroundColor: "#0696D7", color: "#ffffff" }}
             >
               {creating ? "Creating…" : "Create company"}
             </button>
@@ -102,12 +102,12 @@ function Dashboard({ orgId, orgName, orgs, onSwitchOrg }: {
         <div className="flex items-center gap-2">
           {orgs.length > 1 && (
             <select value={orgId} onChange={(e) => onSwitchOrg(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white">
-              {orgs.map((o) => <option key={o.id} value={o.id} className="bg-[#0a0a0b] text-white">{o.name}</option>)}
+              className="bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[12px] text-gray-900">
+              {orgs.map((o) => <option key={o.id} value={o.id} className="bg-white text-gray-900">{o.name}</option>)}
             </select>
           )}
-          <Link to="/tender/new" className="px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-widest"
-            style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
+          <Link to="/tender/new" className="px-4 py-2.5 rounded-xl text-[12px] font-bold"
+            style={{ backgroundColor: "#0696D7", color: "#ffffff" }}>
             + New Tender
           </Link>
         </div>
@@ -116,20 +116,20 @@ function Dashboard({ orgId, orgName, orgs, onSwitchOrg }: {
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-8">
         {TENDER_STATUSES.map((s) => (
           <Card key={s}>
-            <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">{s.replace(/_/g, " ")}</p>
+            <p className="text-[9px] text-gray-400 mb-1">{s.replace(/_/g, " ")}</p>
             <p className="text-2xl font-extrabold font-mono">{counts[s] ?? 0}</p>
           </Card>
         ))}
       </div>
 
-      <Card title="Active tenders" action={<Link to="/tender/list" className="font-mono text-[10px] uppercase tracking-widest text-[#ff5100]">View all →</Link>}>
+      <Card title="Active tenders" action={<Link to="/tender/list" className="text-[10px] text-[#0696D7]">View all →</Link>}>
         {isLoading ? (
           <LoadingSpinner />
         ) : active.length === 0 ? (
           <EmptyState title="No tenders yet" hint="Create your first tender to start uploading a package."
-            action={<Link to="/tender/new" className="font-mono text-[11px] uppercase tracking-widest text-[#ff5100]">+ New Tender</Link>} />
+            action={<Link to="/tender/new" className="text-[11px] text-[#0696D7]">+ New Tender</Link>} />
         ) : (
-          <div className="flex flex-col divide-y divide-white/8">
+          <div className="flex flex-col divide-y divide-gray-100">
             {active.slice(0, 8).map((t) => <TenderRow key={t.id} tender={t} />)}
           </div>
         )}
@@ -140,16 +140,16 @@ function Dashboard({ orgId, orgName, orgs, onSwitchOrg }: {
 
 function TenderRow({ tender }: { tender: Tender }) {
   return (
-    <Link to="/tender/$tenderId" params={{ tenderId: tender.id }} className="flex items-center justify-between py-3.5 gap-3 hover:bg-white/[0.02] transition-colors -mx-2 px-2 rounded-lg">
+    <Link to="/tender/$tenderId" params={{ tenderId: tender.id }} className="flex items-center justify-between py-3.5 gap-3 hover:bg-gray-50 transition-colors -mx-2 px-2 rounded-lg">
       <div className="min-w-0">
         <p className="text-[13px] font-bold truncate">{tender.name}</p>
-        <p className="text-[11px] text-white/40 truncate">
+        <p className="text-[11px] text-gray-400 truncate">
           {tender.client ?? "—"} {tender.project_type && `· ${PROJECT_TYPE_LABELS[tender.project_type]}`}
         </p>
       </div>
       <div className="flex items-center gap-3 shrink-0">
         {tender.submission_deadline && (
-          <p className="font-mono text-[10px] text-white/30 hidden sm:block">
+          <p className="text-[10px] text-gray-400 hidden sm:block">
             {new Date(tender.submission_deadline).toLocaleDateString()}
           </p>
         )}

@@ -27,7 +27,7 @@ function NewTender() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!user || !orgId) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (!user || !orgId) return <div className="min-h-screen bg-white" />;
 
   async function handleSubmit() {
     if (!name.trim() || !user || !orgId) return;
@@ -76,8 +76,8 @@ function NewTender() {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Project type">
             <select className={inputCls} value={projectType} onChange={(e) => setProjectType(e.target.value as ProjectType)}>
-              <option value="" className="bg-[#0a0a0b] text-white">— Select —</option>
-              {PROJECT_TYPES.map((pt) => <option key={pt} value={pt} className="bg-[#0a0a0b] text-white">{PROJECT_TYPE_LABELS[pt]}</option>)}
+              <option value="" className="bg-white text-gray-900">— Select —</option>
+              {PROJECT_TYPES.map((pt) => <option key={pt} value={pt} className="bg-white text-gray-900">{PROJECT_TYPE_LABELS[pt]}</option>)}
             </select>
           </Field>
           <Field label="Contract type"><input className={inputCls} value={contractType} onChange={(e) => setContractType(e.target.value)} placeholder="Lump Sum, D&B, EPC…" /></Field>
@@ -86,17 +86,17 @@ function NewTender() {
         <div className="grid grid-cols-2 gap-4">
           <Field label="Currency">
             <select className={inputCls} value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {["USD", "KHR", "EUR", "GBP", "SGD"].map((c) => <option key={c} value={c} className="bg-[#0a0a0b] text-white">{c}</option>)}
+              {["USD", "KHR", "EUR", "GBP", "SGD"].map((c) => <option key={c} value={c} className="bg-white text-gray-900">{c}</option>)}
             </select>
           </Field>
           <Field label="Bidding company"><input className={inputCls} value={biddingCompany} onChange={(e) => setBiddingCompany(e.target.value)} placeholder="Defaults to your company if blank" /></Field>
         </div>
 
-        {error && <p className="text-[12px] text-red-400">{error}</p>}
+        {error && <p className="text-[12px] text-red-600">{error}</p>}
 
         <button onClick={handleSubmit} disabled={saving || !name.trim()}
-          className="py-3.5 rounded-2xl text-[13px] uppercase tracking-widest font-bold disabled:opacity-40 mt-2"
-          style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
+          className="py-3.5 rounded-2xl text-[13px] font-bold disabled:opacity-40 mt-2"
+          style={{ backgroundColor: "#0696D7", color: "#ffffff" }}>
           {saving ? "Creating…" : "Create tender"}
         </button>
       </div>

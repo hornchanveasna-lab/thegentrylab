@@ -13,11 +13,11 @@ function Clarifications() {
   const { data: items = [], isLoading, refetch } = useTenderClarifications(tenderId);
   const selectedCount = items.filter((c) => c.selected_for_export).length;
 
-  if (!user) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (!user) return <div className="min-h-screen bg-white" />;
 
   return (
     <TenderShell tenderId={tenderId} title="Clarifications / RFIs"
-      action={selectedCount > 0 ? <span className="font-mono text-[10px] uppercase tracking-widest text-white/40">{selectedCount} selected for export</span> : undefined}
+      action={selectedCount > 0 ? <span className="text-[10px] text-gray-400">{selectedCount} selected for export</span> : undefined}
     >
       {isLoading ? (
         <LoadingSpinner />
@@ -39,13 +39,13 @@ function Clarifications() {
                 header: "Question", render: (c) => (
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      {c.rfi_number && <span className="font-mono text-[9px] text-white/30">{c.rfi_number}</span>}
-                      {c.category && <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">{humanize(c.category)}</span>}
-                      {c.reference && <span className="font-mono text-[9px] text-white/25">{c.reference}</span>}
+                      {c.rfi_number && <span className="text-[9px] text-gray-400">{c.rfi_number}</span>}
+                      {c.category && <span className="text-[9px] text-gray-400">{humanize(c.category)}</span>}
+                      {c.reference && <span className="text-[9px] text-gray-400">{c.reference}</span>}
                     </div>
-                    <p className="text-white/85 mb-1">{c.question}</p>
-                    {c.reason && <p className="text-[11px] text-white/40">Reason: {c.reason}</p>}
-                    {c.potential_impact && <p className="text-[11px] text-white/40">Impact: {c.potential_impact}</p>}
+                    <p className="text-gray-800 mb-1">{c.question}</p>
+                    {c.reason && <p className="text-[11px] text-gray-400">Reason: {c.reason}</p>}
+                    {c.potential_impact && <p className="text-[11px] text-gray-400">Impact: {c.potential_impact}</p>}
                   </div>
                 ),
               },

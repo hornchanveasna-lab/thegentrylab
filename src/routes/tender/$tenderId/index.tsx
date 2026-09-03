@@ -28,8 +28,8 @@ function TenderOverview() {
   const { data: gaps = [] } = useTenderGaps(tenderId);
   const { data: risks = [] } = useTenderRisks(tenderId);
 
-  if (!user) return <div className="min-h-screen bg-[#0a0a0b]" />;
-  if (isLoading || !tender) return <div className="min-h-screen bg-[#0a0a0b]"><LoadingSpinner /></div>;
+  if (!user) return <div className="min-h-screen bg-white" />;
+  if (isLoading || !tender) return <div className="min-h-screen bg-white"><LoadingSpinner /></div>;
 
   const docsProcessed = documents.filter((d) => d.status === "processed").length;
   const reqReady = requirements.filter((r) => r.status === "ready" || r.status === "approved").length;
@@ -67,12 +67,12 @@ function TenderOverview() {
         <KpiPanel title="Project Health">
           <KpiTile
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" /><path d="M14 2v6h6" /></svg>}
-            value={<>{docsProcessed}<span className="text-white/30 text-sm">/{documents.length}</span></>}
+            value={<>{docsProcessed}<span className="text-gray-400 text-sm">/{documents.length}</span></>}
             label="Documents processed"
           />
           <KpiTile
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M8 12.5l2.5 2.5L16 9" /></svg>}
-            value={<>{reqReady}<span className="text-white/30 text-sm">/{requirements.length}</span></>}
+            value={<>{reqReady}<span className="text-gray-400 text-sm">/{requirements.length}</span></>}
             label="Requirements ready"
             color="#22c55e"
           />
@@ -94,19 +94,19 @@ function TenderOverview() {
       <div className="mb-4">
         <Card title="Attention required">
           {documents.length === 0 ? (
-            <p className="text-[12px] text-white/30">Upload the tender package to get started.</p>
+            <p className="text-[12px] text-gray-400">Upload the tender package to get started.</p>
           ) : attention.length === 0 ? (
-            <p className="text-[12px] text-white/30">Nothing needs attention right now.</p>
+            <p className="text-[12px] text-gray-400">Nothing needs attention right now.</p>
           ) : (
-            <div className="flex flex-col divide-y divide-white/6">
+            <div className="flex flex-col divide-y divide-gray-100">
               {attention.map((b) => (
                 <Link key={b.key} to={b.to} params={{ tenderId }}
-                  className="flex items-center justify-between gap-3 py-2.5 hover:bg-white/[0.02] transition-colors -mx-2 px-2 rounded-lg">
+                  className="flex items-center justify-between gap-3 py-2.5 hover:bg-gray-50 transition-colors -mx-2 px-2 rounded-lg">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <StatusBadge value={b.severity} />
-                    <p className="text-[12px] text-white/80 truncate">{b.label}</p>
+                    <p className="text-[12px] text-gray-700 truncate">{b.label}</p>
                   </div>
-                  <span className="font-mono text-[13px] font-bold text-white/60 shrink-0">{b.count}</span>
+                  <span className="text-[13px] font-bold text-gray-500 shrink-0">{b.count}</span>
                 </Link>
               ))}
             </div>
@@ -115,14 +115,14 @@ function TenderOverview() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Card title="Top risks" action={<Link to="/tender/$tenderId/risks" params={{ tenderId }} className="font-mono text-[10px] uppercase tracking-widest text-[#ff5100]">View all →</Link>}>
+        <Card title="Top risks" action={<Link to="/tender/$tenderId/risks" params={{ tenderId }} className="text-[10px] text-[#0696D7]">View all →</Link>}>
           {topRisks.length === 0 ? (
-            <p className="text-[12px] text-white/30">No risks identified yet — run the Risk Register once documents are processed.</p>
+            <p className="text-[12px] text-gray-400">No risks identified yet — run the Risk Register once documents are processed.</p>
           ) : (
             <div className="flex flex-col gap-2.5">
               {topRisks.map((r) => (
                 <div key={r.id} className="flex items-start justify-between gap-3">
-                  <p className="text-[12px] text-white/70 flex-1">{r.description}</p>
+                  <p className="text-[12px] text-gray-600 flex-1">{r.description}</p>
                   <StatusBadge value={riskBand(r.risk_score).toLowerCase()} label={`${riskBand(r.risk_score)} (${r.risk_score})`} />
                 </div>
               ))}
@@ -132,7 +132,7 @@ function TenderOverview() {
 
         <Card title="Requirements by status">
           {requirements.length === 0 ? (
-            <p className="text-[12px] text-white/30">No requirements extracted yet.</p>
+            <p className="text-[12px] text-gray-400">No requirements extracted yet.</p>
           ) : (
             <div className="flex flex-col gap-2.5">
               {(["open", "in_progress", "missing_info", "ready", "approved"] as const).map((s) => {
@@ -141,7 +141,7 @@ function TenderOverview() {
                 return (
                   <div key={s} className="flex items-center justify-between gap-3">
                     <StatusBadge value={s} />
-                    <span className="font-mono text-[12px] text-white/60">{count}</span>
+                    <span className="text-[12px] text-gray-500">{count}</span>
                   </div>
                 );
               })}
