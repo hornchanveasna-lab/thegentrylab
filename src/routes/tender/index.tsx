@@ -23,12 +23,12 @@ function TenderDashboard() {
     return (
       <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
         <div className="text-center max-w-sm">
-          <span className="w-10 h-10 rounded-xl bg-[#2563eb] flex items-center justify-center text-[16px] font-black mx-auto mb-4">T</span>
+          <span className="w-10 h-10 rounded-xl bg-[#ff5100] flex items-center justify-center text-[16px] font-black mx-auto mb-4">T</span>
           <h1 className="text-2xl font-extrabold tracking-tight mb-2">TenderAI</h1>
           <p className="text-white/45 text-sm mb-8">Upload a tender package. Get structured requirements, compliance, risk, and a draft submission — every claim traced back to its source.</p>
           <button onClick={() => signInWithGoogle()}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest font-bold"
-            style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+            style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
             Sign in with Google
           </button>
         </div>
@@ -72,7 +72,7 @@ function OrgGate({ userId }: { userId: string }) {
                 }
               }}
               className="py-3 rounded-2xl text-[13px] uppercase tracking-widest font-bold disabled:opacity-40"
-              style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}
+              style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}
             >
               {creating ? "Creating…" : "Create company"}
             </button>
@@ -107,7 +107,7 @@ function Dashboard({ orgId, orgName, orgs, onSwitchOrg }: {
             </select>
           )}
           <Link to="/tender/new" className="px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-widest"
-            style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+            style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
             + New Tender
           </Link>
         </div>
@@ -122,12 +122,12 @@ function Dashboard({ orgId, orgName, orgs, onSwitchOrg }: {
         ))}
       </div>
 
-      <Card title="Active tenders" action={<Link to="/tender/list" className="font-mono text-[10px] uppercase tracking-widest text-[#2563eb]">View all →</Link>}>
+      <Card title="Active tenders" action={<Link to="/tender/list" className="font-mono text-[10px] uppercase tracking-widest text-[#ff5100]">View all →</Link>}>
         {isLoading ? (
           <LoadingSpinner />
         ) : active.length === 0 ? (
           <EmptyState title="No tenders yet" hint="Create your first tender to start uploading a package."
-            action={<Link to="/tender/new" className="font-mono text-[11px] uppercase tracking-widest text-[#2563eb]">+ New Tender</Link>} />
+            action={<Link to="/tender/new" className="font-mono text-[11px] uppercase tracking-widest text-[#ff5100]">+ New Tender</Link>} />
         ) : (
           <div className="flex flex-col divide-y divide-white/8">
             {active.slice(0, 8).map((t) => <TenderRow key={t.id} tender={t} />)}

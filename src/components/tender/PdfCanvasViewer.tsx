@@ -242,7 +242,7 @@ export function PdfCanvasViewer({ url, fileName, onUrlExpired, scrollTarget, onS
           </div>
         ) : !pdfDoc ? (
           <div className="h-full flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-white/20 border-t-[#2563eb] rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-white/20 border-t-[#ff5100] rounded-full animate-spin" />
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
@@ -357,7 +357,7 @@ function PdfPageCanvas({ pdfDoc, pageNumber, scale, registerEl, onBecomeVisible,
   return (
     <div
       ref={wrapperRef}
-      className={`relative bg-white rounded shadow-lg transition-shadow ${highlighted ? "ring-2 ring-[#2563eb] ring-offset-2 ring-offset-black/30" : ""}`}
+      className={`relative bg-white rounded shadow-lg transition-shadow ${highlighted ? "ring-2 ring-[#ff5100] ring-offset-2 ring-offset-black/30" : ""}`}
       style={viewportSize ? { width: viewportSize.w, height: viewportSize.h } : { width: "100%", height: 400 }}
       title={`${fileName} — page ${pageNumber}`}
     >

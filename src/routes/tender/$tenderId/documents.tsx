@@ -66,7 +66,7 @@ function UploadProgressBar({ progress, onCancel }: { progress: UploadProgress; o
       <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, backgroundColor: "#2563eb" }}
+          style={{ width: `${pct}%`, backgroundColor: "#ff5100" }}
         />
       </div>
     </div>
@@ -126,7 +126,7 @@ function findDocFolder(tree: DocTreeFolder, path: string): DocTreeFolder | undef
 
 function FolderIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: "#2563eb" }}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: "#ff5100" }}>
       <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
@@ -138,7 +138,7 @@ function Breadcrumbs({ rootLabel, path, onNavigate }: { rootLabel: string; path:
     <div className="flex items-center gap-1.5 mb-3 flex-wrap text-[12px]">
       <button
         onClick={() => onNavigate("")}
-        className={`font-semibold transition-colors ${crumbs.length === 0 ? "text-white" : "text-white/50 hover:text-[#2563eb]"}`}
+        className={`font-semibold transition-colors ${crumbs.length === 0 ? "text-white" : "text-white/50 hover:text-[#ff5100]"}`}
       >
         {rootLabel}
       </button>
@@ -150,7 +150,7 @@ function Breadcrumbs({ rootLabel, path, onNavigate }: { rootLabel: string; path:
             <span className="text-white/20">/</span>
             <button
               onClick={() => onNavigate(segPath)}
-              className={`transition-colors truncate max-w-[220px] ${isLast ? "text-white font-semibold" : "text-white/50 hover:text-[#2563eb]"}`}
+              className={`transition-colors truncate max-w-[220px] ${isLast ? "text-white font-semibold" : "text-white/50 hover:text-[#ff5100]"}`}
             >
               {c}
             </button>
@@ -269,7 +269,7 @@ function DocumentPreviewPane({ doc, scrollTarget, onScrollTargetConsumed }: {
         </div>
         {url && (
           <a href={url} target="_blank" rel="noopener noreferrer"
-            className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-white/40 hover:text-[#2563eb] transition-colors">
+            className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-white/40 hover:text-[#ff5100] transition-colors">
             Open in new tab ↗
           </a>
         )}
@@ -305,7 +305,7 @@ function DocumentPreviewPane({ doc, scrollTarget, onScrollTargetConsumed }: {
           <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center">
             <p className="text-[12px] text-white/40">Preview isn't available for .{ext} files.</p>
             <a href={url} target="_blank" rel="noopener noreferrer"
-              className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#2563eb" }}>
+              className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>
               Open in new tab ↗
             </a>
           </div>
@@ -469,7 +469,7 @@ function TenderDocuments() {
           </button>
           <button onClick={() => folderInputRef.current?.click()}
             className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest"
-            style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+            style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
             {uploading ? "Add more…" : "Upload Folder"}
           </button>
           <button onClick={() => setLinkModalOpen(true)} disabled={linkImporting}
@@ -500,8 +500,8 @@ function TenderDocuments() {
       >
         {dragOver && (
           <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed pointer-events-none"
-            style={{ borderColor: "#2563eb", backgroundColor: "color-mix(in srgb, #2563eb 8%, transparent)" }}>
-            <p className="text-[13px] font-bold" style={{ color: "#2563eb" }}>Drop files to upload</p>
+            style={{ borderColor: "#ff5100", backgroundColor: "color-mix(in srgb, #ff5100 8%, transparent)" }}>
+            <p className="text-[13px] font-bold" style={{ color: "#ff5100" }}>Drop files to upload</p>
           </div>
         )}
 
@@ -562,7 +562,7 @@ function LinkImportModal({ uploading, onCancel, onSubmit }: {
           </button>
           <button onClick={() => onSubmit(url)} disabled={uploading || !url.trim()}
             className="px-3.5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-widest disabled:opacity-40"
-            style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+            style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
             {uploading ? "Importing…" : "Import"}
           </button>
         </div>
@@ -626,7 +626,7 @@ function DocumentRow({ doc, onChanged, selected, onSelect }: {
       <td className="py-2 pl-5 pr-3 min-w-0">
         <button onClick={onSelect} title="Preview document" className="flex items-center gap-2 w-full text-left min-w-0">
           <FileIcon fileType={doc.file_type} />
-          <span className={`truncate font-medium transition-colors ${selected ? "text-[#2563eb]" : "hover:text-[#2563eb]"}`}>
+          <span className={`truncate font-medium transition-colors ${selected ? "text-[#ff5100]" : "hover:text-[#ff5100]"}`}>
             {doc.file_name}
           </span>
         </button>

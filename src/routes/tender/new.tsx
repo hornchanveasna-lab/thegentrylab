@@ -96,7 +96,7 @@ function NewTender() {
 
         <button onClick={handleSubmit} disabled={saving || !name.trim()}
           className="py-3.5 rounded-2xl text-[13px] uppercase tracking-widest font-bold disabled:opacity-40 mt-2"
-          style={{ backgroundColor: "color-mix(in srgb, #2563eb 20%, transparent)", color: "#2563eb" }}>
+          style={{ backgroundColor: "color-mix(in srgb, #ff5100 20%, transparent)", color: "#ff5100" }}>
           {saving ? "Creating…" : "Create tender"}
         </button>
       </div>

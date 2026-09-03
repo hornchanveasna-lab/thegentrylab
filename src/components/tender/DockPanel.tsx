@@ -84,7 +84,7 @@ export function DockPanel({ panel, onFocus, onMove, onResize, onClose, onToggleM
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
       >
-        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "#2563eb" }} />
+        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "#ff5100" }} />
         <p className="text-[11px] font-semibold truncate flex-1">{panel.title}</p>
         <button onClick={() => onToggleMinimize(panel.id)} className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white transition-colors shrink-0" title={panel.minimized ? "Expand" : "Minimize"}>
           {panel.minimized ? "▢" : "—"}

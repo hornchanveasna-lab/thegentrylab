@@ -22,7 +22,7 @@ import { useTender } from "@/lib/tender-data";
  * they stay visually anchored as permanent chrome against the light
  * content area — see the matching CSS block in styles.css. */
 
-export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[#2563eb]/70 focus:ring-2 focus:ring-[#2563eb]/15 transition-all";
+export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[#ff5100]/70 focus:ring-2 focus:ring-[#ff5100]/15 transition-all";
 export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 export const btnPrimaryCls = "px-4 py-2.5 rounded-xl text-[12px] font-bold uppercase tracking-widest transition-colors";
 
@@ -52,7 +52,7 @@ export function TenderTopNav() {
     <header className="tender-dark-chrome border-b border-white/8 bg-[#0d0d0e]">
       <div className="max-w-6xl mx-auto px-4 md:px-8 h-14 flex items-center justify-between">
         <Link to="/tender" className="flex items-center gap-2">
-          <span className="w-6 h-6 rounded-md bg-[#2563eb] flex items-center justify-center text-[11px] font-black">T</span>
+          <span className="w-6 h-6 rounded-md bg-[#ff5100] flex items-center justify-center text-[11px] font-black">T</span>
           <span className="font-extrabold tracking-tight text-[14px]">TenderAI</span>
         </Link>
         <nav className="flex items-center gap-5 font-mono text-[10px] uppercase tracking-widest text-white/50">
@@ -114,7 +114,7 @@ function TenderSidebar({ tenderId, tenderName }: { tenderId: string; tenderName?
   return (
     <aside className="tender-dark-chrome w-56 shrink-0 border-r border-white/8 bg-[#0d0d0e] flex flex-col h-screen sticky top-0">
       <Link to="/tender" className="h-14 flex items-center gap-2 px-4 border-b border-white/8 shrink-0">
-        <span className="w-6 h-6 rounded-md bg-[#2563eb] flex items-center justify-center text-[11px] font-black">T</span>
+        <span className="w-6 h-6 rounded-md bg-[#ff5100] flex items-center justify-center text-[11px] font-black">T</span>
         <span className="font-extrabold tracking-tight text-[14px]">TenderAI</span>
       </Link>
       {tenderName && (
@@ -128,7 +128,7 @@ function TenderSidebar({ tenderId, tenderName }: { tenderId: string; tenderName?
           <Link key={tab.key} to={tab.to} params={{ tenderId }}
             activeOptions={{ exact: tab.key === "overview" }}
             className="flex items-center gap-2.5 px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/50 transition-colors hover:text-white hover:bg-white/5"
-            activeProps={{ className: "flex items-center gap-2.5 px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest whitespace-nowrap", style: { color: "#2563eb", backgroundColor: "color-mix(in srgb, #2563eb 12%, transparent)" } }}
+            activeProps={{ className: "flex items-center gap-2.5 px-3 py-2 rounded-lg font-mono text-[10px] uppercase tracking-widest whitespace-nowrap", style: { color: "#ff5100", backgroundColor: "color-mix(in srgb, #ff5100 12%, transparent)" } }}
           >
             <NavIcon name={tab.icon} />
             {tab.label}
@@ -186,7 +186,7 @@ function DockToolbar({ tenderId, tenderName }: { tenderId: string; tenderName?: 
           onClick={() => openPanel("documents", `Documents — ${tenderName ?? "…"}`, <QuickDocumentsPanel tenderId={tenderId} />)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-[10px] uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/5 transition-colors"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: "#2563eb" }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: "#ff5100" }}>
             <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
           </svg>
           Documents
@@ -207,12 +207,12 @@ export function KpiPanel({ title, action, children }: { title: string; action?: 
   );
 }
 
-export function KpiTile({ icon, value, label, color = "#2563eb" }: {
+export function KpiTile({ icon, value, label, color = "#ff5100" }: {
   icon: ReactNode; value: ReactNode; label: string; color?: string;
 }) {
   return (
-    <div className="flex-1 min-w-[110px] rounded-xl border border-white/8 p-3 flex flex-col gap-2">
-      <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: `${color}18`, color }}>
+    <div className="flex-1 min-w-[110px] rounded-2xl p-3.5 flex flex-col gap-2.5" style={{ backgroundColor: `${color}14` }}>
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}22`, color }}>
         {icon}
       </div>
       <p className="text-xl font-extrabold font-mono leading-none">{value}</p>
@@ -296,17 +296,17 @@ export function Card({ title, action, children }: { title?: string; action?: Rea
 
 const STATUS_COLOR: Record<string, string> = {
   // tender status
-  draft: "#71717a", processing: "#eab308", analysis: "#2563eb", submission: "#f97316", submitted: "#22c55e", archived: "#52525b",
+  draft: "#71717a", processing: "#eab308", analysis: "#ff5100", submission: "#f97316", submitted: "#22c55e", archived: "#52525b",
   // document status
   uploaded: "#71717a", failed: "#ef4444",
   // requirement / checklist status
   open: "#71717a", in_progress: "#eab308", missing_info: "#ef4444", missing_information: "#ef4444",
-  ready: "#22c55e", approved: "#22c55e", not_started: "#71717a", ai_drafted: "#2563eb", in_review: "#eab308",
+  ready: "#22c55e", approved: "#22c55e", not_started: "#71717a", ai_drafted: "#ff5100", in_review: "#eab308",
   // severity
   critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#22c55e",
   // compliance
   comply: "#22c55e", partially_comply: "#eab308", deviation: "#f97316", not_applicable: "#71717a",
-  need_clarification: "#2563eb", missing: "#ef4444",
+  need_clarification: "#ff5100", missing: "#ef4444",
 };
 
 export function StatusBadge({ value, label }: { value: string; label?: string }) {
@@ -340,7 +340,7 @@ export function ErrorState({ message }: { message: string }) {
 export function LoadingSpinner() {
   return (
     <div className="flex items-center justify-center py-14">
-      <div className="w-6 h-6 border-2 border-[#2563eb] border-t-transparent rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-[#ff5100] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
