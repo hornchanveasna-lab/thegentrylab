@@ -23,6 +23,7 @@ const EMAIL = "advisory@thegentrylab.io";
 /* ── Briefs readable free on-site (no advisory gate) ─────── */
 const FREE_BRIEF_ROUTES: Record<string, string> = {
   r1: "/research/sez-landscape-2026",
+  r12: "/research/beyond-the-factory-2026",
 };
 
 /* ── Teaser stat chips per brief ─────────────────────────── */
@@ -38,6 +39,7 @@ const BRIEF_STATS: Record<string, string[]> = {
   r9:  ["800 ha master plan", "1,200 workers on-site", "35% renewable energy"],
   r10: ["5% GDP growth (2026e)", "$8.1B FDI inflows", "RCEP: 2.3B consumers"],
   r11: ["#1 global FDI ranking", "575 projects in 2025", "66% YoY investment growth"],
+  r12: ["15M PCR + 2.6M TBR tires/yr", "2,000+ jobs", "170+ export markets"],
 };
 
 /* ── Per-brief photos — topic-matched ───────────────────── */

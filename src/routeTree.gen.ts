@@ -32,6 +32,7 @@ import { Route as ToolsAdvisorRouteImport } from './routes/tools/advisor'
 import { Route as TenderNewRouteImport } from './routes/tender/new'
 import { Route as TenderListRouteImport } from './routes/tender/list'
 import { Route as ResearchSezLandscape2026RouteImport } from './routes/research.sez-landscape-2026'
+import { Route as ResearchBeyondTheFactory2026RouteImport } from './routes/research.beyond-the-factory-2026'
 import { Route as FrameworkStageIdRouteImport } from './routes/framework/$stageId'
 import { Route as CmSyncStatusRouteImport } from './routes/cm/sync-status'
 import { Route as CmSubmittalRouteImport } from './routes/cm/submittal'
@@ -226,6 +227,12 @@ const ResearchSezLandscape2026Route =
   ResearchSezLandscape2026RouteImport.update({
     id: '/sez-landscape-2026',
     path: '/sez-landscape-2026',
+    getParentRoute: () => ResearchRoute,
+  } as any)
+const ResearchBeyondTheFactory2026Route =
+  ResearchBeyondTheFactory2026RouteImport.update({
+    id: '/beyond-the-factory-2026',
+    path: '/beyond-the-factory-2026',
     getParentRoute: () => ResearchRoute,
   } as any)
 const FrameworkStageIdRoute = FrameworkStageIdRouteImport.update({
@@ -670,6 +677,7 @@ export interface FileRoutesByFullPath {
   '/cm/submittal': typeof CmSubmittalRoute
   '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/research/beyond-the-factory-2026': typeof ResearchBeyondTheFactory2026Route
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tender/list': typeof TenderListRoute
   '/tender/new': typeof TenderNewRoute
@@ -771,6 +779,7 @@ export interface FileRoutesByTo {
   '/cm/submittal': typeof CmSubmittalRoute
   '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/research/beyond-the-factory-2026': typeof ResearchBeyondTheFactory2026Route
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tender/list': typeof TenderListRoute
   '/tender/new': typeof TenderNewRoute
@@ -876,6 +885,7 @@ export interface FileRoutesById {
   '/cm/submittal': typeof CmSubmittalRoute
   '/cm/sync-status': typeof CmSyncStatusRoute
   '/framework/$stageId': typeof FrameworkStageIdRoute
+  '/research/beyond-the-factory-2026': typeof ResearchBeyondTheFactory2026Route
   '/research/sez-landscape-2026': typeof ResearchSezLandscape2026Route
   '/tender/list': typeof TenderListRoute
   '/tender/new': typeof TenderNewRoute
@@ -982,6 +992,7 @@ export interface FileRouteTypes {
     | '/cm/submittal'
     | '/cm/sync-status'
     | '/framework/$stageId'
+    | '/research/beyond-the-factory-2026'
     | '/research/sez-landscape-2026'
     | '/tender/list'
     | '/tender/new'
@@ -1083,6 +1094,7 @@ export interface FileRouteTypes {
     | '/cm/submittal'
     | '/cm/sync-status'
     | '/framework/$stageId'
+    | '/research/beyond-the-factory-2026'
     | '/research/sez-landscape-2026'
     | '/tender/list'
     | '/tender/new'
@@ -1187,6 +1199,7 @@ export interface FileRouteTypes {
     | '/cm/submittal'
     | '/cm/sync-status'
     | '/framework/$stageId'
+    | '/research/beyond-the-factory-2026'
     | '/research/sez-landscape-2026'
     | '/tender/list'
     | '/tender/new'
@@ -1433,6 +1446,13 @@ declare module '@tanstack/react-router' {
       path: '/sez-landscape-2026'
       fullPath: '/research/sez-landscape-2026'
       preLoaderRoute: typeof ResearchSezLandscape2026RouteImport
+      parentRoute: typeof ResearchRoute
+    }
+    '/research/beyond-the-factory-2026': {
+      id: '/research/beyond-the-factory-2026'
+      path: '/beyond-the-factory-2026'
+      fullPath: '/research/beyond-the-factory-2026'
+      preLoaderRoute: typeof ResearchBeyondTheFactory2026RouteImport
       parentRoute: typeof ResearchRoute
     }
     '/framework/$stageId': {
@@ -2194,11 +2214,13 @@ const CmRouteChildren: CmRouteChildren = {
 const CmRouteWithChildren = CmRoute._addFileChildren(CmRouteChildren)
 
 interface ResearchRouteChildren {
+  ResearchBeyondTheFactory2026Route: typeof ResearchBeyondTheFactory2026Route
   ResearchSezLandscape2026Route: typeof ResearchSezLandscape2026Route
   ResearchIndexRoute: typeof ResearchIndexRoute
 }
 
 const ResearchRouteChildren: ResearchRouteChildren = {
+  ResearchBeyondTheFactory2026Route: ResearchBeyondTheFactory2026Route,
   ResearchSezLandscape2026Route: ResearchSezLandscape2026Route,
   ResearchIndexRoute: ResearchIndexRoute,
 }
