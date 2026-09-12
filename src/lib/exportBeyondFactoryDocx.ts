@@ -1,8 +1,17 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun } from "docx";
+import aerialOverview from "@/assets/research/beyond-the-factory/aerial-overview.jpg";
 
 const ORANGE = "FF5100";
 const DARK = "1A1A1A";
 const MUTED = "666666";
+
+/** Fetches a bundled image asset as raw bytes for embedding via ImageRun.
+ *  `src` is a Vite-resolved asset URL (works both in dev and the built site). */
+async function loadImageBytes(src: string): Promise<Uint8Array> {
+  const res = await fetch(src);
+  const buf = await res.arrayBuffer();
+  return new Uint8Array(buf);
+}
 
 function title(text: string) {
   return new Paragraph({
@@ -53,6 +62,8 @@ function bulletGroup(name: string, items: string[]) {
 }
 
 export async function generateBeyondFactoryDocx() {
+  const heroBytes = await loadImageBytes(aerialOverview);
+
   const doc = new Document({
     sections: [
       {
@@ -73,6 +84,14 @@ export async function generateBeyondFactoryDocx() {
           }),
           new Paragraph({
             children: [new TextRun({ text: "People | Places | Possibilities", bold: true, size: 16, color: MUTED })],
+            spacing: { after: 200 },
+          }),
+          new Paragraph({
+            children: [new ImageRun({ type: "jpg", data: heroBytes, transformation: { width: 600, height: 337 } })],
+            spacing: { after: 100 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "ISI SEZ, Sihanoukville — factory and warehouse buildings under construction, 2026", italics: true, size: 15, color: MUTED })],
             spacing: { after: 300 },
           }),
 

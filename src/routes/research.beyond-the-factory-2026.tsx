@@ -5,6 +5,16 @@ import { useSmoothScroll, useReveal } from "@/components/site/Counter";
 import { generateBeyondFactoryDocx } from "@/lib/exportBeyondFactoryDocx";
 import { AnimatedStat, TireCapacityChart, PortGrowthChart, RubberSupplyChart, SezInvestmentChart } from "@/components/site/BeyondFactoryCharts";
 import { CommentSection } from "@/components/site/CommentSection";
+import aerialOverview from "@/assets/research/beyond-the-factory/aerial-overview.jpg";
+import aerialExpressway from "@/assets/research/beyond-the-factory/aerial-expressway.jpg";
+import aerialRiver from "@/assets/research/beyond-the-factory/aerial-river.jpg";
+import aerialUtilityPlant from "@/assets/research/beyond-the-factory/aerial-utility-plant.jpg";
+import aerialWideFramed from "@/assets/research/beyond-the-factory/aerial-wide-framed.jpg";
+import siteVisitIndoor from "@/assets/research/beyond-the-factory/site-visit-indoor.jpg";
+import siteVisitGateDelegation from "@/assets/research/beyond-the-factory/site-visit-gate-delegation.jpg";
+import siteVisitGateClose from "@/assets/research/beyond-the-factory/site-visit-gate-close.jpg";
+import siteVisitRawMaterials from "@/assets/research/beyond-the-factory/site-visit-raw-materials.jpg";
+import siteVisitWarehouseTour from "@/assets/research/beyond-the-factory/site-visit-warehouse-tour.jpg";
 
 export const Route = createFileRoute("/research/beyond-the-factory-2026")({
   head: () => ({
@@ -28,12 +38,26 @@ const TAGS = [
   "GreenIndustry", "FutureOfManufacturing",
 ];
 
-/* ── Placeholder for photos the author will add shortly ──── */
-function PhotoPlaceholder({ label }: { label: string }) {
+/* ── Full-width in-article photo, matching the page's thin-border,
+ *  no-radius editorial treatment. Prints too, unlike placeholders. ── */
+function ArticlePhoto({ src, alt, caption }: { src: string; alt: string; caption?: string }) {
   return (
-    <div className="border border-dashed border-white/15 bg-white/[0.02] flex items-center justify-center py-10 my-2 print:hidden">
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{label} — photo to be added</p>
-    </div>
+    <figure className="my-2">
+      <img src={src} alt={alt} loading="lazy" className="w-full h-auto border border-white/10 print:border-black/20" />
+      {caption && (
+        <figcaption className="font-mono text-[9px] uppercase tracking-widest text-white/25 mt-2 print:text-black/40">{caption}</figcaption>
+      )}
+    </figure>
+  );
+}
+
+/* ── Small captioned tile for the closing site-gallery strip ── */
+function GalleryTile({ src, alt, caption }: { src: string; alt: string; caption: string }) {
+  return (
+    <figure>
+      <img src={src} alt={alt} loading="lazy" className="w-full h-auto border border-white/10 print:border-black/20" />
+      <figcaption className="font-mono text-[9px] uppercase tracking-widest text-white/25 mt-1.5 print:text-black/40">{caption}</figcaption>
+    </figure>
   );
 }
 
@@ -113,7 +137,9 @@ function BeyondTheFactory() {
         </div>
       </section>
 
-      <PhotoPlaceholder label="Hero — aerial view of ISI SEZ" />
+      <div className="max-w-4xl mx-auto px-6 md:px-12 mt-2">
+        <ArticlePhoto src={aerialOverview} alt="Aerial view of the ISI SEZ industrial complex, Sihanoukville" caption="ISI SEZ, Sihanoukville — factory and warehouse buildings under construction, 2026" />
+      </div>
 
       {/* ── Body ── */}
       <article className="max-w-4xl mx-auto px-6 md:px-12 py-14 space-y-14 print:py-6 print:space-y-8">
@@ -177,7 +203,7 @@ function BeyondTheFactory() {
           </div>
         </section>
 
-        <PhotoPlaceholder label="Roadboss Tire Cambodia site" />
+        <ArticlePhoto src={aerialWideFramed} alt="Wide aerial view of the Roadboss Tire Cambodia factory complex at ISI SEZ" caption="The Roadboss Tire Cambodia complex, framed against the surrounding forest" />
 
         {/* 03 */}
         <section className="reveal">
@@ -204,6 +230,9 @@ function BeyondTheFactory() {
           </div>
           <div className="mt-6">
             <PortGrowthChart />
+          </div>
+          <div className="mt-6">
+            <ArticlePhoto src={aerialExpressway} alt="Aerial view of the expressway and river running past the ISI SEZ site" caption="The Phnom Penh–Sihanoukville Expressway running past the ISI SEZ boundary" />
           </div>
         </section>
 
@@ -237,6 +266,9 @@ function BeyondTheFactory() {
           </p>
           <div className="space-y-4 text-white/60 leading-relaxed text-[15px] mt-5 print:text-black/80">
             <p>The objective should therefore not only be attracting the anchor manufacturer. Cambodia should think about how to capture more of the value created around that manufacturer.</p>
+          </div>
+          <div className="mt-6">
+            <ArticlePhoto src={siteVisitRawMaterials} alt="Site inspection team reviewing raw material shipments — zinc oxide and chemical inputs — at the factory" caption="Reviewing incoming raw-material inputs on site — exactly the kind of supply-chain link this section describes" />
           </div>
         </section>
 
@@ -312,6 +344,9 @@ function BeyondTheFactory() {
           <div className="mt-6">
             <SezInvestmentChart />
           </div>
+          <div className="mt-6">
+            <ArticlePhoto src={aerialUtilityPlant} alt="Aerial view of the on-site utility and power plant building with chimney stack" caption="The on-site power and utility plant — the kind of capacity question this section raises, built out in practice" />
+          </div>
         </section>
 
         {/* 07 */}
@@ -371,6 +406,9 @@ function BeyondTheFactory() {
             <p>Industrial parks, manufacturers, universities, technical institutes and government agencies have an opportunity to work much more closely around this issue.</p>
             <p>The industrial workforce we prepare today will influence the industries Cambodia can attract tomorrow.</p>
           </div>
+          <div className="mt-6">
+            <ArticlePhoto src={siteVisitIndoor} alt="Site inspection team walking through a completed factory hall at ISI SEZ" caption="Engineers, technicians and site management walking a completed production hall" />
+          </div>
         </section>
 
         {/* 09 */}
@@ -415,6 +453,9 @@ function BeyondTheFactory() {
           <div className="space-y-4 text-white/60 leading-relaxed text-[15px] mt-5 print:text-black/80">
             <p>will become increasingly important.</p>
             <p>The objective should not simply be approving more factories. The objective should be creating an environment where good manufacturers can enter Cambodia, establish successfully, expand confidently and remain competitive for decades.</p>
+          </div>
+          <div className="mt-6">
+            <ArticlePhoto src={siteVisitGateDelegation} alt="Provincial officials, police and site management standing together at the ISI SEZ main gate" caption="Provincial leadership, police and site management at the ISI SEZ gate — the kind of engagement this section describes" />
           </div>
         </section>
 
@@ -466,6 +507,16 @@ function BeyondTheFactory() {
             Are we preparing only for the next factory —<br />
             <span style={{ color: "#ff5100" }}>or for the next generation of Cambodian industry?</span>
           </h3>
+        </section>
+
+        {/* ── Site gallery ── */}
+        <section className="reveal">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-4">On Site — ISI SEZ, 2026</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <GalleryTile src={aerialRiver} alt="Aerial view of the ISI SEZ site with a river and open land in the background" caption="Adjacent land reserved for future expansion" />
+            <GalleryTile src={siteVisitGateClose} alt="Close-up of officials and site management at the ISI SEZ entrance sign" caption="Site leadership at the ISI SEZ entrance" />
+            <GalleryTile src={siteVisitWarehouseTour} alt="Site inspection team touring a warehouse with electrical equipment" caption="Touring the utility and electrical systems" />
+          </div>
         </section>
 
         {/* ── About ── */}
