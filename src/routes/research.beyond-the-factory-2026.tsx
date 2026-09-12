@@ -268,7 +268,7 @@ function BeyondTheFactory() {
             <p>The objective should therefore not only be attracting the anchor manufacturer. Cambodia should think about how to capture more of the value created around that manufacturer.</p>
           </div>
           <div className="mt-6">
-            <ArticlePhoto src={siteVisitRawMaterials} alt="Site inspection team reviewing raw material shipments — zinc oxide and chemical inputs — at the factory" caption="Reviewing incoming raw-material inputs on site — exactly the kind of supply-chain link this section describes" />
+            <ArticlePhoto src={siteVisitRawMaterials} alt="The Sihanoukville Governor and government delegation reviewing raw material shipments — zinc oxide and chemical inputs — at the factory" caption="The Governor's delegation reviewing incoming raw-material inputs on site — exactly the kind of supply-chain link this section describes" />
           </div>
         </section>
 
@@ -407,7 +407,7 @@ function BeyondTheFactory() {
             <p>The industrial workforce we prepare today will influence the industries Cambodia can attract tomorrow.</p>
           </div>
           <div className="mt-6">
-            <ArticlePhoto src={siteVisitIndoor} alt="Site inspection team walking through a completed factory hall at ISI SEZ" caption="Engineers, technicians and site management walking a completed production hall" />
+            <ArticlePhoto src={siteVisitIndoor} alt="The Sihanoukville Governor leading a provincial government delegation through a completed factory hall at ISI SEZ" caption="The Sihanoukville Governor and a provincial government delegation touring a completed production hall" />
           </div>
         </section>
 
@@ -455,7 +455,7 @@ function BeyondTheFactory() {
             <p>The objective should not simply be approving more factories. The objective should be creating an environment where good manufacturers can enter Cambodia, establish successfully, expand confidently and remain competitive for decades.</p>
           </div>
           <div className="mt-6">
-            <ArticlePhoto src={siteVisitGateDelegation} alt="Provincial officials, police and site management standing together at the ISI SEZ main gate" caption="Provincial leadership, police and site management at the ISI SEZ gate — the kind of engagement this section describes" />
+            <ArticlePhoto src={siteVisitGateDelegation} alt="The Sihanoukville Governor with provincial officials, police and site management at the ISI SEZ main gate" caption="The Sihanoukville Governor and a high-ranking provincial delegation at the ISI SEZ gate — the kind of engagement this section describes" />
           </div>
         </section>
 
@@ -514,8 +514,8 @@ function BeyondTheFactory() {
           <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-4">On Site — ISI SEZ, 2026</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <GalleryTile src={aerialRiver} alt="Aerial view of the ISI SEZ site with a river and open land in the background" caption="Adjacent land reserved for future expansion" />
-            <GalleryTile src={siteVisitGateClose} alt="Close-up of officials and site management at the ISI SEZ entrance sign" caption="Site leadership at the ISI SEZ entrance" />
-            <GalleryTile src={siteVisitWarehouseTour} alt="Site inspection team touring a warehouse with electrical equipment" caption="Touring the utility and electrical systems" />
+            <GalleryTile src={siteVisitGateClose} alt="The Sihanoukville Governor and delegation at the ISI SEZ entrance sign" caption="The Governor's delegation at the ISI SEZ entrance" />
+            <GalleryTile src={siteVisitWarehouseTour} alt="The Sihanoukville Governor and delegation touring a warehouse with electrical equipment" caption="Touring the utility and electrical systems with the provincial delegation" />
           </div>
         </section>
 
