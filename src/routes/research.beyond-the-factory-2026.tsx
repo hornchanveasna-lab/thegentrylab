@@ -80,7 +80,7 @@ function BeyondTheFactory() {
   useReveal();
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans editorial-scope overflow-x-clip print:bg-white print:text-black">
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans overflow-x-clip print:bg-white print:text-black">
       <div className="print:hidden">
         <TopNav />
       </div>
