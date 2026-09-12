@@ -3,7 +3,7 @@ import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { useSmoothScroll, useReveal } from "@/components/site/Counter";
 import { generateBeyondFactoryDocx } from "@/lib/exportBeyondFactoryDocx";
-import { AnimatedStat, TireCapacityChart, PortGrowthChart, RubberSupplyChart, SezInvestmentChart } from "@/components/site/BeyondFactoryCharts";
+import { AnimatedStat, TireCapacityChart, PortGrowthChart, RubberSupplyChart, SezInvestmentChart, CompetitiveHeatMap, RegionalRadarChart } from "@/components/site/BeyondFactoryCharts";
 import { CommentSection } from "@/components/site/CommentSection";
 import aerialOverview from "@/assets/research/beyond-the-factory/aerial-overview.jpg";
 import aerialExpressway from "@/assets/research/beyond-the-factory/aerial-expressway.jpg";
@@ -241,6 +241,24 @@ function BeyondTheFactory() {
           </div>
           <div className="space-y-4 text-white/60 leading-relaxed text-[15px] print:text-black/80">
             <p>None of this makes the investment less real — the buildings in these photos are not paper. But it does mean the commercial case for a plant like this rests on trade policy almost as much as on production capacity. That dependency cuts both ways: it can pull investment into Cambodia quickly, and a future rule change could slow it just as quickly.</p>
+          </div>
+
+          <h3 className="text-[13px] font-bold uppercase tracking-tight mt-8 mb-3 print:text-black">Where Cambodia Stands: A Regional Scorecard</h3>
+          <div className="space-y-4 text-white/60 leading-relaxed text-[15px] print:text-black/80">
+            <p>Why Cambodia, and not Thailand or Vietnam — both of which already run vastly larger tire industries? The honest answer is that Cambodia is not winning on scale. It is winning on cost, timing and incentive freshness, while carrying real, measurable disadvantages everywhere else.</p>
+          </div>
+          <div className="my-6">
+            <CompetitiveHeatMap />
+          </div>
+          <div className="space-y-4 text-white/60 leading-relaxed text-[15px] print:text-black/80">
+            <p>The gap is real. Thailand alone produces more natural rubber — 5.35 million tonnes a year — than Cambodia, Vietnam and Indonesia combined, and its existing tire base, close to 140 million tires a year and anchored by Michelin, Bridgestone and Goodyear plants that have run for decades, dwarfs anything Cambodia can offer today. Vietnam's Cai Mep deep-water port and established supplier base give it a logistics maturity Cambodia is still building toward.</p>
+            <p>What Cambodia offers instead is a narrower, more time-sensitive case: labor costs on par with or below Vietnam's, tax incentives — up to nine years' income-tax exemption under the QIP scheme — that Thailand's more mature investment regime no longer needs to offer, and, as of early 2026, a tariff position that briefly converged with every other country in the region at the same 10% Section 122 baseline, quietly erasing what had looked like Cambodia's one clear trade-policy edge.</p>
+          </div>
+          <div className="my-6">
+            <RegionalRadarChart />
+          </div>
+          <div className="space-y-4 text-white/60 leading-relaxed text-[15px] print:text-black/80">
+            <p>That is the honest answer to "where are we in this competition." Cambodia is not competing to become the next Thailand. It is competing to become the next credible alternative once an investor decides Thailand and Vietnam are already too expensive, too built-out, or too exposed to their own supply-chain scrutiny. That is a real, defensible market position — but it is a challenger's position, not a leader's, and it depends on Cambodia doing the unglamorous work this piece keeps returning to: power, water, logistics, permits and people, delivered reliably enough that "cheaper and newer" doesn't quietly become "cheaper, newer, and less certain."</p>
           </div>
         </section>
 
@@ -599,7 +617,10 @@ function BeyondTheFactory() {
             tariff realignment); ITAC and ASL Law (South Africa's anti-circumvention investigation and its March
             2026 termination); Sihanoukville Autonomous Port statistics and Phnom Penh Post port-capacity reporting;
             Cambodia rubber-plantation review and Rubber World / The Better Cambodia export figures; Council for the
-            Development of Cambodia (CDC) investment-approval data — all accessed September 2026.
+            Development of Cambodia (CDC) investment-approval data; ANRPC regional rubber-production rankings; Giga
+            Tires and Traction News (Thailand/Vietnam/Indonesia installed tire-manufacturing capacity); Sidley Austin,
+            The Diplomat and HSRates.com (2026 regional tariff realignment to the Section 122 baseline); Playroll,
+            Wage.is and EmploySome (2026 regional minimum-wage data) — all accessed September 2026.
           </p>
         </section>
 
