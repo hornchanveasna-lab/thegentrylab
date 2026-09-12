@@ -219,9 +219,9 @@ function BeyondTheFactory() {
 
           <h3 className="text-[13px] font-bold uppercase tracking-tight mt-8 mb-3 print:text-black">Not Cambodia's Only Tire Bet</h3>
           <div className="space-y-4 text-white/60 leading-relaxed text-[15px] print:text-black/80">
-            <p>Roadboss is one piece of a larger wave. Trade-press reporting puts Cambodia on track for two new tire factories worth a combined <strong className="text-white print:text-black">roughly 2.4 billion RMB</strong>: Huasheng's ISI SEZ plant (1.7 billion RMB) and a second, roughly 700-million-RMB expansion at the Qilu Economic Zone, also in Preah Sihanouk province.</p>
-            <p>Sailun — already producing in Svay Rieng, with plans for 21 million PCR and 3.3 million TBR tires a year there — is separately expanding into a new Kampot Economic Zone project. China's Doublestar has also signed a joint-venture tire plant for the Cambodian market.</p>
-            <p>Read together, this is not one factory betting on Cambodia. It is at least three separate Chinese tire groups building capacity here at roughly the same time — the tire-manufacturing cluster this piece describes is already visibly forming, not hypothetical.</p>
+            <p>Roadboss is one piece of a larger wave. Cambodia's Council for the Development of Cambodia approved <strong className="text-white print:text-black">four separate tire-manufacturing investment projects in 2025 alone</strong> — one in ISI SEZ, three more across Svay Rieng's SEZs — worth a combined <strong className="text-white print:text-black">US$774 million</strong>. Trade-press reporting separately frames two of the Huasheng-linked projects (the ISI SEZ plant plus a Qilu Economic Zone expansion) at roughly <strong className="text-white print:text-black">2.4 billion RMB</strong>; the figures come from different sources and don't map onto each other cleanly, but both point the same direction.</p>
+            <p>Sailun — already producing in Svay Rieng, with plans for 21 million PCR and 3.3 million TBR tires a year there — is separately expanding into a new Kampot Economic Zone project. Wanli Tire formally opened its own plant in Svay Rieng's Xin Bavet Special Economic Zone on 12 January 2026. Further back, Jiangsu General Science Technology's US$300 million, 5-million-tire "General Tire Technology" plant has been running in the Sihanoukville Special Economic Zone since March 2023.</p>
+            <p>Read together, this is not one factory betting on Cambodia, or even two. At least five separate Chinese tire groups are now producing or actively building capacity here — the tire-manufacturing cluster this piece describes is already visibly forming, not hypothetical.</p>
           </div>
           <div className="mt-6">
             <TireCapacityChart />
@@ -235,8 +235,7 @@ function BeyondTheFactory() {
             <p className="font-mono text-[10px] uppercase tracking-widest mb-3 text-amber-300/90">Trade Policy Exposure — What Cambodia's Advantage Actually Rests On</p>
             <ul className="space-y-2.5">
               <li className="text-[13px] text-white/65 leading-relaxed print:text-black/75"><strong className="text-white print:text-black">US tariff, cut but not gone</strong> — Cambodia's reciprocal tariff moved from an initial 49% (April 2025) to 19% from August 2025, under a bilateral trade agreement — well below duties applied directly to China, but not zero.</li>
-              <li className="text-[13px] text-white/65 leading-relaxed print:text-black/75"><strong className="text-white print:text-black">A tire-specific duty already exists</strong> — a provisional anti-dumping duty of 41.47% has applied since mid-2025 to tire imports from Cambodia, Thailand and Vietnam collectively, unless a specific exporter secures its own exclusion.</li>
-              <li className="text-[13px] text-white/65 leading-relaxed print:text-black/75"><strong className="text-white print:text-black">"Country hopping" is under active scrutiny</strong> — in September 2024, South Africa opened an investigation into tires routed through Cambodia, Thailand and Vietnam specifically to evade duties assessed against China-origin goods.</li>
+              <li className="text-[13px] text-white/65 leading-relaxed print:text-black/75"><strong className="text-white print:text-black">"Country hopping" scrutiny — tested, and dropped, once</strong> — South Africa opened an anti-circumvention investigation in September 2024 into tires routed through Cambodia, Thailand and Vietnam to evade China-origin duties, imposed a provisional 41.47% duty from May 2025, then let the case lapse and formally terminated it in March 2026 without a permanent duty. One case closed in Cambodia's favor — but the underlying "is this actually Cambodian-made" question other markets ask isn't going away with it.</li>
               <li className="text-[13px] text-white/65 leading-relaxed print:text-black/75"><strong className="text-white print:text-black">Europe is tightening too</strong> — new duties on Chinese-linked tire imports took effect in July 2026, touching one of the very markets Roadboss's "170 countries and regions" target depends on.</li>
             </ul>
           </div>
@@ -592,13 +591,15 @@ function BeyondTheFactory() {
         {/* ── Additional data sources (for the charts above) ── */}
         <section className="reveal print:hidden">
           <p className="font-mono text-[9px] uppercase tracking-widest text-white/20 leading-relaxed">
-            Additional data: Tyrepress and Tire Business (Huasheng/Roadboss establishment and Sailun Cambodia
+            Additional data: Tyrepress and Tire Business (Huasheng/Roadboss establishment, Sailun and Wanli Cambodia
             tire-capacity disclosures); Shandong Huasheng Rubber Group corporate history (en.hstyre.com); Construction
-            &amp; Property News and Khmer Times (Cambodia's two-new-tire-factory investment); Yicai Global (Doublestar
-            Cambodia joint venture); ARC Group and CNBC (US–Cambodia tariff realignment); CBS News (country-hopping
-            anti-dumping scrutiny); Sihanoukville Autonomous Port statistics and Phnom Penh Post port-capacity
-            reporting; Cambodia rubber-plantation review and Rubber World / The Better Cambodia export figures;
-            Council for the Development of Cambodia (CDC) investment-approval data — all accessed September 2026.
+            &amp; Property News and Khmer Times (Cambodia's tire-factory investment counts); Yicai Global (Doublestar
+            Cambodia joint venture); MarkLines and Tyre Trends (Jiangsu General Science Technology's Sihanoukville
+            SEZ plant); The Star / Bernama (CDC's 2025 tire-project approvals); ARC Group and CNBC (US–Cambodia
+            tariff realignment); ITAC and ASL Law (South Africa's anti-circumvention investigation and its March
+            2026 termination); Sihanoukville Autonomous Port statistics and Phnom Penh Post port-capacity reporting;
+            Cambodia rubber-plantation review and Rubber World / The Better Cambodia export figures; Council for the
+            Development of Cambodia (CDC) investment-approval data — all accessed September 2026.
           </p>
         </section>
 
