@@ -33,6 +33,27 @@ export function Counter({ value }: { value: string }) {
   return <span ref={ref}>{display}</span>;
 }
 
+/* ── Site theme (light/dark) — polls localStorage the same way
+ *  research.index.tsx's isDark state does, since the toggle doesn't
+ *  fire a same-tab `storage` event. Needed by anything rendering raw
+ *  SVG (recharts axis/grid colors, etc.) that the CSS light-mode
+ *  override sweep in styles.css can't reach — that sweep only matches
+ *  Tailwind classes, not inline SVG fill/stroke attributes. ── */
+export function useIsDarkTheme() {
+  const [isDark, setIsDark] = useState(() => {
+    try { return localStorage.getItem("tgl_theme") !== "light"; } catch { return true; }
+  });
+  useEffect(() => {
+    const check = () => {
+      try { setIsDark(localStorage.getItem("tgl_theme") !== "light"); } catch { /* */ }
+    };
+    window.addEventListener("storage", check);
+    const id = setInterval(check, 300);
+    return () => { window.removeEventListener("storage", check); clearInterval(id); };
+  }, []);
+  return isDark;
+}
+
 /* ── Scroll-reveal hook (adds .visible to .reveal elements) */
 export function useReveal() {
   useEffect(() => {
