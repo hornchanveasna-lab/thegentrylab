@@ -305,7 +305,7 @@ function ResearchPage() {
   const [featured, ...rest] = filtered;
 
   return (
-    <div className="min-h-screen font-sans flex flex-col" style={{ backgroundColor: isDark ? "#0a0a0b" : "#e2e2e2", color: isDark ? "#fff" : "#111" }}>
+    <div className="min-h-screen font-sans editorial-scope flex flex-col" style={{ backgroundColor: isDark ? "#0a0a0b" : "#e2e2e2", color: isDark ? "#fff" : "#111" }}>
       <TopNav />
 
       {/* ── Hero strip ── */}
