@@ -167,6 +167,54 @@ export function useResearch() {
   });
 }
 
+/* ── Research comments ───────────────────────────────────── */
+export interface ResearchComment {
+  id: string;
+  brief_id: string;
+  user_id: string;
+  author_name: string;
+  author_company: string | null;
+  body: string;
+  created_at: string;
+}
+
+export function useResearchComments(briefId: string) {
+  return useQuery<ResearchComment[]>({
+    queryKey: ["research-comments", briefId],
+    queryFn: async () => {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from("research_comments")
+        .select("*")
+        .eq("brief_id", briefId)
+        .order("created_at", { ascending: false });
+      if (error) return [];
+      return data as ResearchComment[];
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export async function postResearchComment(input: {
+  briefId: string; userId: string; authorName: string; authorCompany: string | null; body: string;
+}) {
+  if (!supabase) throw new Error("No supabase client");
+  const { error } = await supabase.from("research_comments").insert({
+    brief_id: input.briefId,
+    user_id: input.userId,
+    author_name: input.authorName,
+    author_company: input.authorCompany,
+    body: input.body,
+  });
+  if (error) throw error;
+}
+
+export async function deleteResearchComment(id: string) {
+  if (!supabase) throw new Error("No supabase client");
+  const { error } = await supabase.from("research_comments").delete().eq("id", id);
+  if (error) throw error;
+}
+
 /* ── Site images ────────────────────────────────────────── */
 export interface SiteImage {
   id: string;
