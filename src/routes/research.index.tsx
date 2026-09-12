@@ -5,6 +5,7 @@ import { Footer } from "@/components/site/Footer";
 import { useSmoothScroll } from "@/components/site/Counter";
 import { RESEARCH } from "@/data/platform";
 import { useResearch } from "@/lib/data";
+import beyondTheFactoryCover from "@/assets/research/beyond-the-factory/aerial-overview.jpg";
 
 export const Route = createFileRoute("/research/")({
   head: () => ({
@@ -62,6 +63,8 @@ const BRIEF_PHOTOS: Record<string, string> = {
   r8:  "https://images.unsplash.com/photo-1547683905-f686c993aae5?w=900&q=80&fit=crop",
   // ISI SEZ brief — modern industrial zone
   r9:  "https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=900&q=80&fit=crop",
+  // Beyond the Factory — real ISI SEZ aerial photo (used in the piece itself)
+  r12: beyondTheFactoryCover,
   // Investment Climate — Phnom Penh / city skyline
   r10: "https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=900&q=80&fit=crop",
   // Greenfield FDI trends — construction growth
