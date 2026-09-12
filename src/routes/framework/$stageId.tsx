@@ -141,7 +141,7 @@ function StagePage() {
   const costTotal = stage.costBreakdown.reduce((s, d) => s + d.value, 0);
 
   return (
-    <div className="min-h-screen font-sans editorial-scope" style={{ background: "var(--background)", color: "var(--foreground)" }}>
+    <div className="min-h-screen font-sans" style={{ background: "var(--background)", color: "var(--foreground)" }}>
       <TopNav />
 
       {/* ── Breadcrumb ── */}

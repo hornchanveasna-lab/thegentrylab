@@ -15,7 +15,7 @@
   --color-stone-200:  #e7e5e4;
   --color-stone-400:  #a8a29e;
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, "Noto Sans Khmer", "Noto Sans SC", sans-serif;
   --font-mono:
     "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -394,17 +394,6 @@
 [data-theme="light"] .tenderai-scope .border-white\/25 { border-color: rgba(0,0,0,0.20) !important; }
 [data-theme="light"] .tenderai-scope .border-white\/40 { border-color: rgba(0,0,0,0.32) !important; }
 [data-theme="light"] .tenderai-scope .divide-white\/6 > * { border-color: rgba(0,0,0,0.06) !important; }
-
-/* ── Research briefs + GIDF Framework — DM Sans, scoped. DM Sans is
-   already loaded in index.html (used today only by the printed-PDF report
-   styles below); applying it here gives long-form reading pages a
-   distinct, more polished typeface than the plain system-font stack the
-   rest of the app deliberately uses (see the Inter note above — the same
-   "don't change everyone's font at once" lesson applies). */
-.editorial-scope {
-  font-family: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, "Noto Sans Khmer", "Noto Sans SC", sans-serif;
-}
 
 /* ── Map: lock to dark regardless of page theme ─────────── */
 /* Apply data-theme="dark" to the IndustrialMap root div to keep map always dark */
