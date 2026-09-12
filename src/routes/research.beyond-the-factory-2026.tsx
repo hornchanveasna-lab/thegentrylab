@@ -3,6 +3,8 @@ import { TopNav } from "@/components/site/TopNav";
 import { Footer } from "@/components/site/Footer";
 import { useSmoothScroll, useReveal } from "@/components/site/Counter";
 import { generateBeyondFactoryDocx } from "@/lib/exportBeyondFactoryDocx";
+import { AnimatedStat, TireCapacityChart, PortGrowthChart, RubberSupplyChart, SezInvestmentChart } from "@/components/site/BeyondFactoryCharts";
+import { CommentSection } from "@/components/site/CommentSection";
 
 export const Route = createFileRoute("/research/beyond-the-factory-2026")({
   head: () => ({
@@ -155,15 +157,8 @@ function BeyondTheFactory() {
             <p>The company indicates planned annual production capacity of:</p>
           </div>
           <div className="grid grid-cols-2 gap-4 my-6">
-            {[
-              { n: "15M", label: "PCR tires / year" },
-              { n: "2.6M", label: "TBR tires / year" },
-            ].map((s) => (
-              <div key={s.label} className="border border-white/8 px-5 py-4 print:border-black/15">
-                <p className="text-3xl font-extrabold tracking-tighter text-[#ff5100] print:text-black">{s.n}</p>
-                <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mt-1 print:text-black/50">{s.label}</p>
-              </div>
-            ))}
+            <AnimatedStat value={15} suffix="M" label="PCR tires / year" />
+            <AnimatedStat value={2.6} decimals={1} suffix="M" label="TBR tires / year" />
           </div>
           <div className="space-y-4 text-white/60 leading-relaxed text-[15px] print:text-black/80">
             <p>
@@ -176,6 +171,9 @@ function BeyondTheFactory() {
             <p>Its equipment strategy combines international and Chinese manufacturing technology, including automated production equipment, AGVs, automated warehousing and quality-control systems.</p>
             <p>This represents a different level of industrial requirement.</p>
             <p>A factory of this nature cannot depend only on four walls and a roof. It depends on the ecosystem surrounding it.</p>
+          </div>
+          <div className="mt-6">
+            <TireCapacityChart />
           </div>
         </section>
 
@@ -203,6 +201,9 @@ function BeyondTheFactory() {
           <div className="space-y-4 text-white/60 leading-relaxed text-[15px] mt-5 print:text-black/80">
             <p>When these elements work together, location becomes a competitive advantage.</p>
             <p>But infrastructure alone does not automatically create an industrial cluster. The surrounding development environment must be ready as well.</p>
+          </div>
+          <div className="mt-6">
+            <PortGrowthChart />
           </div>
         </section>
 
@@ -308,6 +309,9 @@ function BeyondTheFactory() {
           <p className="text-white/60 leading-relaxed text-[15px] mt-3 print:text-black/80">
             And ultimately: <strong className="text-white print:text-black">Investment confidence.</strong>
           </p>
+          <div className="mt-6">
+            <SezInvestmentChart />
+          </div>
         </section>
 
         {/* 07 */}
@@ -340,6 +344,9 @@ function BeyondTheFactory() {
           <p className="text-white/60 leading-relaxed text-[15px] mt-5 print:text-black/80">
             An anchor factory can therefore become more than a tenant. It can become the beginning of an industrial cluster.
           </p>
+          <div className="mt-6">
+            <RubberSupplyChart />
+          </div>
         </section>
 
         {/* 08 */}
@@ -488,6 +495,18 @@ function BeyondTheFactory() {
             <p className="font-mono text-[10px] uppercase tracking-widest text-white/30">Source: Roadboss Tire (Cambodia) Company Introduction, January 2026.</p>
           </div>
         </section>
+
+        {/* ── Additional data sources (for the charts above) ── */}
+        <section className="reveal print:hidden">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-white/20 leading-relaxed">
+            Additional data: Tyrepress and Tire Business (Sailun/Cambodia tire-capacity disclosures); Sihanoukville
+            Autonomous Port statistics and Phnom Penh Post port-capacity reporting; Cambodia rubber-plantation review
+            and Rubber World / The Better Cambodia export figures; Council for the Development of Cambodia (CDC)
+            investment-approval data — all accessed September 2026.
+          </p>
+        </section>
+
+        <CommentSection briefId="r12" />
 
         {/* ── Tags ── */}
         <section className="reveal flex flex-wrap gap-2 print:hidden">
