@@ -4,19 +4,41 @@ import {
   AreaChart, Area,
   PieChart, Pie, Cell,
 } from "recharts";
+import { useIsDarkTheme } from "@/components/site/Counter";
 
 const ORANGE = "#ff5100";
 const AMBER = "#fbbf24";
 const BLUE = "#38bdf8";
 const GREEN = "#34d399";
 
-/* ── Shared dark tooltip, matches the framework/$stageId.tsx pattern ── */
+/* ── Theme-derived colors for recharts' raw SVG output. The site's
+ *  general light-mode override sweep (styles.css) only rewrites
+ *  Tailwind classes on DOM elements — it can't reach the inline
+ *  fill/stroke props recharts renders (axis text, grid lines, tooltip
+ *  background), so those go invisible in light mode unless computed
+ *  here from the actual theme. ── */
+function chartTheme(isDark: boolean) {
+  return {
+    grid: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+    axisLine: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)",
+    tick: isDark ? "rgba(255,255,255,0.45)" : "rgba(0,0,0,0.55)",
+    cursorFill: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+    legendText: isDark ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.6)",
+    tooltipBg: isDark ? "#141416" : "#ffffff",
+    tooltipBorder: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.12)",
+    tooltipLabel: isDark ? "#ffffff" : "#111111",
+    mutedDot: isDark ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.25)",
+    mutedFill: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.12)",
+  };
+}
+
+/* ── Shared tooltip, colors resolved from the active site theme ── */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function DarkTooltip({ active, payload, label, unit }: any) {
+function ChartTooltip({ active, payload, label, unit, theme }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded px-3 py-2 text-xs border border-white/10 bg-[#141416]">
-      {label && <p className="font-bold mb-1 text-white">{label}</p>}
+    <div className="rounded px-3 py-2 text-xs border" style={{ borderColor: theme.tooltipBorder, backgroundColor: theme.tooltipBg }}>
+      {label && <p className="font-bold mb-1" style={{ color: theme.tooltipLabel }}>{label}</p>}
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {payload.map((p: any) => (
         <p key={p.name} style={{ color: p.color ?? p.fill }}>
@@ -28,7 +50,9 @@ function DarkTooltip({ active, payload, label, unit }: any) {
   );
 }
 
-const axisTick = { fill: "rgba(255,255,255,0.4)", fontSize: 10, fontFamily: "monospace" };
+function axisTick(theme: ReturnType<typeof chartTheme>) {
+  return { fill: theme.tick, fontSize: 10, fontFamily: "monospace" };
+}
 
 /* ── Count-up stat — animates from 0 once scrolled into view ── */
 export function AnimatedStat({ value, suffix = "", label, color = ORANGE, decimals = 0 }: {
@@ -82,17 +106,19 @@ const tireCapacityData = [
 ];
 
 export function TireCapacityChart() {
+  const isDark = useIsDarkTheme();
+  const theme = chartTheme(isDark);
   return (
     <div className="reveal border border-white/8 bg-white/[0.02] p-5 print:border-black/20">
       <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: ORANGE }}>Cambodia's Tire Manufacturing Cluster</p>
       <p className="text-[12px] text-white/50 mb-4 print:text-black/60">Planned annual capacity, million units/year — Roadboss is not Cambodia's only large tire investment.</p>
       <ResponsiveContainer width="100%" height={220}>
         <BarChart data={tireCapacityData} barCategoryGap="35%">
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-          <XAxis dataKey="name" tick={axisTick} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} />
-          <YAxis tick={axisTick} axisLine={false} tickLine={false} unit="M" />
-          <Tooltip content={<DarkTooltip unit="M units/yr" />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-          <Legend wrapperStyle={{ fontSize: 10, fontFamily: "monospace", color: "rgba(255,255,255,0.5)" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} vertical={false} />
+          <XAxis dataKey="name" tick={axisTick(theme)} axisLine={{ stroke: theme.axisLine }} tickLine={false} />
+          <YAxis tick={axisTick(theme)} axisLine={false} tickLine={false} unit="M" />
+          <Tooltip content={<ChartTooltip unit="M units/yr" theme={theme} />} cursor={{ fill: theme.cursorFill }} />
+          <Legend wrapperStyle={{ fontSize: 10, fontFamily: "monospace", color: theme.legendText }} />
           <Bar dataKey="PCR" name="Passenger (PCR)" fill={ORANGE} radius={[3, 3, 0, 0]} isAnimationActive animationDuration={900} />
           <Bar dataKey="TBR" name="Truck & Bus (TBR)" fill={AMBER} radius={[3, 3, 0, 0]} isAnimationActive animationDuration={900} animationBegin={150} />
         </BarChart>
@@ -113,6 +139,8 @@ const portGrowthData = [
 ];
 
 export function PortGrowthChart() {
+  const isDark = useIsDarkTheme();
+  const theme = chartTheme(isDark);
   return (
     <div className="reveal border border-white/8 bg-white/[0.02] p-5 print:border-black/20">
       <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: BLUE }}>Sihanoukville Port — Container Growth</p>
@@ -125,10 +153,10 @@ export function PortGrowthChart() {
               <stop offset="100%" stopColor={BLUE} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-          <XAxis dataKey="year" tick={axisTick} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} />
-          <YAxis tick={axisTick} axisLine={false} tickLine={false} unit="M" />
-          <Tooltip content={<DarkTooltip unit="M TEU" />} />
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+          <XAxis dataKey="year" tick={axisTick(theme)} axisLine={{ stroke: theme.axisLine }} tickLine={false} />
+          <YAxis tick={axisTick(theme)} axisLine={false} tickLine={false} unit="M" />
+          <Tooltip content={<ChartTooltip unit="M TEU" theme={theme} />} />
           <Area type="monotone" dataKey="teu" name="Container throughput" stroke={BLUE} strokeWidth={2} fill="url(#portGradient)" isAnimationActive animationDuration={1100} />
         </AreaChart>
       </ResponsiveContainer>
@@ -140,12 +168,13 @@ export function PortGrowthChart() {
 /* ── Rubber: the local supply-chain opportunity ──────────────
  * Ties to section 07 — how much of the raw-material base is already
  * in-country and active vs still coming online. */
-const rubberData = [
-  { name: "Actively producing", value: 330259, color: GREEN },
-  { name: "In maintenance phase", value: 95184, color: "rgba(255,255,255,0.15)" },
-];
-
 export function RubberSupplyChart() {
+  const isDark = useIsDarkTheme();
+  const theme = chartTheme(isDark);
+  const rubberData = [
+    { name: "Actively producing", value: 330259, color: GREEN },
+    { name: "In maintenance phase", value: 95184, color: theme.mutedFill },
+  ];
   const total = rubberData.reduce((a, d) => a + d.value, 0);
   return (
     <div className="reveal border border-white/8 bg-white/[0.02] p-5 print:border-black/20">
@@ -159,13 +188,13 @@ export function RubberSupplyChart() {
             <Pie data={rubberData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={2} isAnimationActive animationDuration={900}>
               {rubberData.map((d) => <Cell key={d.name} fill={d.color} stroke="none" />)}
             </Pie>
-            <Tooltip content={<DarkTooltip unit=" ha" />} />
+            <Tooltip content={<ChartTooltip unit=" ha" theme={theme} />} />
           </PieChart>
         </ResponsiveContainer>
         <div className="flex flex-col gap-3 flex-1">
           {rubberData.map((d) => (
             <div key={d.name} className="flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color === "rgba(255,255,255,0.15)" ? "rgba(255,255,255,0.3)" : d.color }} />
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: d.color === theme.mutedFill ? theme.mutedDot : d.color }} />
               <span className="text-[12px] text-white/70 print:text-black/70">{d.name}</span>
               <span className="ml-auto font-mono text-[11px] text-white/40">{d.value.toLocaleString()} ha</span>
             </div>
@@ -187,16 +216,18 @@ const sezInvestmentData = [
 ];
 
 export function SezInvestmentChart() {
+  const isDark = useIsDarkTheme();
+  const theme = chartTheme(isDark);
   return (
     <div className="reveal border border-white/8 bg-white/[0.02] p-5 print:border-black/20">
       <p className="font-mono text-[10px] uppercase tracking-widest mb-1" style={{ color: ORANGE }}>Investment Feeding the SEZ System</p>
       <p className="text-[12px] text-white/50 mb-4 print:text-black/60">CDC-approved fixed investment, USD billion — the scale of capital this one factory sits inside of.</p>
       <ResponsiveContainer width="100%" height={200}>
         <BarChart data={sezInvestmentData} barCategoryGap="40%">
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-          <XAxis dataKey="period" tick={axisTick} axisLine={{ stroke: "rgba(255,255,255,0.15)" }} tickLine={false} />
-          <YAxis tick={axisTick} axisLine={false} tickLine={false} unit="B" />
-          <Tooltip content={<DarkTooltip unit="B USD" />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} vertical={false} />
+          <XAxis dataKey="period" tick={axisTick(theme)} axisLine={{ stroke: theme.axisLine }} tickLine={false} />
+          <YAxis tick={axisTick(theme)} axisLine={false} tickLine={false} unit="B" />
+          <Tooltip content={<ChartTooltip unit="B USD" theme={theme} />} cursor={{ fill: theme.cursorFill }} />
           <Bar dataKey="usd" name="Approved investment" fill={ORANGE} radius={[3, 3, 0, 0]} isAnimationActive animationDuration={900} />
         </BarChart>
       </ResponsiveContainer>
