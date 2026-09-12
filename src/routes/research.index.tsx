@@ -163,11 +163,21 @@ function ResearchCard({
 
   const cardBg = isDark ? "#0d0d0e" : "#e8e8e8";
 
+  /* ── Cover image is its own tap target (not just the small CTA below) —
+   *  on mobile especially, the photo is the biggest, most obvious thing
+   *  to tap, and it previously did nothing. Renders as a Link for free
+   *  briefs, a mailto link for gated ones, matching the CTA's own
+   *  destination — never nested inside that CTA's own anchor. ── */
+  const CoverTag = freeRoute ? Link : "a";
+  const coverProps = freeRoute
+    ? { to: freeRoute }
+    : { href: `mailto:${EMAIL}?subject=Brief%20request%3A%20${encodeURIComponent(brief.title)}&body=I'd%20like%20access%20to%20this%20research%20brief.` };
+
   return (
     <article className="group relative overflow-hidden transition-all duration-300 flex flex-col" style={{ backgroundColor: cardBg, border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.08)" }}>
 
       {/* ── Cover image ── */}
-      <div className="relative overflow-hidden flex-shrink-0" style={{ height: featured ? 280 : 200 }}>
+      <CoverTag className="relative overflow-hidden flex-shrink-0 block" style={{ height: featured ? 280 : 200 }} {...coverProps}>
         <div className="absolute inset-0" style={{ background: style.gradient }} />
         {photo && (
           <img
@@ -214,7 +224,7 @@ function ResearchCard({
             {brief.category}
           </span>
         </div>
-      </div>
+      </CoverTag>
 
       {/* ── Body ── */}
       <div className="p-5 flex flex-col flex-1">
