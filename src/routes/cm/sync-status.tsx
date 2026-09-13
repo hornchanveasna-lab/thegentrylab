@@ -49,7 +49,7 @@ function CMSyncStatusPage() {
         <button
           onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "#ff5100" }}
+          style={{ backgroundColor: "var(--color-brand-accent)" }}
         >
           {t("common.signInGoogle")}
         </button>
@@ -71,7 +71,7 @@ function CMSyncStatusPage() {
             <button
               type="button"
               onClick={() => void syncOutbox()}
-              className="text-[11px] font-mono uppercase tracking-widest text-[#ff5100] hover:text-[#ff5100]/80 transition-colors shrink-0"
+              className="text-[11px] font-mono uppercase tracking-widest text-brand-accent hover:text-brand-accent/80 transition-colors shrink-0"
             >
               {t("offline.retryAll")}
             </button>
@@ -116,7 +116,7 @@ function CMSyncStatusPage() {
                     onClick={() => {
                       void retryOutboxJob(job.id).then(() => syncOutbox());
                     }}
-                    className="text-[11px] font-mono uppercase tracking-widest text-[#ff5100] hover:text-[#ff5100]/80 transition-colors shrink-0"
+                    className="text-[11px] font-mono uppercase tracking-widest text-brand-accent hover:text-brand-accent/80 transition-colors shrink-0"
                   >
                     {t("offline.retryNow")}
                   </button>

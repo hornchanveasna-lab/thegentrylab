@@ -102,7 +102,7 @@ import {
 } from "@/lib/cm-data";
 import { useAuthCM } from "@/lib/auth-cm";
 
-const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-brand-accent/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-text-subtle";
 const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
 
@@ -132,9 +132,9 @@ function MonotonePreviewToggle({ enabled, onChange }: { enabled: boolean; onChan
   return (
     <button type="button" onClick={() => onChange(!enabled)}
       className={`flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${enabled ? "" : "text-text-subtle"}`}
-      style={enabled ? { color: "#ff5100" } : undefined}>
+      style={enabled ? { color: "var(--color-brand-accent)" } : undefined}>
       <span className={`w-7 h-4 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-surface-3"}`}
-        style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
+        style={enabled ? { backgroundColor: "var(--color-brand-accent)" } : undefined}>
         <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform"
           style={{ transform: enabled ? "translateX(13px)" : "translateX(2px)" }} />
       </span>
@@ -290,7 +290,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
               <span className={labelCls}>{t("projectSettings.location")}</span>
               <button type="button" onClick={handleUseCurrentLocation} disabled={locating}
                 title={t("projectSettings.useCurrentLocation")}
-                className="text-text-subtle hover:text-[#ff5100] disabled:opacity-40 transition-colors">
+                className="text-text-subtle hover:text-brand-accent disabled:opacity-40 transition-colors">
                 {locating ? (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-spin">
                     <path d="M21 12a9 9 0 1 1-9-9" />
@@ -311,7 +311,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
               <input className={`${inputCls} flex-1`} value={locationMapUrl} onChange={(e) => setLocationMapUrl(e.target.value)}
                 placeholder={t("projectSettings.mapLinkPlaceholder")} />
               <button type="button" onClick={handleOpenMap} title={t("projectSettings.openMap")}
-                className="shrink-0 w-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-text-muted hover:text-[#ff5100] transition-colors">
+                className="shrink-0 w-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-text-muted hover:text-brand-accent transition-colors">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" /><circle cx="12" cy="9" r="2.4" />
                 </svg>
@@ -354,7 +354,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
         </label>
         <button onClick={handleSave} disabled={saving || !name.trim()}
           className="self-start px-5 py-2 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("projectSettings.saving") : t("projectSettings.saveChanges")}
         </button>
       </div>
@@ -432,7 +432,7 @@ function ConsultantRow({ c, canEdit, canDelete, editing, editValue, onEditValueC
     <div className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
       {editing && canEdit ? (
         <input
-          className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-[#ff5100]/60"
+          className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-brand-accent/60"
           value={editValue}
           autoFocus
           onChange={(e) => onEditValueChange(e.target.value)}
@@ -662,12 +662,12 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone, canCreate, ca
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("projectSettings.consultantName")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addConsultant")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("projectSettings.addConsultant")}</button>
         ))}
       </div>
     </Card>
@@ -731,7 +731,7 @@ function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
           <div key={l.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5" style={{ marginLeft: locationDepth(l, locations ?? []) * 16 }}>
             {editingId === l.id && canEdit ? (
               <input
-                className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-[#ff5100]/60"
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-brand-accent/60"
                 value={editValue}
                 autoFocus
                 onChange={(e) => setEditValue(e.target.value)}
@@ -759,12 +759,12 @@ function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
               />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("locations.add")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("locations.add")}</button>
         ))}
       </div>
     </Card>
@@ -811,12 +811,12 @@ function ChecklistSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
             <input className={inputCls} placeholder={t("projectSettings.itemTitle")} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
             <input className={inputCls} placeholder={t("projectSettings.category")} value={category} onChange={(e) => setCategory(e.target.value)} />
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.addItem")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("projectSettings.addItem")}</button>
         ))}
       </div>
     </Card>
@@ -983,7 +983,7 @@ function CompanySheet({ ownerId, company, onClose, onSaved }: {
         </label>
         <button type="submit" disabled={saving || !name.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("projectSettings.saving") : t("common.save")}
         </button>
       </form>
@@ -1018,7 +1018,7 @@ export function CompaniesSection({ ownerId, canCreate, canEdit }: { ownerId: str
           </button>
         ))}
         {canCreate && (
-          <button onClick={() => setEditing("new")} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("companies.add")}</button>
+          <button onClick={() => setEditing("new")} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("companies.add")}</button>
         )}
       </div>
       {editing && (
@@ -1057,7 +1057,7 @@ function DisciplinesSection({ project, canEdit, onChanged }: { project: CMProjec
               className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-surface-3 transition-colors disabled:opacity-60">
               <span className="text-[12px] text-text-muted">{t(`discipline.${d}`)}</span>
               <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-surface-3"}`}
-                style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
+                style={enabled ? { backgroundColor: "var(--color-brand-accent)" } : undefined}>
                 <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
                   style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }} />
               </span>
@@ -1097,7 +1097,7 @@ function ActiveModulesSection({ project, canEdit, onChanged }: { project: CMProj
               className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-surface-3 transition-colors disabled:opacity-60">
               <span className="text-[12px] text-text-muted">{t(MODULE_TITLE_KEY[m])}</span>
               <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-surface-3"}`}
-                style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
+                style={enabled ? { backgroundColor: "var(--color-brand-accent)" } : undefined}>
                 <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
                   style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }} />
               </span>
@@ -1180,12 +1180,12 @@ function WorkPackagesSection({ ownerId, projectId, canCreate, canEdit, canDelete
             </div>
             <textarea className={`${inputCls} resize-y min-h-[56px]`} placeholder={t("workPackages.description")} value={description} onChange={(e) => setDescription(e.target.value)} />
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("workPackages.add")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("workPackages.add")}</button>
         ))}
       </div>
     </Card>
@@ -1260,7 +1260,7 @@ export function DocumentControlSection({ project, canEdit, onChanged, onlyModule
       {canEdit && (
         <button onClick={handleSave} disabled={saving}
           className="self-start px-5 py-2 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("projectSettings.saving") : t("projectSettings.saveChanges")}
         </button>
       )}
@@ -1340,15 +1340,15 @@ export function WorkflowsSection({ ownerId, projectId, canCreate, canDelete, loc
           </div>
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={requiredComment} onChange={(e) => setRequiredComment(e.target.checked)} className="w-4 h-4 rounded accent-[#ff5100]" />
+              <input type="checkbox" checked={requiredComment} onChange={(e) => setRequiredComment(e.target.checked)} className="w-4 h-4 rounded accent-brand-accent" />
               <span className="text-[12px] text-text-muted">{t("workflows.requiresComment")}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={requiredSignature} onChange={(e) => setRequiredSignature(e.target.checked)} className="w-4 h-4 rounded accent-[#ff5100]" />
+              <input type="checkbox" checked={requiredSignature} onChange={(e) => setRequiredSignature(e.target.checked)} className="w-4 h-4 rounded accent-brand-accent" />
               <span className="text-[12px] text-text-muted">{t("workflows.requiresSignature")}</span>
             </label>
           </div>
-          <button onClick={handleAdd} disabled={!approverValue.trim()} className={`${smallBtn} self-start disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("workflows.addStep")}</button>
+          <button onClick={handleAdd} disabled={!approverValue.trim()} className={`${smallBtn} self-start disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("workflows.addStep")}</button>
         </div>
       )}
     </Card>
@@ -1407,7 +1407,7 @@ function ChecklistTemplateRow({ template, canEdit, canDelete, onDeleted }: {
           {canEdit && (
             <div className="flex gap-2">
               <input className={`${inputCls} flex-1`} placeholder={t("templates.itemPlaceholder")} value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} />
-              <button onClick={handleAddItem} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAddItem} className={smallBtn} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
             </div>
           )}
         </div>
@@ -1453,12 +1453,12 @@ export function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDe
                 options={TEMPLATE_MODULES.map((m) => ({ value: m, label: t(`${moduleTitleKey(m)}.title`) }))} />
             )}
             <div className="flex gap-2">
-              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("templates.add")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("templates.add")}</button>
         ))}
       </div>
     </Card>
@@ -1516,7 +1516,7 @@ function NotificationsSection({ ownerId, projectId, canCreate, canDelete }: { ow
               options={(["role", "company", "user", "module"] as NotificationRecipientType[]).map((rt) => ({ value: rt, label: t(`notifications.recipientType.${rt}`) }))} />
             <input className={inputCls} placeholder={t("notifications.recipientPlaceholder")} value={recipientValue} onChange={(e) => setRecipientValue(e.target.value)} />
           </div>
-          <button onClick={handleAdd} disabled={!recipientValue.trim()} className={`${smallBtn} self-start disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("notifications.addRule")}</button>
+          <button onClick={handleAdd} disabled={!recipientValue.trim()} className={`${smallBtn} self-start disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("notifications.addRule")}</button>
         </div>
       )}
     </Card>
@@ -1578,7 +1578,7 @@ function DataArchiveSection({ project, canEdit, onProjectChanged }: { project: C
         <>
           <p className="text-[12px] text-emerald-400 mb-3">{t("archive.isArchived")}</p>
           {canEdit && (
-            <button onClick={handleRestore} className={`${smallBtn}`} style={{ color: "#ff5100" }}>{t("archive.restore")}</button>
+            <button onClick={handleRestore} className={`${smallBtn}`} style={{ color: "var(--color-brand-accent)" }}>{t("archive.restore")}</button>
           )}
         </>
       ) : canEdit && (
@@ -1721,12 +1721,12 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName, canCreat
           />
           <input className={inputCls} placeholder={t("projectSettings.personRole")} value={role} onChange={(e) => setRole(e.target.value)} />
           <div className="flex gap-2">
-            <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+            <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
             <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
           </div>
         </div>
       ) : (
-        (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start`} style={{ color: "#ff5100" }}>{t("projectSettings.addPerson")}</button>
+        (contacts?.length ?? 0) > 0 && <button onClick={() => setAdding(true)} className={`${smallBtn} self-start`} style={{ color: "var(--color-brand-accent)" }}>{t("projectSettings.addPerson")}</button>
       ))}
     </div>
   );
@@ -1845,7 +1845,7 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
           {(subcontractors?.length ?? 0) === 0 && <p className="text-text-subtle text-[12px]">{t("people.noSubcontractors")}</p>}
           {(contacts?.length ?? 0) === 0 && (
             <p className="text-[11px] text-text-subtle">
-              {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
+              {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "var(--color-brand-accent)" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
             </p>
           )}
           {canCreate && (addingContact ? (
@@ -1858,12 +1858,12 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
               />
               <input className={inputCls} placeholder={t("projectSettings.roleOnProject")} value={role} onChange={(e) => setRole(e.target.value)} />
               <div className="flex gap-2">
-                <button onClick={handleAddContact} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+                <button onClick={handleAddContact} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
                 <button onClick={() => setAddingContact(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
               </div>
             </div>
           ) : (
-            (contacts?.length ?? 0) > 0 && <button onClick={() => setAddingContact(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("projectSettings.assign")}</button>
+            (contacts?.length ?? 0) > 0 && <button onClick={() => setAddingContact(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("projectSettings.assign")}</button>
           ))}
         </div>
 
@@ -1881,7 +1881,7 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
                 allowCustom
                 options={[{ value: "", label: t("team.jobRolePlaceholder") }, ...allJobRoles.map((r) => ({ value: r, label: jobRoleLabel(r, t) }))]}
               />
-              <button onClick={handleCreateInvite} disabled={creatingInvite} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+              <button onClick={handleCreateInvite} disabled={creatingInvite} className={`${smallBtn} shrink-0 disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>
                 {t("team.generateLink")}
               </button>
             </div>
@@ -1889,7 +1889,7 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
               <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2">
                 <span className="font-mono text-[10px] text-text-muted truncate">{t(`team.role.${inv.role}`)} — {inv.token.slice(0, 8)}…</span>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => copyInviteLink(inv.token, inv.id)} className={smallBtn} style={{ color: "#ff5100" }}>
+                  <button onClick={() => copyInviteLink(inv.token, inv.id)} className={smallBtn} style={{ color: "var(--color-brand-accent)" }}>
                     {copiedId === inv.id ? t("team.copied") : t("team.copyLink")}
                   </button>
                   {canDelete && (
@@ -1991,10 +1991,19 @@ export function ProjectSettingsView({ project, ownerId, currentUserId, onProject
       {category === "permissions" && (
         <Card title={t("settingsNav.permissions")}>
           <p className="text-[12px] text-text-muted mb-3">{t("settingsNav.permissionsHint")}</p>
-          <Link to="/cm/role-permissions" className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("rolePermissions.title")} →</Link>
+          <Link to="/cm/role-permissions" className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("rolePermissions.title")} →</Link>
         </Card>
       )}
-      {category === "companies" && <ProjectCompaniesSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
+      {category === "companies" && (
+        <div className="flex flex-col gap-4">
+          {/* Which firms work here… */}
+          <ProjectCompaniesSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />
+          {/* …and the master records behind them: logo, stamp, tax number,
+              address. One record per firm, shared by every project it works
+              on, edited here rather than in a separate app-level screen. */}
+          <CompaniesSection ownerId={ownerId} canCreate={settingsCanCreate} canEdit={settingsCanEdit} />
+        </div>
+      )}
       {category === "locations" && <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
       {category === "disciplines" && <DisciplinesSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}
       {category === "activeModules" && <ActiveModulesSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}

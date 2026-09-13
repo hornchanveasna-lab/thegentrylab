@@ -93,7 +93,7 @@ function IPCDetailPage() {
             {ipc.other_deductions.map((d, i) => (
               <div key={i} className="flex justify-between"><span className="text-text-subtle">{d.description}</span><span className="text-text-primary font-mono">{currency} {d.amount.toLocaleString()}</span></div>
             ))}
-            <div className="flex justify-between pt-2 border-t border-border"><span className="text-text-muted font-bold">{t("ipc.netPayable")}</span><span className="font-mono font-bold" style={{ color: "#ff5100" }}>{currency} {ipc.net_payable_this_period.toLocaleString()}</span></div>
+            <div className="flex justify-between pt-2 border-t border-border"><span className="text-text-muted font-bold">{t("ipc.netPayable")}</span><span className="font-mono font-bold" style={{ color: "var(--color-brand-accent)" }}>{currency} {ipc.net_payable_this_period.toLocaleString()}</span></div>
             {ipc.certified_value != null && (
               <div className="flex justify-between"><span className="text-text-subtle">{t("ipc.certifiedValue")}</span><span className="text-text-primary font-mono">{currency} {ipc.certified_value.toLocaleString()}</span></div>
             )}
@@ -128,19 +128,19 @@ function IPCDetailPage() {
           <div className="flex flex-col gap-2">
             {ipc.status === "Draft" && (
               <button onClick={() => setConfirmAction("submit")} disabled={busy}
-                className="w-full py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold disabled:opacity-40" style={{ backgroundColor: "#ff5100" }}>
+                className="w-full py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold disabled:opacity-40" style={{ backgroundColor: "var(--color-brand-accent)" }}>
                 {t("ipc.actionSubmit")}
               </button>
             )}
             {ipc.status === "Submitted" && (
               <button onClick={() => setConfirmAction("certify")} disabled={busy}
-                className="w-full py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold disabled:opacity-40" style={{ backgroundColor: "#ff5100" }}>
+                className="w-full py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold disabled:opacity-40" style={{ backgroundColor: "var(--color-brand-accent)" }}>
                 {t("ipc.actionCertify")}
               </button>
             )}
             {ipc.status === "Certified" && (
               <button onClick={() => setConfirmAction("pay")} disabled={busy}
-                className="w-full py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold disabled:opacity-40" style={{ backgroundColor: "#ff5100" }}>
+                className="w-full py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold disabled:opacity-40" style={{ backgroundColor: "var(--color-brand-accent)" }}>
                 {t("ipc.actionPay")}
               </button>
             )}

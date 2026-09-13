@@ -38,7 +38,7 @@ function CMNotificationsPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -53,7 +53,7 @@ function CMNotificationsPage() {
           <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{t("notifications.bell.title")}</h1>
           {unread > 0 && (
             <button type="button" onClick={() => markAllCMNotificationsRead(user.id).then(invalidate)}
-              className="text-[11px] font-mono uppercase tracking-widest text-[#ff5100] hover:text-[#ff5100]/80 transition-colors shrink-0">
+              className="text-[11px] font-mono uppercase tracking-widest text-brand-accent hover:text-brand-accent/80 transition-colors shrink-0">
               {t("notifications.bell.markAllRead")}
             </button>
           )}
@@ -66,7 +66,7 @@ function CMNotificationsPage() {
             {notifications.map((n) => (
               <button key={n.id} type="button" onClick={() => handleOpen(n)}
                 className="flex items-start gap-3 rounded-xl bg-surface-1 hover:bg-surface-3 transition-colors px-4 py-3 text-left w-full">
-                <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: n.read_at ? "transparent" : "#ff5100" }} />
+                <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: n.read_at ? "transparent" : "var(--color-brand-accent)" }} />
                 <div className="min-w-0 flex-1">
                   <p className="text-[13px] text-text-primary truncate">{n.title}</p>
                   {n.body && <p className="text-[12px] text-text-muted mt-0.5">{n.body}</p>}

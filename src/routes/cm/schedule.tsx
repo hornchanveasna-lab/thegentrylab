@@ -250,7 +250,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !groupLabel.trim() || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("schedule.adding") : t("schedule.addActivity")}
         </button>
       </form>
@@ -391,7 +391,7 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <button type="button" onClick={handleImport} disabled={importing || drafts.length === 0}
               className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-              style={{ backgroundColor: "#ff5100" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)" }}>
               {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
             </button>
           </>
@@ -459,7 +459,7 @@ function ActivityRow({ item, projectId, actorId, canEdit, canDelete, locationLab
           </span>
           {showSuggestion && (
             <button onClick={applySuggestion} disabled={busy}
-              className="font-mono text-[9px] px-1.5 py-0.5 rounded-full bg-[#ff5100]/15 text-[#ff7a3d] hover:bg-[#ff5100]/25 transition-colors">
+              className="font-mono text-[9px] px-1.5 py-0.5 rounded-full bg-brand-accent/15 text-[#ff7a3d] hover:bg-brand-accent/25 transition-colors">
               {t("schedule.applySiteProgress", { pct: String(suggestedPct) })}
             </button>
           )}
@@ -471,7 +471,7 @@ function ActivityRow({ item, projectId, actorId, canEdit, canDelete, locationLab
           {canEdit ? (
             <input type="number" min={0} max={100} value={actual} disabled={busy}
               onChange={(e) => setActual(e.target.value)} onBlur={commitActual}
-              className="w-14 text-right bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-primary focus:outline-none focus:border-[#ff5100]/60" />
+              className="w-14 text-right bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-primary focus:outline-none focus:border-brand-accent/60" />
           ) : (
             <span className="font-mono text-[11px] text-text-primary">{item.actual_percent}</span>
           )}
@@ -573,7 +573,7 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categ
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !description.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("boq.adding") : t("boq.addItem")}
         </button>
       </form>
@@ -701,14 +701,14 @@ function CategorySection({ category, items, projectId, actorId, grandTotal, link
           <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle truncate">{category}</p>
           <span className="font-mono text-[9px] text-text-subtle shrink-0">({items.length})</span>
         </div>
-        <span className="font-mono text-[10px] shrink-0" style={{ color: "#ff5100" }}>{ratio.toFixed(1)}%</span>
+        <span className="font-mono text-[10px] shrink-0" style={{ color: "var(--color-brand-accent)" }}>{ratio.toFixed(1)}%</span>
       </button>
       {open && (
         <div className="flex flex-col gap-2 mt-4">
           {items.map((item) => <BoqItemRow key={item.id} item={item} projectId={projectId} actorId={actorId} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} onOpenDetail={() => onOpenDetail(item)} />)}
           <div className="flex items-center justify-between px-3 pt-2 border-t border-border">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("boq.total")}</span>
-            <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span className="font-mono text-[13px] font-bold" style={{ color: "var(--color-brand-accent)" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           {linkedCount > 0 && (
             <p className="font-mono text-[10px] text-text-subtle">
@@ -751,12 +751,12 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
               <input type="number" min={0} value={quantity} disabled={busy}
                 onChange={(e) => setQuantity(e.target.value)}
                 onBlur={() => { const v = Number(quantity) || 0; if (v !== item.quantity) commit({ quantity: v }); }}
-                className="w-16 bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted focus:outline-none focus:border-[#ff5100]/60" />
+                className="w-16 bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted focus:outline-none focus:border-brand-accent/60" />
               <span className="font-mono text-[10px] text-text-subtle">{item.unit ?? ""} ×</span>
               <input type="number" min={0} value={unitCost} disabled={busy}
                 onChange={(e) => setUnitCost(e.target.value)}
                 onBlur={() => { const v = Number(unitCost) || 0; if (v !== item.unit_cost) commit({ unit_cost: v }); }}
-                className="w-20 bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted focus:outline-none focus:border-[#ff5100]/60" />
+                className="w-20 bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted focus:outline-none focus:border-brand-accent/60" />
             </>
           ) : (
             <span className="font-mono text-[10px] text-text-muted">
@@ -772,7 +772,7 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
         )}
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>
+        <span className="font-mono text-[11px]" style={{ color: "var(--color-brand-accent)" }}>
           {(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </span>
         {canEdit && (
@@ -808,7 +808,7 @@ function DeliveryStatusRow({ logId, logDate, index, row, unit, canEdit, busy, on
     <div className="rounded-xl bg-surface-2 px-3 py-2.5 flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-text-muted">{logDate}</span>
-        <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{row.quantity} {unit ?? ""}</span>
+        <span className="font-mono text-[11px]" style={{ color: "var(--color-brand-accent)" }}>{row.quantity} {unit ?? ""}</span>
       </div>
       {canEdit ? (
         <SegmentedField
@@ -910,7 +910,7 @@ function BoqItemDetailSheet({ item, projectId, actorId, dailyLogs, scheduleItems
           </div>
           <div className="flex items-center justify-between text-[12px] text-text-muted pt-1 border-t border-border">
             <span>{t("boq.total")}</span>
-            <span className="font-mono font-bold" style={{ color: "#ff5100" }}>{(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+            <span className="font-mono font-bold" style={{ color: "var(--color-brand-accent)" }}>{(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
         </div>
 
@@ -1128,7 +1128,7 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <button type="button" onClick={handleImport} disabled={importing || allDraftItems.length === 0}
               className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-              style={{ backgroundColor: "#ff5100" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)" }}>
               {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
             </button>
           </>
@@ -1189,7 +1189,7 @@ function WBSNodeRow({ node, depth, isLeaf, rollup, canEdit, canDelete, editing, 
         )}
         {editing && canEdit ? (
           <input
-            className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-[#ff5100]/60"
+            className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-brand-accent/60"
             value={editValue} autoFocus onChange={(e) => onEditValueChange(e.target.value)}
             onBlur={onCommitEdit}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") onCancelEdit(); }}
@@ -1201,7 +1201,7 @@ function WBSNodeRow({ node, depth, isLeaf, rollup, canEdit, canDelete, editing, 
         )}
         <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle shrink-0">{node.level}</span>
         {isLeaf && node.quantity == null && (
-          <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>{t("wbs.leaf")}</span>
+          <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 13%, transparent)", color: "var(--color-brand-accent)" }}>{t("wbs.leaf")}</span>
         )}
         {rollup && (
           <span className="font-mono text-[10px] shrink-0" style={{ color: varianceColor(rollup.actual, rollup.plan) }}>
@@ -1392,7 +1392,7 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
             )}
             <button onClick={runAnalyze} disabled={loading || !sheets}
               className="w-full py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold disabled:opacity-40"
-              style={{ backgroundColor: "#ff5100" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)" }}>
               {loading ? t("wbs.aiSuggesting") : t("wbs.aiSuggestRun")}
             </button>
             <button onClick={onClose} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
@@ -1459,7 +1459,7 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
             <div className="flex gap-2">
               <button onClick={applyProposal} disabled={applying}
                 className="flex-1 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold disabled:opacity-40"
-                style={{ backgroundColor: "#ff5100" }}>
+                style={{ backgroundColor: "var(--color-brand-accent)" }}>
                 {applying ? t("wbs.aiApplying") : t("wbs.aiApply")}
               </button>
               <button onClick={() => { setProposal(null); setFile(null); setSheets(null); }} className="px-5 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
@@ -1867,7 +1867,7 @@ function CMSchedulePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -2022,7 +2022,7 @@ function CMSchedulePage() {
                   <>
                     <div className="flex items-center justify-between rounded-2xl bg-surface-1 px-5 py-4 mb-3">
                       <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("boq.grandTotal")}</span>
-                      <span className="font-mono text-[15px] font-bold" style={{ color: "#ff5100" }}>{boqGrandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      <span className="font-mono text-[15px] font-bold" style={{ color: "var(--color-brand-accent)" }}>{boqGrandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex flex-col gap-3">
                       {boqCategories.map(([category, categoryItems]) => {
@@ -2080,12 +2080,12 @@ function CMSchedulePage() {
                       options={[{ value: "", label: t("wbs.parent") }, ...(wbsNodes ?? []).map((n) => ({ value: n.id, label: wbsBreadcrumb(n, wbsNodes ?? []) }))]}
                     />
                     <div className="flex gap-2">
-                      <button onClick={handleStructureAdd} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+                      <button onClick={handleStructureAdd} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
                       <button onClick={() => setStructureAdding(false)} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
                     </div>
                   </div>
                 ) : (
-                  <button onClick={() => setStructureAdding(true)} className="self-start px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest mt-1" style={{ color: "#ff5100" }}>+ {t("wbs.add")}</button>
+                  <button onClick={() => setStructureAdding(true)} className="self-start px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest mt-1" style={{ color: "var(--color-brand-accent)" }}>+ {t("wbs.add")}</button>
                 ))}
               </div>
             )}
@@ -2113,7 +2113,7 @@ function CMSchedulePage() {
               onClick={() => { setImportChooserOpen(false); setAiOpen(true); }}
               className="text-left rounded-2xl bg-surface-2 hover:bg-surface-3 transition-colors p-4 flex flex-col gap-1"
             >
-              <span className="text-[13px] font-bold" style={{ color: "#ff5100" }}>{t("wbs.aiImport")}</span>
+              <span className="text-[13px] font-bold" style={{ color: "var(--color-brand-accent)" }}>{t("wbs.aiImport")}</span>
               <span className="text-[11px] text-text-muted">{t("wbs.aiImportHint")}</span>
             </button>
             <button onClick={() => setImportChooserOpen(false)} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>

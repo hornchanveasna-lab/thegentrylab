@@ -93,7 +93,7 @@ function CMRolePermissionsPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -137,7 +137,7 @@ function CMRolePermissionsPage() {
                       <div key={action} className="flex items-center justify-center">
                         <input type="checkbox" checked={checked} disabled={saving === cellKey}
                           onChange={() => toggle(moduleKey, action)}
-                          className="w-4 h-4 rounded accent-[#ff5100] cursor-pointer disabled:opacity-40" />
+                          className="w-4 h-4 rounded accent-brand-accent cursor-pointer disabled:opacity-40" />
                       </div>
                     );
                   })}

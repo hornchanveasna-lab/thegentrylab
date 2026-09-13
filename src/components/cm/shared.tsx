@@ -97,7 +97,7 @@ export const PROJECT_STATUS_COLOR: Record<ProjectStatus, string> = {
   Tender: "#94a3b8",
   Planning: "#94a3b8",
   "Pre-Construction": "#94a3b8",
-  Active: "#ff5100",
+  Active: "var(--color-brand-accent)",
   "On Hold": "#fbbf24",
   Delayed: "#f43f5e",
   "Defect Liability": "#a78bfa",
@@ -829,7 +829,7 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
     <div className="flex gap-1 rounded-xl bg-surface-2 border border-border p-1 shrink-0">
       <button type="button" onClick={() => onChange("list")} aria-label={t("common.viewList")}
         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "list" ? "" : "text-text-muted"}`}
-        style={view === "list" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
+        style={view === "list" ? { backgroundColor: "var(--color-brand-accent)", color: "#000" } : undefined}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
           <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
@@ -837,7 +837,7 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
       </button>
       <button type="button" onClick={() => onChange("calendar")} aria-label={t("common.viewCalendar")}
         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "calendar" ? "" : "text-text-muted"}`}
-        style={view === "calendar" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
+        style={view === "calendar" ? { backgroundColor: "var(--color-brand-accent)", color: "#000" } : undefined}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" />
         </svg>

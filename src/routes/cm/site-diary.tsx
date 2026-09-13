@@ -268,7 +268,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
               ← {t("siteDiary.capture.backToReview", { count: String(files.length) })}
             </button>
           )}
-          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]" style={{ backgroundColor: "#ff5100" }}>
+          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]" style={{ backgroundColor: "var(--color-brand-accent)" }}>
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13.5" r="3.5" />
             </svg>
@@ -362,7 +362,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="button" onClick={handleSave} disabled={saving}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("inspection.saving") : t("common.save")}
         </button>
       </div>
@@ -624,7 +624,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
               ))}
             </div>
             <button type="button" onClick={() => setManpowerSheet({ editIndex: null })} disabled={saving}
-              className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("siteDiary.addManpower")}</button>
+              className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("siteDiary.addManpower")}</button>
           </div>
         )}
 
@@ -787,7 +787,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("siteDiary.saving") : t("siteDiary.saveEntry")}
         </button>
       </form>
@@ -929,7 +929,7 @@ function ModuleActivityRow({ row, onOpenItem, onOpenPhoto, flashPhotoUrl }: {
           {thumbs.map((thumb, i) => (
             <button key={i} type="button" data-photo-url={urls[i]}
               onClick={() => onOpenPhoto(thumbs.map((th, j) => ({ url: urls[j] || th, thumbUrl: th })), i)}
-              className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === urls[i] ? "ring-2 ring-[#ff5100]" : ""}`}>
+              className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === urls[i] ? "ring-2 ring-brand-accent" : ""}`}>
               <img src={thumb} alt="" className="w-16 h-16 rounded-xl object-cover" />
             </button>
           ))}
@@ -964,7 +964,7 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
           {thumbs.map((thumb, i) => (
             <button key={i} type="button" data-photo-url={urls[i]}
               onClick={() => onOpenPhoto(thumbs.map((th, j) => ({ url: urls[j] || th, thumbUrl: th })), i)}
-              className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === urls[i] ? "ring-2 ring-[#ff5100]" : ""}`}>
+              className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === urls[i] ? "ring-2 ring-brand-accent" : ""}`}>
               <img src={thumb} alt="" className="w-16 h-16 rounded-xl object-cover" />
             </button>
           ))}
@@ -1057,7 +1057,7 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
       )}
 
       <div className="flex items-center gap-3 rounded-2xl bg-surface-1 px-4 py-3">
-        <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+        <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 13%, transparent)", color: "var(--color-brand-accent)" }}>
           {log.weather ? WEATHER_ICON[log.weather] : WEATHER_ICON.Sunny}
         </span>
         <div className="min-w-0">
@@ -1097,10 +1097,10 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
             <div>
               <div className="flex items-center justify-between mb-1.5 font-mono text-[11px]">
                 {planPct != null && <span className="text-emerald-400/70">{t("siteDiary.plan")} {planPct}%</span>}
-                <span style={{ color: "#ff5100" }}>{t("siteDiary.actual")} {log.progress_pct}%</span>
+                <span style={{ color: "var(--color-brand-accent)" }}>{t("siteDiary.actual")} {log.progress_pct}%</span>
               </div>
               <div className="relative h-1.5 rounded-full bg-surface-3 overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${log.progress_pct}%`, backgroundColor: "#ff5100" }} />
+                <div className="h-full rounded-full" style={{ width: `${log.progress_pct}%`, backgroundColor: "var(--color-brand-accent)" }} />
                 {planPct != null && <div className="absolute top-0 bottom-0 w-0.5 bg-emerald-300" style={{ left: `${Math.min(planPct, 100)}%` }} />}
               </div>
             </div>
@@ -1115,7 +1115,7 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
               return (
                 <button key={url} type="button" data-photo-url={url}
                   onClick={() => onOpenPhoto(log.photos.map((u, j) => ({ url: u, thumbUrl: log.photo_thumbs[j] || u })), i)}
-                  className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === url ? "ring-2 ring-[#ff5100]" : ""}`}>
+                  className={`relative rounded-xl transition-shadow duration-500 ${flashPhotoUrl === url ? "ring-2 ring-brand-accent" : ""}`}>
                   <img src={thumb} alt="" className="w-16 h-16 rounded-xl object-cover" />
                 </button>
               );
@@ -1257,7 +1257,7 @@ function CMSiteDiaryPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -1271,7 +1271,7 @@ function CMSiteDiaryPage() {
         {!viewAll && projectId && canCreate && (
           <button type="button" onClick={() => setShowCapture(true)}
             className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98]"
-            style={{ backgroundColor: "#ff5100" }}>
+            style={{ backgroundColor: "var(--color-brand-accent)" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" /><circle cx="12" cy="13.5" r="3.5" />
             </svg>
@@ -1285,7 +1285,7 @@ function CMSiteDiaryPage() {
 
             {dateFilter && (
               <button onClick={clearDateFilter} aria-label={t("common.clearFilter")}
-                className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+                className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 13%, transparent)", color: "var(--color-brand-accent)" }}>
                 {dateFilter} <span className="text-[13px] leading-none">×</span>
               </button>
             )}

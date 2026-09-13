@@ -90,12 +90,12 @@ function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
               <input className={inputCls} placeholder={t("siteDiary.company")} value={company} onChange={(e) => setCompany(e.target.value)} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("manpower.addRosterItem")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("manpower.addRosterItem")}</button>
         ))}
       </div>
     </Card>
@@ -255,7 +255,7 @@ function ImportManpowerSheet({ projectId, date, onImport, onClose }: {
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <button type="button" onClick={handleImport} disabled={importing || draftRows.length === 0}
               className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-              style={{ backgroundColor: "#ff5100" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)" }}>
               {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
             </button>
           </>
@@ -406,7 +406,7 @@ function AttendanceSection({ userId, projectId, date, rows, canCreate, canDelete
 
         {canCreate && pendingCrews.length > 0 && (
           <div className="mt-1">
-            <button onClick={() => onAddToHeadcount(pendingCrews)} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+            <button onClick={() => onAddToHeadcount(pendingCrews)} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>
               {t("manpower.attendance.addToHeadcount", { count: String(pendingCrews.reduce((sum, c) => sum + c.count, 0)) })}
             </button>
             <p className="text-[10px] text-text-subtle mt-1.5">{t("manpower.attendance.addToHeadcountHint")}</p>
@@ -426,12 +426,12 @@ function AttendanceSection({ userId, projectId, date, rows, canCreate, canDelete
                 options={tradeOptions.map((tr) => ({ value: tr, label: tr }))} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAddWorker} disabled={!name.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAddWorker} disabled={!name.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("manpower.attendance.addWorker")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("manpower.attendance.addWorker")}</button>
         ))}
       </div>
     </Card>
@@ -510,7 +510,7 @@ function PlannedVsActualSection({ userId, projectId, date, rows, canCreate, canE
                   {t("manpower.planned")} {canEdit ? (
                     <input
                       type="number" min={0} defaultValue={p.planned_count} key={`${p.id}-${p.planned_count}`}
-                      className="w-12 bg-transparent border-b border-border text-text-muted text-[10px] text-center focus:outline-none focus:border-[#ff5100]/60"
+                      className="w-12 bg-transparent border-b border-border text-text-muted text-[10px] text-center focus:outline-none focus:border-brand-accent/60"
                       onBlur={(e) => {
                         const next = Math.max(0, parseInt(e.target.value, 10) || 0);
                         if (next !== p.planned_count) updateCMManpowerPlan(p.id, { planned_count: next }).then(invalidate);
@@ -544,12 +544,12 @@ function PlannedVsActualSection({ userId, projectId, date, rows, canCreate, canE
               <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder={t("manpower.workers")} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "#ff5100" }}>{t("manpower.addPlan")}</button>
+          <button onClick={() => setAdding(true)} className={`${smallBtn} self-start mt-1`} style={{ color: "var(--color-brand-accent)" }}>{t("manpower.addPlan")}</button>
         ))}
       </div>
     </Card>
@@ -721,14 +721,14 @@ function CMManpowerPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   const stat = (label: string, value: string | number, accent = false) => (
     <div className="flex flex-col items-center gap-0.5 min-w-0">
-      <span className="font-mono text-[16px] leading-none" style={accent ? { color: "#ff5100" } : undefined}>{value}</span>
+      <span className="font-mono text-[16px] leading-none" style={accent ? { color: "var(--color-brand-accent)" } : undefined}>{value}</span>
       <span className="text-[9px] uppercase tracking-widest text-text-subtle text-center">{label}</span>
     </div>
   );
@@ -765,7 +765,7 @@ function CMManpowerPage() {
             {/* Actions */}
             <div className="flex flex-wrap gap-2 mb-4">
               {canCreate && (
-                <button onClick={() => navigate({ to: "/cm/manpower/new", search: { date } })} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+                <button onClick={() => navigate({ to: "/cm/manpower/new", search: { date } })} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>
                   {t("manpower.addEntry")}
                 </button>
               )}
@@ -818,7 +818,7 @@ function CMManpowerPage() {
                   <div key={groupKey || "-"} className="rounded-2xl bg-surface-1 px-4 py-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[12px] text-text-primary font-medium truncate">{groupKey || emptyGroupLabel}</span>
-                      <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{items.reduce((s, i) => s + i.row.count, 0)}</span>
+                      <span className="font-mono text-[10px]" style={{ color: "var(--color-brand-accent)" }}>{items.reduce((s, i) => s + i.row.count, 0)}</span>
                     </div>
                     <div className="flex flex-col gap-1.5">
                       {items.map(({ index, row }) => (
@@ -917,7 +917,7 @@ function CMManpowerPage() {
                 <button key={log.id} className="rounded-2xl bg-surface-1 px-4 py-3 text-left" onClick={() => setDate(log.log_date)}>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-mono text-[11px] text-text-muted">{log.log_date}</span>
-                    <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{t("manpower.total")} {dailyHeadcount(log)}</span>
+                    <span className="font-mono text-[10px]" style={{ color: "var(--color-brand-accent)" }}>{t("manpower.total")} {dailyHeadcount(log)}</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {log.manpower.map((m, i) => (
