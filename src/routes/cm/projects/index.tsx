@@ -178,7 +178,7 @@ function NewProjectSheet({ onClose, onCreated }: { onClose: () => void; onCreate
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !name.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {saving ? t("projects.creating") : t("projects.create")}
         </button>
       </form>
@@ -336,7 +336,7 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
             {t("projects.clearFilters")}
           </button>
           <button type="button" onClick={onClose}
-            className="flex-1 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>
+            className="flex-1 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
             {t("projects.applyFilters")}
           </button>
         </div>
@@ -466,7 +466,7 @@ export function CMProjectsPage() {
           <p className="text-text-muted text-sm mb-8">{t("home.signedOutSubtitle")}</p>
           <button onClick={() => signInWithGoogle()}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-            style={{ backgroundColor: "var(--color-brand-accent)" }}>
+            style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
             {t("common.signInGoogle")}
           </button>
         </div>
@@ -514,18 +514,18 @@ export function CMProjectsPage() {
             <button type="button" onClick={() => setShowFilters(true)} aria-label={t("projects.filters")}
               className="relative w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors text-text-muted hover:text-text-primary shrink-0">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
-              {filterCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-brand-accent text-black text-[9px] font-bold flex items-center justify-center">{filterCount}</span>}
+              {filterCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-brand-accent text-white text-[9px] font-bold flex items-center justify-center">{filterCount}</span>}
             </button>
             <FieldSelect value={sortBy} onChange={setSortBy} menuClassName="left-auto right-0 w-56" triggerIcon={SORT_ICON}
               triggerClassName="w-10 h-10 shrink-0 flex items-center justify-center bg-surface-2 hover:bg-surface-3 rounded-xl border border-border text-text-muted hover:text-text-primary transition-colors"
               options={(["updated", "name", "start", "end", "value", "health"] as SortKey[]).map((k) => ({ value: k, label: t(`projects.sort.${k}`) }))} />
             <div className="flex items-center gap-1 bg-surface-2 rounded-xl p-1 shrink-0">
               <button type="button" onClick={() => setView("card")} aria-label={t("projects.viewCard")}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={view === "card" ? { backgroundColor: "var(--color-brand-accent)", color: "#000" } : { color: "rgba(255,255,255,0.4)" }}>
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={view === "card" ? { backgroundColor: "var(--color-brand-accent)", color: "#fff" } : { color: "rgba(255,255,255,0.4)" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
               </button>
               <button type="button" onClick={() => setView("list")} aria-label={t("projects.viewList")}
-                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={view === "list" ? { backgroundColor: "var(--color-brand-accent)", color: "#000" } : { color: "rgba(255,255,255,0.4)" }}>
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={view === "list" ? { backgroundColor: "var(--color-brand-accent)", color: "#fff" } : { color: "rgba(255,255,255,0.4)" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
               </button>
             </div>

@@ -64,7 +64,7 @@ function CMJoinPage() {
         {!user ? (
           <button onClick={handleSignIn}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-            style={{ backgroundColor: "var(--color-brand-accent)" }}>
+            style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
             {t("common.signInGoogle")}
           </button>
         ) : status === "intake" ? (
@@ -83,7 +83,7 @@ function CMJoinPage() {
             </label>
             <button onClick={handleJoin} disabled={!name.trim()}
               className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-brand-accent)" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
               {t("team.intakeSubmit")}
             </button>
           </div>

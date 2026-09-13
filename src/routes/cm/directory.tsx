@@ -98,7 +98,7 @@ function NewContactSheet({ ownerId, projectId, onClose, onCreated }: { ownerId: 
           {error && <p className="text-[12px] text-red-400">{error}</p>}
           <button type="submit" disabled={saving || !name.trim()}
             className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-            style={{ backgroundColor: "var(--color-brand-accent)" }}>
+            style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
             {saving ? t("directory.adding") : t("directory.add")}
           </button>
         </form>
@@ -192,7 +192,7 @@ function CMDirectoryPage() {
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -229,7 +229,7 @@ function CMDirectoryPage() {
         onClick={() => setShowNew(true)}
         aria-label={t("directory.new")}
         className="fixed bottom-7 right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform"
-        style={{ backgroundColor: "var(--color-brand-accent)" }}
+        style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
       </button>

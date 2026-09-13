@@ -90,7 +90,7 @@ function ManpowerRosterSection({ ownerId, projectId, canCreate, canDelete }: {
               <input className={inputCls} placeholder={t("siteDiary.company")} value={company} onChange={(e) => setCompany(e.target.value)} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
@@ -255,7 +255,7 @@ function ImportManpowerSheet({ projectId, date, onImport, onClose }: {
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <button type="button" onClick={handleImport} disabled={importing || draftRows.length === 0}
               className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-brand-accent)" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
               {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
             </button>
           </>
@@ -406,7 +406,7 @@ function AttendanceSection({ userId, projectId, date, rows, canCreate, canDelete
 
         {canCreate && pendingCrews.length > 0 && (
           <div className="mt-1">
-            <button onClick={() => onAddToHeadcount(pendingCrews)} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>
+            <button onClick={() => onAddToHeadcount(pendingCrews)} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
               {t("manpower.attendance.addToHeadcount", { count: String(pendingCrews.reduce((sum, c) => sum + c.count, 0)) })}
             </button>
             <p className="text-[10px] text-text-subtle mt-1.5">{t("manpower.attendance.addToHeadcountHint")}</p>
@@ -426,7 +426,7 @@ function AttendanceSection({ userId, projectId, date, rows, canCreate, canDelete
                 options={tradeOptions.map((tr) => ({ value: tr, label: tr }))} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAddWorker} disabled={!name.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAddWorker} disabled={!name.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
@@ -544,7 +544,7 @@ function PlannedVsActualSection({ userId, projectId, date, rows, canCreate, canE
               <input className={inputCls} type="number" min={0} inputMode="numeric" value={count} onChange={(e) => setCount(e.target.value)} placeholder={t("manpower.workers")} />
             </div>
             <div className="flex gap-2">
-              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
+              <button onClick={handleAdd} disabled={!trade.trim()} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.add")}</button>
               <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
@@ -721,7 +721,7 @@ function CMManpowerPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -765,7 +765,7 @@ function CMManpowerPage() {
             {/* Actions */}
             <div className="flex flex-wrap gap-2 mb-4">
               {canCreate && (
-                <button onClick={() => navigate({ to: "/cm/manpower/new", search: { date } })} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>
+                <button onClick={() => navigate({ to: "/cm/manpower/new", search: { date } })} className={`${smallBtn} px-4 py-2`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
                   {t("manpower.addEntry")}
                 </button>
               )}

@@ -283,7 +283,7 @@ function CMSettingsPage() {
             {user.user_metadata?.avatar_url ? (
               <img src={user.user_metadata.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover" />
             ) : (
-              <span className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center text-sm font-bold text-black">
+              <span className="w-12 h-12 rounded-full bg-brand-accent flex items-center justify-center text-sm font-bold text-white">
                 {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
               </span>
             )}

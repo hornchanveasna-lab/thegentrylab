@@ -49,7 +49,7 @@ function CMSyncStatusPage() {
         <button
           onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}
         >
           {t("common.signInGoogle")}
         </button>

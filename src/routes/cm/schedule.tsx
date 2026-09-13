@@ -250,7 +250,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !groupLabel.trim() || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {saving ? t("schedule.adding") : t("schedule.addActivity")}
         </button>
       </form>
@@ -391,7 +391,7 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <button type="button" onClick={handleImport} disabled={importing || drafts.length === 0}
               className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-brand-accent)" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
               {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
             </button>
           </>
@@ -573,7 +573,7 @@ export function NewBoqItemSheet({ ownerId, projectId, versionId, existing, categ
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !description.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {saving ? t("boq.adding") : t("boq.addItem")}
         </button>
       </form>
@@ -1128,7 +1128,7 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <button type="button" onClick={handleImport} disabled={importing || allDraftItems.length === 0}
               className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-brand-accent)" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
               {importing ? t("boq.import.importing") : t("boq.import.confirmImport")}
             </button>
           </>
@@ -1392,7 +1392,7 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
             )}
             <button onClick={runAnalyze} disabled={loading || !sheets}
               className="w-full py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold disabled:opacity-40"
-              style={{ backgroundColor: "var(--color-brand-accent)" }}>
+              style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
               {loading ? t("wbs.aiSuggesting") : t("wbs.aiSuggestRun")}
             </button>
             <button onClick={onClose} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
@@ -1459,7 +1459,7 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
             <div className="flex gap-2">
               <button onClick={applyProposal} disabled={applying}
                 className="flex-1 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold disabled:opacity-40"
-                style={{ backgroundColor: "var(--color-brand-accent)" }}>
+                style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
                 {applying ? t("wbs.aiApplying") : t("wbs.aiApply")}
               </button>
               <button onClick={() => { setProposal(null); setFile(null); setSheets(null); }} className="px-5 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
@@ -1867,7 +1867,7 @@ function CMSchedulePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -2080,7 +2080,7 @@ function CMSchedulePage() {
                       options={[{ value: "", label: t("wbs.parent") }, ...(wbsNodes ?? []).map((n) => ({ value: n.id, label: wbsBreadcrumb(n, wbsNodes ?? []) }))]}
                     />
                     <div className="flex gap-2">
-                      <button onClick={handleStructureAdd} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: "var(--color-brand-accent)", color: "#000" }}>{t("common.add")}</button>
+                      <button onClick={handleStructureAdd} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.add")}</button>
                       <button onClick={() => setStructureAdding(false)} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
                     </div>
                   </div>
