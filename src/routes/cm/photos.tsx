@@ -91,7 +91,15 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)]);
+    // Read the FileList NOW, not inside the state updater. The onChange
+    // handler clears `e.target.value` immediately after calling this so the
+    // same file can be re-picked, and that empties the live FileList this
+    // `list` still points at — so a deferred `Array.from(list)` (React runs
+    // updaters during render, twice under StrictMode) would see zero files
+    // and the picker would never advance to the review step.
+    const picked = Array.from(list);
+    if (picked.length === 0) return;
+    setFiles((prev) => [...prev, ...picked]);
     setPickerOpen(false);
   };
   const removeFile = (f: File) => {
