@@ -181,7 +181,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
             </button>
           )}
           <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]"
-            style={{ backgroundColor: "var(--color-brand-accent)" }}>
+            style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
               <circle cx="12" cy="13.5" r="3.5" />
@@ -262,7 +262,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="button" onClick={handleSubmit} disabled={!canSave}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {saving ? t("photos.savingPhoto") : t("photos.savePhoto", { count: String(files.length) })}
         </button>
       </div>
@@ -384,7 +384,7 @@ function CMPhotosPage() {
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {t("common.signInGoogle")}
         </button>
       </div>

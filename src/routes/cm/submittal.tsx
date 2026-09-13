@@ -175,7 +175,7 @@ export function NewSubmittalSheet({ ownerId, projectId, existing, canApprove, di
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {existing ? (saving ? t("submittal.saving") : t("submittal.saveChanges")) : (saving ? t("submittal.creating") : t("submittal.create"))}
         </button>
       </form>
@@ -345,7 +345,7 @@ function CMSubmittalPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }

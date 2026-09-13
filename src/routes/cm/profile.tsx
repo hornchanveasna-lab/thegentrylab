@@ -32,7 +32,7 @@ function CMProfilePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -54,7 +54,7 @@ function CMProfilePage() {
           {user.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} alt="" className="w-14 h-14 rounded-full object-cover" />
           ) : (
-            <span className="w-14 h-14 rounded-full bg-brand-accent flex items-center justify-center text-base font-bold text-black">
+            <span className="w-14 h-14 rounded-full bg-brand-accent flex items-center justify-center text-base font-bold text-white">
               {(user.user_metadata?.full_name ?? user.email ?? "U")[0].toUpperCase()}
             </span>
           )}

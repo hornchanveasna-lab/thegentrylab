@@ -696,16 +696,19 @@ export function CompanySelect({ ownerId, projectId, value, onChange, disabled }:
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: assigned } = useCMProjectCompanies(projectId);
-  // `null` means the assignment table hasn't been created yet (see
-  // docs/cm-project-companies.sql). Until it exists, keep offering the
-  // account-wide list so the picker never goes empty; the moment the table
-  // is there, the scoped list takes over on its own with no redeploy.
-  const notProvisioned = assigned === null;
-  const { data: allCompanies } = useCMCompanies(notProvisioned ? ownerId : undefined);
+  // Scoping should narrow the list, never empty it. Two cases fall back to
+  // the account-wide list:
+  //   null  — the assignment table doesn't exist yet (docs/cm-project-companies.sql)
+  //   []    — the project has no companies assigned yet
+  // The second matters most in practice: a brand-new project starts with
+  // nothing assigned, and a picker offering no options at all just blocks
+  // the user with no way forward. Once even one company is assigned, the
+  // scoped list takes over and cross-project mixing stops.
+  const scoped = (assigned ?? []).map((a) => a.company).filter(Boolean);
+  const useAccountWide = assigned === null || scoped.length === 0;
+  const { data: allCompanies } = useCMCompanies(useAccountWide ? ownerId : undefined);
 
-  const companies = notProvisioned
-    ? (allCompanies ?? [])
-    : (assigned ?? []).map((a) => a.company).filter(Boolean);
+  const companies = useAccountWide ? (allCompanies ?? []) : scoped;
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["cm_project_companies", projectId] });
@@ -720,7 +723,7 @@ export function CompanySelect({ ownerId, projectId, value, onChange, disabled }:
     const created = await createCMCompany(ownerId, name);
     // Only assign to the project once the assignment table exists; before
     // that the insert would fail and lose the company the user just typed.
-    if (projectId && !notProvisioned) await addCMProjectCompany(ownerId, projectId, created.id, null);
+    if (projectId && assigned !== null) await addCMProjectCompany(ownerId, projectId, created.id, null);
     invalidate();
     onChange(created.id, created.name);
   };
@@ -732,10 +735,10 @@ export function CompanySelect({ ownerId, projectId, value, onChange, disabled }:
       onCreateCustom={handleCreate}
       // Without a project there's nothing to scope to — unless we're still
       // falling back to the account-wide list, which needs no project.
-      disabled={disabled || (!projectId && !notProvisioned)}
+      disabled={disabled || (!projectId && !useAccountWide)}
       searchable
       allowCustom
-      placeholder={projectId || notProvisioned ? t("directory.company") : t("common.createProjectFirst")}
+      placeholder={projectId || useAccountWide ? t("directory.company") : t("common.createProjectFirst")}
       options={companies.map((c) => ({ value: c.id, label: c.name }))}
     />
   );
@@ -829,7 +832,7 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
     <div className="flex gap-1 rounded-xl bg-surface-2 border border-border p-1 shrink-0">
       <button type="button" onClick={() => onChange("list")} aria-label={t("common.viewList")}
         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "list" ? "" : "text-text-muted"}`}
-        style={view === "list" ? { backgroundColor: "var(--color-brand-accent)", color: "#000" } : undefined}>
+        style={view === "list" ? { backgroundColor: "var(--color-brand-accent)", color: "#fff" } : undefined}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
           <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
@@ -837,7 +840,7 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
       </button>
       <button type="button" onClick={() => onChange("calendar")} aria-label={t("common.viewCalendar")}
         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "calendar" ? "" : "text-text-muted"}`}
-        style={view === "calendar" ? { backgroundColor: "var(--color-brand-accent)", color: "#000" } : undefined}>
+        style={view === "calendar" ? { backgroundColor: "var(--color-brand-accent)", color: "#fff" } : undefined}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" />
         </svg>
@@ -858,7 +861,7 @@ export function ToggleRow({ icon, label, checked, disabled, onChange }: {
       <span className="text-text-muted shrink-0">{icon}</span>
       <span className="min-w-0 flex-1 text-[14px] text-text-primary">{label}</span>
       <span role="switch" aria-checked={checked} className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors ${checked ? "" : "menu-track-off"}`}
-        style={checked ? { backgroundColor: "var(--color-brand-accent)" } : undefined}>
+        style={checked ? { backgroundColor: "var(--color-brand-accent)", color: "#fff" } : undefined}>
         <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
           style={{ transform: checked ? "translateX(20px)" : "translateX(2px)" }} />
       </span>
@@ -920,7 +923,7 @@ export function SettingControlRow<T extends string | boolean>({ icon, label, res
         <button type="button" role="switch" aria-checked={resolved.value as boolean} disabled={disabled}
           onClick={() => onChange(!resolved.value as T)}
           className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors disabled:opacity-40 ${resolved.value ? "" : "menu-track-off"}`}
-          style={resolved.value ? { backgroundColor: "var(--color-brand-accent)" } : undefined}>
+          style={resolved.value ? { backgroundColor: "var(--color-brand-accent)", color: "#fff" } : undefined}>
           <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
             style={{ transform: resolved.value ? "translateX(20px)" : "translateX(2px)" }} />
         </button>
@@ -1209,7 +1212,7 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
                   <button key={i} disabled={!marked} onClick={() => dayItems && onOpenDay(dayItems)}
                     className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-surface-2">
                     {marked && renderCover?.(dayItems!)}
-                    {marked && !renderCover && <span className="absolute inset-0 rounded-full" style={{ backgroundColor: "var(--color-brand-accent)" }} />}
+                    {marked && !renderCover && <span className="absolute inset-0 rounded-full" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }} />}
                     <span className={`relative text-[12px] font-bold ${marked ? (renderCover ? "text-text-primary" : "text-text-primary") : "text-text-subtle"}`}
                       style={marked && renderCover ? { textShadow: "0 1px 3px rgba(0,0,0,0.85)" } : undefined}>
                       {cell.day}
@@ -1562,7 +1565,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col gap-2">
             <p className="text-[12px] text-amber-200/90">{t("manpower.duplicateExists")}</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={`${manpowerSmallBtn} text-text-primary`} style={{ backgroundColor: "var(--color-brand-accent)" }}
+              <button type="button" className={`${manpowerSmallBtn} text-text-primary`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}
                 onClick={() => {
                   const existing = rows[dupIndex];
                   setCompany(existing.company ?? "");
@@ -1586,7 +1589,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
 
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <div className="flex gap-2 mt-1">
-          <button type="submit" disabled={saving || !trade.trim()} className={`${manpowerSmallBtn} disabled:opacity-40 px-5 py-2.5 text-text-primary`} style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          <button type="submit" disabled={saving || !trade.trim()} className={`${manpowerSmallBtn} disabled:opacity-40 px-5 py-2.5 text-text-primary`} style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
             {saving ? t("common.loading") : t("common.save")}
           </button>
           <button type="button" onClick={onClose} className={`${manpowerSmallBtn} px-5 py-2.5 text-text-muted`}>{t("common.cancel")}</button>
@@ -1799,7 +1802,7 @@ export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, ini
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
           className="w-full rounded-full py-3.5 text-[14px] font-semibold text-text-primary transition-transform active:scale-[0.98] disabled:opacity-40"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {saving ? t("quickUpload.saving") : t("quickUpload.save")}
         </button>
       </form>
@@ -2236,7 +2239,7 @@ function AnnotationEditor({ src, onCancel, onDone }: { src: string; onCancel: ()
       <div className="flex items-center justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shrink-0">
         <button onClick={onCancel} className="text-[13px] text-text-muted hover:text-text-primary px-2 py-1.5">{t("common.cancel")}</button>
         <p className="text-[12px] font-bold text-text-primary">{t("photos.annotate")}</p>
-        <button onClick={handleDone} className="text-[13px] font-bold px-3 py-1.5 rounded-full text-text-primary" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.done")}</button>
+        <button onClick={handleDone} className="text-[13px] font-bold px-3 py-1.5 rounded-full text-text-primary" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>{t("common.done")}</button>
       </div>
 
       <div ref={containerRef} className="flex-1 relative min-h-0 flex items-center justify-center overflow-hidden">

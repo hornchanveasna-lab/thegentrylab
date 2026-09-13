@@ -211,7 +211,7 @@ function CMReportsPage() {
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -522,7 +522,7 @@ function CMReportsPage() {
                       </div>
                       <p className="font-mono text-[9px] text-text-subtle print:text-black/50">{b.deliveredQty} / {b.quantity} {b.unit ?? ""}</p>
                       <div className="h-1.5 rounded-full bg-surface-2 print:bg-black/10 mt-1.5 overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${b.pct}%`, backgroundColor: "var(--color-brand-accent)" }} />
+                        <div className="h-full rounded-full" style={{ width: `${b.pct}%`, backgroundColor: "var(--color-brand-accent)", color: "#fff" }} />
                       </div>
                     </div>
                   ))}
