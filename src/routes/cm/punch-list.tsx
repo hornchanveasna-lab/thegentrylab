@@ -44,7 +44,7 @@ export const Route = createFileRoute("/cm/punch-list")({
 });
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
-  "To Do": "#94a3b8", "In Progress": "#ff5100", Blocked: "#f43f5e", "Ready for Check": "#a78bfa", Done: "#34d399",
+  "To Do": "#94a3b8", "In Progress": "var(--color-brand-accent)", Blocked: "#f43f5e", "Ready for Check": "#a78bfa", Done: "#34d399",
 };
 const PRIORITY_COLOR: Record<TaskPriority, string> = { Low: "#94a3b8", Medium: "#fbbf24", High: "#f43f5e" };
 const STATUS_OPTIONS: TaskStatus[] = ["To Do", "In Progress", "Blocked", "Ready for Check", "Done"];
@@ -435,7 +435,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
             {item.photos.map((url, i) => (
               <button key={url} type="button" data-photo-url={url}
                 onClick={() => onOpenPhoto(item.photos.map((u, idx) => ({ url: u, thumbUrl: item.photo_thumbs[idx] || u })), i)}
-                className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+                className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-brand-accent" : ""}`}>
                 <img src={item.photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" />
               </button>
             ))}
@@ -449,7 +449,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
             {item.after_photos.map((url, i) => (
               <button key={url} type="button" data-photo-url={url}
                 onClick={() => onOpenPhoto(item.after_photos.map((u, idx) => ({ url: u, thumbUrl: item.after_photo_thumbs[idx] || u })), i)}
-                className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-[#ff5100]" : ""}`}>
+                className={`rounded-xl transition-shadow duration-500 ${matchedPhotoUrl === url && flash ? "ring-2 ring-brand-accent" : ""}`}>
                 <img src={item.after_photo_thumbs[i] || url} alt="" className="w-20 h-20 rounded-xl object-cover" style={{ boxShadow: "0 0 0 1.5px #22c55e55" }} />
               </button>
             ))}
@@ -670,7 +670,7 @@ function CMPunchListPage() {
 
         {dateFilter && (
           <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
-            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 13%, transparent)", color: "var(--color-brand-accent)" }}>
             {dateFilter} <span className="text-[13px] leading-none">×</span>
           </button>
         )}

@@ -44,7 +44,7 @@ export const Route = createFileRoute("/cm/instructions")({
 
 const STATUS_COLOR: Record<InstructionStatus, string> = {
   Issued: "#fbbf24", Acknowledged: "#38bdf8", "Impact Assessment": "#a78bfa",
-  Executing: "#ff5100", Completed: "#34d399", Closed: "#94a3b8",
+  Executing: "var(--color-brand-accent)", Completed: "#34d399", Closed: "#94a3b8",
 };
 const PRIORITY_COLOR: Record<InstructionPriority, string> = {
   Low: "#94a3b8", Medium: "#fbbf24", High: "#f97316", Critical: "#f43f5e",
@@ -173,7 +173,7 @@ export function NewInstructionSheet({ ownerId, projectId, contractId, existing, 
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim() || !selectedContractId}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {existing ? (saving ? t("instructions.saving") : t("instructions.save")) : (saving ? t("instructions.creating") : t("instructions.create"))}
         </button>
       </form>
@@ -411,7 +411,7 @@ function CMInstructionsPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -436,7 +436,7 @@ function CMInstructionsPage() {
 
         {dateFilter && (
           <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
-            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 13%, transparent)", color: "var(--color-brand-accent)" }}>
             {dateFilter} <span className="text-[13px] leading-none">×</span>
           </button>
         )}
@@ -465,7 +465,7 @@ function CMInstructionsPage() {
             {!isError && !viewAll && !isLoading && contracts && contracts.length === 0 && (
               <div className="rounded-2xl border border-dashed border-border py-16 flex flex-col items-center justify-center text-center px-4 gap-3">
                 <p className="text-text-subtle text-sm">{t("instructions.noContractsYet")}</p>
-                <Link to="/cm/contracts" className="text-[12px] font-bold px-4 py-2 rounded-full" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+                <Link to="/cm/contracts" className="text-[12px] font-bold px-4 py-2 rounded-full" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 13%, transparent)", color: "var(--color-brand-accent)" }}>
                   {t("instructions.createContractFirst")}
                 </Link>
               </div>

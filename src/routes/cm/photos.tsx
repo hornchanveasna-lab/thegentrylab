@@ -181,7 +181,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
             </button>
           )}
           <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-black cursor-pointer text-center transition-transform active:scale-[0.98]"
-            style={{ backgroundColor: "#ff5100" }}>
+            style={{ backgroundColor: "var(--color-brand-accent)" }}>
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z" />
               <circle cx="12" cy="13.5" r="3.5" />
@@ -262,7 +262,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="button" onClick={handleSubmit} disabled={!canSave}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("photos.savingPhoto") : t("photos.savePhoto", { count: String(files.length) })}
         </button>
       </div>
@@ -384,7 +384,7 @@ function CMPhotosPage() {
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -402,7 +402,7 @@ function CMPhotosPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("common.search")}
-              className="flex-1 min-w-0 bg-surface-2 rounded-xl border border-border px-3.5 py-2 text-[14px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+              className="flex-1 min-w-0 bg-surface-2 rounded-xl border border-border px-3.5 py-2 text-[14px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-brand-accent/60 transition-colors"
             />
           ) : (
             <div className="flex-1 min-w-0">
@@ -450,7 +450,7 @@ function CMPhotosPage() {
 
         {dateFilter && (
           <button onClick={() => setDateFilter(null)} aria-label={t("common.clearFilter")}
-            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
+            className="self-start mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 13%, transparent)", color: "var(--color-brand-accent)" }}>
             {dateFilter} <span className="text-[13px] leading-none">×</span>
           </button>
         )}
@@ -474,7 +474,7 @@ function CMPhotosPage() {
                     <span className="text-text-muted shrink-0">{GROUP_ICON[g]}</span>
                     <span className="flex-1 text-[13px] text-text-primary">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
                     {groupBy === g && (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                         <path d="M4 12.5l5 5L20 6" />
                       </svg>
                     )}
@@ -502,7 +502,7 @@ function CMPhotosPage() {
                         <img src={p.thumbUrl} alt="" className={`w-full h-full object-cover transition-opacity ${checked ? "opacity-60" : ""}`} />
                         {selectMode ? (
                           <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2"
-                            style={{ backgroundColor: checked ? "#ff5100" : "rgba(0,0,0,0.4)", borderColor: checked ? "#ff5100" : "rgba(255,255,255,0.7)" }}>
+                            style={{ backgroundColor: checked ? "var(--color-brand-accent)" : "rgba(0,0,0,0.4)", borderColor: checked ? "var(--color-brand-accent)" : "rgba(255,255,255,0.7)" }}>
                             {checked && (
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M4 12.5l5 5L20 6" />

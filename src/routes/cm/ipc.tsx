@@ -60,7 +60,7 @@ function CMIPCPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
@@ -98,7 +98,7 @@ function CMIPCPage() {
                       <XAxis dataKey="date" tick={{ fill: chartTick, fontSize: 9 }} axisLine={false} tickLine={false} minTickGap={40} />
                       <YAxis tick={{ fill: chartTick, fontSize: 9 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                       <Tooltip contentStyle={{ backgroundColor: chartTooltipBg, border: `1px solid ${chartTooltipBorder}`, borderRadius: 12, fontSize: 11 }} />
-                      <Area type="monotone" dataKey="plannedValue" name={t("ipc.planned")} fill="#ff510022" stroke="#ff5100" strokeWidth={1.5} />
+                      <Area type="monotone" dataKey="plannedValue" name={t("ipc.planned")} fill="var(--color-brand-accent)" fillOpacity={0.13} stroke="var(--color-brand-accent)" strokeWidth={1.5} />
                       <Line type="monotone" dataKey="submittedValue" name={t("ipc.submitted")} stroke="#fbbf24" strokeWidth={1.5} strokeDasharray="4 3" dot={false} connectNulls />
                       <Line type="monotone" dataKey="certifiedValue" name={t("ipc.certified")} stroke="#34d399" strokeWidth={2} dot={false} connectNulls />
                     </ComposedChart>
@@ -111,7 +111,7 @@ function CMIPCPage() {
               <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("ipc.certificates")}</p>
               {canCreate && (
                 <button onClick={() => navigate({ to: "/cm/ipc/new", search: { contract: activeContract.id } })}
-                  className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ color: "#ff5100" }}>
+                  className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>
                   {t("ipc.new")}
                 </button>
               )}

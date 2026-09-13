@@ -75,7 +75,7 @@ function formatContractValue(value: number | null, currency: string | null): str
 function FavoriteButton({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
     <button type="button" onClick={onToggle} aria-label="Favorite"
-      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 bg-surface-2 hover:bg-surface-3 ${active ? "text-[#ff5100]" : "text-text-subtle"}`}>
+      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 bg-surface-2 hover:bg-surface-3 ${active ? "text-brand-accent" : "text-text-subtle"}`}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
       </svg>

@@ -20,7 +20,7 @@ export const Route = createFileRoute("/cm/directory")({
   component: CMDirectoryPage,
 });
 
-const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-brand-accent/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-text-subtle";
 
 function NewContactSheet({ ownerId, projectId, onClose, onCreated }: { ownerId: string; projectId: string | undefined; onClose: () => void; onCreated: () => void }) {
@@ -98,7 +98,7 @@ function NewContactSheet({ ownerId, projectId, onClose, onCreated }: { ownerId: 
           {error && <p className="text-[12px] text-red-400">{error}</p>}
           <button type="submit" disabled={saving || !name.trim()}
             className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-            style={{ backgroundColor: "#ff5100" }}>
+            style={{ backgroundColor: "var(--color-brand-accent)" }}>
             {saving ? t("directory.adding") : t("directory.add")}
           </button>
         </form>
@@ -144,7 +144,7 @@ function ContactCard({ contact, ownerId, onChanged, linked }: { contact: CMDirec
           <div className="flex items-center gap-1.5">
             <h3 className="text-[13px] font-bold text-text-primary leading-tight">{contact.name}</h3>
             {linked && (
-              <span className="font-mono text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.15)", color: "#ff5100" }}>
+              <span className="font-mono text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "rgba(255,81,0,0.15)", color: "var(--color-brand-accent)" }}>
                 {t("directory.linkedBadge")}
               </span>
             )}
@@ -192,7 +192,7 @@ function CMDirectoryPage() {
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -215,7 +215,7 @@ function CMDirectoryPage() {
             <p className="text-text-subtle text-sm mb-4">{t("directory.noneYet")}</p>
             <button onClick={() => setShowNew(true)}
               className="px-5 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest"
-              style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100" }}>
+              style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "var(--color-brand-accent)" }}>
               {t("directory.addFirst")}
             </button>
           </div>
@@ -229,7 +229,7 @@ function CMDirectoryPage() {
         onClick={() => setShowNew(true)}
         aria-label={t("directory.new")}
         className="fixed bottom-7 right-6 w-14 h-14 rounded-full flex items-center justify-center text-black shadow-[0_8px_24px_rgba(255,81,0,0.4)] active:scale-95 transition-transform"
-        style={{ backgroundColor: "#ff5100" }}
+        style={{ backgroundColor: "var(--color-brand-accent)" }}
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
       </button>

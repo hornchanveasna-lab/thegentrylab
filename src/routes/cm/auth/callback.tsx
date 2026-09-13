@@ -52,7 +52,7 @@ function CMAuthCallback() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
-        <div className="w-6 h-6 border-2 border-[#ff5100] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+        <div className="w-6 h-6 border-2 border-brand-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
         <p className="font-mono text-[11px] uppercase tracking-widest text-text-subtle">{t("auth.signingIn")}</p>
       </div>
     </div>

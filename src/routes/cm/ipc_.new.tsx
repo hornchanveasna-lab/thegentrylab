@@ -109,13 +109,13 @@ function NewIPCPage() {
             </div>
           ))}
           <button type="button" onClick={() => setDeductions([...deductions, { description: "", amount: 0 }])}
-            className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("ipc.addDeduction")}</button>
+            className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("ipc.addDeduction")}</button>
         </div>
         <p className="text-[11px] text-text-subtle">{t("ipc.newHint")}</p>
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !contractId}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("ipc.creating") : t("ipc.createDraft")}
         </button>
       </form>

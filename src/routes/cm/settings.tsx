@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import { SegmentedField, ProjectPicker, FieldSelect, useSelectedProject, inputCls } from "@/components/cm/shared";
-import { ProjectSettingsView, CompaniesSection } from "@/components/cm/ProjectSettingsView";
+import { ProjectSettingsView } from "@/components/cm/ProjectSettingsView";
 import {
   useCMAccountSettings,
   upsertCMAccountSettings,
@@ -166,9 +166,9 @@ function GlobalAuditLogSection({ userId, projects, onBack }: {
             placeholder={t("auditLog.allActions")}
             options={[{ value: "", label: t("auditLog.allActions") }, ...actions.map((a) => ({ value: a, label: a }))]} />
           <div />
-          <input type="date" className="bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[#ff5100]/60"
+          <input type="date" className="bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-brand-accent/60"
             value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-          <input type="date" className="bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[#ff5100]/60"
+          <input type="date" className="bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-brand-accent/60"
             value={toDate} onChange={(e) => setToDate(e.target.value)} />
         </div>
       </div>
@@ -187,7 +187,7 @@ function GlobalAuditLogSection({ userId, projects, onBack }: {
               <span className="font-mono text-[9px] text-text-subtle shrink-0">{e.created_at.slice(0, 16).replace("T", " ")}</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap text-[11px] text-text-muted">
-              <span className="font-mono uppercase tracking-widest" style={{ color: "#ff5100" }}>{e.action}</span>
+              <span className="font-mono uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{e.action}</span>
               <span>·</span>
               <span>{e.entity_type}</span>
               <span>·</span>
@@ -388,10 +388,11 @@ function CMSettingsPage() {
 
             <BrandColorSection account={account} ownerId={user.id} onSaved={invalidateAccount} />
 
-            <div className="mb-5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-2 px-1">{t("appSettingsNav.companies")}</p>
-              <CompaniesSection ownerId={user.id} canCreate canEdit />
-            </div>
+            {/* Companies are managed per project now — Project Settings >
+                Companies both assigns firms to the project and edits the
+                underlying master record. Keeping a second, project-less copy
+                of the same editor here was the thing that made it look like
+                companies lived in two places. */}
 
             <div className="rounded-2xl overflow-hidden mb-5">
               <Row>

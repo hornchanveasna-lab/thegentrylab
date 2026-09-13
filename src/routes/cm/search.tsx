@@ -10,7 +10,7 @@ export const Route = createFileRoute("/cm/search")({
   component: CMSearchPage,
 });
 
-const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-brand-accent/60 transition-colors";
 
 const SEARCH_MODULE_COLOR: Record<CMSearchResult["module"], string> = {
   siteDiary: "#3b82f6", inspection: "#22c55e", punchList: "#a855f7", safety: "#ef4444", submittal: "#06b6d4",
@@ -34,7 +34,7 @@ function CMSearchPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
-        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
+        <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {t("common.signInGoogle")}
         </button>
       </div>

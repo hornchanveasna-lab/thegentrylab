@@ -32,7 +32,7 @@ export const Route = createFileRoute("/cm/reports")({
   component: CMReportsPage,
 });
 
-const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary focus:outline-none focus:border-brand-accent/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-text-subtle";
 const cardCls = "rounded-2xl bg-surface-1 print:bg-white print:border print:border-black/10 px-3 py-3 text-center";
 const rowCls = "rounded-2xl bg-surface-1 print:bg-white print:border print:border-black/10 px-4 py-3";
@@ -211,7 +211,7 @@ function CMReportsPage() {
       <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
-          style={{ backgroundColor: "#ff5100" }}>
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {t("common.signInGoogle")}
         </button>
       </div>
@@ -294,7 +294,7 @@ function CMReportsPage() {
                     <div key={l.id} className={rowCls}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-mono text-[11px] text-text-muted print:text-black">{l.log_date}</span>
-                        {l.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{l.progress_pct}%</span>}
+                        {l.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "var(--color-brand-accent)" }}>{l.progress_pct}%</span>}
                       </div>
                       {l.weather && <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle print:text-black/50 mb-1">{t(`weather.${l.weather}`)}{l.manpower.length > 0 ? ` · ${l.manpower.reduce((s, m) => s + m.count, 0)} ${t("reports.workers")}` : ""}</p>}
                       {l.activities && <p className="text-[12px] text-text-muted print:text-black/80">{l.activities}</p>}
@@ -518,11 +518,11 @@ function CMReportsPage() {
                     <div key={b.id} className={rowCls}>
                       <div className="flex items-center justify-between mb-1">
                         <p className="text-[12px] text-text-primary print:text-black truncate">{b.description}</p>
-                        <span className="font-mono text-[11px] shrink-0" style={{ color: "#ff5100" }}>{b.pct}%</span>
+                        <span className="font-mono text-[11px] shrink-0" style={{ color: "var(--color-brand-accent)" }}>{b.pct}%</span>
                       </div>
                       <p className="font-mono text-[9px] text-text-subtle print:text-black/50">{b.deliveredQty} / {b.quantity} {b.unit ?? ""}</p>
                       <div className="h-1.5 rounded-full bg-surface-2 print:bg-black/10 mt-1.5 overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${b.pct}%`, backgroundColor: "#ff5100" }} />
+                        <div className="h-full rounded-full" style={{ width: `${b.pct}%`, backgroundColor: "var(--color-brand-accent)" }} />
                       </div>
                     </div>
                   ))}
