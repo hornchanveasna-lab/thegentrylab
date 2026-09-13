@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthCM } from "@/lib/auth-cm";
 import { useCMLang } from "@/lib/cm-i18n";
-import { Avatar, CompanySelect, ConfirmationDialog } from "@/components/cm/shared";
+import { Avatar, CompanySelect, ConfirmationDialog, useSelectedProject } from "@/components/cm/shared";
 import {
   useCMDirectoryContacts,
   createCMDirectoryContact,
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/cm/directory")({
 const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
 
-function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onClose: () => void; onCreated: () => void }) {
+function NewContactSheet({ ownerId, projectId, onClose, onCreated }: { ownerId: string; projectId: string | undefined; onClose: () => void; onCreated: () => void }) {
   const { t } = useCMLang();
   const [name, setName] = useState("");
   const [company, setCompany] = useState("");
@@ -73,7 +73,7 @@ function NewContactSheet({ ownerId, onClose, onCreated }: { ownerId: string; onC
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("directory.company")}</span>
-              <CompanySelect ownerId={ownerId} value={companyId} disabled={saving}
+              <CompanySelect ownerId={ownerId} projectId={projectId} value={companyId} disabled={saving}
                 onChange={(id, resolvedName) => { setCompanyId(id); setCompany(resolvedName); }} />
             </label>
             <label className="flex flex-col gap-1.5">
@@ -172,6 +172,10 @@ function CMDirectoryPage() {
   const { t } = useCMLang();
   const queryClient = useQueryClient();
   const { data: contacts, isLoading } = useCMDirectoryContacts(user?.id);
+  // The contact list itself stays account-wide — one address book — but the
+  // company a new contact is filed under must come from the active project,
+  // so contacts can't be attached to a company that isn't on it.
+  const { projectId } = useSelectedProject(user?.id);
   const { data: linkedMembers } = useCMLinkedMembersByContact(user?.id);
   const linkedByContact = new Map((linkedMembers ?? []).map((m) => [m.contact_id, m]));
   const [showNew, setShowNew] = useState(false);
@@ -230,7 +234,7 @@ function CMDirectoryPage() {
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
       </button>
 
-      {showNew && user && <NewContactSheet ownerId={user.id} onClose={() => setShowNew(false)} onCreated={invalidate} />}
+      {showNew && user && <NewContactSheet ownerId={user.id} projectId={projectId} onClose={() => setShowNew(false)} onCreated={invalidate} />}
     </div>
   );
 }

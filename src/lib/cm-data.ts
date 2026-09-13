@@ -1567,6 +1567,64 @@ export async function deleteCMCompany(id: string) {
   if (error) throw error;
 }
 
+/** Which companies actually work on a given project.
+ *
+ *  `cm_companies` is one account-wide master list, so a company is entered
+ *  once and reused — but that means an unscoped picker offers every company
+ *  on the account, including ones with no involvement in the project being
+ *  worked on. This join table is what stops a contract, contact or
+ *  instruction being pointed at a company from an unrelated project, while
+ *  still keeping a single master record per company (CLAUDE.md §27).
+ *
+ *  Same shape as `cm_project_subcontractors`, which links a project to a
+ *  directory contact. */
+export interface CMProjectCompany {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  company_id: string;
+  /** What this company does on this project — "Main Contractor", "Piling
+   *  Subcontractor" — which can differ from the company's own master type
+   *  (the same firm may be Consultant on one project, Designer on another). */
+  role_on_project: string | null;
+  created_at: string;
+  company: CMCompany;
+}
+
+export function useCMProjectCompanies(projectId: string | undefined) {
+  return useQuery<CMProjectCompany[]>({
+    queryKey: ["cm_project_companies", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db()
+        .from("cm_project_companies")
+        .select("*, company:cm_companies(*)")
+        .eq("project_id", projectId)
+        .order("created_at");
+      if (error) throw error;
+      return data as unknown as CMProjectCompany[];
+    },
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function addCMProjectCompany(ownerId: string, projectId: string, companyId: string, roleOnProject: string | null) {
+  const { error } = await db().from("cm_project_companies").insert({
+    owner_id: ownerId, project_id: projectId, company_id: companyId, role_on_project: roleOnProject,
+  });
+  if (error) throw error;
+}
+
+export async function updateCMProjectCompany(id: string, patch: { role_on_project?: string | null }) {
+  const { error } = await db().from("cm_project_companies").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function removeCMProjectCompany(id: string) {
+  const { error } = await db().from("cm_project_companies").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function uploadCMCompanyMasterLogo(ownerId: string, companyId: string, file: File): Promise<string> {
   const client = db();
   const ext = file.name.split(".").pop() || "png";

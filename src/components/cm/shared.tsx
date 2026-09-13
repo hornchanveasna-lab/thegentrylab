@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
-  useCMProjectLocations, locationBreadcrumb, useCMCompanies, createCMCompany, createCMProjectLocation,
+  useCMProjectLocations, locationBreadcrumb, createCMCompany, createCMProjectLocation,
+  useCMProjectCompanies, addCMProjectCompany,
   type ProjectStatus, type CMComputedHealth, type CMHealthBand,
   useCMComments, addCMComment, deleteCMComment,
   useCMProjectMembers,
@@ -677,20 +678,40 @@ export function LocationSelect({ projectId, value, onChange, disabled }: {
  *  returns both the id (to store as company_id) and the resolved name (to
  *  mirror into the existing free-text `company` field), so callers don't
  *  need their own company lookup. */
-export function CompanySelect({ ownerId, value, onChange, disabled }: {
-  ownerId: string; value: string | null; onChange: (companyId: string | null, companyName: string) => void; disabled?: boolean;
+/** Company picker, scoped to the companies assigned to `projectId`.
+ *
+ *  Companies live in one account-wide master list so a firm is entered once
+ *  and reused across projects, but a contract, contact or instruction must
+ *  only ever point at a company that actually works on *this* project —
+ *  otherwise the picker offers every company on the account and the records
+ *  of unrelated projects get mixed together.
+ *
+ *  Creating from here still creates one master company, then assigns it to
+ *  the current project, so the new firm is immediately pickable without
+ *  becoming a duplicate record. */
+export function CompanySelect({ ownerId, projectId, value, onChange, disabled }: {
+  ownerId: string; projectId: string | undefined;
+  value: string | null; onChange: (companyId: string | null, companyName: string) => void; disabled?: boolean;
 }) {
   const { t } = useCMLang();
   const qc = useQueryClient();
-  const { data: companies } = useCMCompanies(ownerId);
+  const { data: assigned } = useCMProjectCompanies(projectId);
+
+  const companies = (assigned ?? []).map((a) => a.company).filter(Boolean);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["cm_project_companies", projectId] });
+    qc.invalidateQueries({ queryKey: ["cm_companies", ownerId] });
+  };
 
   const handleChange = (v: string) => {
-    const match = companies?.find((c) => c.id === v);
+    const match = companies.find((c) => c.id === v);
     onChange(v || null, match?.name ?? "");
   };
   const handleCreate = async (name: string) => {
     const created = await createCMCompany(ownerId, name);
-    qc.invalidateQueries({ queryKey: ["cm_companies", ownerId] });
+    if (projectId) await addCMProjectCompany(ownerId, projectId, created.id, null);
+    invalidate();
     onChange(created.id, created.name);
   };
 
@@ -699,11 +720,11 @@ export function CompanySelect({ ownerId, value, onChange, disabled }: {
       value={value ?? ""}
       onChange={handleChange}
       onCreateCustom={handleCreate}
-      disabled={disabled}
+      disabled={disabled || !projectId}
       searchable
       allowCustom
-      placeholder={t("directory.company")}
-      options={(companies ?? []).map((c) => ({ value: c.id, label: c.name }))}
+      placeholder={projectId ? t("directory.company") : t("common.createProjectFirst")}
+      options={companies.map((c) => ({ value: c.id, label: c.name }))}
     />
   );
 }
@@ -1380,13 +1401,16 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
   const [editTarget, setEditTarget] = useState<number | null>(editIndex);
   const editing = editTarget != null ? rows[editTarget] : undefined;
   const [company, setCompany] = useState(editing?.company ?? "");
-  // Resolve the stored company *name* (all this row keeps) back to an id
-  // for CompanySelect's controlled value — it's owner-scoped like Contracts/
-  // Instructions use, so "+ Create" here writes a real cm_companies row
-  // (visible in Project Settings > Companies) instead of a one-off string
-  // only this row remembers.
-  const { data: companies } = useCMCompanies(ownerId);
-  const companyId = useMemo(() => companies?.find((c) => c.name === company)?.id ?? null, [companies, company]);
+  // Resolve the stored company *name* (all this row keeps) back to an id for
+  // CompanySelect's controlled value. Scoped to the companies assigned to
+  // this project, like Contracts/Instructions, so a manpower row can't name
+  // a company from an unrelated project; "+ Create" still writes a real
+  // cm_companies row and assigns it here.
+  const { data: assignedCompanies } = useCMProjectCompanies(projectId);
+  const companyId = useMemo(
+    () => assignedCompanies?.find((a) => a.company?.name === company)?.company_id ?? null,
+    [assignedCompanies, company],
+  );
   const [trade, setTrade] = useState(editing?.trade ?? "");
   const [category, setCategory] = useState(editing?.category ?? "");
   const [count, setCount] = useState(editing ? String(editing.count) : "");
@@ -1452,7 +1476,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 px-6 pb-8 pt-2">
         <div className="flex flex-col gap-1">
           <span className={fieldLabel}>{t("siteDiary.company")}</span>
-          <CompanySelect ownerId={ownerId} value={companyId} onChange={(_id, name) => setCompany(name)} disabled={saving} />
+          <CompanySelect ownerId={ownerId} projectId={projectId} value={companyId} onChange={(_id, name) => setCompany(name)} disabled={saving} />
         </div>
         <div className="flex flex-col gap-1">
           <span className={fieldLabel}>{t("siteDiary.trade")}</span>

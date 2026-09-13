@@ -149,11 +149,11 @@ export function NewInstructionSheet({ ownerId, projectId, contractId, existing, 
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("instructions.sourceCompany")}</span>
-              <CompanySelect ownerId={ownerId} value={sourceCompanyId} onChange={(id) => setSourceCompanyId(id)} disabled={saving} />
+              <CompanySelect ownerId={ownerId} projectId={projectId} value={sourceCompanyId} onChange={(id) => setSourceCompanyId(id)} disabled={saving} />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("instructions.recipientCompany")}</span>
-              <CompanySelect ownerId={ownerId} value={recipientCompanyId} onChange={(id) => setRecipientCompanyId(id)} disabled={saving} />
+              <CompanySelect ownerId={ownerId} projectId={projectId} value={recipientCompanyId} onChange={(id) => setRecipientCompanyId(id)} disabled={saving} />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("instructions.recipientNote")}</span>
