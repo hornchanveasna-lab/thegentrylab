@@ -53,7 +53,7 @@ function Field({
   );
 }
 
-export default function ProfilePage() {
+function ProfilePage() {
   useSmoothScroll();
   const { user } = useAuth();
   const navigate = useNavigate();

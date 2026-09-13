@@ -18,7 +18,7 @@ export const Route = createFileRoute("/credits")({
   component: CreditsPage,
 });
 
-export default function CreditsPage() {
+function CreditsPage() {
   useSmoothScroll();
   const { user } = useAuth();
   const { credits, loading, refresh } = useCredits();

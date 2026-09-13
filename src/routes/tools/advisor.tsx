@@ -6,7 +6,7 @@ import { TopNav } from "@/components/site/TopNav";
 import { useSmoothScroll } from "@/components/site/Counter";
 import { useCredits } from "@/lib/credits";
 import { toDropdownProvince } from "@/lib/geoLookup";
-import PptxGenJS from "pptxgenjs";
+import type PptxGenJSType from "pptxgenjs";
 import heroBlueprintImg from "@/assets/hero-blueprint.jpg";
 import principalPortraitImg from "@/assets/principal-portrait.jpg";
 import { QRCodeSVG } from "qrcode.react";
@@ -3021,7 +3021,7 @@ function HistoryView({
 }
 
 /* ── Main page ──────────────────────────────────────────── */
-export default function AdvisorPage() {
+function AdvisorPage() {
   useSmoothScroll();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>("select");
@@ -3210,7 +3210,11 @@ export default function AdvisorPage() {
 
   async function downloadAsPPT() {
     if (!selectedBrief || !output) return;
-    const pptx = new PptxGenJS();
+    // pptxgenjs is ~500 KB and was landing in the entry chunk, so every
+    // visitor — including the CM app on site data — paid for a slide
+    // generator only this button uses. Loaded on click instead.
+    const { default: PptxGenJS } = await import("pptxgenjs");
+    const pptx: PptxGenJSType = new PptxGenJS();
     pptx.layout = "LAYOUT_WIDE";
     pptx.title = selectedBrief.title;
     pptx.company = "The Gentry Lab";

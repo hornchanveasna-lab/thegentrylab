@@ -46,7 +46,7 @@ const BENEFITS = [
   },
 ];
 
-export default function LoginPage() {
+function LoginPage() {
   const { user, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
