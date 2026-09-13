@@ -5,7 +5,8 @@ import { Footer } from "@/components/site/Footer";
 import { useSmoothScroll, useReveal } from "@/components/site/Counter";
 import { useMapSites } from "@/lib/data";
 import type { MapSite } from "@/data/platform";
-import { generateSezDocx } from "@/lib/exportSezDocx";
+// `docx` is ~1 MB and only needed if someone actually clicks Download as Word,
+// so the exporter is pulled in on click rather than bundled into the entry.
 
 export const Route = createFileRoute("/research/sez-landscape-2026")({
   head: () => ({
@@ -106,7 +107,10 @@ function SezLandscapeBrief() {
               Download as PDF
             </button>
             <button
-              onClick={() => generateSezDocx(stats)}
+              onClick={async () => {
+                const { generateSezDocx } = await import("@/lib/exportSezDocx");
+                await generateSezDocx(stats);
+              }}
               className="inline-flex items-center gap-2 px-5 py-2.5 font-mono text-[10px] uppercase tracking-widest border border-white/15 text-white/70 hover:text-white hover:border-white/30 transition-colors"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6M9 9h1"/></svg>

@@ -60,7 +60,7 @@ function RadioGroup<T extends string>({ label, options, value, onChange }: {
   );
 }
 
-export default function SettingsPage() {
+function SettingsPage() {
   useSmoothScroll();
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
