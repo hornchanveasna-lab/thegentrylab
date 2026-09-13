@@ -876,15 +876,10 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
   const pad = 16 * scale;
   const monotoneColor = opts.monotoneLogos ? "#ffffff" : undefined;
 
-  const fillShadowedText = (text: string, x: number, y: number) => {
-    ctx.shadowColor = "rgba(0,0,0,0.9)";
-    ctx.shadowBlur = 6 * scale;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 1 * scale;
+  /** Draws stamp text flat, with no drop shadow. Kept as a single helper so
+   *  every stamp label (project info, date, time) stays visually identical. */
+  const fillStampText = (text: string, x: number, y: number) => {
     ctx.fillText(text, x, y);
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
   };
 
   if (opts.showCompanyLogo && opts.companyLogoUrl) {
@@ -913,7 +908,7 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
       for (const l of lines) {
         ctx.font = `${l.weight} ${l.fontSize}px sans-serif`;
         ctx.fillStyle = "#fff";
-        fillShadowedText(l.text, pad, ly);
+        fillStampText(l.text, pad, ly);
         ly += l.fontSize + lineGap;
       }
     }
@@ -960,20 +955,21 @@ export async function stampPhoto(file: File, opts: StampPhotoOptions): Promise<F
     hours = hours % 12 || 12;
     const timeStr = `${String(hours).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")} ${ampm}`;
 
-    const dateFontSize = 16 * scale;
-    const timeFontSize = 14 * scale;
+    // Date and time share one size so the block reads as a single label
+    // rather than a heading with a subtitle.
+    const stampFontSize = 14 * scale;
     const lineGap = 3 * scale;
 
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
     let y = canvas.height - pad;
-    ctx.font = `500 ${timeFontSize}px sans-serif`;
+    ctx.font = `500 ${stampFontSize}px sans-serif`;
     ctx.fillStyle = "rgba(255,255,255,0.9)";
-    fillShadowedText(timeStr, canvas.width - pad, y);
-    y -= timeFontSize + lineGap;
-    ctx.font = `700 ${dateFontSize}px sans-serif`;
+    fillStampText(timeStr, canvas.width - pad, y);
+    y -= stampFontSize + lineGap;
+    ctx.font = `700 ${stampFontSize}px sans-serif`;
     ctx.fillStyle = "#fff";
-    fillShadowedText(dateStr, canvas.width - pad, y);
+    fillStampText(dateStr, canvas.width - pad, y);
   }
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
