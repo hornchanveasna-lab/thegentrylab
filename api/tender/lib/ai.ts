@@ -43,9 +43,11 @@ export async function callClaude(opts: {
   });
 
   if (!res.ok) throw new Error(`Claude API error ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  const toolUse = (data.content as Array<{ type: string; input?: Record<string, unknown> }> | undefined)
-    ?.find((b) => b.type === "tool_use");
+  const data = await res.json() as {
+    content?: Array<{ type: string; input?: Record<string, unknown> }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
+  const toolUse = data.content?.find((b) => b.type === "tool_use");
   if (!toolUse?.input) throw new Error("Claude did not return a structured tool call");
 
   return {
