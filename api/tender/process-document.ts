@@ -9,7 +9,11 @@
  */
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { extractByFileType, chunkSections, unzipEntries, unrarEntries } from "./lib/extract.js";
-import { callClaude, SOURCE_OF_TRUTH_RULE, type ClaudeToolSchema } from "./lib/ai.js";
+import { callClaude, type ClaudeToolSchema } from "./lib/ai.js";
+import {
+  extractRequirementsFromChunks, CATEGORY_TO_CHECKLIST_SECTION,
+  type RequirementChunk,
+} from "./lib/requirements.js";
 import {
   getTenderEnv, getAuthedUserId, authorizeTenderAccess, sbGet, sbPatch, sbPost,
   downloadStorageObject, uploadStorageObject, type TenderEnv,
@@ -323,90 +327,22 @@ async function expandAndProcessArchive(env: TenderEnv, apiKey: string, orgId: st
  * Mandatory requirements become checklist items automatically. Idempotent
  * per document via tender_documents.requirements_extracted_at. */
 
-const REQUIREMENT_CATEGORIES = [
-  "administrative", "legal", "commercial", "technical", "financial", "planning", "design",
-  "construction", "qaqc", "hse", "environmental", "procurement", "personnel", "equipment",
-  "experience", "insurance", "bond", "warranty", "subcontracting", "pricing", "tender_forms",
-] as const;
-
-/** Maps a requirement's category to the checklist section it belongs
- *  under (CHECKLIST_SECTIONS in src/lib/tender-data.ts has fewer, broader
- *  buckets than the requirement categories do). */
-const CATEGORY_TO_CHECKLIST_SECTION: Record<string, string> = {
-  administrative: "administrative", legal: "administrative", tender_forms: "administrative",
-  commercial: "commercial", financial: "commercial", procurement: "commercial",
-  insurance: "commercial", bond: "commercial", subcontracting: "commercial", pricing: "commercial",
-  technical: "technical", design: "technical", construction: "technical", warranty: "technical",
-  planning: "planning",
-  qaqc: "qaqc",
-  hse: "hse", environmental: "hse",
-  personnel: "personnel",
-  equipment: "equipment",
-  experience: "company_qualification",
-};
-
-interface ChunkRow {
-  id: string;
-  content: string;
-  page_number: number | null;
-  section_label: string | null;
-}
-
-const EXTRACT_REQUIREMENTS_TOOL: ClaudeToolSchema = {
-  name: "extract_requirements",
-  description: "Extract every discrete requirement the client is asking bidders to comply with or submit, from the given document excerpt.",
-  input_schema: {
-    type: "object",
-    properties: {
-      requirements: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            requirement_code: { type: "string", description: "A short reference, e.g. the clause number if visible in the text (\"ITT-4.2\"), otherwise a short slug you invent from the section heading." },
-            category: { type: "string", enum: REQUIREMENT_CATEGORIES },
-            description: { type: "string", description: "One or two sentences stating exactly what the bidder must do, provide, or comply with." },
-            is_mandatory: { type: "boolean", description: "True only if the text uses mandatory language (must/shall/required) — false for optional/preferred items." },
-            ai_confidence: { type: "string", enum: ["high", "medium", "low"] },
-            page_number: { type: ["number", "null"] },
-            section_label: { type: ["string", "null"] },
-            quoted_text: { type: "string", description: "The exact sentence(s) from the source text this requirement is drawn from." },
-          },
-          required: ["requirement_code", "category", "description", "is_mandatory", "ai_confidence", "quoted_text"],
-        },
-      },
-    },
-    required: ["requirements"],
-  },
-};
-
-const EXTRACT_REQUIREMENTS_SYSTEM = `You extract discrete, actionable requirements from a construction tender document for a bidder preparing their submission. ${SOURCE_OF_TRUTH_RULE} Only extract things the bidder must DO, PROVIDE, SUBMIT, or COMPLY WITH — skip narrative/background text, project descriptions, and anything that isn't an instruction to the bidder. Merge near-duplicate requirements from the same clause into one. If the excerpt has no extractable requirements, return an empty array.`;
-
-const MAX_REQUIREMENTS_INPUT_CHARS = 40_000;
-
 async function extractDocumentRequirements(env: TenderEnv, apiKey: string, doc: TenderDocumentRow): Promise<{ count: number; error?: string }> {
-  const chunks = await sbGet<ChunkRow>(env, `tender_document_chunks?document_id=eq.${doc.id}&select=id,content,page_number,section_label&order=chunk_index.asc`);
+  const chunks = await sbGet<RequirementChunk>(env, `tender_document_chunks?document_id=eq.${doc.id}&select=content,page_number,section_label&order=chunk_index.asc`);
   if (chunks.length === 0) return { count: 0 };
 
-  const text = chunks
-    .map((c) => `[Page ${c.page_number ?? "?"}${c.section_label ? ` — ${c.section_label}` : ""}]\n${c.content}`)
-    .join("\n\n")
-    .slice(0, MAX_REQUIREMENTS_INPUT_CHARS);
-
+  // Prompt, schema and the input-assembly/cap live in lib/requirements.ts so
+  // the eval harness (evals/tender/) exercises exactly this call rather than
+  // a drifting copy. Everything below is the database half.
   let result;
   try {
-    result = await callClaude({
-      apiKey, system: EXTRACT_REQUIREMENTS_SYSTEM,
-      userMessage: `Document: "${doc.file_name}"\n\n${text}`,
-      tool: EXTRACT_REQUIREMENTS_TOOL, maxTokens: 8192,
-    });
+    result = await extractRequirementsFromChunks({ apiKey, fileName: doc.file_name, chunks });
   } catch (err) {
     return { count: 0, error: err instanceof Error ? err.message : String(err) };
   }
 
-  const items = Array.isArray(result.input.requirements) ? result.input.requirements as Record<string, unknown>[] : [];
   let inserted = 0;
-  for (const item of items) {
+  for (const item of result.requirements) {
     try {
       const [reqRow] = await sbPost<{ id: string }[]>(env, "tender_requirements", {
         tender_id: doc.tender_id,
@@ -425,7 +361,7 @@ async function extractDocumentRequirements(env: TenderEnv, apiKey: string, doc: 
         quoted_text: item.quoted_text ?? null,
       });
       if (item.is_mandatory) {
-        const section = CATEGORY_TO_CHECKLIST_SECTION[item.category as string] ?? "administrative";
+        const section = CATEGORY_TO_CHECKLIST_SECTION[item.category] ?? "administrative";
         await sbPost(env, "tender_checklist_items", {
           tender_id: doc.tender_id,
           requirement_id: reqRow.id,

@@ -35,3 +35,9 @@ validation-results.json
 
 .vercel
 .env*
+
+# TenderAI eval fixtures — real tender packages are confidential client
+# material. Only the synthetic sample is committed; add real ones locally.
+evals/tender/fixtures/*
+!evals/tender/fixtures/sample-itt/
+evals/tender/results/
