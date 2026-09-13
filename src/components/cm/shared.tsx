@@ -17,9 +17,9 @@ import {
 import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import { type ResolvedSetting } from "@/lib/cm-settings";
 
-export const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:bg-white/[0.07] focus:border-[color:var(--color-brand-accent)]/70 focus:ring-2 focus:ring-[color:var(--color-brand-accent)]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)] transition-all";
-export const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
-const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-white/5 hover:bg-white/[0.08] rounded-xl border border-white/15 px-3.5 py-3 text-[13px] text-white disabled:opacity-40 transition-all focus:bg-white/[0.07] focus:border-[color:var(--color-brand-accent)]/70 focus:ring-2 focus:ring-[color:var(--color-brand-accent)]/15 focus:shadow-[0_0_0_4px_rgba(255,81,0,0.08)]";
+export const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder:text-text-subtle focus:outline-none focus:border-[color:var(--color-brand-accent)]/70 focus:ring-2 focus:ring-[color:var(--color-brand-accent)]/15 transition-all";
+export const labelCls = "text-[11px] font-medium text-text-muted";
+const fieldSelectTriggerCls = "w-full flex items-center justify-between gap-2 bg-surface-2 hover:bg-surface-3 rounded-xl border border-border px-3.5 py-3 text-[13px] text-text-primary disabled:opacity-40 transition-all focus:border-[color:var(--color-brand-accent)]/70 focus:ring-2 focus:ring-[color:var(--color-brand-accent)]/15";
 
 export interface FieldSelectOption<T extends string> {
   value: T;
@@ -127,14 +127,14 @@ export function StatusBadge({ label, color, size = "xs", variant = "pill" }: {
 }) {
   if (variant === "dot") {
     return (
-      <span className={`inline-flex items-center gap-1.5 font-mono uppercase tracking-widest shrink-0 ${size === "xs" ? "text-[9px]" : "text-[10px]"}`} style={{ color }}>
+      <span className={`inline-flex items-center gap-1.5 font-medium shrink-0 ${size === "xs" ? "text-[11px]" : "text-[12px]"}`} style={{ color }}>
         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
         {label}
       </span>
     );
   }
   return (
-    <span className={`px-2.5 py-1 rounded-full font-mono uppercase tracking-widest shrink-0 ${size === "xs" ? "text-[9px]" : "text-[10px]"}`}
+    <span className={`px-2.5 py-1 rounded-full font-medium shrink-0 ${size === "xs" ? "text-[11px]" : "text-[12px]"}`}
       style={{ backgroundColor: `${color}15`, color }}>
       {label}
     </span>
@@ -146,8 +146,8 @@ export const PriorityBadge = StatusBadge;
  *  instead of each one duplicating the same markup. */
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-      <p className="text-white/40 text-sm">{message}</p>
+    <div className="rounded-2xl border border-dashed border-border py-16 flex items-center justify-center text-center px-4">
+      <p className="text-text-muted text-sm">{message}</p>
     </div>
   );
 }
@@ -200,7 +200,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   return (
     <div className="rounded-2xl border border-dashed border-red-400/20 py-16 flex flex-col items-center justify-center gap-3 text-center px-4">
       <p className="text-red-400/70 text-sm">{message}</p>
-      {onRetry && <button onClick={onRetry} className="font-mono text-[10px] uppercase tracking-widest text-white/50 hover:text-white/80">{t("common.retry")}</button>}
+      {onRetry && <button onClick={onRetry} className="text-[12px] font-medium text-text-muted hover:text-text-primary">{t("common.retry")}</button>}
     </div>
   );
 }
@@ -213,12 +213,12 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
   const { t } = useCMLang();
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm px-6" onClick={onCancel}>
-      <div className="w-full max-w-xs bg-[#141415] rounded-3xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
-        <p className="text-[13px] text-white/80 text-center">{message}</p>
+      <div className="w-full max-w-xs bg-surface-1 border border-border rounded-3xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+        <p className="text-[13px] text-text-primary text-center">{message}</p>
         <div className="flex gap-2">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10">{t("common.cancel")}</button>
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-[13px] font-medium bg-surface-2 text-text-muted hover:bg-surface-3">{t("common.cancel")}</button>
           <button onClick={onConfirm}
-            className={`flex-1 py-2.5 rounded-xl text-[12px] font-mono uppercase tracking-widest ${destructive ? "text-red-400 bg-red-500/10 hover:bg-red-500/15" : ""}`}
+            className={`flex-1 py-2.5 rounded-xl text-[13px] font-medium ${destructive ? "text-red-400 bg-red-500/10 hover:bg-red-500/15" : ""}`}
             style={destructive ? undefined : { backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>
             {confirmLabel}
           </button>
@@ -238,7 +238,7 @@ export function Card({ title, action, children, icon, iconColor = "var(--color-b
   icon?: React.ReactNode; iconColor?: string;
 }) {
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] p-5 shadow-[var(--shadow-sm)]">
+    <div className="rounded-2xl bg-surface-1 border border-border p-5 shadow-[var(--shadow-sm)]">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           {icon && (
@@ -247,13 +247,45 @@ export function Card({ title, action, children, icon, iconColor = "var(--color-b
               {icon}
             </span>
           )}
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 font-bold">{title}</p>
+          <p className="text-[11px] font-semibold text-text-muted">{title}</p>
         </div>
         {action}
       </div>
       {children}
     </div>
   );
+}
+
+/** A single tappable list row — icon badge, label, optional trailing count,
+ *  and a chevron. Codifies the row shape every module was hand-rolling as
+ *  its own `CategoryRow`/`LogCard`-style component (site-diary, manpower,
+ *  punch-list, instructions, ...) into one shared primitive. Distinct from
+ *  `Card` on purpose: `Card` wraps an arbitrary section body, `ListRow` is
+ *  always exactly one tappable line — different enough shapes that forcing
+ *  both through one component with a variant prop would make `Card`'s props
+ *  ambiguous about what `children` means. */
+export function ListRow({ icon, label, count, iconColor = "var(--color-brand-accent)", onClick, to }: {
+  icon?: React.ReactNode; label: string; count?: number | string; iconColor?: string;
+  onClick?: () => void; to?: string;
+}) {
+  const content = (
+    <>
+      {icon && (
+        <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 bg-surface-2"
+          style={{ color: iconColor }}>
+          {icon}
+        </span>
+      )}
+      <span className="flex-1 text-[14px] font-medium text-text-primary truncate">{label}</span>
+      {count !== undefined && <span className="font-mono text-[12px] text-text-muted shrink-0">{count}</span>}
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-text-subtle shrink-0">
+        <path d="M6 3l5 5-5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </>
+  );
+  const cls = "w-full bg-surface-1 border border-border shadow-[var(--shadow-sm)] hover:bg-surface-2 rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left transition-colors";
+  if (to) return <Link to={to} className={cls}>{content}</Link>;
+  return <button onClick={onClick} className={cls}>{content}</button>;
 }
 
 /** A single-value progress ring — hand-rolled SVG rather than a recharts
@@ -282,8 +314,8 @@ export function CircularProgress({ value, size = 96, strokeWidth = 8, gradient =
             <stop offset="100%" style={{ stopColor: color ?? "var(--color-brand-accent)" }} />
           </linearGradient>
         </defs>
-        <circle cx={c} cy={c} r={r} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-white/8" />
-        <circle cx={c} cy={c} r={r} fill="none" stroke={gradient ? `url(#${gradId})` : (color ?? "#ff5100")}
+        <circle cx={c} cy={c} r={r} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-border" />
+        <circle cx={c} cy={c} r={r} fill="none" stroke={gradient ? `url(#${gradId})` : (color ?? "var(--color-brand-accent)")}
           strokeWidth={strokeWidth} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
           style={{ transition: "stroke-dashoffset 0.6s ease" }} />
         {secondaryAngle != null && (
@@ -293,7 +325,7 @@ export function CircularProgress({ value, size = 96, strokeWidth = 8, gradient =
         )}
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        {label ?? <span className="text-[20px] font-extrabold text-white">{clamped.toFixed(0)}%</span>}
+        {label ?? <span className="text-[20px] font-extrabold text-text-primary">{clamped.toFixed(0)}%</span>}
       </div>
     </div>
   );
@@ -301,7 +333,7 @@ export function CircularProgress({ value, size = 96, strokeWidth = 8, gradient =
 
 /** Small decorative trend line for card corners — hand-rolled SVG
  *  polyline, no axes/tooltip, not a real chart. */
-export function Sparkline({ data, width = 64, height = 22, color = "#ff5100" }: {
+export function Sparkline({ data, width = 64, height = 22, color = "var(--color-brand-accent)" }: {
   data: number[]; width?: number; height?: number; color?: string;
 }) {
   if (data.length < 2) return null;
@@ -340,26 +372,26 @@ export function StringListEditor({ label, hint, values, onChange, canEdit }: {
   return (
     <div className="flex flex-col gap-2">
       <span className={labelCls}>{label}</span>
-      {hint && <p className="text-[12px] text-white/45">{hint}</p>}
+      {hint && <p className="text-[12px] text-text-muted">{hint}</p>}
       <div className="flex flex-wrap gap-1.5">
         {values.map((v) => (
-          <span key={v} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[10px] bg-white/5 text-white/60">
+          <span key={v} className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full text-[12px] bg-surface-2 text-text-muted">
             {v}
             {canEdit && (
               <button type="button" onClick={() => onChange(values.filter((x) => x !== v))}
-                className="text-white/25 hover:text-red-400 w-4 h-4 rounded-full flex items-center justify-center">×</button>
+                className="text-text-subtle hover:text-red-400 w-4 h-4 rounded-full flex items-center justify-center">×</button>
             )}
           </span>
         ))}
-        {values.length === 0 && <p className="text-white/30 text-[12px]">{t("projectSettings.none")}</p>}
+        {values.length === 0 && <p className="text-text-subtle text-[12px]">{t("projectSettings.none")}</p>}
       </div>
       {canEdit && (
         <div className="flex gap-2">
           <input className={inputCls} value={draft} onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
           <button type="button" onClick={add} disabled={!draft.trim()}
-            className="px-4 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest shrink-0 disabled:opacity-40"
-            style={{ backgroundColor: "#ff5100", color: "#000" }}>
+            className="px-4 py-1.5 rounded-full text-[12px] font-semibold shrink-0 disabled:opacity-40 text-white"
+            style={{ backgroundColor: "var(--color-brand-accent)" }}>
             {t("common.add")}
           </button>
         </div>
@@ -379,20 +411,20 @@ export function AccordionSection({ title, badge, open, onToggle, children }: {
   title: string; badge?: React.ReactNode; open: boolean; onToggle: () => void; children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden">
+    <div className="rounded-2xl bg-surface-1 border border-border overflow-hidden">
       <button type="button" onClick={onToggle}
-        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
-        <span className="text-[13px] text-white/80 font-medium">{title}</span>
+        className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface-2 transition-colors">
+        <span className="text-[13px] text-text-primary font-medium">{title}</span>
         <div className="flex items-center gap-2 shrink-0">
           {badge}
-          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25 transition-transform"
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-text-subtle transition-transform"
             style={{ transform: open ? "rotate(90deg)" : undefined }}>
             <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
       </button>
       {open && (
-        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
+        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-border pt-4">
           {children}
         </div>
       )}
@@ -408,7 +440,7 @@ export function Avatar({ name, photoUrl, size = 32 }: { name: string; photoUrl?:
     return <img src={photoUrl} alt="" className="rounded-full object-cover shrink-0" style={{ width: size, height: size }} />;
   }
   return (
-    <div className="rounded-full bg-white/10 flex items-center justify-center shrink-0 text-white/50"
+    <div className="rounded-full bg-surface-2 flex items-center justify-center shrink-0 text-text-muted"
       style={{ width: size, height: size, fontSize: size * 0.34 }}>
       {(name || "?").charAt(0).toUpperCase()}
     </div>
@@ -436,19 +468,19 @@ export function RepeatingRows<T>({ label, addLabel, rows, onChange, emptyRow, re
     <div className="flex flex-col gap-2">
       <span className={labelCls}>{label}</span>
       {rows.map((row, i) => (
-        <div key={i} className="relative rounded-xl bg-white/3 p-3 pr-9">
+        <div key={i} className="relative rounded-xl bg-surface-2 p-3 pr-9">
           {renderRow(row, (patch) => updateRow(i, patch))}
           {confirmIndex === i ? (
             <button type="button" onClick={() => removeRow(i)}
-              className="absolute top-2 right-2 font-mono text-[9px] uppercase tracking-widest text-red-400 px-1.5 py-1">{t("common.delete")}</button>
+              className="absolute top-2 right-2 text-[12px] font-medium text-red-400 px-1.5 py-1">{t("common.delete")}</button>
           ) : (
             <button type="button" onClick={() => setConfirmIndex(i)}
-              className="absolute top-1 right-1 text-white/25 hover:text-red-400 w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/5 text-[15px]">×</button>
+              className="absolute top-1 right-1 text-text-subtle hover:text-red-400 w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-3 text-[15px]">×</button>
           )}
         </div>
       ))}
       <button type="button" onClick={() => onChange([...rows, emptyRow])}
-        className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{addLabel}</button>
+        className="self-start text-[12px] font-semibold" style={{ color: "var(--color-brand-accent)" }}>{addLabel}</button>
     </div>
   );
 }
@@ -548,28 +580,28 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
       {open && (
         <div className={`absolute z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl ${openUpward ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} ${menuClassName ?? "left-0 right-0"}`}>
             {searchable && (
-              <div className="p-2 border-b border-white/6">
+              <div className="p-2 border-b border-border">
                 <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder}
-                  className="w-full bg-white/5 rounded-lg border border-white/10 px-3 py-2 text-[12px] text-white placeholder-white/25 focus:outline-none focus:border-[#ff5100]/60" />
+                  className="w-full bg-surface-2 rounded-lg border border-border px-3 py-2 text-[12px] text-text-primary placeholder:text-text-subtle focus:outline-none focus:border-[color:var(--color-brand-accent)]/60" />
               </div>
             )}
             <div className="max-h-72 overflow-y-auto" style={menuMaxHeight != null ? { maxHeight: menuMaxHeight } : undefined}>
               {visibleOptions.length === 0 && !showCreateRow && (
-                <p className="px-4 py-3 text-[12px] text-white/30">—</p>
+                <p className="px-4 py-3 text-[12px] text-text-subtle">—</p>
               )}
               {showCreateRow && (
                 <button type="button" onClick={handleCreate}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6"
-                  style={{ color: "#ff5100" }}>
+                  className="w-full flex items-center gap-2 px-4 py-3 text-left hover:bg-surface-2 transition-colors border-b border-border"
+                  style={{ color: "var(--color-brand-accent)" }}>
                   <span className="text-[13px] truncate">{t("people.createCompany", { name: trimmedSearch })}</span>
                 </button>
               )}
               {visibleOptions.map((opt) => (
                 <button key={opt.value} type="button" onClick={() => { onChange(opt.value); setOpen(false); setSearch(""); }}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
-                  <span className="text-[13px] text-white/85 truncate">{opt.label}</span>
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-2 transition-colors border-b border-border last:border-b-0">
+                  <span className="text-[13px] text-text-primary truncate">{opt.label}</span>
                   {opt.value === value && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                       <path d="M4 12.5l5 5L20 6" />
                     </svg>
                   )}
@@ -748,7 +780,7 @@ export function BackButton({ onClick, to }: { onClick?: () => void; to?: string 
       <path d="M10 3L5 8l5 5" />
     </svg>
   );
-  const cls = "w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0";
+  const cls = "w-9 h-9 rounded-full flex items-center justify-center bg-surface-1 border border-border hover:bg-surface-2 transition-colors shrink-0 text-text-primary";
   if (to) return <Link to={to} className={cls}>{content}</Link>;
   return <button onClick={onClick} className={cls}>{content}</button>;
 }
@@ -789,11 +821,11 @@ export function ToggleRow({ icon, label, checked, disabled, onChange }: {
 }) {
   return (
     <button type="button" onClick={() => onChange(!checked)} disabled={disabled}
-      className="w-full flex items-center gap-3.5 px-4 py-3 text-left hover:bg-white/5 transition-colors disabled:opacity-40">
-      <span className="text-white/70 shrink-0">{icon}</span>
-      <span className="min-w-0 flex-1 text-[14px] text-white/90">{label}</span>
+      className="w-full flex items-center gap-3.5 px-4 py-3 text-left hover:bg-surface-2 transition-colors disabled:opacity-40">
+      <span className="text-text-muted shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1 text-[14px] text-text-primary">{label}</span>
       <span role="switch" aria-checked={checked} className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors ${checked ? "" : "menu-track-off"}`}
-        style={checked ? { backgroundColor: "#ff5100" } : undefined}>
+        style={checked ? { backgroundColor: "var(--color-brand-accent)" } : undefined}>
         <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
           style={{ transform: checked ? "translateX(20px)" : "translateX(2px)" }} />
       </span>
@@ -810,10 +842,10 @@ export function SelectRow<T extends string>({ icon, label, value, options, disab
 }) {
   return (
     <div className="w-full flex items-center gap-3.5 px-4 py-3">
-      <span className="text-white/70 shrink-0">{icon}</span>
-      <span className="min-w-0 flex-1 text-[14px] text-white/90">{label}</span>
+      <span className="text-text-muted shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1 text-[14px] text-text-primary">{label}</span>
       <FieldSelect value={value} onChange={onChange} options={options} disabled={disabled}
-        triggerClassName="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-white/85 bg-white/8 whitespace-nowrap"
+        triggerClassName="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-text-primary bg-surface-2 whitespace-nowrap"
         menuClassName="left-auto right-0 w-44" />
     </div>
   );
@@ -834,18 +866,18 @@ export function SettingControlRow<T extends string | boolean>({ icon, label, res
   const isBoolean = typeof resolved.value === "boolean";
   return (
     <div className="w-full flex items-center gap-3 px-4 py-3">
-      <span className="text-white/70 shrink-0">{icon}</span>
+      <span className="text-text-muted shrink-0">{icon}</span>
       <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-        <span className="text-[14px] text-white/90 truncate">{label}</span>
+        <span className="text-[14px] text-text-primary truncate">{label}</span>
         {resolved.isOverridden && (
-          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">
+          <span className="text-[11px] font-medium text-text-subtle">
             {resolved.source === "module" ? t("settingsEngine.sourceModule") : t("settingsEngine.sourceGlobal")}
           </span>
         )}
       </div>
       {resolved.isOverridden && (
         <button type="button" onClick={onReset} disabled={disabled} aria-label={t("settingsEngine.resetToDefault")}
-          className="shrink-0 text-white/25 hover:text-white/60 disabled:opacity-40 transition-colors">
+          className="shrink-0 text-text-subtle hover:text-text-primary disabled:opacity-40 transition-colors">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" />
           </svg>
@@ -855,13 +887,13 @@ export function SettingControlRow<T extends string | boolean>({ icon, label, res
         <button type="button" role="switch" aria-checked={resolved.value as boolean} disabled={disabled}
           onClick={() => onChange(!resolved.value as T)}
           className={`w-10 h-[22px] rounded-full relative shrink-0 transition-colors disabled:opacity-40 ${resolved.value ? "" : "menu-track-off"}`}
-          style={resolved.value ? { backgroundColor: "#ff5100" } : undefined}>
+          style={resolved.value ? { backgroundColor: "var(--color-brand-accent)" } : undefined}>
           <span className="absolute top-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform"
             style={{ transform: resolved.value ? "translateX(20px)" : "translateX(2px)" }} />
         </button>
       ) : (
         <FieldSelect value={resolved.value as Extract<T, string>} onChange={(v) => onChange(v as T)} options={options ?? []} disabled={disabled}
-          triggerClassName="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-mono text-white/85 bg-white/8 whitespace-nowrap"
+          triggerClassName="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium text-text-primary bg-surface-2 whitespace-nowrap"
           menuClassName="left-auto right-0 w-44" />
       )}
     </div>
@@ -895,7 +927,7 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
   const menuRef = useClickOutside<HTMLDivElement>(showMenu, () => setShowMenu(false));
 
   return (
-    <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
+    <div className="sticky top-0 z-30 bg-background pt-6 pb-4 flex items-center gap-3">
       <BackButton to="/cm" />
       {showSearch ? (
         <input
@@ -903,15 +935,15 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={searchPlaceholder ?? t("common.search")}
-          className="flex-1 min-w-0 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2 text-[14px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+          className="flex-1 min-w-0 bg-surface-2 rounded-xl border border-border px-3.5 py-2 text-[14px] text-text-primary placeholder:text-text-subtle focus:outline-none focus:border-[color:var(--color-brand-accent)]/60 transition-colors"
         />
       ) : (
-        <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
+        <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{title}</h1>
       )}
       {extraAction}
       <button type="button" aria-label={t("common.search")}
         onClick={() => setShowSearch((v) => { const next = !v; if (!next) onSearchChange(""); return next; })}
-        className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0">
+        className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-1 border border-border hover:bg-surface-2 transition-colors text-text-muted hover:text-text-primary shrink-0">
         {showSearch ? (
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
         ) : (
@@ -920,30 +952,30 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
       </button>
       <div ref={menuRef} className="relative shrink-0">
         <button type="button" aria-label={t("common.sort")} onClick={() => setShowMenu((v) => !v)}
-          className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+          className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-1 border border-border hover:bg-surface-2 transition-colors text-text-muted hover:text-text-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
         </button>
         {showMenu && (
           <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
             {[{ asc: false, label: t("common.newestFirst") }, { asc: true, label: t("common.oldestFirst") }].map((opt) => (
               <button key={String(opt.asc)} type="button" onClick={() => { onToggleSort(opt.asc); setShowMenu(false); }}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
-                <span className="text-[13px] text-white/85">{opt.label}</span>
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-2 transition-colors border-b border-border last:border-b-0">
+                <span className="text-[13px] text-text-primary">{opt.label}</span>
                 {sortAsc === opt.asc && (
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-accent)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                     <path d="M4 12.5l5 5L20 6" />
                   </svg>
                 )}
               </button>
             ))}
-            {quickSettings && <div className="border-t border-white/6">{quickSettings}</div>}
+            {quickSettings && <div className="border-t border-border">{quickSettings}</div>}
             {settingsTo && (
               <Link to={settingsTo} onClick={() => setShowMenu(false)}
-                className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-white/5 transition-colors border-t border-white/6">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/50 shrink-0">
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-left hover:bg-surface-2 transition-colors border-t border-border">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-muted shrink-0">
                   <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
                 </svg>
-                <span className="text-[13px] text-white/85">{t("common.settings")}</span>
+                <span className="text-[13px] text-text-primary">{t("common.settings")}</span>
               </Link>
             )}
           </div>
@@ -1025,7 +1057,7 @@ export function WeekCalendarStrip<T>({ items, dateOf, lang, selected, onSelect }
         <MiniCalendar items={items} dateOf={dateOf} lang={lang}
           onOpenDay={(dayItems) => { onSelect(dateOf(dayItems[0])); setExpanded(false); }} />
         <button type="button" onClick={() => setExpanded(false)}
-          className="self-center text-white/25 hover:text-white/50 transition-colors">
+          className="self-center text-text-subtle hover:text-text-muted transition-colors">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 15l6-6 6 6" /></svg>
         </button>
       </div>
@@ -1035,9 +1067,9 @@ export function WeekCalendarStrip<T>({ items, dateOf, lang, selected, onSelect }
   return (
     <div className="flex flex-col gap-2 mb-3" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
       <button type="button" onClick={() => setExpanded(true)}
-        className="self-start flex items-center gap-1.5 text-[13px] font-bold text-white/80 hover:text-white transition-colors">
+        className="self-start flex items-center gap-1.5 text-[13px] font-bold text-text-primary hover:text-[color:var(--color-brand-accent)] transition-colors">
         {monthYearLabel}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-white/30">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-text-subtle">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
@@ -1051,14 +1083,14 @@ export function WeekCalendarStrip<T>({ items, dateOf, lang, selected, onSelect }
               return (
                 <button key={d} type="button" onClick={() => onSelect(isSelected ? null : d)}
                   className="flex flex-col items-center gap-1">
-                  <span className="font-mono text-[9px] uppercase tracking-widest text-white/35">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
+                  <span className="text-[10px] font-medium text-text-subtle">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
                   <span
                     className={`relative aspect-square w-9 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${
-                      isSelected ? "text-black" : markedDates.has(d) ? "text-white/80 bg-white/5" : "text-white/25"
+                      isSelected ? "text-white" : markedDates.has(d) ? "text-text-primary bg-surface-2" : "text-text-subtle"
                     }`}
                     style={{
-                      backgroundColor: isSelected ? "#ff5100" : undefined,
-                      boxShadow: isToday && !isSelected ? "inset 0 0 0 1.5px #ff5100" : undefined,
+                      backgroundColor: isSelected ? "var(--color-brand-accent)" : undefined,
+                      boxShadow: isToday && !isSelected ? "inset 0 0 0 1.5px var(--color-brand-accent)" : undefined,
                     }}>
                     {dateObj.getDate()}
                   </span>
@@ -1118,7 +1150,7 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-7 gap-1.5">
         {weekdayLabels.map((w, i) => (
-          <div key={i} className="text-center font-mono text-[9px] uppercase tracking-widest text-white/30">{w}</div>
+          <div key={i} className="text-center text-[10px] font-medium text-text-subtle">{w}</div>
         ))}
       </div>
       {months.map((ym) => {
@@ -1134,7 +1166,7 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
 
         return (
           <div key={ym}>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{monthLabel}</p>
+            <p className="text-[11px] font-semibold text-text-muted mb-2.5">{monthLabel}</p>
             <div className="grid grid-cols-7 gap-1.5">
               {cells.map((cell, i) => {
                 if (!cell) return <div key={i} />;
@@ -1142,10 +1174,10 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
                 const marked = !!dayItems?.length;
                 return (
                   <button key={i} disabled={!marked} onClick={() => dayItems && onOpenDay(dayItems)}
-                    className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-white/5">
+                    className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-surface-2">
                     {marked && renderCover?.(dayItems!)}
-                    {marked && !renderCover && <span className="absolute inset-0 rounded-full" style={{ backgroundColor: "#ff5100" }} />}
-                    <span className={`relative text-[12px] font-bold ${marked ? (renderCover ? "text-white/[0.95]" : "text-black") : "text-white/25"}`}
+                    {marked && !renderCover && <span className="absolute inset-0 rounded-full" style={{ backgroundColor: "var(--color-brand-accent)" }} />}
+                    <span className={`relative text-[12px] font-bold ${marked ? (renderCover ? "text-white/[0.95]" : "text-white") : "text-text-subtle"}`}
                       style={marked && renderCover ? { textShadow: "0 1px 3px rgba(0,0,0,0.85)" } : undefined}>
                       {cell.day}
                     </span>
@@ -1167,12 +1199,12 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
 export function Sheet({ title, onClose, menu, children }: { title: string; onClose: () => void; menu?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full sm:max-w-lg bg-[#0d0d0e] rounded-t-3xl sm:rounded-3xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mt-3 sm:hidden" />
-        <div className="flex items-center gap-2 justify-between px-6 pt-4 pb-2 sticky top-0 bg-[#0d0d0e] z-10">
-          <h2 className="font-extrabold text-base tracking-tight text-white flex-1 truncate">{title}</h2>
+      <div className="w-full sm:max-w-lg bg-surface-1 rounded-t-3xl sm:rounded-3xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="w-10 h-1 rounded-full bg-border mx-auto mt-3 sm:hidden" />
+        <div className="flex items-center gap-2 justify-between px-6 pt-4 pb-2 sticky top-0 bg-surface-1 z-10">
+          <h2 className="font-extrabold text-base tracking-tight text-text-primary flex-1 truncate">{title}</h2>
           {menu}
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors shrink-0">×</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-text-primary transition-colors shrink-0">×</button>
         </div>
         {children}
       </div>
@@ -1200,7 +1232,7 @@ export function RecordActionsMenu({ items }: { items: RecordMenuItem[] }) {
   return (
     <div ref={menuRef} className="relative shrink-0">
       <button type="button" aria-label="More actions" onClick={() => setShowMenu((v) => !v)}
-        className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+        className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-1 border border-border hover:bg-surface-2 transition-colors text-text-muted hover:text-text-primary">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
       </button>
       {showMenu && (
@@ -1208,7 +1240,7 @@ export function RecordActionsMenu({ items }: { items: RecordMenuItem[] }) {
           {items.map((item, i) => (
             <button key={i} type="button" disabled={item.disabled}
               onClick={() => { setShowMenu(false); item.onClick(); }}
-              className={`w-full flex items-center px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0 disabled:opacity-40 ${item.destructive ? "text-red-400/80 hover:text-red-400" : "text-white/85"}`}>
+              className={`w-full flex items-center px-4 py-3 text-left hover:bg-surface-2 transition-colors border-b border-border last:border-b-0 disabled:opacity-40 ${item.destructive ? "text-red-400/80 hover:text-red-400" : "text-text-primary"}`}>
               <span className="text-[13px]">{item.label}</span>
             </button>
           ))}
@@ -1226,11 +1258,11 @@ export function RecordActionsMenu({ items }: { items: RecordMenuItem[] }) {
  *  record-detail pages that offer Edit/Delete. */
 export function FormPage({ title, backTo, menu, children }: { title: string; backTo: string; menu?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--page-wash)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to={backTo} />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{title}</h1>
           {menu}
         </div>
         {children}
@@ -1244,11 +1276,11 @@ export function FormPage({ title, backTo, menu, children }: { title: string; bac
  *  children are a vertical stack of `Card`s rather than a form. */
 export function ModuleSettingsPage({ title, backTo, children }: { title: string; backTo: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--page-wash)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to={backTo} />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{title}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{title}</h1>
         </div>
         <div className="flex flex-col gap-4">{children}</div>
       </main>
@@ -1256,16 +1288,46 @@ export function ModuleSettingsPage({ title, backTo, children }: { title: string;
   );
 }
 
+/** Solid accent-filled circle (not the old translucent ghost tint) so it
+ *  reads as a confident, tappable button rather than depending on a dark
+ *  background to be visible — a translucent tint that worked against
+ *  near-black can wash out against a light surface. */
 export function FAB({ onClick, label }: { onClick: () => void; label: string }) {
   return (
     <button
       onClick={onClick}
       aria-label={label}
-      className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-[var(--shadow-md)] active:scale-95 transition-transform z-30"
-      style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+      className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-[var(--shadow-md)] active:scale-95 transition-transform z-30 text-white"
+      style={{ backgroundColor: "var(--color-brand-accent)", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
     >
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
     </button>
+  );
+}
+
+/** Fixed bottom bar of one or two full-width pill buttons — for
+ *  module-detail screens that need a sequence of actions (e.g. "Preview
+ *  report" then "Sign & complete") rather than a single circular add
+ *  button. Opt-in per screen; most modules keep `FAB`. */
+export function BottomActionBar({ primary, secondary }: {
+  primary: { label: string; onClick: () => void; disabled?: boolean };
+  secondary?: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border px-4 pt-3 flex flex-col gap-2"
+      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+      {secondary && (
+        <button type="button" onClick={secondary.onClick}
+          className="w-full rounded-full py-3.5 text-[14px] font-semibold bg-surface-2 text-text-primary transition-colors hover:bg-surface-3">
+          {secondary.label}
+        </button>
+      )}
+      <button type="button" onClick={primary.onClick} disabled={primary.disabled}
+        className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white transition-opacity disabled:opacity-40"
+        style={{ backgroundColor: "var(--color-brand-accent)" }}>
+        {primary.label}
+      </button>
+    </div>
   );
 }
 
@@ -1276,7 +1338,7 @@ export function PhotoPicker({ photos, setPhotos, disabled }: { photos: File[]; s
       <span className={labelCls}>{t("common.photos")}</span>
       <input type="file" accept="image/*" multiple disabled={disabled}
         onChange={(e) => setPhotos((p) => [...p, ...Array.from(e.target.files ?? [])])}
-        className="text-[12px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
+        className="text-[12px] text-text-muted file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-surface-2 file:text-text-muted file:text-[11px] file:font-medium" />
       {photos.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-1">
           {photos.map((f, i) => (
@@ -1292,7 +1354,7 @@ export function PhotoPicker({ photos, setPhotos, disabled }: { photos: File[]; s
   );
 }
 
-const manpowerSmallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
+const manpowerSmallBtn = "px-3 py-1.5 rounded-full text-[12px] font-medium transition-all";
 
 /** Quick-entry sheet per the Manpower module's spec: company → trade →
  *  category → workers → location → activity → hours. Also handles editing
@@ -1384,7 +1446,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
     }
   };
 
-  const fieldLabel = "text-[10px] font-mono uppercase tracking-widest text-white/35";
+  const fieldLabel = "text-[11px] font-medium text-text-muted";
 
   return renderShell(editTarget != null ? t("manpower.editEntry") : t("manpower.addEntry"), (
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 px-6 pb-8 pt-2">
@@ -1464,7 +1526,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col gap-2">
             <p className="text-[12px] text-amber-200/90">{t("manpower.duplicateExists")}</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={manpowerSmallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}
+              <button type="button" className={`${manpowerSmallBtn} text-white`} style={{ backgroundColor: "var(--color-brand-accent)" }}
                 onClick={() => {
                   const existing = rows[dupIndex];
                   setCompany(existing.company ?? "");
@@ -1480,18 +1542,18 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
                   setDupIndex(null);
                   setEditTarget(dupIndex);
                 }}>{t("manpower.editExisting")}</button>
-              <button type="submit" className={`${manpowerSmallBtn} bg-white/10 text-white/70`}>{t("manpower.addNew")}</button>
-              <button type="button" className={`${manpowerSmallBtn} text-white/40`} onClick={() => setDupIndex(null)}>{t("common.cancel")}</button>
+              <button type="submit" className={`${manpowerSmallBtn} bg-surface-2 text-text-primary`}>{t("manpower.addNew")}</button>
+              <button type="button" className={`${manpowerSmallBtn} text-text-muted`} onClick={() => setDupIndex(null)}>{t("common.cancel")}</button>
             </div>
           </div>
         )}
 
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <div className="flex gap-2 mt-1">
-          <button type="submit" disabled={saving || !trade.trim()} className={`${manpowerSmallBtn} disabled:opacity-40 px-5 py-2.5`} style={{ backgroundColor: "#ff5100", color: "#000" }}>
+          <button type="submit" disabled={saving || !trade.trim()} className={`${manpowerSmallBtn} disabled:opacity-40 px-5 py-2.5 text-white`} style={{ backgroundColor: "var(--color-brand-accent)" }}>
             {saving ? t("common.loading") : t("common.save")}
           </button>
-          <button type="button" onClick={onClose} className={`${manpowerSmallBtn} px-5 py-2.5 text-white/40`}>{t("common.cancel")}</button>
+          <button type="button" onClick={onClose} className={`${manpowerSmallBtn} px-5 py-2.5 text-text-muted`}>{t("common.cancel")}</button>
         </div>
       </form>
   ));
@@ -1560,7 +1622,7 @@ export function FilePicker({ files, setFiles, disabled }: { files: File[]; setFi
       <span className={labelCls}>{t("common.files")}</span>
       <input type="file" multiple disabled={disabled}
         onChange={(e) => setFiles((f) => [...f, ...Array.from(e.target.files ?? [])])}
-        className="text-[12px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
+        className="text-[12px] text-text-muted file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-surface-2 file:text-text-muted file:text-[11px] file:font-medium" />
       {images.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-1">
           {images.map(({ f, i }) => (
@@ -1575,14 +1637,14 @@ export function FilePicker({ files, setFiles, disabled }: { files: File[]; setFi
       {docs.length > 0 && (
         <div className="flex flex-col gap-1.5 mt-1">
           {docs.map(({ f, i }) => (
-            <div key={i} className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2">
-              <span className="text-white/40 shrink-0">{FILE_ICON}</span>
+            <div key={i} className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2">
+              <span className="text-text-muted shrink-0">{FILE_ICON}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-[12px] text-white/80 truncate">{f.name}</p>
-                <p className="text-[10px] text-white/30">{formatFileSize(f.size)}</p>
+                <p className="text-[12px] text-text-primary truncate">{f.name}</p>
+                <p className="text-[11px] text-text-subtle">{formatFileSize(f.size)}</p>
               </div>
               <button type="button" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                className="shrink-0 w-5 h-5 rounded-full text-white/25 hover:text-red-400 flex items-center justify-center">×</button>
+                className="shrink-0 w-5 h-5 rounded-full text-text-subtle hover:text-red-400 flex items-center justify-center">×</button>
             </div>
           ))}
         </div>
@@ -1612,11 +1674,11 @@ export function FileAttachmentList({ files }: { files: CMFileAttachment[] }) {
       )}
       {docs.map((f, i) => (
         <a key={i} href={f.url} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 transition-colors px-3 py-2">
-          <span className="text-white/40 shrink-0">{FILE_ICON}</span>
+          className="flex items-center gap-2 rounded-xl bg-surface-2 hover:bg-surface-3 transition-colors px-3 py-2">
+          <span className="text-text-muted shrink-0">{FILE_ICON}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] text-white/80 truncate">{f.name}</p>
-            <p className="text-[10px] text-white/30">{formatFileSize(f.size)}</p>
+            <p className="text-[12px] text-text-primary truncate">{f.name}</p>
+            <p className="text-[11px] text-text-subtle">{formatFileSize(f.size)}</p>
           </div>
         </a>
       ))}
@@ -1632,8 +1694,8 @@ export function QuickUploadButton({ label, onFilesSelected }: { label: string; o
   return (
     <>
       <button type="button" onClick={() => inputRef.current?.click()}
-        className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 mb-4 text-[13px] font-bold uppercase tracking-widest transition-transform active:scale-[0.98]"
-        style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>
+        className="w-full flex items-center justify-center gap-2 rounded-full py-3.5 mb-4 text-[14px] font-semibold transition-transform active:scale-[0.98] text-white"
+        style={{ backgroundColor: "var(--color-brand-accent)" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
         </svg>
@@ -1700,8 +1762,8 @@ export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, ini
         </label>
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
-          className="w-full rounded-2xl py-3.5 text-[13px] font-bold uppercase tracking-widest text-black transition-transform active:scale-[0.98] disabled:opacity-40"
-          style={{ backgroundColor: "#ff5100" }}>
+          className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("quickUpload.saving") : t("quickUpload.save")}
         </button>
       </form>
@@ -1765,7 +1827,7 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
         return (
           <button key={opt.value} type="button" disabled={disabled} onClick={() => onChange(opt.value)}
             className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors disabled:opacity-40 ${
-              opt.color ? "bg-white/5" : active ? "font-bold" : "bg-white/5 text-white/70 hover:bg-white/10"
+              opt.color ? "bg-surface-2" : active ? "font-bold" : "bg-surface-2 text-text-muted hover:bg-surface-3"
             }`}
             style={
               opt.color
@@ -1777,7 +1839,7 @@ export function SegmentedField<T extends string>({ options, value, onChange, dis
             {opt.label}
             {opt.badge != null && opt.badge !== "" && (
               <span className="px-1.5 rounded-full font-mono text-[10px] leading-[15px]"
-                style={{ backgroundColor: active ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.12)" }}>
+                style={{ backgroundColor: active ? "rgba(0,0,0,0.18)" : "var(--surface-3)" }}>
                 {opt.badge}
               </span>
             )}
@@ -1792,8 +1854,8 @@ export function ProjectPicker({ projects, value, onChange }: { projects: { id: s
   const { t } = useCMLang();
   if (projects.length === 0) {
     return (
-      <p className="text-[12px] text-white/40 mb-5">
-        {t("common.createProjectFirst")} <Link to="/cm/projects" className="underline" style={{ color: "#ff5100" }}>{t("common.project")}</Link> {t("common.first")}
+      <p className="text-[12px] text-text-muted mb-5">
+        {t("common.createProjectFirst")} <Link to="/cm/projects" className="underline" style={{ color: "var(--color-brand-accent)" }}>{t("common.project")}</Link> {t("common.first")}
       </p>
     );
   }
@@ -2138,7 +2200,7 @@ function AnnotationEditor({ src, onCancel, onDone }: { src: string; onCancel: ()
       <div className="flex items-center justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shrink-0">
         <button onClick={onCancel} className="text-[13px] text-white/[0.70] hover:text-white px-2 py-1.5">{t("common.cancel")}</button>
         <p className="text-[12px] font-bold text-white/[0.85]">{t("photos.annotate")}</p>
-        <button onClick={handleDone} className="text-[13px] font-bold px-3 py-1.5 rounded-full text-black" style={{ backgroundColor: "#ff5100" }}>{t("common.done")}</button>
+        <button onClick={handleDone} className="text-[13px] font-bold px-3 py-1.5 rounded-full text-white" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.done")}</button>
       </div>
 
       <div ref={containerRef} className="flex-1 relative min-h-0 flex items-center justify-center overflow-hidden">
@@ -2169,7 +2231,7 @@ function AnnotationEditor({ src, onCancel, onDone }: { src: string; onCancel: ()
           {(["arrow", "circle", "text"] as AnnotationTool[]).map((tt) => (
             <button key={tt} onClick={() => setTool(tt)}
               className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
-              style={tool === tt ? { backgroundColor: "#ff5100", color: "#000" } : { backgroundColor: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.80)" }}>
+              style={tool === tt ? { backgroundColor: "var(--color-brand-accent)", color: "#fff" } : { backgroundColor: "rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.80)" }}>
               {TOOL_ICON[tt]}
             </button>
           ))}
@@ -2311,7 +2373,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
           {items.map((it, i) => (
             <button key={`${it.url}-${i}`} data-idx={i} onClick={() => onIndexChange(i)}
               className="shrink-0 w-12 h-12 rounded-lg overflow-hidden transition-opacity"
-              style={{ outline: i === index ? "2px solid #ff5100" : "none", opacity: i === index ? 1 : 0.5 }}>
+              style={{ outline: i === index ? "2px solid var(--color-brand-accent)" : "none", opacity: i === index ? 1 : 0.5 }}>
               <img src={it.thumbUrl ?? it.url} alt="" className="w-full h-full object-cover" />
             </button>
           ))}
@@ -2360,12 +2422,12 @@ export function CMDailyActivityList({ activity, projectId, onOpenItem }: {
       <span className={labelCls}>{t("siteDiary.todaysActivity")}</span>
       {rows.map((row) => (
         <button key={`${row.module}-${row.recordId}`} type="button" onClick={() => onOpenItem(row.module, row.recordId, projectId)}
-          className="w-full flex items-center gap-2.5 rounded-xl bg-white/3 hover:bg-white/6 px-3 py-2 text-left transition-colors">
+          className="w-full flex items-center gap-2.5 rounded-xl bg-surface-2 hover:bg-surface-3 px-3 py-2 text-left transition-colors">
           <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[row.module], backgroundColor: `${MODULE_COLOR[row.module]}22` }}>
             {MODULE_ICON[row.module]}
           </span>
-          <span className="flex-1 min-w-0 text-[12px] text-white/70 truncate">{row.title}</span>
-          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{row.status}</span>
+          <span className="flex-1 min-w-0 text-[12px] text-text-primary truncate">{row.title}</span>
+          <span className="text-[11px] font-medium text-text-subtle shrink-0">{row.status}</span>
         </button>
       ))}
     </div>
@@ -2406,22 +2468,22 @@ export function CommentsPanel({ projectId, entityType, entityId, userId }: {
 
   return (
     <div className="flex flex-col gap-3">
-      {isLoading && <p className="text-white/30 text-[12px]">{t("common.loading")}</p>}
-      {!isLoading && (comments?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("comments.none")}</p>}
+      {isLoading && <p className="text-text-subtle text-[12px]">{t("common.loading")}</p>}
+      {!isLoading && (comments?.length ?? 0) === 0 && <p className="text-text-subtle text-[12px]">{t("comments.none")}</p>}
       <div className="flex flex-col gap-2">
         {(comments ?? []).map((c) => (
-          <div key={c.id} className="rounded-xl bg-white/3 px-3 py-2.5">
+          <div key={c.id} className="rounded-xl bg-surface-2 px-3 py-2.5">
             <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-[11px] font-bold text-white/70 truncate">{authorLabel(c.author_id)}</span>
+              <span className="text-[11px] font-bold text-text-primary truncate">{authorLabel(c.author_id)}</span>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="font-mono text-[9px] text-white/25">{c.created_at.slice(0, 16).replace("T", " ")}</span>
+                <span className="font-mono text-[10px] text-text-subtle">{c.created_at.slice(0, 16).replace("T", " ")}</span>
                 {c.author_id === userId && (
                   <button type="button" onClick={() => deleteCMComment(c.id).then(invalidate)}
-                    className="text-white/25 hover:text-red-400 w-4 h-4 flex items-center justify-center">×</button>
+                    className="text-text-subtle hover:text-red-400 w-4 h-4 flex items-center justify-center">×</button>
                 )}
               </div>
             </div>
-            <p className="text-[12px] text-white/70 whitespace-pre-wrap">{c.body}</p>
+            <p className="text-[12px] text-text-primary whitespace-pre-wrap">{c.body}</p>
           </div>
         ))}
       </div>
@@ -2429,8 +2491,8 @@ export function CommentsPanel({ projectId, entityType, entityId, userId }: {
         <textarea className={`${inputCls} flex-1 resize-y min-h-[44px]`} value={body} disabled={posting}
           onChange={(e) => setBody(e.target.value)} placeholder={t("comments.placeholder")} />
         <button type="button" onClick={handlePost} disabled={posting || !body.trim()}
-          className="px-4 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest text-black font-bold disabled:opacity-40 shrink-0"
-          style={{ backgroundColor: "#ff5100" }}>
+          className="px-4 py-2.5 rounded-full text-[13px] font-semibold text-white disabled:opacity-40 shrink-0"
+          style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {t("comments.post")}
         </button>
       </div>
@@ -2443,20 +2505,20 @@ export function CommentsPanel({ projectId, entityType, entityId, userId }: {
  *  given what the schema actually links today. */
 export function RelatedItemsPanel({ items }: { items: CMRelatedItem[] }) {
   const { t } = useCMLang();
-  if (items.length === 0) return <p className="text-white/30 text-[12px]">{t("relatedItems.none")}</p>;
+  if (items.length === 0) return <p className="text-text-subtle text-[12px]">{t("relatedItems.none")}</p>;
   return (
     <div className="flex flex-col gap-2">
       {items.map((item) => (
         <Link key={`${item.module}-${item.id}`} to={item.to}
-          className="flex items-center gap-2.5 rounded-xl bg-white/3 hover:bg-white/6 px-3 py-2.5 transition-colors">
+          className="flex items-center gap-2.5 rounded-xl bg-surface-2 hover:bg-surface-3 px-3 py-2.5 transition-colors">
           <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[item.module], backgroundColor: `${MODULE_COLOR[item.module]}22` }}>
             {MODULE_ICON[item.module]}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] text-white/70 truncate">{item.title}</p>
-            {item.docNumber && <p className="font-mono text-[9px] text-white/25">{item.docNumber}</p>}
+            <p className="text-[12px] text-text-primary truncate">{item.title}</p>
+            {item.docNumber && <p className="font-mono text-[10px] text-text-subtle">{item.docNumber}</p>}
           </div>
-          <span className="text-white/25 shrink-0">›</span>
+          <span className="text-text-subtle shrink-0">›</span>
         </Link>
       ))}
     </div>
@@ -2469,14 +2531,14 @@ export function RelatedItemsPanel({ items }: { items: CMRelatedItem[] }) {
 export function ActivityLogPanel({ entityType, entityId }: { entityType: string; entityId: string }) {
   const { t } = useCMLang();
   const { data: entries, isLoading } = useCMEntityAuditLog(entityType, entityId);
-  if (isLoading) return <p className="text-white/30 text-[12px]">{t("common.loading")}</p>;
-  if (!entries || entries.length === 0) return <p className="text-white/30 text-[12px]">{t("activityLog.none")}</p>;
+  if (isLoading) return <p className="text-text-subtle text-[12px]">{t("common.loading")}</p>;
+  if (!entries || entries.length === 0) return <p className="text-text-subtle text-[12px]">{t("activityLog.none")}</p>;
   return (
     <div className="flex flex-col gap-1">
       {entries.map((e) => (
         <div key={e.id} className="flex items-center justify-between gap-2 px-1 py-1.5">
-          <span className="text-[12px] text-white/60">{e.action}</span>
-          <span className="font-mono text-[9px] text-white/25 shrink-0">{e.created_at.slice(0, 16).replace("T", " ")}</span>
+          <span className="text-[12px] text-text-muted">{e.action}</span>
+          <span className="font-mono text-[10px] text-text-subtle shrink-0">{e.created_at.slice(0, 16).replace("T", " ")}</span>
         </div>
       ))}
     </div>
@@ -2492,15 +2554,15 @@ export function ApprovalChainPanel({ projectId, entityType }: { projectId: strin
   const { t } = useCMLang();
   const { data: steps } = useCMWorkflowSteps(projectId);
   const moduleSteps = (steps ?? []).filter((s) => s.module_key === entityType);
-  if (moduleSteps.length === 0) return <p className="text-white/30 text-[12px]">{t("approvals.none")}</p>;
+  if (moduleSteps.length === 0) return <p className="text-text-subtle text-[12px]">{t("approvals.none")}</p>;
   return (
     <div className="flex flex-col gap-2">
       {moduleSteps.map((s, i) => (
-        <div key={s.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
-          <span className="font-mono text-[10px] text-white/30 shrink-0">{i + 1}.</span>
+        <div key={s.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
+          <span className="font-mono text-[11px] text-text-subtle shrink-0">{i + 1}.</span>
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] text-white/80 truncate">{s.approver_value}</p>
-            <p className="text-[10px] text-white/35">
+            <p className="text-[12px] text-text-primary truncate">{s.approver_value}</p>
+            <p className="text-[11px] text-text-muted">
               {t(`workflows.approverType.${s.approver_type}`)}
               {s.required_comment && ` · ${t("workflows.requiresComment")}`}
               {s.required_signature && ` · ${t("workflows.requiresSignature")}`}
@@ -2534,7 +2596,7 @@ export function RecordDetailExtras({ projectId, entityType, module, entityId, us
   const relatedItems = useCMRelatedItems(projectId, { module, id: entityId, locationId, discipline });
 
   return (
-    <div className="flex flex-col gap-3 pt-3 border-t border-white/6">
+    <div className="flex flex-col gap-3 pt-3 border-t border-border">
       <SegmentedField
         options={[
           { value: "comments" as const, label: t("comments.title") },
@@ -2561,12 +2623,12 @@ export function NotificationBell({ userId }: { userId: string | undefined }) {
   const unread = (notifications ?? []).filter((n) => !n.read_at).length;
   return (
     <Link to="/cm/notifications" aria-label={t("notifications.bell.title")}
-      className="relative w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+      className="relative w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-surface-1 border border-border hover:bg-surface-2 transition-colors text-text-muted hover:text-text-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
       </svg>
       {unread > 0 && (
-        <span className="absolute top-1 right-1 min-w-[15px] h-[15px] px-[3px] rounded-full bg-[#ff5100] text-[9px] leading-[15px] font-bold text-black text-center">
+        <span className="absolute top-1 right-1 min-w-[15px] h-[15px] px-[3px] rounded-full text-[9px] leading-[15px] font-bold text-white text-center" style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {unread > 9 ? "9+" : unread}
         </span>
       )}
