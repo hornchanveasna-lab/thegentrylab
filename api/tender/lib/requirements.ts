@@ -12,6 +12,12 @@
  * serverless function slots — same reason ai.ts, auth.ts and extract.ts do.
  */
 import { callClaude, SOURCE_OF_TRUTH_RULE, type ClaudeToolSchema } from "./ai.js";
+import type { ClauseGroup } from "./clauses.js";
+
+/** Default extraction model. Sonnet 5 replaces Sonnet 4.6: same tier, lower
+ *  price ($2/$10 vs $3/$15 per MTok) and a 1M-token context window, which is
+ *  what makes uncapped clause extraction possible at all. */
+export const DEFAULT_EXTRACTION_MODEL = "claude-sonnet-5";
 
 export const REQUIREMENT_CATEGORIES = [
   "administrative", "legal", "commercial", "technical", "financial", "planning", "design",
@@ -180,4 +186,47 @@ export async function extractRequirementsFromChunks(opts: {
     : [];
 
   return { requirements, inputTokens: result.inputTokens, outputTokens: result.outputTokens, input };
+}
+
+/* ── Clause-based extraction (Phase 2) ────────────────────────────────────
+ * The path above assembles chunks and cuts them at MAX_REQUIREMENTS_INPUT_CHARS.
+ * This one takes a group of whole clauses and sends all of it. There is no
+ * cap, because groupClauses() already sized the unit to finish inside
+ * Vercel Hobby's 60-second limit — the constraint is satisfied by making the
+ * unit small rather than by throwing away the tail of a large one.
+ *
+ * The rendered group text already carries `[Page N — Clause 4.3: Title]`
+ * anchors, so the model cites clause references it can see rather than
+ * inferring them, and `quoted_text` can be checked against a specific
+ * clause body rather than a 40,000-character haystack.
+ */
+export async function extractRequirementsFromClauseGroup(opts: {
+  apiKey: string;
+  fileName: string;
+  group: ClauseGroup;
+  model?: string;
+}): Promise<Omit<ExtractionResult, "input"> & { chars: number }> {
+  if (!opts.group.text.trim()) {
+    return { requirements: [], inputTokens: 0, outputTokens: 0, chars: 0 };
+  }
+
+  const result = await callClaude({
+    apiKey: opts.apiKey,
+    system: EXTRACT_REQUIREMENTS_SYSTEM,
+    userMessage: `Document: "${opts.fileName}"\n\n${opts.group.text}`,
+    tool: EXTRACT_REQUIREMENTS_TOOL,
+    maxTokens: 8192,
+    model: opts.model ?? DEFAULT_EXTRACTION_MODEL,
+  });
+
+  const requirements = Array.isArray(result.input.requirements)
+    ? (result.input.requirements as ExtractedRequirement[])
+    : [];
+
+  return {
+    requirements,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
+    chars: opts.group.chars,
+  };
 }

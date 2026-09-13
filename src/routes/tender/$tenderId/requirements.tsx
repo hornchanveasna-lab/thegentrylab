@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthTender } from "@/lib/auth-tender";
-import { useTenderRequirements, useRequirementSources, generateRequirements, REQUIREMENT_CATEGORIES, type TenderRequirement } from "@/lib/tender-data";
+import {
+  useTenderRequirements, useRequirementSources, enqueueRequirements, useTenderJobStatus,
+  REQUIREMENT_CATEGORIES, type TenderRequirement,
+} from "@/lib/tender-data";
 import {
   TenderShell, Card, DataTable, StatusBadge, EmptyState, LoadingSpinner, PageLoading, Button,
   Banner, Toolbar, SearchInput, humanize, sortRows, selectCls, type DataTableColumn,
@@ -20,10 +23,15 @@ function TenderRequirements() {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [extractProgress, setExtractProgress] = useState<{ done: number; total: number } | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [sort, setSort] = useState<{ columnIndex: number; direction: "asc" | "desc" }>();
   const queryClient = useQueryClient();
+  const { data: jobs } = useTenderJobStatus(tenderId);
+
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["tender_requirements", tenderId] });
+    queryClient.invalidateQueries({ queryKey: ["tender_checklist", tenderId] });
+  }, [jobs?.succeeded, jobs?.failed, queryClient, tenderId]);
 
   if (!user) return <PageLoading />;
 
@@ -35,23 +43,27 @@ function TenderRequirements() {
   });
 
   async function handleExtract() {
-    setExtracting(true); setExtractError(null); setExtractProgress(null);
+    setExtracting(true); setExtractError(null);
     try {
-      const result = await generateRequirements(tenderId, (done, total) => setExtractProgress({ done, total }));
-      if (result.errors.length > 0) setExtractError(`${result.errors.length} document${result.errors.length !== 1 ? "s" : ""} had errors: ${result.errors.join("; ")}`);
-      await queryClient.invalidateQueries({ queryKey: ["tender_requirements", tenderId] });
-      await queryClient.invalidateQueries({ queryKey: ["tender_checklist", tenderId] });
+      const { queued } = await enqueueRequirements(tenderId);
+      if (queued === 0) {
+        setExtractError("Nothing to queue — every processed document already has its requirements, or none have been parsed into clauses yet.");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["tender_jobs", tenderId] });
     } catch (err) {
-      setExtractError(err instanceof Error ? err.message : "Failed to extract requirements");
+      setExtractError(err instanceof Error ? err.message : "Failed to queue extraction");
     } finally {
       setExtracting(false);
-      setExtractProgress(null);
     }
   }
 
+  const outstanding = (jobs?.queued ?? 0) + (jobs?.running ?? 0);
+  const working = extracting || outstanding > 0;
   const extractLabel = extracting
-    ? (extractProgress ? `Extracting ${extractProgress.done}/${extractProgress.total}…` : "Starting…")
-    : "Extract requirements";
+    ? "Queueing…"
+    : outstanding > 0
+      ? `Extracting — ${outstanding} left`
+      : "Extract requirements";
 
   const columns: DataTableColumn<TenderRequirement>[] = [
     { header: "Code", width: "100px", sortKey: (r) => r.requirement_code, render: (r) => <span className="text-[12px] text-gray-500 tabular-nums">{r.requirement_code}</span> },
@@ -73,7 +85,7 @@ function TenderRequirements() {
   return (
     <TenderShell tenderId={tenderId} title="Requirements"
       subtitle={requirements.length > 0 ? `${requirements.length} extracted from the package` : undefined}
-      action={<Button variant="primary" onClick={handleExtract} disabled={extracting}>{extractLabel}</Button>}
+      action={<Button variant="primary" onClick={handleExtract} disabled={working}>{extractLabel}</Button>}
     >
       {extractError && <Banner tone="error">{extractError}</Banner>}
 
@@ -82,7 +94,7 @@ function TenderRequirements() {
       ) : requirements.length === 0 ? (
         <EmptyState title="No requirements extracted yet"
           hint="Run extraction once your documents finish processing — it reads every processed document and pulls out discrete, citable requirements."
-          action={<Button variant="primary" onClick={handleExtract} disabled={extracting}>{extractLabel}</Button>} />
+          action={<Button variant="primary" onClick={handleExtract} disabled={working}>{extractLabel}</Button>} />
       ) : (
         <>
           <Toolbar>

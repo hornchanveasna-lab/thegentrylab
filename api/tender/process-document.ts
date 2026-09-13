@@ -11,9 +11,11 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { extractByFileType, chunkSections, unzipEntries, unrarEntries } from "./lib/extract.js";
 import { callClaude, type ClaudeToolSchema } from "./lib/ai.js";
 import {
-  extractRequirementsFromChunks, CATEGORY_TO_CHECKLIST_SECTION,
-  type RequirementChunk,
+  extractRequirementsFromChunks, extractRequirementsFromClauseGroup,
+  CATEGORY_TO_CHECKLIST_SECTION, type RequirementChunk,
 } from "./lib/requirements.js";
+import { parseClauses, groupClauses, type ClauseNode } from "./lib/clauses.js";
+import { reconcileClauses } from "./lib/reconcile.js";
 import {
   getTenderEnv, getAuthedUserId, authorizeTenderAccess, sbGet, sbPatch, sbPost,
   downloadStorageObject, uploadStorageObject, type TenderEnv,
@@ -186,6 +188,34 @@ async function processOneDocument(env: TenderEnv, apiKey: string, doc: TenderDoc
       })));
     }
 
+    // Clause tree, reconciled rather than appended (Phase 1/2/4). Re-running
+    // after an addendum re-extracts only the clauses whose content hash
+    // actually moved; unchanged clauses cost nothing and their requirements
+    // stay exactly as they were. Best-effort: a parse failure must not fail
+    // the document, since chunks and classification remain useful without it.
+    try {
+      const clauses = parseClauses(sections);
+      if (clauses.length > 0) {
+        const diff = await reconcileClauses(env, doc.id, doc.tender_id, clauses);
+        await sbPost(env, "ai_jobs", {
+          tender_id: doc.tender_id, agent: "clause_parser", status: "succeeded",
+          input_summary: { file_name: doc.file_name },
+          output_summary: {
+            clauses: clauses.length,
+            unchanged: diff.unchanged.length, changed: diff.changed.length,
+            added: diff.added.length, removed: diff.removed.length,
+            requirementsSuperseded: diff.requirementsSuperseded,
+            requirementsWithdrawn: diff.requirementsWithdrawn,
+          },
+          started_at: startedAt, finished_at: new Date().toISOString(),
+        }).catch(() => {});
+      }
+      await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { clauses_parsed_at: new Date().toISOString() }).catch(() => {});
+    } catch {
+      // Leaves clauses_parsed_at null so the document is retried later,
+      // rather than being skipped forever.
+    }
+
     const fullText = sections.map((s) => s.text).join("\n\n").slice(0, CLASSIFY_INPUT_CHARS);
     let classifyUpdate: Record<string, unknown> = {};
     if (fullText.trim()) {
@@ -327,13 +357,98 @@ async function expandAndProcessArchive(env: TenderEnv, apiKey: string, orgId: st
  * Mandatory requirements become checklist items automatically. Idempotent
  * per document via tender_documents.requirements_extracted_at. */
 
+interface ClauseRow {
+  clause_ref: string; parent_ref: string | null; title: string | null; body: string;
+  page_from: number | null; page_to: number | null; depth: number; ordinal: number; content_hash: string;
+}
+
+const toClauseNode = (r: ClauseRow): ClauseNode => ({
+  clauseRef: r.clause_ref, parentRef: r.parent_ref, title: r.title, text: r.body,
+  pageFrom: r.page_from, pageTo: r.page_to, depth: r.depth, ordinal: r.ordinal, contentHash: r.content_hash,
+});
+
+/** A document's clauses in document order, packed into work units.
+ *  Grouping is recomputed per request rather than stored: groupClauses() is
+ *  deterministic over a fixed ordinal ordering, so the same document always
+ *  yields the same boundaries and a client can safely address "group N". */
+async function loadClauseGroups(env: TenderEnv, documentId: string) {
+  const rows = await sbGet<ClauseRow>(
+    env,
+    `tender_clauses?document_id=eq.${documentId}&select=clause_ref,parent_ref,title,body,page_from,page_to,depth,ordinal,content_hash&order=ordinal.asc`,
+  ).catch(() => [] as ClauseRow[]);
+  return groupClauses(rows.map(toClauseNode));
+}
+
+/** Writes one extracted requirement, its citation, and the checklist item a
+ *  mandatory requirement implies. Shared by both extraction paths. */
+async function persistRequirement(env: TenderEnv, doc: TenderDocumentRow, item: {
+  requirement_code?: string; category?: string; description?: string; is_mandatory?: boolean;
+  ai_confidence?: string; page_number?: number | null; section_label?: string | null; quoted_text?: string;
+}, index: number): Promise<boolean> {
+  try {
+    const [reqRow] = await sbPost<{ id: string }[]>(env, "tender_requirements", {
+      tender_id: doc.tender_id,
+      requirement_code: String(item.requirement_code ?? `REQ-${index + 1}`).slice(0, 40),
+      category: item.category,
+      description: item.description,
+      is_mandatory: !!item.is_mandatory,
+      status: "open",
+      ai_confidence: item.ai_confidence ?? "medium",
+    });
+    await sbPost(env, "requirement_sources", {
+      requirement_id: reqRow.id,
+      document_id: doc.id,
+      page_number: item.page_number ?? null,
+      section_label: item.section_label ?? null,
+      quoted_text: item.quoted_text ?? null,
+    });
+    if (item.is_mandatory) {
+      const section = CATEGORY_TO_CHECKLIST_SECTION[item.category as string] ?? "administrative";
+      await sbPost(env, "tender_checklist_items", {
+        tender_id: doc.tender_id, requirement_id: reqRow.id, section,
+        item_label: item.description, is_required: true, ai_generated: true, status: "not_started",
+      }).catch(() => {}); // best-effort: a checklist insert must not fail the requirement
+    }
+    return true;
+  } catch {
+    return false; // one bad item must not abort the rest of the group
+  }
+}
+
+/** Phase 2: extract one clause group. No input cap — groupClauses() already
+ *  sized the unit to finish inside the 60-second function limit, so the
+ *  hosting constraint is met by making the unit small rather than by
+ *  discarding the tail of a large one, which is what the old
+ *  40,000-character slice did silently. */
+async function extractGroupRequirements(
+  env: TenderEnv, apiKey: string, doc: TenderDocumentRow, groupIndex: number,
+): Promise<{ count: number; groups: number; error?: string }> {
+  const groups = await loadClauseGroups(env, doc.id);
+  if (groups.length === 0) return { count: 0, groups: 0 };
+  const group = groups[groupIndex];
+  if (!group) return { count: 0, groups: groups.length, error: `No group ${groupIndex}; document has ${groups.length}` };
+
+  let result;
+  try {
+    result = await extractRequirementsFromClauseGroup({ apiKey, fileName: doc.file_name, group });
+  } catch (err) {
+    return { count: 0, groups: groups.length, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  let inserted = 0;
+  for (const item of result.requirements) {
+    if (await persistRequirement(env, doc, item, inserted)) inserted += 1;
+  }
+  return { count: inserted, groups: groups.length };
+}
+
+/** Legacy chunk path, kept for documents processed before the clause parser
+ *  existed. Still subject to the 40,000-character cap — which is the entire
+ *  reason extractGroupRequirements above exists. */
 async function extractDocumentRequirements(env: TenderEnv, apiKey: string, doc: TenderDocumentRow): Promise<{ count: number; error?: string }> {
   const chunks = await sbGet<RequirementChunk>(env, `tender_document_chunks?document_id=eq.${doc.id}&select=content,page_number,section_label&order=chunk_index.asc`);
   if (chunks.length === 0) return { count: 0 };
 
-  // Prompt, schema and the input-assembly/cap live in lib/requirements.ts so
-  // the eval harness (evals/tender/) exercises exactly this call rather than
-  // a drifting copy. Everything below is the database half.
   let result;
   try {
     result = await extractRequirementsFromChunks({ apiKey, fileName: doc.file_name, chunks });
@@ -343,39 +458,7 @@ async function extractDocumentRequirements(env: TenderEnv, apiKey: string, doc: 
 
   let inserted = 0;
   for (const item of result.requirements) {
-    try {
-      const [reqRow] = await sbPost<{ id: string }[]>(env, "tender_requirements", {
-        tender_id: doc.tender_id,
-        requirement_code: String(item.requirement_code ?? `REQ-${inserted + 1}`).slice(0, 40),
-        category: item.category,
-        description: item.description,
-        is_mandatory: !!item.is_mandatory,
-        status: "open",
-        ai_confidence: item.ai_confidence ?? "medium",
-      });
-      await sbPost(env, "requirement_sources", {
-        requirement_id: reqRow.id,
-        document_id: doc.id,
-        page_number: item.page_number ?? null,
-        section_label: item.section_label ?? null,
-        quoted_text: item.quoted_text ?? null,
-      });
-      if (item.is_mandatory) {
-        const section = CATEGORY_TO_CHECKLIST_SECTION[item.category] ?? "administrative";
-        await sbPost(env, "tender_checklist_items", {
-          tender_id: doc.tender_id,
-          requirement_id: reqRow.id,
-          section,
-          item_label: item.description,
-          is_required: true,
-          ai_generated: true,
-          status: "not_started",
-        }).catch(() => {}); // best-effort — a checklist item failing to insert shouldn't fail the whole requirement
-      }
-      inserted += 1;
-    } catch {
-      // one bad item shouldn't abort the rest of the document's requirements
-    }
+    if (await persistRequirement(env, doc, item, inserted)) inserted += 1;
   }
   return { count: inserted };
 }
@@ -396,26 +479,41 @@ async function listPendingRequirementDocuments(env: TenderEnv, tenderId: string)
   ).catch(() => []);
 }
 
-async function generateRequirementsForDocument(env: TenderEnv, apiKey: string, doc: TenderDocumentRow) {
+async function generateRequirementsForDocument(
+  env: TenderEnv, apiKey: string, doc: TenderDocumentRow, groupIndex?: number,
+) {
   const startedAt = new Date().toISOString();
-  const result = await extractDocumentRequirements(env, apiKey, doc);
-  // Only mark done when the call actually completed — a zero-result with no
-  // error is a legitimately requirement-free document (e.g. a cover letter)
-  // and should stay marked done, but a transient failure (rate limit,
-  // network error, malformed response) must NOT set this, or the document
-  // silently drops off listPendingRequirementDocuments forever with no way
-  // to retry it.
-  if (!result.error) {
+
+  // Prefer the clause path. A document parsed before the clause parser
+  // existed has no clauses, so it falls back to the capped chunk path rather
+  // than silently extracting nothing.
+  const useClauses = typeof groupIndex === "number";
+  const result = useClauses
+    ? await extractGroupRequirements(env, apiKey, doc, groupIndex)
+    : { ...(await extractDocumentRequirements(env, apiKey, doc)), groups: 0 };
+
+  // Only mark the document done once its final group has landed. A mid-way
+  // success must not retire the document, or the remaining groups are lost
+  // with no way to retry them — the same reasoning as the original
+  // "don't mark done on error" rule, extended to partial progress.
+  const isLastGroup = !useClauses || result.groups === 0 || groupIndex! >= result.groups - 1;
+  if (!result.error && isLastGroup) {
     await sbPatch(env, `tender_documents?id=eq.${doc.id}`, { requirements_extracted_at: new Date().toISOString() }).catch(() => {});
   }
 
   await sbPost(env, "ai_jobs", {
     tender_id: doc.tender_id, agent: "requirements_extractor", status: result.error ? "failed" : "succeeded",
-    input_summary: { file_name: doc.file_name }, output_summary: { requirementsExtracted: result.count, error: result.error },
+    input_summary: { file_name: doc.file_name, group_index: groupIndex ?? null },
+    output_summary: { requirementsExtracted: result.count, groups: result.groups, error: result.error },
     started_at: startedAt, finished_at: new Date().toISOString(),
   }).catch(() => {});
 
-  return { documentsProcessed: 1, requirementsExtracted: result.count, errors: result.error ? [`${doc.file_name}: ${result.error}`] : [] };
+  return {
+    documentsProcessed: 1,
+    requirementsExtracted: result.count,
+    groups: result.groups,
+    errors: result.error ? [`${doc.file_name}: ${result.error}`] : [],
+  };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -443,7 +541,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const orgId = await authorizeTenderAccess(env, tenderId, userId).catch(() => null);
     if (!orgId) return res.status(403).json({ error: "Not authorized for this tender" });
     const docs = await listPendingRequirementDocuments(env, tenderId);
-    return res.status(200).json({ ok: true, documents: docs.map((d) => ({ id: d.id, fileName: d.file_name })) });
+    // groups is how many extraction calls this document needs. 0 means it
+    // predates the clause parser and takes the single legacy call instead.
+    const documents = [];
+    for (const d of docs) {
+      const groups = await loadClauseGroups(env, d.id);
+      documents.push({ id: d.id, fileName: d.file_name, groups: groups.length });
+    }
+    return res.status(200).json({ ok: true, documents });
   }
 
   if (req.body?.action === "generate_requirements") {
@@ -456,7 +561,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (reqDocumentId) {
       const rows = await sbGet<TenderDocumentRow>(env, `tender_documents?id=eq.${reqDocumentId}&tender_id=eq.${tenderId}&select=id,tender_id,storage_path,file_name,file_type,doc_category_source`);
       if (!rows[0]) return res.status(404).json({ error: "Document not found" });
-      const result = await generateRequirementsForDocument(env, apiKey, rows[0]);
+      const groupIndex = typeof req.body?.groupIndex === "number" ? req.body.groupIndex : undefined;
+      const result = await generateRequirementsForDocument(env, apiKey, rows[0], groupIndex);
       return res.status(200).json({ ok: true, ...result });
     }
 

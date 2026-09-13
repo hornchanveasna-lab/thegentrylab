@@ -1,7 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { Fragment, useEffect, type ReactNode } from "react";
-import { DockWorkspaceProvider, useDockWorkspace } from "@/components/tender/DockWorkspace";
-import { QuickDocumentsPanel } from "@/components/tender/QuickDocumentsPanel";
 import { useTender } from "@/lib/tender-data";
 
 /* ── TenderAI design system (/tender/*) ────────────────────────────────
@@ -299,9 +297,8 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
   return (
     <div data-theme="light">
       <div className="tenderai-scope min-h-screen bg-white text-gray-900 font-sans flex">
-        <DockWorkspaceProvider>
-          <TenderSidebar tenderId={tenderId} tenderName={tender?.name} deadline={tender?.submission_deadline} />
-          <div className="flex-1 min-w-0 flex flex-col pb-14">
+        <TenderSidebar tenderId={tenderId} tenderName={tender?.name} deadline={tender?.submission_deadline} />
+        <div className="flex-1 min-w-0 flex flex-col">
             <div className="border-b border-gray-200 bg-white sticky top-0 z-10">
               <div className="px-6 h-16 flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -315,31 +312,6 @@ export function TenderShell({ tenderId, title, subtitle, action, children }: {
               {children}
             </main>
           </div>
-          <DockToolbar tenderId={tenderId} tenderName={tender?.name} />
-        </DockWorkspaceProvider>
-      </div>
-    </div>
-  );
-}
-
-/** Bottom-docked launcher bar for floating panels — visible on every tender
- *  tab, mirroring the always-available toolbar pattern from Autodesk's
- *  viewer, applied to document-oriented panels instead of 3D navigation
- *  tools. Offset by the sidebar width so it doesn't overlap the nav rail. */
-function DockToolbar({ tenderId, tenderName }: { tenderId: string; tenderName?: string }) {
-  const { openPanel } = useDockWorkspace();
-  return (
-    <div className="fixed bottom-0 left-56 right-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur">
-      <div className="px-6 h-11 flex items-center gap-1">
-        <button
-          onClick={() => openPanel("documents", `Documents — ${tenderName ?? "…"}`, <QuickDocumentsPanel tenderId={tenderId} />)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" style={{ color: ACCENT }}>
-            <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-          Documents
-        </button>
       </div>
     </div>
   );

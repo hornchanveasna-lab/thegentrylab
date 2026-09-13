@@ -454,21 +454,86 @@ export async function generateRequirements(
   tenderId: string,
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ documentsProcessed: number; requirementsExtracted: number; errors: string[] }> {
-  const { documents } = await tenderApiCall({ action: "list_pending_requirements", tenderId }) as { documents: { id: string; fileName: string }[] };
-  const total = documents.length;
+  const { documents } = await tenderApiCall({ action: "list_pending_requirements", tenderId }) as {
+    documents: { id: string; fileName: string; groups: number }[];
+  };
+
+  // One call per clause group, not per document. A long Conditions of
+  // Contract is several groups; each finishes well inside the 60s function
+  // limit, and a failure retries just that group rather than the document.
+  // groups === 0 means the document predates the clause parser, so it takes
+  // a single legacy call.
+  const units: { id: string; fileName: string; groupIndex?: number }[] = [];
+  for (const d of documents) {
+    if (d.groups > 0) {
+      for (let g = 0; g < d.groups; g++) units.push({ id: d.id, fileName: d.fileName, groupIndex: g });
+    } else {
+      units.push({ id: d.id, fileName: d.fileName });
+    }
+  }
+
   let requirementsExtracted = 0;
   const errors: string[] = [];
-  for (let i = 0; i < documents.length; i++) {
+  for (let i = 0; i < units.length; i++) {
+    const u = units[i];
     try {
-      const result = await tenderApiCall({ action: "generate_requirements", tenderId, documentId: documents[i].id }) as { requirementsExtracted: number; errors?: string[] };
+      const result = await tenderApiCall({
+        action: "generate_requirements", tenderId, documentId: u.id, groupIndex: u.groupIndex,
+      }) as { requirementsExtracted: number; errors?: string[] };
       requirementsExtracted += result.requirementsExtracted;
       errors.push(...(result.errors ?? []));
     } catch (err) {
-      errors.push(`${documents[i].fileName}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`${u.fileName}: ${err instanceof Error ? err.message : String(err)}`);
     }
-    onProgress?.(i + 1, total);
+    onProgress?.(i + 1, units.length);
   }
-  return { documentsProcessed: total, requirementsExtracted, errors };
+  return { documentsProcessed: documents.length, requirementsExtracted, errors };
+}
+
+/* ── Job queue (Phase 3) ────────────────────────────────────────────────
+ * generateRequirements() above drives the work from the browser, so closing
+ * the tab stops a 200-file package half-way. These two replace that: the app
+ * queues the work once and polls for progress, and Postgres drives the
+ * actual draining via pg_cron (docs/tender-rebuild-02-queue.sql).
+ */
+
+async function jobsApiCall(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data } = await db().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Not signed in");
+  const res = await fetch("/api/tender/jobs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  const responseBody = await res.json();
+  if (!res.ok) throw new Error(responseBody?.error ?? "Request failed");
+  return responseBody;
+}
+
+/** Queues one job per clause group across every document still awaiting
+ *  extraction. Returns immediately — the work continues without the tab. */
+export async function enqueueRequirements(tenderId: string): Promise<{ queued: number; documents: number }> {
+  return await jobsApiCall({ action: "enqueue", tenderId }) as { queued: number; documents: number };
+}
+
+export interface TenderJobStatus {
+  queued: number; running: number; succeeded: number; failed: number; total: number;
+}
+
+/** Polls while anything is outstanding, then stops. `enabled` lets a page
+ *  avoid polling when it has no reason to. */
+export function useTenderJobStatus(tenderId: string | undefined, enabled = true) {
+  return useQuery<TenderJobStatus>({
+    queryKey: ["tender_jobs", tenderId],
+    enabled: !!tenderId && !!supabaseTender && enabled,
+    queryFn: async () => await jobsApiCall({ action: "status", tenderId: tenderId! }) as unknown as TenderJobStatus,
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      return d && (d.queued > 0 || d.running > 0) ? 4000 : false;
+    },
+    staleTime: 0,
+  });
 }
 
 export function useTenderRequirements(tenderId: string | undefined) {
