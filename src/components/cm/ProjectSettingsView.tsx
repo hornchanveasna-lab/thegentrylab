@@ -10,6 +10,10 @@ import {
   monotonePreviewUrl,
   CM_PROJECT_SECTORS,
   useCMCompanies,
+  useCMProjectCompanies,
+  addCMProjectCompany,
+  updateCMProjectCompany,
+  removeCMProjectCompany,
   createCMCompany,
   updateCMCompany,
   uploadCMCompanyMasterLogo,
@@ -456,6 +460,137 @@ function ConsultantRow({ c, canEdit, canDelete, editing, editValue, onEditValueC
 }
 
 /* ── Consultants (structural, MEP, etc. — a project can have several) ── */
+/** "Companies on this project" — which firms from the account-wide master
+ *  actually work here. Contracts, Instructions, Directory and Manpower all
+ *  pick from this list rather than the whole master, so a record can never
+ *  name a company belonging to an unrelated project.
+ *
+ *  Assigning reuses the existing master record, so a firm is still entered
+ *  once and keeps one logo, one address and one set of contact details
+ *  across every project it appears on (CLAUDE.md §27). */
+function ProjectCompaniesSection({ ownerId, projectId, canCreate, canEdit, canDelete }: {
+  ownerId: string; projectId: string; canCreate: boolean; canEdit: boolean; canDelete: boolean;
+}) {
+  const { t } = useCMLang();
+  const qc = useQueryClient();
+  const { data: assigned } = useCMProjectCompanies(projectId);
+  const { data: allCompanies } = useCMCompanies(ownerId);
+  const [adding, setAdding] = useState(false);
+  const [pickId, setPickId] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editRole, setEditRole] = useState("");
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["cm_project_companies", projectId] });
+
+  // Only offer companies not already on this project.
+  const assignedIds = new Set((assigned ?? []).map((a) => a.company_id));
+  const available = (allCompanies ?? []).filter((c) => !assignedIds.has(c.id));
+
+  const handleAdd = async () => {
+    if (!pickId) return;
+    await addCMProjectCompany(ownerId, projectId, pickId, null);
+    setPickId(""); setAdding(false);
+    invalidate();
+  };
+
+  const commitRole = async (id: string) => {
+    const trimmed = editRole.trim();
+    setEditingId(null);
+    await updateCMProjectCompany(id, { role_on_project: trimmed || null });
+    invalidate();
+  };
+
+  const handleRemove = async (id: string) => {
+    setRemoving(null);
+    await removeCMProjectCompany(id);
+    invalidate();
+  };
+
+  return (
+    <Card title={t("projectSettings.companies")}>
+      <div className="flex flex-col gap-2">
+        {assigned === null ? (
+          // The assignment table hasn't been created yet — say so plainly
+          // rather than showing an empty list that looks like a bug.
+          <p className="text-[12px] text-text-subtle">{t("projectSettings.companiesNotSetUp")}</p>
+        ) : (assigned ?? []).length === 0 ? (
+          <p className="text-[12px] text-text-subtle">{t("projectSettings.companiesNone")}</p>
+        ) : null}
+        {(assigned ?? []).map((a) => (
+          <div key={a.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
+            <Avatar name={a.company?.name ?? "?"} photoUrl={a.company?.logo_url ?? null} size={32} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[12px] font-medium text-text-primary truncate">{a.company?.name}</p>
+              {editingId === a.id ? (
+                <input
+                  autoFocus
+                  className="mt-1 w-full bg-surface-1 rounded-lg border border-border px-2 py-1 text-[11px] text-text-primary focus:outline-none"
+                  value={editRole}
+                  placeholder={t("projectSettings.companyRolePlaceholder")}
+                  onChange={(e) => setEditRole(e.target.value)}
+                  onBlur={() => commitRole(a.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitRole(a.id); } }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled={!canEdit}
+                  onClick={() => { setEditingId(a.id); setEditRole(a.role_on_project ?? ""); }}
+                  className="text-[11px] text-text-muted truncate text-left disabled:cursor-default"
+                >
+                  {a.role_on_project || a.company?.company_type
+                    ? a.role_on_project ?? t(`companyType.${a.company.company_type}`)
+                    : t("projectSettings.companyRolePlaceholder")}
+                </button>
+              )}
+            </div>
+            {canDelete && (
+              <button type="button" onClick={() => setRemoving(a.id)}
+                className="text-[11px] text-text-subtle hover:text-red-400 transition-colors shrink-0">
+                {t("common.remove")}
+              </button>
+            )}
+          </div>
+        ))}
+
+        {/* Assigning writes to the table that doesn't exist yet, so the
+            control stays hidden until it does rather than failing on click. */}
+        {canCreate && assigned !== null && (adding ? (
+          <div className="flex items-center gap-2">
+            <FieldSelect
+              value={pickId}
+              onChange={setPickId}
+              searchable
+              placeholder={t("projectSettings.companyPick")}
+              options={available.map((c) => ({ value: c.id, label: c.name }))}
+            />
+            <button type="button" onClick={handleAdd} disabled={!pickId}
+              className="px-4 py-1.5 rounded-full text-[12px] font-semibold shrink-0 disabled:opacity-40"
+              style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
+              {t("common.add")}
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setAdding(true)}
+            className="self-start text-[12px] font-semibold" style={{ color: "var(--color-brand-accent)" }}>
+            + {t("projectSettings.companyAdd")}
+          </button>
+        ))}
+      </div>
+
+      {removing && (
+        <ConfirmationDialog
+          message={t("projectSettings.companyRemoveMessage")}
+          confirmLabel={t("common.remove")}
+          onConfirm={() => handleRemove(removing)}
+          onCancel={() => setRemoving(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
 function ConsultantsSection({ ownerId, projectId, previewMonotone, canCreate, canEdit, canDelete }: {
   ownerId: string; projectId: string; previewMonotone: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean;
 }) {
@@ -1778,7 +1913,7 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
  *  project configuration only: info, branding, consultants, locations,
  *  checklist. No header of its own since the Insight page already has one. */
 type SettingsCategory =
-  | "general" | "branding" | "peopleRoles" | "permissions"
+  | "general" | "branding" | "companies" | "peopleRoles" | "permissions"
   | "locations" | "disciplines" | "activeModules" | "consultants" | "checklist"
   | "workPackages" | "documentControl" | "workflows" | "formsTemplates"
   | "notifications" | "integrations" | "dataArchive";
@@ -1791,7 +1926,7 @@ const PLACEHOLDER_CATEGORIES: SettingsCategory[] = ["integrations"];
  *  is owner-scoped data (no projectId), so it lives only on the Global App
  *  Settings tab now, not duplicated here too. */
 const CATEGORY_ORDER: SettingsCategory[] = [
-  "general", "branding", "peopleRoles", "permissions",
+  "general", "branding", "companies", "peopleRoles", "permissions",
   "locations", "disciplines", "activeModules", "consultants", "checklist",
   "workPackages", "documentControl", "workflows", "formsTemplates",
   "notifications", "integrations", "dataArchive",
@@ -1859,6 +1994,7 @@ export function ProjectSettingsView({ project, ownerId, currentUserId, onProject
           <Link to="/cm/role-permissions" className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("rolePermissions.title")} →</Link>
         </Card>
       )}
+      {category === "companies" && <ProjectCompaniesSection ownerId={ownerId} projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
       {category === "locations" && <LocationsSection projectId={project.id} canCreate={settingsCanCreate} canEdit={settingsCanEdit} canDelete={settingsCanDelete} />}
       {category === "disciplines" && <DisciplinesSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}
       {category === "activeModules" && <ActiveModulesSection project={project} canEdit={settingsCanEdit} onChanged={onProjectChanged} />}

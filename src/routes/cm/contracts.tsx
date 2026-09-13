@@ -109,7 +109,7 @@ export function NewContractSheet({ ownerId, projectId, existing, defaultContract
             </div>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("contracts.counterparty")}</span>
-              <CompanySelect ownerId={ownerId} value={counterpartyId} onChange={(id) => setCounterpartyId(id)} disabled={saving} />
+              <CompanySelect ownerId={ownerId} projectId={projectId} value={counterpartyId} onChange={(id) => setCounterpartyId(id)} disabled={saving} />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("contracts.status")}</span>

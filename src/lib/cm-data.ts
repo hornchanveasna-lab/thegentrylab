@@ -1563,6 +1563,83 @@ export async function deleteCMCompany(id: string) {
   if (error) throw error;
 }
 
+/** Which companies actually work on a given project.
+ *
+ *  `cm_companies` is one account-wide master list, so a company is entered
+ *  once and reused — but that means an unscoped picker offers every company
+ *  on the account, including ones with no involvement in the project being
+ *  worked on. This join table is what stops a contract, contact or
+ *  instruction being pointed at a company from an unrelated project, while
+ *  still keeping a single master record per company (CLAUDE.md §27).
+ *
+ *  Same shape as `cm_project_subcontractors`, which links a project to a
+ *  directory contact. */
+export interface CMProjectCompany {
+  id: string;
+  project_id: string;
+  owner_id: string;
+  company_id: string;
+  /** What this company does on this project — "Main Contractor", "Piling
+   *  Subcontractor" — which can differ from the company's own master type
+   *  (the same firm may be Consultant on one project, Designer on another). */
+  role_on_project: string | null;
+  created_at: string;
+  company: CMCompany;
+}
+
+/** PostgREST reports a missing relation as 42P01. The assignment table is
+ *  created by docs/cm-project-companies.sql, which has to be run by hand
+ *  because the schema lives outside this repo — so until someone runs it,
+ *  this query would fail and leave every company picker permanently empty.
+ *  Treating "table not there yet" as `null` (rather than an empty list or a
+ *  thrown error) lets callers tell the two apart and keep working. */
+const MISSING_TABLE = "42P01";
+
+/** Companies assigned to a project.
+ *
+ *  Returns `null` — distinct from `[]` — when the assignment table has not
+ *  been created yet. `[]` means "this project has no companies assigned";
+ *  `null` means "the feature isn't provisioned", and callers fall back to
+ *  the account-wide list so nothing regresses before the migration runs. */
+export function useCMProjectCompanies(projectId: string | undefined) {
+  return useQuery<CMProjectCompany[] | null, Error>({
+    queryKey: ["cm_project_companies", projectId],
+    enabled: !!projectId && !!supabaseCM,
+    queryFn: async () => {
+      const { data, error } = await db()
+        .from("cm_project_companies")
+        .select("*, company:cm_companies(*)")
+        .eq("project_id", projectId)
+        .order("created_at");
+      if (error) {
+        if (error.code === MISSING_TABLE) return null;
+        throw error;
+      }
+      return data as unknown as CMProjectCompany[];
+    },
+    // Don't hammer a table that doesn't exist.
+    retry: (count, err) => (err as { code?: string })?.code !== MISSING_TABLE && count < 2,
+    staleTime: STALE_TIME,
+  });
+}
+
+export async function addCMProjectCompany(ownerId: string, projectId: string, companyId: string, roleOnProject: string | null) {
+  const { error } = await db().from("cm_project_companies").insert({
+    owner_id: ownerId, project_id: projectId, company_id: companyId, role_on_project: roleOnProject,
+  });
+  if (error) throw error;
+}
+
+export async function updateCMProjectCompany(id: string, patch: { role_on_project?: string | null }) {
+  const { error } = await db().from("cm_project_companies").update(patch).eq("id", id);
+  if (error) throw error;
+}
+
+export async function removeCMProjectCompany(id: string) {
+  const { error } = await db().from("cm_project_companies").delete().eq("id", id);
+  if (error) throw error;
+}
+
 export async function uploadCMCompanyMasterLogo(ownerId: string, companyId: string, file: File): Promise<string> {
   const client = db();
   const ext = file.name.split(".").pop() || "png";
