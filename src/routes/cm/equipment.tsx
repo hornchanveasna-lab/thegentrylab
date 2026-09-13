@@ -109,14 +109,14 @@ function EquipmentRow({ eq, userId, projectName, onChanged }: { eq: CMEquipment;
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl bg-white/3 px-3.5 py-3">
+    <div className="flex flex-col gap-2 rounded-xl bg-surface-2 px-3.5 py-3">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
-            {projectName && <span className="text-[11px] text-white/40 truncate shrink-0">{projectName}</span>}
-            <p className="text-[12px] text-white/80 truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
+            {projectName && <span className="text-[11px] text-text-subtle truncate shrink-0">{projectName}</span>}
+            <p className="text-[12px] text-text-primary truncate">{eq.name}{eq.type ? ` — ${eq.type}` : ""}</p>
           </div>
-          <p className="font-mono text-[10px] text-white/30">{t("equipment.qty")} {eq.quantity}</p>
+          <p className="font-mono text-[10px] text-text-subtle">{t("equipment.qty")} {eq.quantity}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {canEdit ? (
@@ -125,7 +125,7 @@ function EquipmentRow({ eq, userId, projectName, onChanged }: { eq: CMEquipment;
               onChange={(v) => updateCMEquipment(eq.id, { status: v }).then(onChanged)}
               disabled={busy}
               options={EQUIPMENT_STATUS_OPTIONS.map((s) => ({ value: s, label: t(`equipmentStatus.${s}`) }))}
-              triggerClassName="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-white/5"
+              triggerClassName="flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-mono uppercase tracking-widest bg-surface-2"
               triggerStyle={{ color: EQUIPMENT_STATUS_COLOR[eq.status] }}
             />
           ) : (
@@ -133,13 +133,13 @@ function EquipmentRow({ eq, userId, projectName, onChanged }: { eq: CMEquipment;
           )}
           {canEdit && (
             <Link to="/cm/equipment/$id/edit" params={{ id: eq.id }}
-              className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+              className="text-text-subtle hover:text-text-primary w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
               </svg>
             </Link>
           )}
-          {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>}
+          {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3">×</button>}
         </div>
       </div>
       <FileAttachmentList files={eq.files} />
@@ -189,20 +189,20 @@ function CMEquipmentPage() {
     return sortAsc ? [...list].reverse() : list;
   }, [items, search, sortAsc]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("equipment.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/equipment/settings" />
-        <p className="text-[12px] text-white/35 mb-5">{t("equipment.subtitle")}</p>
+        <p className="text-[12px] text-text-subtle mb-5">{t("equipment.subtitle")}</p>
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
 
         {projectId && canCreate && (
@@ -211,7 +211,7 @@ function CMEquipmentPage() {
 
         {(viewAll || projectId) && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
             {!isError && (
               <>

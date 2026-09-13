@@ -23,7 +23,7 @@ function BoqSettingsPage() {
   const canDelete = usePermission(projectId || undefined, user?.id, "settings", "delete");
   const [saving, setSaving] = useState(false);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId || !project) return null;
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["cm_project", projectId] });

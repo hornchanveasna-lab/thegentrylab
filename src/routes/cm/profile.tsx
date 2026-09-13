@@ -28,10 +28,10 @@ function CMProfilePage() {
     navigate({ to: "/cm" });
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
           {t("common.signInGoogle")}
         </button>
@@ -40,17 +40,17 @@ function CMProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("profile.title")}</h1>
-          <Link to="/cm/settings" className="text-[11px] font-mono uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors shrink-0">
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{t("profile.title")}</h1>
+          <Link to="/cm/settings" className="text-[11px] font-mono uppercase tracking-widest text-text-subtle hover:text-text-primary transition-colors shrink-0">
             {t("profile.accountSettings")}
           </Link>
         </div>
 
-        <div className="flex items-center gap-3 px-4 py-4 mb-5 rounded-2xl bg-[#0d0d0e]">
+        <div className="flex items-center gap-3 px-4 py-4 mb-5 rounded-2xl bg-surface-1">
           {user.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} alt="" className="w-14 h-14 rounded-full object-cover" />
           ) : (
@@ -60,13 +60,13 @@ function CMProfilePage() {
           )}
           <div className="min-w-0">
             <p className="text-[14px] font-bold truncate">{user.user_metadata?.full_name ?? t("profile.title")}</p>
-            <p className="text-[11px] text-white/40 truncate">{user.email}</p>
-            {account?.company_name && <p className="text-[11px] text-white/30 truncate mt-0.5">{account.company_name}</p>}
+            <p className="text-[11px] text-text-subtle truncate">{user.email}</p>
+            {account?.company_name && <p className="text-[11px] text-text-subtle truncate mt-0.5">{account.company_name}</p>}
           </div>
         </div>
 
         <div className="mb-6">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2">{t("settings.language")}</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-2">{t("settings.language")}</p>
           <SegmentedField
             options={LANG_OPTIONS.map((l) => ({ value: l, label: t(`settings.lang.${l}`) }))}
             value={lang}
@@ -75,19 +75,19 @@ function CMProfilePage() {
         </div>
 
         <div className="mb-6">
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2">{t("profile.myProjects")}</p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-2">{t("profile.myProjects")}</p>
           {(!memberships || memberships.length === 0) ? (
             <EmptyState message={t("profile.noProjects")} />
           ) : (
             <div className="flex flex-col gap-2">
               {memberships.map((m) => (
                 <Link key={m.project_id} to="/cm/$projectId" params={{ projectId: m.project_id }}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-[#0d0d0e] hover:bg-[#111113] transition-colors px-4 py-3">
+                  className="flex items-center justify-between gap-3 rounded-xl bg-surface-1 hover:bg-surface-3 transition-colors px-4 py-3">
                   <div className="min-w-0">
-                    <p className="text-[13px] text-white/85 truncate">{m.project_name}</p>
-                    {m.project_code && <p className="font-mono text-[9px] text-white/25 truncate">{m.project_code}</p>}
+                    <p className="text-[13px] text-text-primary truncate">{m.project_name}</p>
+                    {m.project_code && <p className="font-mono text-[9px] text-text-subtle truncate">{m.project_code}</p>}
                   </div>
-                  <span className="text-[11px] text-white/50 shrink-0">{m.job_role ? jobRoleLabel(m.job_role, t) : m.role}</span>
+                  <span className="text-[11px] text-text-muted shrink-0">{m.job_role ? jobRoleLabel(m.job_role, t) : m.role}</span>
                 </Link>
               ))}
             </div>
@@ -95,7 +95,7 @@ function CMProfilePage() {
         </div>
 
         <button type="button" onClick={handleSignOut}
-          className="w-full text-center rounded-2xl bg-[#0d0d0e] hover:bg-red-500/10 text-red-400 text-[13px] font-bold px-4 py-3.5 transition-colors">
+          className="w-full text-center rounded-2xl bg-surface-1 hover:bg-red-500/10 text-red-400 text-[13px] font-bold px-4 py-3.5 transition-colors">
           {t("settings.signOut")}
         </button>
       </main>

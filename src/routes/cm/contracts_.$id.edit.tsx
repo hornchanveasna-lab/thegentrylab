@@ -16,7 +16,7 @@ function EditContractPage() {
   const { data: items, isLoading } = useAllCMContracts(user?.id);
   const existing = items?.find((c) => c.id === id);
 
-  if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || isLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !existing) return null;
 
   return (

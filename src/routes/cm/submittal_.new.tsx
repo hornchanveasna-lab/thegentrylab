@@ -20,7 +20,7 @@ function NewSubmittalPage() {
   const defaultType = (activeProject?.module_defaults?.submittal as { type?: SubmittalType } | undefined)?.type;
   const canApprove = usePermission(projectId || undefined, user?.id, "submittal", "approve");
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (

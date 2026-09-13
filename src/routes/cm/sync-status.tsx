@@ -42,10 +42,10 @@ function CMSyncStatusPage() {
     };
   }, []);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button
           onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
@@ -60,11 +60,11 @@ function CMSyncStatusPage() {
   const failedCount = jobs.filter((j) => j.status === "failed").length;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-5">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">
             {t("offline.syncStatusTitle")}
           </h1>
           {failedCount > 0 && (
@@ -85,23 +85,23 @@ function CMSyncStatusPage() {
             {jobs.map((job) => (
               <div
                 key={job.id}
-                className="flex items-start gap-3 rounded-xl bg-[#0d0d0e] px-4 py-3"
+                className="flex items-start gap-3 rounded-xl bg-surface-1 px-4 py-3"
               >
                 <span
                   className="w-2 h-2 rounded-full shrink-0 mt-1.5"
                   style={{ backgroundColor: STATUS_COLOR[job.status] }}
                 />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] text-white/85 truncate">
+                  <p className="text-[13px] text-text-primary truncate">
                     {job.kind === "daily-log-write"
                       ? t("offline.kindDailyLogWrite")
                       : t("offline.kindPhotoNote")}
                   </p>
-                  <p className="text-[12px] text-white/45 mt-0.5">
+                  <p className="text-[12px] text-text-muted mt-0.5">
                     {job.payload.date} ·{" "}
                     {t("offline.photosCount", { count: String(job.payload.files.length) })}
                   </p>
-                  <p className="font-mono text-[9px] text-white/25 mt-1">
+                  <p className="font-mono text-[9px] text-text-subtle mt-1">
                     {job.status === "failed"
                       ? t("offline.statusFailed")
                       : job.status === "syncing"

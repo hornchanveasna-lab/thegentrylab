@@ -67,7 +67,7 @@ function NewIPCPage() {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (
@@ -105,13 +105,13 @@ function NewIPCPage() {
                 onChange={(e) => setDeductions(deductions.map((row, ri) => (ri === i ? { ...row, description: e.target.value } : row)))} disabled={saving} />
               <input type="number" step="0.01" className={`${inputCls} w-28`} placeholder={t("ipc.deductionAmount")} value={d.amount}
                 onChange={(e) => setDeductions(deductions.map((row, ri) => (ri === i ? { ...row, amount: Number(e.target.value) || 0 } : row)))} disabled={saving} />
-              <button type="button" onClick={() => setDeductions(deductions.filter((_, ri) => ri !== i))} className="text-white/25 hover:text-red-400 w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+              <button type="button" onClick={() => setDeductions(deductions.filter((_, ri) => ri !== i))} className="text-text-subtle hover:text-red-400 w-9 h-9 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>
             </div>
           ))}
           <button type="button" onClick={() => setDeductions([...deductions, { description: "", amount: 0 }])}
             className="self-start font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("ipc.addDeduction")}</button>
         </div>
-        <p className="text-[11px] text-white/35">{t("ipc.newHint")}</p>
+        <p className="text-[11px] text-text-subtle">{t("ipc.newHint")}</p>
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !contractId}
           className="w-full mt-1 py-3.5 rounded-2xl text-[13px] uppercase tracking-widest text-black font-bold transition-all disabled:opacity-40"

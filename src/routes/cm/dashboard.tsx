@@ -97,26 +97,26 @@ function CMDashboardPage() {
     return counts;
   }, [equipment]);
 
-  if (authLoading) return <div className="min-h-screen" style={{ background: "var(--page-wash)" }} />;
+  if (authLoading) return <div className="min-h-screen" style={{ background: "var(--color-background)" }} />;
   if (!user) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center px-4 font-sans" style={{ background: "var(--page-wash)" }}>
+      <div className="min-h-screen text-text-primary flex items-center justify-center px-4 font-sans" style={{ background: "var(--color-background)" }}>
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest font-bold" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--color-background)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("dashboard.title")}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary">{t("dashboard.title")}</h1>
         </div>
 
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
-        {!projectId && <p className="text-white/30 text-sm">{t("dashboard.selectProject")}</p>}
+        {!projectId && <p className="text-text-subtle text-sm">{t("dashboard.selectProject")}</p>}
 
         {projectId && project && (
           <div className="flex flex-col gap-4">
@@ -128,32 +128,32 @@ function CMDashboardPage() {
               <div className="flex items-center gap-5">
                 <CircularProgress
                   value={actualPct ?? 0} secondary={planPct} size={100} strokeWidth={9}
-                  label={actualPct == null ? <span className="text-[16px] font-bold text-white/70">—</span> : undefined}
+                  label={actualPct == null ? <span className="text-[16px] font-bold text-text-muted">—</span> : undefined}
                 />
                 <div className="flex-1 flex flex-col gap-2.5 min-w-0">
                   <div>
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-white/60 mb-0.5">{t("dashboard.planToday")}</p>
-                    <p className="text-white font-bold text-[14px]">{planPct.toFixed(0)}%</p>
+                    <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-0.5">{t("dashboard.planToday")}</p>
+                    <p className="text-text-primary font-bold text-[14px]">{planPct.toFixed(0)}%</p>
                   </div>
                   <div className="flex gap-5">
                     {daysElapsed != null && (
                       <div>
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/60 mb-0.5">{t("dashboard.daysElapsed")}</p>
-                        <p className="text-white font-bold text-[14px]">{daysElapsed}</p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-0.5">{t("dashboard.daysElapsed")}</p>
+                        <p className="text-text-primary font-bold text-[14px]">{daysElapsed}</p>
                       </div>
                     )}
                     {daysRemaining != null && (
                       <div>
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-white/60 mb-0.5">{t("dashboard.daysRemaining")}</p>
-                        <p className="text-white font-bold text-[14px]">{daysRemaining}</p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-0.5">{t("dashboard.daysRemaining")}</p>
+                        <p className="text-text-primary font-bold text-[14px]">{daysRemaining}</p>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15">
+              <div className="mt-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-3">
                 <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: varianceColor }} />
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white">{varianceLabel}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-primary">{varianceLabel}</span>
               </div>
             </Card>
 
@@ -163,7 +163,7 @@ function CMDashboardPage() {
               </svg>
             }>
               {series.length === 0 ? (
-                <p className="text-white/30 text-[12px]">{t("dashboard.notEnoughData")}</p>
+                <p className="text-text-subtle text-[12px]">{t("dashboard.notEnoughData")}</p>
               ) : (
                 <div style={{ height: 220 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -190,14 +190,14 @@ function CMDashboardPage() {
               </svg>
             }>
               <div className="flex items-center justify-between mb-3">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.totalValue")}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("dashboard.totalValue")}</span>
                 <span className="font-mono text-[13px] font-bold" style={{ color: "var(--color-brand-accent)" }}>{boqTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
               </div>
               <div className="flex flex-col gap-1.5">
                 {topCategories.map(([category, value]) => (
                   <div key={category} className="flex items-center justify-between text-[12px]">
-                    <span className="text-white/60 truncate">{category}</span>
-                    <span className="font-mono text-white/40 shrink-0">{boqTotal > 0 ? ((value / boqTotal) * 100).toFixed(1) : "0.0"}%</span>
+                    <span className="text-text-muted truncate">{category}</span>
+                    <span className="font-mono text-text-subtle shrink-0">{boqTotal > 0 ? ((value / boqTotal) * 100).toFixed(1) : "0.0"}%</span>
                   </div>
                 ))}
               </div>
@@ -210,9 +210,9 @@ function CMDashboardPage() {
               </svg>
             }>
               <div className="flex items-center gap-5">
-                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{scheduleBuckets.ahead}</p><StatusBadge variant="dot" color="#34d399" label={t("dashboard.statusAhead")} /></div>
-                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{scheduleBuckets.onTrack}</p><StatusBadge variant="dot" color="#fbbf24" label={t("dashboard.statusOnTrack")} /></div>
-                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{scheduleBuckets.behind}</p><StatusBadge variant="dot" color="#f43f5e" label={t("dashboard.statusBehind")} /></div>
+                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-text-primary">{scheduleBuckets.ahead}</p><StatusBadge variant="dot" color="#34d399" label={t("dashboard.statusAhead")} /></div>
+                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-text-primary">{scheduleBuckets.onTrack}</p><StatusBadge variant="dot" color="#fbbf24" label={t("dashboard.statusOnTrack")} /></div>
+                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-text-primary">{scheduleBuckets.behind}</p><StatusBadge variant="dot" color="#f43f5e" label={t("dashboard.statusBehind")} /></div>
               </div>
               <Link to="/cm/schedule" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewSchedule")}</Link>
             </Card>
@@ -223,8 +223,8 @@ function CMDashboardPage() {
               </svg>
             }>
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.latestHeadcount")}</span>
-                <span className="font-bold text-[14px] text-white/80">{latestHeadcount}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("dashboard.latestHeadcount")}</span>
+                <span className="font-bold text-[14px] text-text-primary">{latestHeadcount}</span>
               </div>
               <Link to="/cm/manpower" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewManpower")}</Link>
             </Card>
@@ -235,9 +235,9 @@ function CMDashboardPage() {
               </svg>
             }>
               <div className="flex items-center gap-5">
-                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{equipmentCounts.Operational}</p><StatusBadge variant="dot" color="#34d399" label={t("equipmentStatus.Operational")} /></div>
-                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{equipmentCounts.Maintenance}</p><StatusBadge variant="dot" color="#fbbf24" label={t("equipmentStatus.Maintenance")} /></div>
-                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-white/85">{equipmentCounts["Out of Service"]}</p><StatusBadge variant="dot" color="#f43f5e" label={t("equipmentStatus.Out of Service")} /></div>
+                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-text-primary">{equipmentCounts.Operational}</p><StatusBadge variant="dot" color="#34d399" label={t("equipmentStatus.Operational")} /></div>
+                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-text-primary">{equipmentCounts.Maintenance}</p><StatusBadge variant="dot" color="#fbbf24" label={t("equipmentStatus.Maintenance")} /></div>
+                <div className="flex flex-col gap-1"><p className="font-bold text-[16px] text-text-primary">{equipmentCounts["Out of Service"]}</p><StatusBadge variant="dot" color="#f43f5e" label={t("equipmentStatus.Out of Service")} /></div>
               </div>
               <Link to="/cm/equipment" className="inline-block mt-3 font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewEquipment")}</Link>
             </Card>

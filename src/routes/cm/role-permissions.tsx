@@ -89,25 +89,25 @@ function CMRolePermissionsPage() {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
-          <Link to="/cm/settings" className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
+          <Link to="/cm/settings" className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
           </Link>
-          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("rolePermissions.title")}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary">{t("rolePermissions.title")}</h1>
         </div>
-        <p className="text-[12px] text-white/35 mb-5">{t("rolePermissions.subtitle")}</p>
+        <p className="text-[12px] text-text-subtle mb-5">{t("rolePermissions.subtitle")}</p>
 
         <div className="mb-4">
           <FieldSelect value={jobRole} onChange={setJobRole} searchable allowCustom
@@ -119,17 +119,17 @@ function CMRolePermissionsPage() {
 
         <Card title={jobRoleLabel(jobRole, t)}>
           <div className="flex flex-col gap-1">
-            <div className="grid grid-cols-[1fr_repeat(5,44px)] items-center gap-1 pb-2 mb-1 border-b border-white/6">
+            <div className="grid grid-cols-[1fr_repeat(5,44px)] items-center gap-1 pb-2 mb-1 border-b border-border">
               <span />
               {ACTIONS.map(({ action, labelKey }) => (
-                <span key={action} className="font-mono text-[8px] uppercase tracking-widest text-white/30 text-center">{t(labelKey)}</span>
+                <span key={action} className="font-mono text-[8px] uppercase tracking-widest text-text-subtle text-center">{t(labelKey)}</span>
               ))}
             </div>
             {CM_MODULE_KEYS.map((moduleKey) => {
               const row = effectiveRow(moduleKey);
               return (
                 <div key={moduleKey} className="grid grid-cols-[1fr_repeat(5,44px)] items-center gap-1 py-1.5">
-                  <span className="text-[12px] text-white/70 truncate pr-2">{t(MODULE_TITLE_KEY[moduleKey])}</span>
+                  <span className="text-[12px] text-text-muted truncate pr-2">{t(MODULE_TITLE_KEY[moduleKey])}</span>
                   {ACTIONS.map(({ action }) => {
                     const checked = row ? row[ACTION_FIELD[action]] : true;
                     const cellKey = `${moduleKey}:${action}`;

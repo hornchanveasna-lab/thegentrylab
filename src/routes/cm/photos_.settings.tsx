@@ -18,7 +18,7 @@ function PhotosSettingsPage() {
   const { data: account } = useCMAccountSettings(user?.id);
   const [busy, setBusy] = useState(false);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) return null;
 
   const ctx = { ownerId: user.id, actorId: user.id };
@@ -36,7 +36,7 @@ function PhotosSettingsPage() {
   return (
     <ModuleSettingsPage title={`${t("photos.title")} — ${t("common.settings")}`} backTo="/cm/photos">
       <Card title={t("photos.settingsTitle")}>
-        <div className="flex flex-col divide-y divide-white/6">
+        <div className="flex flex-col divide-y divide-border">
           <SettingControlRow
             icon={
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

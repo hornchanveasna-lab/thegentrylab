@@ -212,7 +212,7 @@ export function ConfirmationDialog({ message, confirmLabel, onConfirm, onCancel,
 }) {
   const { t } = useCMLang();
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-sm px-6" onClick={onCancel}>
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 px-6" onClick={onCancel}>
       <div className="w-full max-w-xs bg-surface-1 border border-border rounded-3xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
         <p className="text-[13px] text-text-primary text-center">{message}</p>
         <div className="flex gap-2">
@@ -294,7 +294,7 @@ export function ListRow({ icon, label, count, iconColor = "var(--color-brand-acc
  *  stroke directly (recharts' arc fill can't cleanly do that). `secondary`
  *  draws a thin plan/target tick mark on the track for plan-vs-actual
  *  comparisons (e.g. dashboard's plan% vs actual% ring). */
-export function CircularProgress({ value, size = 96, strokeWidth = 8, gradient = true, color, secondary, label }: {
+export function CircularProgress({ value, size = 96, strokeWidth = 8, gradient = false, color, secondary, label }: {
   value: number; size?: number; strokeWidth?: number; gradient?: boolean; color?: string;
   secondary?: number; label?: React.ReactNode;
 }) {
@@ -402,7 +402,7 @@ export function StringListEditor({ label, hint, values, onChange, canEdit }: {
 
 /** A collapsible card section — same visual shell as the accordion cards
  *  used across Inspection/Safety/Punch List/Submittal list rows
- *  (`rounded-2xl bg-[#0d0d0e]`, tappable header, collapsible body), reused
+ *  (`rounded-2xl bg-surface-1`, tappable header, collapsible body), reused
  *  here as a generic building block for long forms that want jump-to-section
  *  navigation instead of one uninterrupted scroll. `badge` renders on the
  *  header's right side (e.g. a running total); the chevron always shows the
@@ -578,7 +578,7 @@ export function FieldSelect<T extends string>({ value, options, onChange, classN
         )}
       </button>
       {open && (
-        <div className={`absolute z-50 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl ${openUpward ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} ${menuClassName ?? "left-0 right-0"}`}>
+        <div className={`absolute z-50 rounded-2xl overflow-hidden shadow-xl menu-surface ${openUpward ? "bottom-[calc(100%+6px)]" : "top-[calc(100%+6px)]"} ${menuClassName ?? "left-0 right-0"}`}>
             {searchable && (
               <div className="p-2 border-b border-border">
                 <input autoFocus value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder}
@@ -793,9 +793,9 @@ export type ModuleView = "list" | "calendar";
 export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v: ModuleView) => void }) {
   const { t } = useCMLang();
   return (
-    <div className="flex gap-1 rounded-xl bg-white/5 border border-white/10 p-1 shrink-0">
+    <div className="flex gap-1 rounded-xl bg-surface-2 border border-border p-1 shrink-0">
       <button type="button" onClick={() => onChange("list")} aria-label={t("common.viewList")}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "list" ? "" : "text-white/50"}`}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "list" ? "" : "text-text-muted"}`}
         style={view === "list" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
@@ -803,7 +803,7 @@ export function ViewToggle({ view, onChange }: { view: ModuleView; onChange: (v:
         </svg>
       </button>
       <button type="button" onClick={() => onChange("calendar")} aria-label={t("common.viewCalendar")}
-        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "calendar" ? "" : "text-white/50"}`}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${view === "calendar" ? "" : "text-text-muted"}`}
         style={view === "calendar" ? { backgroundColor: "#ff5100", color: "#000" } : undefined}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18" /><path d="M8 2v4M16 2v4" />
@@ -956,7 +956,7 @@ export function ModuleHeader({ title, search, onSearchChange, searchPlaceholder,
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
         </button>
         {showMenu && (
-          <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+          <div className="absolute right-0 top-11 z-50 w-56 rounded-2xl overflow-hidden shadow-xl menu-surface">
             {[{ asc: false, label: t("common.newestFirst") }, { asc: true, label: t("common.oldestFirst") }].map((opt) => (
               <button key={String(opt.asc)} type="button" onClick={() => { onToggleSort(opt.asc); setShowMenu(false); }}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-2 transition-colors border-b border-border last:border-b-0">
@@ -1086,7 +1086,7 @@ export function WeekCalendarStrip<T>({ items, dateOf, lang, selected, onSelect }
                   <span className="text-[10px] font-medium text-text-subtle">{dateObj.toLocaleDateString(CALENDAR_MONTH_LOCALE[lang], { weekday: "narrow" })}</span>
                   <span
                     className={`relative aspect-square w-9 rounded-full flex items-center justify-center text-[13px] font-bold transition-colors ${
-                      isSelected ? "text-white" : markedDates.has(d) ? "text-text-primary bg-surface-2" : "text-text-subtle"
+                      isSelected ? "text-text-primary" : markedDates.has(d) ? "text-text-primary bg-surface-2" : "text-text-subtle"
                     }`}
                     style={{
                       backgroundColor: isSelected ? "var(--color-brand-accent)" : undefined,
@@ -1177,7 +1177,7 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
                     className="relative aspect-square rounded-full overflow-hidden flex items-center justify-center bg-surface-2">
                     {marked && renderCover?.(dayItems!)}
                     {marked && !renderCover && <span className="absolute inset-0 rounded-full" style={{ backgroundColor: "var(--color-brand-accent)" }} />}
-                    <span className={`relative text-[12px] font-bold ${marked ? (renderCover ? "text-white/[0.95]" : "text-white") : "text-text-subtle"}`}
+                    <span className={`relative text-[12px] font-bold ${marked ? (renderCover ? "text-text-primary" : "text-text-primary") : "text-text-subtle"}`}
                       style={marked && renderCover ? { textShadow: "0 1px 3px rgba(0,0,0,0.85)" } : undefined}>
                       {cell.day}
                     </span>
@@ -1198,7 +1198,7 @@ export function MiniCalendar<T>({ items, dateOf, lang, onOpenDay, renderCover }:
  *  whose record detail is a Sheet overlay rather than a full page. */
 export function Sheet({ title, onClose, menu, children }: { title: string; onClose: () => void; menu?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70" onClick={onClose}>
       <div className="w-full sm:max-w-lg bg-surface-1 rounded-t-3xl sm:rounded-3xl max-h-[88vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="w-10 h-1 rounded-full bg-border mx-auto mt-3 sm:hidden" />
         <div className="flex items-center gap-2 justify-between px-6 pt-4 pb-2 sticky top-0 bg-surface-1 z-10">
@@ -1236,7 +1236,7 @@ export function RecordActionsMenu({ items }: { items: RecordMenuItem[] }) {
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
       </button>
       {showMenu && (
-        <div className="absolute right-0 top-11 z-50 w-52 rounded-2xl overflow-hidden shadow-xl menu-surface backdrop-blur-xl">
+        <div className="absolute right-0 top-11 z-50 w-52 rounded-2xl overflow-hidden shadow-xl menu-surface">
           {items.map((item, i) => (
             <button key={i} type="button" disabled={item.disabled}
               onClick={() => { setShowMenu(false); item.onClick(); }}
@@ -1258,7 +1258,7 @@ export function RecordActionsMenu({ items }: { items: RecordMenuItem[] }) {
  *  record-detail pages that offer Edit/Delete. */
 export function FormPage({ title, backTo, menu, children }: { title: string; backTo: string; menu?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--color-background)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to={backTo} />
@@ -1276,7 +1276,7 @@ export function FormPage({ title, backTo, menu, children }: { title: string; bac
  *  children are a vertical stack of `Card`s rather than a form. */
 export function ModuleSettingsPage({ title, backTo, children }: { title: string; backTo: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--color-background)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to={backTo} />
@@ -1314,7 +1314,7 @@ export function BottomActionBar({ primary, secondary }: {
   secondary?: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border px-4 pt-3 flex flex-col gap-2"
+    <div className="fixed bottom-0 inset-x-0 z-30 bg-background/95 border-t border-border px-4 pt-3 flex flex-col gap-2"
       style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
       {secondary && (
         <button type="button" onClick={secondary.onClick}
@@ -1345,7 +1345,7 @@ export function PhotoPicker({ photos, setPhotos, disabled }: { photos: File[]; s
             <div key={i} className="relative w-16 h-16">
               <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 rounded-xl object-cover" />
               <button type="button" onClick={() => setPhotos((p) => p.filter((_, idx) => idx !== i))}
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-text-primary text-[9px] flex items-center justify-center">×</button>
             </div>
           ))}
         </div>
@@ -1526,7 +1526,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex flex-col gap-2">
             <p className="text-[12px] text-amber-200/90">{t("manpower.duplicateExists")}</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className={`${manpowerSmallBtn} text-white`} style={{ backgroundColor: "var(--color-brand-accent)" }}
+              <button type="button" className={`${manpowerSmallBtn} text-text-primary`} style={{ backgroundColor: "var(--color-brand-accent)" }}
                 onClick={() => {
                   const existing = rows[dupIndex];
                   setCompany(existing.company ?? "");
@@ -1550,7 +1550,7 @@ function ManpowerEntryFields({ ownerId, projectId, rows, editIndex, companyOptio
 
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <div className="flex gap-2 mt-1">
-          <button type="submit" disabled={saving || !trade.trim()} className={`${manpowerSmallBtn} disabled:opacity-40 px-5 py-2.5 text-white`} style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          <button type="submit" disabled={saving || !trade.trim()} className={`${manpowerSmallBtn} disabled:opacity-40 px-5 py-2.5 text-text-primary`} style={{ backgroundColor: "var(--color-brand-accent)" }}>
             {saving ? t("common.loading") : t("common.save")}
           </button>
           <button type="button" onClick={onClose} className={`${manpowerSmallBtn} px-5 py-2.5 text-text-muted`}>{t("common.cancel")}</button>
@@ -1629,7 +1629,7 @@ export function FilePicker({ files, setFiles, disabled }: { files: File[]; setFi
             <div key={i} className="relative w-16 h-16">
               <img src={URL.createObjectURL(f)} alt="" className="w-16 h-16 rounded-xl object-cover" />
               <button type="button" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-text-primary text-[9px] flex items-center justify-center">×</button>
             </div>
           ))}
         </div>
@@ -1762,7 +1762,7 @@ export function QuickUploadSheet({ sheetTitle, titleLabel, titlePlaceholder, ini
         </label>
         {error && <p className="text-[12px] text-red-400">{error}</p>}
         <button type="submit" disabled={saving || !title.trim()}
-          className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-40"
+          className="w-full rounded-full py-3.5 text-[14px] font-semibold text-text-primary transition-transform active:scale-[0.98] disabled:opacity-40"
           style={{ backgroundColor: "var(--color-brand-accent)" }}>
           {saving ? t("quickUpload.saving") : t("quickUpload.save")}
         </button>
@@ -2198,9 +2198,9 @@ function AnnotationEditor({ src, onCancel, onDone }: { src: string; onCancel: ()
   return (
     <div className="fixed inset-0 z-[210] bg-[#000] flex flex-col">
       <div className="flex items-center justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shrink-0">
-        <button onClick={onCancel} className="text-[13px] text-white/[0.70] hover:text-white px-2 py-1.5">{t("common.cancel")}</button>
-        <p className="text-[12px] font-bold text-white/[0.85]">{t("photos.annotate")}</p>
-        <button onClick={handleDone} className="text-[13px] font-bold px-3 py-1.5 rounded-full text-white" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.done")}</button>
+        <button onClick={onCancel} className="text-[13px] text-text-muted hover:text-text-primary px-2 py-1.5">{t("common.cancel")}</button>
+        <p className="text-[12px] font-bold text-text-primary">{t("photos.annotate")}</p>
+        <button onClick={handleDone} className="text-[13px] font-bold px-3 py-1.5 rounded-full text-text-primary" style={{ backgroundColor: "var(--color-brand-accent)" }}>{t("common.done")}</button>
       </div>
 
       <div ref={containerRef} className="flex-1 relative min-h-0 flex items-center justify-center overflow-hidden">
@@ -2215,7 +2215,7 @@ function AnnotationEditor({ src, onCancel, onDone }: { src: string; onCancel: ()
             onBlur={commitText}
             onKeyDown={(e) => { if (e.key === "Enter") commitText(); if (e.key === "Escape") { setPendingText(null); setTextValue(""); } }}
             style={{ position: "absolute", left: pendingText.x, top: pendingText.y, color, minWidth: 40 }}
-            className="bg-transparent border-b border-dashed border-white/50 text-[22px] font-bold outline-none"
+            className="bg-transparent border-b border-dashed border-border text-[22px] font-bold outline-none"
           />
         )}
       </div>
@@ -2236,7 +2236,7 @@ function AnnotationEditor({ src, onCancel, onDone }: { src: string; onCancel: ()
             </button>
           ))}
           <button onClick={() => setAnnotations((prev) => prev.slice(0, -1))} disabled={annotations.length === 0}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/[0.10] text-white/[0.80] disabled:opacity-30">
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-surface-3 text-text-primary disabled:opacity-30">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-1" /></svg>
           </button>
         </div>
@@ -2325,35 +2325,35 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
   // This viewer is meant to stay a dark, immersive overlay no matter which app
   // theme is active — every color below uses a bracket-arbitrary Tailwind value
   // instead of the plain opacity shorthand, since the app's light-mode
-  // stylesheet force-flips shorthand classes like text-white/60 to a dark
+  // stylesheet force-flips shorthand classes like text-text-muted to a dark
   // color globally, which would make this always-dark chrome unreadable.
   return (
     <div className="fixed inset-0 z-[200] bg-[#000] flex flex-col">
-      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 bg-gradient-to-b from-black/70 to-transparent">
-        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.10] text-white/[0.80] hover:text-white shrink-0">
+      <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-between gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 bg-black">
+        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-3 text-text-primary hover:text-text-primary shrink-0">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
         </button>
         <div className="text-center min-w-0 px-2 flex-1">
-          {item.projectName && <p className="text-[12px] font-bold text-white/[0.90] truncate">{item.projectName}</p>}
-          {items.length > 1 && <p className="font-mono text-[10px] text-white/[0.45]">{t("photos.counter", { current: String(index + 1), total: String(items.length) })}</p>}
+          {item.projectName && <p className="text-[12px] font-bold text-text-primary truncate">{item.projectName}</p>}
+          {items.length > 1 && <p className="font-mono text-[10px] text-text-subtle">{t("photos.counter", { current: String(index + 1), total: String(items.length) })}</p>}
         </div>
         <div className="relative shrink-0">
-          <button onClick={() => setMenuOpen((v) => !v)} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/[0.10] text-white/[0.80] hover:text-white">
+          <button onClick={() => setMenuOpen((v) => !v)} className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-3 text-text-primary hover:text-text-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-11 w-52 rounded-2xl bg-[#181818] border border-white/[0.10] overflow-hidden shadow-xl">
+            <div className="absolute right-0 top-11 w-52 rounded-2xl bg-[#181818] border border-border overflow-hidden shadow-xl">
               {onShowInReport && item.recordId && (
                 <button onClick={() => { setMenuOpen(false); onShowInReport(item); }}
-                  className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">
+                  className="w-full text-left px-4 py-3 text-[13px] text-text-primary hover:bg-surface-2 border-b border-border">
                   {t("photos.showInReport")}
                 </button>
               )}
-              <button onClick={() => { setMenuOpen(false); setAnnotating(true); }} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">{t("photos.annotate")}</button>
-              <button onClick={handleSave} className="w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] border-b border-white/[0.06]">{t("photos.save")}</button>
-              <button onClick={handleShare} className={`w-full text-left px-4 py-3 text-[13px] text-white/[0.85] hover:bg-white/[0.05] ${onDelete ? "border-b border-white/[0.06]" : ""}`}>{t("photos.share")}</button>
+              <button onClick={() => { setMenuOpen(false); setAnnotating(true); }} className="w-full text-left px-4 py-3 text-[13px] text-text-primary hover:bg-surface-2 border-b border-border">{t("photos.annotate")}</button>
+              <button onClick={handleSave} className="w-full text-left px-4 py-3 text-[13px] text-text-primary hover:bg-surface-2 border-b border-border">{t("photos.save")}</button>
+              <button onClick={handleShare} className={`w-full text-left px-4 py-3 text-[13px] text-text-primary hover:bg-surface-2 ${onDelete ? "border-b border-border" : ""}`}>{t("photos.share")}</button>
               {onDelete && (
-                <button onClick={() => { setMenuOpen(false); setConfirmingDelete(true); }} className="w-full text-left px-4 py-3 text-[13px] text-red-400 hover:bg-white/[0.05]">{t("photos.delete")}</button>
+                <button onClick={() => { setMenuOpen(false); setConfirmingDelete(true); }} className="w-full text-left px-4 py-3 text-[13px] text-red-400 hover:bg-surface-2">{t("photos.delete")}</button>
               )}
             </div>
           )}
@@ -2364,7 +2364,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
         <ZoomableImage key={item.url} src={item.url} onSwipeLeft={goNext} onSwipeRight={goPrev} />
       </div>
 
-      {item.caption && <p className="px-6 pb-2 text-center text-[12px] text-white/[0.60] truncate shrink-0">{item.caption}</p>}
+      {item.caption && <p className="px-6 pb-2 text-center text-[12px] text-text-muted truncate shrink-0">{item.caption}</p>}
 
       {items.length > 1 && (
         <div ref={filmstripRef}
@@ -2380,7 +2380,7 @@ export function PhotoLightbox({ items, index, onIndexChange, onClose, onShowInRe
         </div>
       )}
 
-      {toast && <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-white/[0.15] backdrop-blur text-[12px] text-white/[0.95] z-30">{toast}</div>}
+      {toast && <div className="absolute bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 rounded-full bg-surface-3 text-[12px] text-text-primary z-30">{toast}</div>}
       {confirmingDelete && (
         <ConfirmationDialog message={t("photos.deleteConfirm")} confirmLabel={t("photos.delete")}
           onConfirm={handleDelete} onCancel={() => setConfirmingDelete(false)} />

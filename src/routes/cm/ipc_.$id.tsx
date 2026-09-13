@@ -68,7 +68,7 @@ function IPCDetailPage() {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !ipc) return null;
 
   const currency = contract?.currency ?? "";
@@ -77,25 +77,25 @@ function IPCDetailPage() {
     <FormPage title={`${t("ipc.number")} ${ipc.ipc_number}`} backTo="/cm/ipc">
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <p className="text-[12px] text-white/50">{contract?.title ?? ""}</p>
+          <p className="text-[12px] text-text-muted">{contract?.title ?? ""}</p>
           <StatusBadge label={t(`ipcStatus.${ipc.status}`)} color={IPC_STATUS_COLOR[ipc.status]} size="sm" />
         </div>
 
         <Card title={t("ipc.summary")}>
           <div className="flex flex-col gap-2 text-[12px]">
-            <div className="flex justify-between"><span className="text-white/40">{t("ipc.period")}</span><span className="text-white/80">{ipc.period_start} → {ipc.period_end}</span></div>
-            <div className="flex justify-between"><span className="text-white/40">{t("ipc.grossValue")}</span><span className="text-white/80 font-mono">{currency} {ipc.gross_value_this_period.toLocaleString()}</span></div>
-            <div className="flex justify-between"><span className="text-white/40">{t("ipc.cumulativeGross")}</span><span className="text-white/80 font-mono">{currency} {ipc.cumulative_gross_to_date.toLocaleString()}</span></div>
-            <div className="flex justify-between"><span className="text-white/40">{t("ipc.retentionHeld")}</span><span className="text-white/80 font-mono">{currency} {ipc.retention_held_this_period.toLocaleString()} ({ipc.retention_pct}%)</span></div>
+            <div className="flex justify-between"><span className="text-text-subtle">{t("ipc.period")}</span><span className="text-text-primary">{ipc.period_start} → {ipc.period_end}</span></div>
+            <div className="flex justify-between"><span className="text-text-subtle">{t("ipc.grossValue")}</span><span className="text-text-primary font-mono">{currency} {ipc.gross_value_this_period.toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-text-subtle">{t("ipc.cumulativeGross")}</span><span className="text-text-primary font-mono">{currency} {ipc.cumulative_gross_to_date.toLocaleString()}</span></div>
+            <div className="flex justify-between"><span className="text-text-subtle">{t("ipc.retentionHeld")}</span><span className="text-text-primary font-mono">{currency} {ipc.retention_held_this_period.toLocaleString()} ({ipc.retention_pct}%)</span></div>
             {ipc.advance_recovery_this_period > 0 && (
-              <div className="flex justify-between"><span className="text-white/40">{t("ipc.advanceRecovery")}</span><span className="text-white/80 font-mono">{currency} {ipc.advance_recovery_this_period.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-text-subtle">{t("ipc.advanceRecovery")}</span><span className="text-text-primary font-mono">{currency} {ipc.advance_recovery_this_period.toLocaleString()}</span></div>
             )}
             {ipc.other_deductions.map((d, i) => (
-              <div key={i} className="flex justify-between"><span className="text-white/40">{d.description}</span><span className="text-white/80 font-mono">{currency} {d.amount.toLocaleString()}</span></div>
+              <div key={i} className="flex justify-between"><span className="text-text-subtle">{d.description}</span><span className="text-text-primary font-mono">{currency} {d.amount.toLocaleString()}</span></div>
             ))}
-            <div className="flex justify-between pt-2 border-t border-white/6"><span className="text-white/60 font-bold">{t("ipc.netPayable")}</span><span className="font-mono font-bold" style={{ color: "#ff5100" }}>{currency} {ipc.net_payable_this_period.toLocaleString()}</span></div>
+            <div className="flex justify-between pt-2 border-t border-border"><span className="text-text-muted font-bold">{t("ipc.netPayable")}</span><span className="font-mono font-bold" style={{ color: "#ff5100" }}>{currency} {ipc.net_payable_this_period.toLocaleString()}</span></div>
             {ipc.certified_value != null && (
-              <div className="flex justify-between"><span className="text-white/40">{t("ipc.certifiedValue")}</span><span className="text-white/80 font-mono">{currency} {ipc.certified_value.toLocaleString()}</span></div>
+              <div className="flex justify-between"><span className="text-text-subtle">{t("ipc.certifiedValue")}</span><span className="text-text-primary font-mono">{currency} {ipc.certified_value.toLocaleString()}</span></div>
             )}
           </div>
         </Card>
@@ -105,12 +105,12 @@ function IPCDetailPage() {
             {(lineItems ?? []).map((line) => {
               const boq = boqById.get(line.boq_item_id);
               return (
-                <div key={line.id} className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-1.5">
-                  <p className="text-[12px] text-white/80 truncate">{boq?.description ?? line.boq_item_id}</p>
+                <div key={line.id} className="rounded-xl bg-surface-2 px-3 py-2.5 flex flex-col gap-1.5">
+                  <p className="text-[12px] text-text-primary truncate">{boq?.description ?? line.boq_item_id}</p>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-[10px] text-white/35">{t("ipc.claimedQty")} {line.claimed_quantity} {boq?.unit ?? ""} @ {currency} {line.unit_cost_snapshot}</span>
+                    <span className="font-mono text-[10px] text-text-subtle">{t("ipc.claimedQty")} {line.claimed_quantity} {boq?.unit ?? ""} @ {currency} {line.unit_cost_snapshot}</span>
                     {ipc.status === "Submitted" && canEdit ? (
-                      <input type="number" step="0.01" className="w-24 bg-white/8 rounded-full px-3 py-1.5 text-[11px] font-mono text-white/85 text-right focus:outline-none"
+                      <input type="number" step="0.01" className="w-24 bg-surface-3 rounded-full px-3 py-1.5 text-[11px] font-mono text-text-primary text-right focus:outline-none"
                         placeholder={String(line.claimed_quantity)}
                         value={certifiedQty[line.id] ?? ""} onChange={(e) => setCertifiedQty({ ...certifiedQty, [line.id]: e.target.value })} />
                     ) : line.certified_quantity != null ? (
@@ -120,7 +120,7 @@ function IPCDetailPage() {
                 </div>
               );
             })}
-            {(lineItems?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("ipc.noLineItems")}</p>}
+            {(lineItems?.length ?? 0) === 0 && <p className="text-text-subtle text-[12px]">{t("ipc.noLineItems")}</p>}
           </div>
         </Card>
 

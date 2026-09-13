@@ -22,7 +22,7 @@ function EditSubmittalPage() {
   const projectDisciplines = enabledDisciplines(activeProject);
   const canApprove = usePermission(existing?.project_id, user?.id, "submittal", "approve");
 
-  if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || isLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !existing) return null;
 
   return (

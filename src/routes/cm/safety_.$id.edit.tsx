@@ -16,7 +16,7 @@ function EditSafetyEntryPage() {
   const { data: records, isLoading } = useAllCMSafetyRecords(user?.id);
   const existing = records?.find((r) => r.id === id);
 
-  if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || isLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !existing) return null;
 
   return (

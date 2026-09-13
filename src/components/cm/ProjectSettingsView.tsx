@@ -98,8 +98,8 @@ import {
 } from "@/lib/cm-data";
 import { useAuthCM } from "@/lib/auth-cm";
 
-const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
-const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const labelCls = "font-mono text-[10px] uppercase tracking-widest text-text-subtle";
 const smallBtn = "px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest transition-all";
 
 /** Swaps a logo's `src` for the exact same monotone tint the photo stamp
@@ -127,9 +127,9 @@ function MonotonePreviewToggle({ enabled, onChange }: { enabled: boolean; onChan
   const { t } = useCMLang();
   return (
     <button type="button" onClick={() => onChange(!enabled)}
-      className={`flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${enabled ? "" : "text-white/35"}`}
+      className={`flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest transition-colors ${enabled ? "" : "text-text-subtle"}`}
       style={enabled ? { color: "#ff5100" } : undefined}>
-      <span className={`w-7 h-4 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-white/15"}`}
+      <span className={`w-7 h-4 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-surface-3"}`}
         style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
         <span className="absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform"
           style={{ transform: enabled ? "translateX(13px)" : "translateX(2px)" }} />
@@ -163,7 +163,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
           {rows.filter(([, v]) => v).map(([label, value]) => (
             <div key={label} className="flex items-baseline gap-2">
               <span className={labelCls}>{label}</span>
-              <span className="text-[12px] text-white/70">{value}</span>
+              <span className="text-[12px] text-text-muted">{value}</span>
             </div>
           ))}
         </div>
@@ -286,7 +286,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
               <span className={labelCls}>{t("projectSettings.location")}</span>
               <button type="button" onClick={handleUseCurrentLocation} disabled={locating}
                 title={t("projectSettings.useCurrentLocation")}
-                className="text-white/40 hover:text-[#ff5100] disabled:opacity-40 transition-colors">
+                className="text-text-subtle hover:text-[#ff5100] disabled:opacity-40 transition-colors">
                 {locating ? (
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-spin">
                     <path d="M21 12a9 9 0 1 1-9-9" />
@@ -307,7 +307,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
               <input className={`${inputCls} flex-1`} value={locationMapUrl} onChange={(e) => setLocationMapUrl(e.target.value)}
                 placeholder={t("projectSettings.mapLinkPlaceholder")} />
               <button type="button" onClick={handleOpenMap} title={t("projectSettings.openMap")}
-                className="shrink-0 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 hover:text-[#ff5100] transition-colors">
+                className="shrink-0 w-10 rounded-xl bg-surface-2 border border-border flex items-center justify-center text-text-muted hover:text-[#ff5100] transition-colors">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z" /><circle cx="12" cy="9" r="2.4" />
                 </svg>
@@ -383,7 +383,7 @@ function LogoSection({ project, ownerId, canEdit, onChanged, previewMonotone, on
       {project.client_logo_url ? (
         <img src={previewSrc ?? project.client_logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-3" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
       ) : (
-        <span className="text-white/20 text-[10px] font-mono uppercase bg-white/5 rounded-2xl px-4 py-5">{t("projectSettings.none")}</span>
+        <span className="text-text-subtle text-[10px] font-mono uppercase bg-surface-2 rounded-2xl px-4 py-5">{t("projectSettings.none")}</span>
       )}
     </div>
   );
@@ -421,14 +421,14 @@ function ConsultantRow({ c, canEdit, canDelete, editing, editValue, onEditValueC
   const logoPreview = c.logo_url ? (
     <img src={previewSrc ?? c.logo_url} alt="" className={`h-full w-auto object-contain ${previewSrc ? "px-2" : ""}`} style={{ opacity: uploading ? 0.4 : 1 }} />
   ) : (
-    <span className="text-white/20 text-[8px] font-mono uppercase bg-white/5 rounded-lg px-2 py-3">{uploading ? "…" : t("projectSettings.none")}</span>
+    <span className="text-text-subtle text-[8px] font-mono uppercase bg-surface-2 rounded-lg px-2 py-3">{uploading ? "…" : t("projectSettings.none")}</span>
   );
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
       {editing && canEdit ? (
         <input
-          className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
+          className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-[#ff5100]/60"
           value={editValue}
           autoFocus
           onChange={(e) => onEditValueChange(e.target.value)}
@@ -436,7 +436,7 @@ function ConsultantRow({ c, canEdit, canDelete, editing, editValue, onEditValueC
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") onCancelEdit(); }}
         />
       ) : (
-        <p onClick={canEdit ? onStartEdit : undefined} className={`text-[12px] text-white/80 flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>{c.name}</p>
+        <p onClick={canEdit ? onStartEdit : undefined} className={`text-[12px] text-text-primary flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>{c.name}</p>
       )}
       {canEdit ? (
         <label className="h-10 max-w-[110px] rounded-lg overflow-hidden flex items-center justify-center shrink-0 cursor-pointer"
@@ -450,7 +450,7 @@ function ConsultantRow({ c, canEdit, canDelete, editing, editValue, onEditValueC
           {logoPreview}
         </div>
       )}
-      {canDelete && <button onClick={onDelete} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>}
+      {canDelete && <button onClick={onDelete} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>}
     </div>
   );
 }
@@ -522,13 +522,13 @@ function ConsultantsSection({ ownerId, projectId, previewMonotone, canCreate, ca
             previewMonotone={previewMonotone}
           />
         ))}
-        {(consultants?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noConsultants")}</p>}
+        {(consultants?.length ?? 0) === 0 && !adding && <p className="text-text-subtle text-[12px]">{t("projectSettings.noConsultants")}</p>}
         {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("projectSettings.consultantName")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
             <div className="flex gap-2">
               <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
@@ -593,10 +593,10 @@ function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
     <Card title={t("locations.title")}>
       <div className="flex flex-col gap-2">
         {(locations ?? []).map((l) => (
-          <div key={l.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5" style={{ marginLeft: locationDepth(l, locations ?? []) * 16 }}>
+          <div key={l.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5" style={{ marginLeft: locationDepth(l, locations ?? []) * 16 }}>
             {editingId === l.id && canEdit ? (
               <input
-                className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-[#ff5100]/60"
                 value={editValue}
                 autoFocus
                 onChange={(e) => setEditValue(e.target.value)}
@@ -604,13 +604,13 @@ function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
                 onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditingId(null); }}
               />
             ) : (
-              <p onClick={canEdit ? () => startEditing(l) : undefined} className={`text-[12px] text-white/80 flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>{l.name}</p>
+              <p onClick={canEdit ? () => startEditing(l) : undefined} className={`text-[12px] text-text-primary flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>{l.name}</p>
             )}
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{t(`locationLevel.${l.level}`)}</span>
-            {canDelete && <button onClick={() => deleteCMProjectLocation(l.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>}
+            <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle shrink-0">{t(`locationLevel.${l.level}`)}</span>
+            {canDelete && <button onClick={() => deleteCMProjectLocation(l.id).then(invalidate)} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>}
           </div>
         ))}
-        {(locations?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("locations.noneYet")}</p>}
+        {(locations?.length ?? 0) === 0 && !adding && <p className="text-text-subtle text-[12px]">{t("locations.noneYet")}</p>}
         {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("locations.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -625,7 +625,7 @@ function LocationsSection({ projectId, canCreate, canEdit, canDelete }: {
             </div>
             <div className="flex gap-2">
               <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
@@ -659,25 +659,25 @@ function ChecklistSection({ ownerId, projectId, canCreate, canEdit, canDelete }:
     <Card title={t("projectSettings.checklist")}>
       <div className="flex flex-col gap-2">
         {(items ?? []).map((item) => (
-          <div key={item.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
+          <div key={item.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
             <button onClick={canEdit ? () => updateCMChecklistItem(item.id, { is_done: !item.is_done }).then(invalidate) : undefined}
               className="w-5 h-5 rounded-md border flex items-center justify-center shrink-0"
               style={{ borderColor: item.is_done ? "#34d399" : "rgba(255,255,255,0.2)", backgroundColor: item.is_done ? "#34d399" : "transparent" }}>
               {item.is_done && <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#000" strokeWidth="2"><path d="M2 6l3 3 5-6" /></svg>}
             </button>
-            <p className={`text-[12px] flex-1 ${item.is_done ? "text-white/30 line-through" : "text-white/80"}`}>{item.title}</p>
-            {item.category && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25 shrink-0">{item.category}</span>}
-            {canDelete && <button onClick={() => deleteCMChecklistItem(item.id).then(invalidate)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>}
+            <p className={`text-[12px] flex-1 ${item.is_done ? "text-text-subtle line-through" : "text-text-primary"}`}>{item.title}</p>
+            {item.category && <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle shrink-0">{item.category}</span>}
+            {canDelete && <button onClick={() => deleteCMChecklistItem(item.id).then(invalidate)} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>}
           </div>
         ))}
-        {(items?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("projectSettings.noChecklist")}</p>}
+        {(items?.length ?? 0) === 0 && !adding && <p className="text-text-subtle text-[12px]">{t("projectSettings.noChecklist")}</p>}
         {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("projectSettings.itemTitle")} value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
             <input className={inputCls} placeholder={t("projectSettings.category")} value={category} onChange={(e) => setCategory(e.target.value)} />
             <div className="flex gap-2">
               <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
@@ -772,12 +772,12 @@ function CompanySheet({ ownerId, company, onClose, onSaved }: {
       <form onSubmit={handleSubmit} className="px-6 pb-8 pt-2 flex flex-col gap-4">
         {company && (
           <div className="flex items-center gap-3">
-            <label className="h-14 w-24 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-white/5 cursor-pointer">
-              {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full object-contain" style={{ opacity: uploadingLogo ? 0.4 : 1 }} /> : <span className="text-white/20 text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>}
+            <label className="h-14 w-24 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-surface-2 cursor-pointer">
+              {logoUrl ? <img src={logoUrl} alt="" className="h-full w-full object-contain" style={{ opacity: uploadingLogo ? 0.4 : 1 }} /> : <span className="text-text-subtle text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>}
               <input type="file" accept="image/*" className="hidden" disabled={uploadingLogo} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(f); }} />
             </label>
-            <label className="h-14 w-24 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-white/5 cursor-pointer">
-              {stampUrl ? <img src={stampUrl} alt="" className="h-full w-full object-contain" style={{ opacity: uploadingStamp ? 0.4 : 1 }} /> : <span className="text-white/20 text-[9px] font-mono uppercase">{t("companies.stamp")}</span>}
+            <label className="h-14 w-24 rounded-xl overflow-hidden flex items-center justify-center shrink-0 bg-surface-2 cursor-pointer">
+              {stampUrl ? <img src={stampUrl} alt="" className="h-full w-full object-contain" style={{ opacity: uploadingStamp ? 0.4 : 1 }} /> : <span className="text-text-subtle text-[9px] font-mono uppercase">{t("companies.stamp")}</span>}
               <input type="file" accept="image/*" className="hidden" disabled={uploadingStamp} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadStamp(f); }} />
             </label>
           </div>
@@ -871,15 +871,15 @@ export function CompaniesSection({ ownerId, canCreate, canEdit }: { ownerId: str
     <Card title={t("companies.title")}>
       <div className="flex flex-col gap-3">
         <input className={inputCls} placeholder={t("companies.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
-        {filtered.length === 0 && <p className="text-white/30 text-[12px]">{t("companies.none")}</p>}
+        {filtered.length === 0 && <p className="text-text-subtle text-[12px]">{t("companies.none")}</p>}
         {filtered.map((c) => (
-          <button key={c.id} onClick={() => canEdit && setEditing(c)} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors">
+          <button key={c.id} onClick={() => canEdit && setEditing(c)} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5 text-left hover:bg-surface-3 transition-colors">
             <Avatar name={c.name} photoUrl={c.logo_url} size={32} />
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-white/80 font-medium truncate">{c.name}</p>
-              <p className="text-[10px] text-white/35 truncate">{c.company_type ? t(`companyType.${c.company_type}`) : t("companies.typePlaceholder")}</p>
+              <p className="text-[12px] text-text-primary font-medium truncate">{c.name}</p>
+              <p className="text-[10px] text-text-subtle truncate">{c.company_type ? t(`companyType.${c.company_type}`) : t("companies.typePlaceholder")}</p>
             </div>
-            {c.status === "Inactive" && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25 shrink-0">{t("companies.inactive")}</span>}
+            {c.status === "Inactive" && <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle shrink-0">{t("companies.inactive")}</span>}
           </button>
         ))}
         {canCreate && (
@@ -913,15 +913,15 @@ function DisciplinesSection({ project, canEdit, onChanged }: { project: CMProjec
 
   return (
     <Card title={t("disciplines.title")}>
-      <p className="text-[12px] text-white/45 mb-3">{t("disciplines.hint")}</p>
+      <p className="text-[12px] text-text-muted mb-3">{t("disciplines.hint")}</p>
       <div className="flex flex-col gap-1">
         {DISCIPLINES.map((d) => {
           const enabled = !disabled.has(d);
           return (
             <button key={d} type="button" onClick={() => toggle(d)} disabled={!canEdit}
-              className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-white/5 transition-colors disabled:opacity-60">
-              <span className="text-[12px] text-white/70">{t(`discipline.${d}`)}</span>
-              <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-white/15"}`}
+              className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-surface-3 transition-colors disabled:opacity-60">
+              <span className="text-[12px] text-text-muted">{t(`discipline.${d}`)}</span>
+              <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-surface-3"}`}
                 style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
                 <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
                   style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }} />
@@ -953,15 +953,15 @@ function ActiveModulesSection({ project, canEdit, onChanged }: { project: CMProj
 
   return (
     <Card title={t("settingsNav.activeModules")}>
-      <p className="text-[12px] text-white/45 mb-3">{t("settingsNav.activeModulesHint")}</p>
+      <p className="text-[12px] text-text-muted mb-3">{t("settingsNav.activeModulesHint")}</p>
       <div className="flex flex-col gap-1">
         {ACTIVE_MODULE_KEYS.map((m) => {
           const enabled = !disabled.has(m);
           return (
             <button key={m} type="button" onClick={() => toggle(m)} disabled={!canEdit}
-              className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-white/5 transition-colors disabled:opacity-60">
-              <span className="text-[12px] text-white/70">{t(MODULE_TITLE_KEY[m])}</span>
-              <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-white/15"}`}
+              className="flex items-center justify-between rounded-xl px-3 py-2.5 hover:bg-surface-3 transition-colors disabled:opacity-60">
+              <span className="text-[12px] text-text-muted">{t(MODULE_TITLE_KEY[m])}</span>
+              <span className={`w-9 h-5 rounded-full relative shrink-0 transition-colors ${enabled ? "" : "bg-surface-3"}`}
                 style={enabled ? { backgroundColor: "#ff5100" } : undefined}>
                 <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform"
                   style={{ transform: enabled ? "translateX(18px)" : "translateX(2px)" }} />
@@ -978,8 +978,8 @@ function PlaceholderSection({ title, description }: { title: string; description
   const { t } = useCMLang();
   return (
     <Card title={title}>
-      <p className="text-[12px] text-white/40 mb-2">{description}</p>
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("settingsNav.notBuiltYet")}</p>
+      <p className="text-[12px] text-text-subtle mb-2">{description}</p>
+      <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("settingsNav.notBuiltYet")}</p>
     </Card>
   );
 }
@@ -1016,10 +1016,10 @@ function WorkPackagesSection({ ownerId, projectId, canCreate, canEdit, canDelete
     <Card title={t("workPackages.title")}>
       <div className="flex flex-col gap-2">
         {(workPackages ?? []).map((wp) => (
-          <div key={wp.id} className="rounded-xl bg-white/3 px-3 py-2.5 flex items-center gap-3">
+          <div key={wp.id} className="rounded-xl bg-surface-2 px-3 py-2.5 flex items-center gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-white/80 font-medium truncate">{wp.name}</p>
-              <p className="text-[10px] text-white/35 truncate">
+              <p className="text-[12px] text-text-primary font-medium truncate">{wp.name}</p>
+              <p className="text-[10px] text-text-subtle truncate">
                 {wp.discipline && t(`discipline.${wp.discipline}`)}
                 {wp.discipline && companyName(wp.company_id) && " · "}
                 {companyName(wp.company_id)}
@@ -1029,11 +1029,11 @@ function WorkPackagesSection({ ownerId, projectId, canCreate, canEdit, canDelete
               <button onClick={() => deleteCMWorkPackage(wp.id).then(() => {
                 if (user) logCMActivity(projectId, user.id, "deleted", "work_package", wp.id, { name: wp.name });
                 invalidate();
-              })} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+              })} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>
             )}
           </div>
         ))}
-        {(workPackages?.length ?? 0) === 0 && !adding && <p className="text-white/30 text-[12px]">{t("workPackages.none")}</p>}
+        {(workPackages?.length ?? 0) === 0 && !adding && <p className="text-text-subtle text-[12px]">{t("workPackages.none")}</p>}
         {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("workPackages.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -1046,7 +1046,7 @@ function WorkPackagesSection({ ownerId, projectId, canCreate, canEdit, canDelete
             <textarea className={`${inputCls} resize-y min-h-[56px]`} placeholder={t("workPackages.description")} value={description} onChange={(e) => setDescription(e.target.value)} />
             <div className="flex gap-2">
               <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
@@ -1093,13 +1093,13 @@ export function DocumentControlSection({ project, canEdit, onChanged, onlyModule
 
   return (
     <Card title={t("documentControl.title")}>
-      <p className="text-[12px] text-white/45 mb-3">{t("documentControl.hint")}</p>
+      <p className="text-[12px] text-text-muted mb-3">{t("documentControl.hint")}</p>
       <div className="flex flex-col gap-3 mb-3">
         <span className={labelCls}>{t("documentControl.moduleCodes")}</span>
         <div className="grid grid-cols-2 gap-3">
           {(onlyModule ? [onlyModule] : DOC_MODULES).map((m) => (
             <label key={m} className="flex flex-col gap-1.5">
-              <span className="text-[10px] text-white/40">{t(`${moduleTitleKey(m)}.title`)}</span>
+              <span className="text-[10px] text-text-subtle">{t(`${moduleTitleKey(m)}.title`)}</span>
               <input className={inputCls} disabled={!canEdit} value={codes[m] ?? ""} maxLength={6}
                 onChange={(e) => setCodes((prev) => ({ ...prev, [m]: e.target.value.toUpperCase() }))} />
             </label>
@@ -1118,9 +1118,9 @@ export function DocumentControlSection({ project, canEdit, onChanged, onlyModule
           </label>
         </>
       )}
-      <div className="rounded-xl bg-white/3 px-3 py-2.5 mb-3">
-        <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("documentControl.preview")}</p>
-        <p className="font-mono text-[12px] text-white/70">{preview}</p>
+      <div className="rounded-xl bg-surface-2 px-3 py-2.5 mb-3">
+        <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mb-1">{t("documentControl.preview")}</p>
+        <p className="font-mono text-[12px] text-text-muted">{preview}</p>
       </div>
       {canEdit && (
         <button onClick={handleSave} disabled={saving}
@@ -1171,7 +1171,7 @@ export function WorkflowsSection({ ownerId, projectId, canCreate, canDelete, loc
 
   return (
     <Card title={t("workflows.title")}>
-      <p className="text-[12px] text-white/45 mb-3">{t("workflows.hint")}</p>
+      <p className="text-[12px] text-text-muted mb-3">{t("workflows.hint")}</p>
       {!lockModule && (
         <div className="mb-3">
           <SegmentedField value={module} onChange={setModule}
@@ -1180,22 +1180,22 @@ export function WorkflowsSection({ ownerId, projectId, canCreate, canDelete, loc
       )}
       <div className="flex flex-col gap-2 mb-3">
         {moduleSteps.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
-            <span className="font-mono text-[10px] text-white/30 shrink-0">{i + 1}.</span>
+          <div key={s.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
+            <span className="font-mono text-[10px] text-text-subtle shrink-0">{i + 1}.</span>
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-white/80 truncate">{s.approver_value}</p>
-              <p className="text-[10px] text-white/35">
+              <p className="text-[12px] text-text-primary truncate">{s.approver_value}</p>
+              <p className="text-[10px] text-text-subtle">
                 {t(`workflows.approverType.${s.approver_type}`)}
                 {s.required_comment && ` · ${t("workflows.requiresComment")}`}
                 {s.required_signature && ` · ${t("workflows.requiresSignature")}`}
               </p>
             </div>
             {canDelete && (
-              <button onClick={() => handleDelete(s.id)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+              <button onClick={() => handleDelete(s.id)} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>
             )}
           </div>
         ))}
-        {moduleSteps.length === 0 && <p className="text-white/30 text-[12px]">{t("workflows.none")}</p>}
+        {moduleSteps.length === 0 && <p className="text-text-subtle text-[12px]">{t("workflows.none")}</p>}
       </div>
       {canCreate && (
         <div className="flex flex-col gap-2">
@@ -1206,11 +1206,11 @@ export function WorkflowsSection({ ownerId, projectId, canCreate, canDelete, loc
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={requiredComment} onChange={(e) => setRequiredComment(e.target.checked)} className="w-4 h-4 rounded accent-[#ff5100]" />
-              <span className="text-[12px] text-white/60">{t("workflows.requiresComment")}</span>
+              <span className="text-[12px] text-text-muted">{t("workflows.requiresComment")}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" checked={requiredSignature} onChange={(e) => setRequiredSignature(e.target.checked)} className="w-4 h-4 rounded accent-[#ff5100]" />
-              <span className="text-[12px] text-white/60">{t("workflows.requiresSignature")}</span>
+              <span className="text-[12px] text-text-muted">{t("workflows.requiresSignature")}</span>
             </label>
           </div>
           <button onClick={handleAdd} disabled={!approverValue.trim()} className={`${smallBtn} self-start disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("workflows.addStep")}</button>
@@ -1243,11 +1243,11 @@ function ChecklistTemplateRow({ template, canEdit, canDelete, onDeleted }: {
   };
 
   return (
-    <div className="rounded-xl bg-white/3 px-3 py-2.5">
+    <div className="rounded-xl bg-surface-2 px-3 py-2.5">
       <div className="flex items-center gap-3 cursor-pointer" onClick={() => setExpanded((v) => !v)}>
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] text-white/80 font-medium truncate">{template.name}</p>
-          <p className="text-[10px] text-white/35">{t(`${template.module_key === "site_diary" ? "siteDiary" : template.module_key === "punch_list" ? "punchList" : template.module_key}.title`)} · {(items?.length ?? 0)} {t("templates.items")}</p>
+          <p className="text-[12px] text-text-primary font-medium truncate">{template.name}</p>
+          <p className="text-[10px] text-text-subtle">{t(`${template.module_key === "site_diary" ? "siteDiary" : template.module_key === "punch_list" ? "punchList" : template.module_key}.title`)} · {(items?.length ?? 0)} {t("templates.items")}</p>
         </div>
         {canDelete && (
           <button onClick={(e) => {
@@ -1256,16 +1256,16 @@ function ChecklistTemplateRow({ template, canEdit, canDelete, onDeleted }: {
               if (user) logCMActivity(template.project_id, user.id, "deleted", "checklist_template", template.id, { name: template.name });
               onDeleted();
             });
-          }} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+          }} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>
         )}
       </div>
       {expanded && (
-        <div className="flex flex-col gap-2 mt-2.5 pt-2.5 border-t border-white/6">
+        <div className="flex flex-col gap-2 mt-2.5 pt-2.5 border-t border-border">
           {(items ?? []).map((item) => (
             <div key={item.id} className="flex items-center gap-2">
-              <span className="text-[12px] text-white/70 flex-1 truncate">{item.title}</span>
+              <span className="text-[12px] text-text-muted flex-1 truncate">{item.title}</span>
               {canDelete && (
-                <button onClick={() => deleteCMChecklistTemplateItem(item.id).then(invalidateItems)} className="text-white/25 hover:text-red-400 w-5 h-5 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+                <button onClick={() => deleteCMChecklistTemplateItem(item.id).then(invalidateItems)} className="text-text-subtle hover:text-red-400 w-5 h-5 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>
               )}
             </div>
           ))}
@@ -1304,12 +1304,12 @@ export function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDe
 
   return (
     <Card title={t("templates.title")}>
-      <p className="text-[12px] text-white/45 mb-3">{t("templates.hint")}</p>
+      <p className="text-[12px] text-text-muted mb-3">{t("templates.hint")}</p>
       <div className="flex flex-col gap-2">
         {visibleTemplates.map((tpl) => (
           <ChecklistTemplateRow key={tpl.id} template={tpl} canEdit={canEdit} canDelete={canDelete} onDeleted={invalidate} />
         ))}
-        {visibleTemplates.length === 0 && !adding && <p className="text-white/30 text-[12px]">{t("templates.none")}</p>}
+        {visibleTemplates.length === 0 && !adding && <p className="text-text-subtle text-[12px]">{t("templates.none")}</p>}
         {canCreate && (adding ? (
           <div className="flex flex-col gap-2 mt-1">
             <input className={inputCls} placeholder={t("templates.name")} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
@@ -1319,7 +1319,7 @@ export function TemplatesSection({ ownerId, projectId, canCreate, canEdit, canDe
             )}
             <div className="flex gap-2">
               <button onClick={handleAdd} className={smallBtn} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-              <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+              <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
             </div>
           </div>
         ) : (
@@ -1358,20 +1358,20 @@ function NotificationsSection({ ownerId, projectId, canCreate, canDelete }: { ow
 
   return (
     <Card title={t("notifications.title")}>
-      <p className="text-[12px] text-white/45 mb-3">{t("notifications.hint")}</p>
+      <p className="text-[12px] text-text-muted mb-3">{t("notifications.hint")}</p>
       <div className="flex flex-col gap-2 mb-3">
         {(rules ?? []).map((r) => (
-          <div key={r.id} className="flex items-center gap-3 rounded-xl bg-white/3 px-3 py-2.5">
+          <div key={r.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] text-white/80 truncate">{t(`notifications.event.${r.event_key}`)}</p>
-              <p className="text-[10px] text-white/35 truncate">{t(`notifications.recipientType.${r.recipient_type}`)}: {r.recipient_value}</p>
+              <p className="text-[12px] text-text-primary truncate">{t(`notifications.event.${r.event_key}`)}</p>
+              <p className="text-[10px] text-text-subtle truncate">{t(`notifications.recipientType.${r.recipient_type}`)}: {r.recipient_value}</p>
             </div>
             {canDelete && (
-              <button onClick={() => handleDelete(r.id)} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+              <button onClick={() => handleDelete(r.id)} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>
             )}
           </div>
         ))}
-        {(rules?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("notifications.none")}</p>}
+        {(rules?.length ?? 0) === 0 && <p className="text-text-subtle text-[12px]">{t("notifications.none")}</p>}
       </div>
       {canCreate && (
         <div className="flex flex-col gap-2">
@@ -1424,18 +1424,18 @@ function DataArchiveSection({ project, canEdit, onProjectChanged }: { project: C
 
   return (
     <Card title={t("settingsNav.dataArchive")}>
-      <p className="text-[12px] text-white/45 mb-3">{t("archive.closeoutHint")}</p>
+      <p className="text-[12px] text-text-muted mb-3">{t("archive.closeoutHint")}</p>
       <div className="flex flex-col gap-2 mb-4">
-        <div className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5">
-          <span className="text-[12px] text-white/70">{t("archive.openPunch")}</span>
+        <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
+          <span className="text-[12px] text-text-muted">{t("archive.openPunch")}</span>
           <span className={`font-mono text-[12px] font-bold ${openPunch > 0 ? "text-red-400" : "text-emerald-400"}`}>{openPunch}</span>
         </div>
-        <div className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5">
-          <span className="text-[12px] text-white/70">{t("archive.pendingInspections")}</span>
+        <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
+          <span className="text-[12px] text-text-muted">{t("archive.pendingInspections")}</span>
           <span className={`font-mono text-[12px] font-bold ${pendingInspections > 0 ? "text-red-400" : "text-emerald-400"}`}>{pendingInspections}</span>
         </div>
-        <div className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2.5">
-          <span className="text-[12px] text-white/70">{t("archive.pendingSubmittals")}</span>
+        <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
+          <span className="text-[12px] text-text-muted">{t("archive.pendingSubmittals")}</span>
           <span className={`font-mono text-[12px] font-bold ${pendingSubmittals > 0 ? "text-red-400" : "text-emerald-400"}`}>{pendingSubmittals}</span>
         </div>
       </div>
@@ -1471,7 +1471,7 @@ function DataArchiveSection({ project, canEdit, onProjectChanged }: { project: C
  *  login). RLS is project-role-aware (see cm-data.ts), so an invited member
  *  can actually use the project per their role, not just show up here. ── */
 const MEMBER_ROLE_OPTIONS: CMMemberRole[] = ["admin", "member", "visitor"];
-const positionInputCls = "w-full bg-transparent text-[10px] text-white/40 placeholder-white/20 focus:outline-none focus:text-white/70 transition-colors";
+const positionInputCls = "w-full bg-transparent text-[10px] text-text-subtle placeholder-text-subtle focus:outline-none focus:text-text-muted transition-colors";
 
 /** Always-visible row for one joined project member — shown up front in its
  *  own "Members" list (not buried inside the company-grouped avatar chips,
@@ -1484,15 +1484,15 @@ function MemberRow({ member, companyOptions, allJobRoles, canEdit, canDelete, on
   const { t } = useCMLang();
 
   return (
-    <div className="rounded-xl bg-white/4 px-3 py-3 flex flex-col gap-2.5">
+    <div className="rounded-xl bg-surface-2 px-3 py-3 flex flex-col gap-2.5">
       <div className="flex items-center gap-3">
         <Avatar name={member.display_name || member.email || "?"} photoUrl={member.avatar_url} size={36} />
         <div className="min-w-0 flex-1">
-          <p className="text-[12px] text-white/85 font-medium truncate">{member.display_name || member.email || t("team.unknownMember")}</p>
-          {member.email && <p className="text-[10px] text-white/35 truncate">{member.email}</p>}
+          <p className="text-[12px] text-text-primary font-medium truncate">{member.display_name || member.email || t("team.unknownMember")}</p>
+          {member.email && <p className="text-[10px] text-text-subtle truncate">{member.email}</p>}
         </div>
         {canDelete && (
-          <button onClick={onRemove} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>
+          <button onClick={onRemove} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>
         )}
       </div>
       {canEdit ? (
@@ -1522,7 +1522,7 @@ function MemberRow({ member, companyOptions, allJobRoles, canEdit, canDelete, on
           />
         </>
       ) : (
-        <p className="text-[11px] text-white/60">
+        <p className="text-[11px] text-text-muted">
           {member.position && `${member.position} · `}{member.company && `${member.company} · `}{t(`team.role.${member.role}`)}
           {member.job_role && ` · ${jobRoleLabel(member.job_role, t)}`}
         </p>
@@ -1555,22 +1555,22 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName, canCreat
   };
 
   return (
-    <div className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-2">
+    <div className="rounded-xl bg-surface-2 px-3 py-2.5 flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[12px] text-white/80 font-medium truncate">{consultantName}</p>
-        {(people?.length ?? 0) > 0 && <span className="font-mono text-[10px] text-white/30 shrink-0">×{people!.length}</span>}
+        <p className="text-[12px] text-text-primary font-medium truncate">{consultantName}</p>
+        {(people?.length ?? 0) > 0 && <span className="font-mono text-[10px] text-text-subtle shrink-0">×{people!.length}</span>}
       </div>
       {(people?.length ?? 0) > 0 && (
         <div className="flex flex-wrap gap-3">
           {(people ?? []).map((p) => (
             <div key={p.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
               <Avatar name={p.contact.name} photoUrl={p.contact.photo_url} size={36} />
-              <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={p.contact.name}>
+              <p className="text-[9px] text-text-subtle text-center leading-tight line-clamp-2" title={p.contact.name}>
                 {p.role || p.contact.trade || p.contact.name}
               </p>
               {canDelete && (
                 <button onClick={() => removeCMConsultantPerson(p.id).then(invalidate)}
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-text-muted hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
               )}
             </div>
           ))}
@@ -1587,7 +1587,7 @@ function ConsultantPeopleGroup({ ownerId, consultantId, consultantName, canCreat
           <input className={inputCls} placeholder={t("projectSettings.personRole")} value={role} onChange={(e) => setRole(e.target.value)} />
           <div className="flex gap-2">
             <button onClick={handleAdd} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-            <button onClick={() => setAdding(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+            <button onClick={() => setAdding(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
           </div>
         </div>
       ) : (
@@ -1677,27 +1677,27 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
             <MemberRow key={m.id} member={m} companyOptions={companyOptions} allJobRoles={allJobRoles} canEdit={canEdit} canDelete={canDelete}
               onChanged={invalidateMembers} onRemove={() => removeCMProjectMember(m.id).then(invalidateMembers)} />
           ))}
-          {(members?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("people.noMembers")}</p>}
+          {(members?.length ?? 0) === 0 && <p className="text-text-subtle text-[12px]">{t("people.noMembers")}</p>}
         </div>
 
-        <div className="flex flex-col gap-3 pt-3 border-t border-white/5">
+        <div className="flex flex-col gap-3 pt-3 border-t border-border">
           <span className={labelCls}>{t("people.subcontractors")}</span>
           {subsGrouped.map(([company, subs]) => (
-            <div key={company} className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-2">
+            <div key={company} className="rounded-xl bg-surface-2 px-3 py-2.5 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[12px] text-white/80 font-medium truncate">{company}</p>
-                <span className="font-mono text-[10px] text-white/30 shrink-0">×{subs.length}</span>
+                <p className="text-[12px] text-text-primary font-medium truncate">{company}</p>
+                <span className="font-mono text-[10px] text-text-subtle shrink-0">×{subs.length}</span>
               </div>
               <div className="flex flex-wrap gap-3">
                 {subs.map((s) => (
                   <div key={s.id} className="relative flex flex-col items-center gap-1" style={{ width: 56 }}>
                     <Avatar name={s.contact.name} photoUrl={s.contact.photo_url} size={36} />
-                    <p className="text-[9px] text-white/40 text-center leading-tight line-clamp-2" title={s.contact.name}>
+                    <p className="text-[9px] text-text-subtle text-center leading-tight line-clamp-2" title={s.contact.name}>
                       {s.role_on_project || s.contact.trade || s.contact.name}
                     </p>
                     {canDelete && (
                       <button onClick={() => removeCMProjectSubcontractor(s.id).then(invalidateSubs)}
-                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-white/60 hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
+                        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/70 text-text-muted hover:text-red-400 text-[9px] flex items-center justify-center">×</button>
                     )}
                   </div>
                 ))}
@@ -1707,9 +1707,9 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
           {(consultants ?? []).map((c) => (
             <ConsultantPeopleGroup key={c.id} ownerId={ownerId} consultantId={c.id} consultantName={c.name} canCreate={canCreate} canDelete={canDelete} />
           ))}
-          {(subcontractors?.length ?? 0) === 0 && <p className="text-white/30 text-[12px]">{t("people.noSubcontractors")}</p>}
+          {(subcontractors?.length ?? 0) === 0 && <p className="text-text-subtle text-[12px]">{t("people.noSubcontractors")}</p>}
           {(contacts?.length ?? 0) === 0 && (
-            <p className="text-[11px] text-white/30">
+            <p className="text-[11px] text-text-subtle">
               {t("projectSettings.addContactsFirst")} <a href="/cm/directory" className="underline" style={{ color: "#ff5100" }}>{t("projectSettings.directoryLink")}</a> {t("projectSettings.addContactsFirstSuffix")}
             </p>
           )}
@@ -1724,7 +1724,7 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
               <input className={inputCls} placeholder={t("projectSettings.roleOnProject")} value={role} onChange={(e) => setRole(e.target.value)} />
               <div className="flex gap-2">
                 <button onClick={handleAddContact} disabled={!contactId} className={`${smallBtn} disabled:opacity-40`} style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-                <button onClick={() => setAddingContact(false)} className={`${smallBtn} text-white/40`}>{t("common.cancel")}</button>
+                <button onClick={() => setAddingContact(false)} className={`${smallBtn} text-text-subtle`}>{t("common.cancel")}</button>
               </div>
             </div>
           ) : (
@@ -1733,7 +1733,7 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
         </div>
 
         {canCreate && (
-          <div className="flex flex-col gap-2 pt-3 border-t border-white/5">
+          <div className="flex flex-col gap-2 pt-3 border-t border-border">
             <span className={labelCls}>{t("team.inviteLink")}</span>
             <div className="flex gap-2">
               <SegmentedField value={inviteRole} onChange={setInviteRole}
@@ -1751,15 +1751,15 @@ export function PeopleSection({ ownerId, projectId, canCreate, canEdit, canDelet
               </button>
             </div>
             {activeInvites.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3 py-2">
-                <span className="font-mono text-[10px] text-white/50 truncate">{t(`team.role.${inv.role}`)} — {inv.token.slice(0, 8)}…</span>
+              <div key={inv.id} className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2">
+                <span className="font-mono text-[10px] text-text-muted truncate">{t(`team.role.${inv.role}`)} — {inv.token.slice(0, 8)}…</span>
                 <div className="flex items-center gap-2 shrink-0">
                   <button onClick={() => copyInviteLink(inv.token, inv.id)} className={smallBtn} style={{ color: "#ff5100" }}>
                     {copiedId === inv.id ? t("team.copied") : t("team.copyLink")}
                   </button>
                   {canDelete && (
                     <button onClick={() => revokeCMProjectInvite(inv.id).then(invalidateInvites)}
-                      className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+                      className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3">×</button>
                   )}
                 </div>
               </div>
@@ -1799,12 +1799,12 @@ const CATEGORY_ORDER: SettingsCategory[] = [
 
 function SettingsCategoryRow({ label, subtitle, onClick }: { label: string; subtitle?: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-[#0d0d0e] first:rounded-t-2xl last:rounded-b-2xl border-b border-white/6 last:border-b-0 text-left hover:bg-white/5 transition-colors">
+    <button onClick={onClick} className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-surface-1 first:rounded-t-2xl last:rounded-b-2xl border-b border-border last:border-b-0 text-left hover:bg-surface-3 transition-colors">
       <div className="min-w-0">
-        <p className="text-[13px] text-white/85">{label}</p>
-        {subtitle && <p className="text-[10px] text-white/30 mt-0.5">{subtitle}</p>}
+        <p className="text-[13px] text-text-primary">{label}</p>
+        {subtitle && <p className="text-[10px] text-text-subtle mt-0.5">{subtitle}</p>}
       </div>
-      <span className="text-white/25 shrink-0">›</span>
+      <span className="text-text-subtle shrink-0">›</span>
     </button>
   );
 }
@@ -1839,7 +1839,7 @@ export function ProjectSettingsView({ project, ownerId, currentUserId, onProject
 
   return (
     <div className="flex flex-col gap-4">
-      <button onClick={() => setCategory(null)} className="flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors self-start">
+      <button onClick={() => setCategory(null)} className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors self-start">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
         <span className="text-[12px] font-mono uppercase tracking-widest">{t("projectSettings.title")}</span>
       </button>
@@ -1850,12 +1850,12 @@ export function ProjectSettingsView({ project, ownerId, currentUserId, onProject
       )}
       {category === "peopleRoles" && (
         <Card title={t("settingsNav.peopleRoles")}>
-          <p className="text-[12px] text-white/45">{t("settingsNav.peopleRolesHint")}</p>
+          <p className="text-[12px] text-text-muted">{t("settingsNav.peopleRolesHint")}</p>
         </Card>
       )}
       {category === "permissions" && (
         <Card title={t("settingsNav.permissions")}>
-          <p className="text-[12px] text-white/45 mb-3">{t("settingsNav.permissionsHint")}</p>
+          <p className="text-[12px] text-text-muted mb-3">{t("settingsNav.permissionsHint")}</p>
           <Link to="/cm/role-permissions" className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "#ff5100" }}>{t("rolePermissions.title")} →</Link>
         </Card>
       )}

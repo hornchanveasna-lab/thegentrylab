@@ -51,7 +51,7 @@ function NewManpowerEntryPage() {
     return [...set].sort();
   }, [roster, subcontractors, logs, activeProject]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (

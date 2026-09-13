@@ -191,13 +191,13 @@ function InspectionCard({ item, projectName }: { item: CMInspection; projectName
   const sc = STATUS_COLOR[item.status];
   return (
     <Link to="/cm/inspection/$id" params={{ id: item.id }}
-      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-surface-1 hover:bg-surface-3 transition-colors">
       <div className="flex items-center gap-4 min-w-0">
-        <span className="font-mono text-[12px] text-white/70 shrink-0">{item.inspection_date}</span>
-        {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`inspectionType.${item.inspection_type}`)}</span>}
-        {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-        <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+        <span className="font-mono text-[12px] text-text-muted shrink-0">{item.inspection_date}</span>
+        {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle shrink-0">{t(`inspectionType.${item.inspection_type}`)}</span>}
+        {item.doc_number && <span className="font-mono text-[9px] text-text-subtle shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-text-subtle truncate">{projectName}</span>}
+        <span className="text-[12px] text-text-muted truncate">{item.title}</span>
       </div>
       <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
     </Link>
@@ -239,11 +239,11 @@ export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId,
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="font-mono text-[12px] text-white/70">{item.inspection_date}</span>
-        {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t(`inspectionType.${item.inspection_type}`)}</span>}
-        {item.doc_number && <span className="font-mono text-[9px] text-white/25">{item.doc_number}</span>}
+        <span className="font-mono text-[12px] text-text-muted">{item.inspection_date}</span>
+        {item.inspection_type && <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t(`inspectionType.${item.inspection_type}`)}</span>}
+        {item.doc_number && <span className="font-mono text-[9px] text-text-subtle">{item.doc_number}</span>}
       </div>
-      <p className="text-[14px] text-white/85">{item.title}</p>
+      <p className="text-[14px] text-text-primary">{item.title}</p>
       {canEdit ? (
         <SegmentedField
           options={statusOptions.map((s) => ({ value: s, label: t(`inspectionStatus.${s}`), color: STATUS_COLOR[s] }))}
@@ -252,13 +252,13 @@ export function InspectionDetail({ item, canEdit, canApprove, canDelete, userId,
       ) : (
         <StatusBadge label={t(`inspectionStatus.${item.status}`)} color={sc} />
       )}
-      {item.discipline && <p className="text-[12px] text-white/60">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
-      {location && <p className="text-[12px] text-white/60">{t("common.location")}: {locationBreadcrumb(location, locations ?? [])}</p>}
-      {item.inspector && <p className="text-[12px] text-white/60">{t("inspection.inspector")}: {item.inspector}</p>}
-      {item.drawing_ref && <p className="text-[12px] text-white/60">{t("inspection.drawingRef")}: {item.drawing_ref}</p>}
-      {item.method_statement_ref && <p className="text-[12px] text-white/60">{t("inspection.methodStatementRef")}: {item.method_statement_ref}</p>}
-      {item.itp_ref && <p className="text-[12px] text-white/60">{t("inspection.itpRef")}: {item.itp_ref}</p>}
-      {item.notes && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.notes}</p>}
+      {item.discipline && <p className="text-[12px] text-text-muted">{t("common.discipline")}: {t(`discipline.${item.discipline}`)}</p>}
+      {location && <p className="text-[12px] text-text-muted">{t("common.location")}: {locationBreadcrumb(location, locations ?? [])}</p>}
+      {item.inspector && <p className="text-[12px] text-text-muted">{t("inspection.inspector")}: {item.inspector}</p>}
+      {item.drawing_ref && <p className="text-[12px] text-text-muted">{t("inspection.drawingRef")}: {item.drawing_ref}</p>}
+      {item.method_statement_ref && <p className="text-[12px] text-text-muted">{t("inspection.methodStatementRef")}: {item.method_statement_ref}</p>}
+      {item.itp_ref && <p className="text-[12px] text-text-muted">{t("inspection.itpRef")}: {item.itp_ref}</p>}
+      {item.notes && <p className="text-[12px] text-text-muted whitespace-pre-wrap">{item.notes}</p>}
       {item.photos.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {item.photos.map((url, i) => (
@@ -346,17 +346,17 @@ function CMInspectionPage() {
     return sortAsc ? [...list].reverse() : list;
   }, [inspections, search, sortAsc, dateFilter]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("inspection.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/inspection/settings"
           quickSettings={projectId ? <InspectionQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
@@ -378,7 +378,7 @@ function CMInspectionPage() {
               </button>
             )}
 
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
             {!isError && (
               <>

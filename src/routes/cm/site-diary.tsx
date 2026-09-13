@@ -264,7 +264,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
           )}
           {files.length > 0 && (
             <button type="button" onClick={() => setPickerOpen(false)}
-              className="self-start font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors mb-1">
+              className="self-start font-mono text-[10px] uppercase tracking-widest text-text-subtle hover:text-text-primary transition-colors mb-1">
               ← {t("siteDiary.capture.backToReview", { count: String(files.length) })}
             </button>
           )}
@@ -276,7 +276,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
             <input type="file" accept="image/*" capture="environment" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </label>
-          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-white/70 bg-white/5 hover:bg-white/10 cursor-pointer text-center transition-colors">
+          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-text-muted bg-surface-2 hover:bg-surface-3 cursor-pointer text-center transition-colors">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.5" /><path d="M21 16l-5.2-5.2a1.5 1.5 0 0 0-2.1 0L4 20" />
             </svg>
@@ -299,9 +299,9 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
           <div className="grid grid-cols-2 gap-2.5">
             {CAPTURE_PURPOSES.map((p) => (
               <button key={p} type="button" onClick={() => setPurpose(p)}
-                className="flex flex-col items-center gap-2 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors px-3 py-4 text-center">
-                <span className="text-white/70">{CAPTURE_PURPOSE_ICON[p]}</span>
-                <span className="text-[11px] text-white/80">{t(`siteDiary.capture.${p}`)}</span>
+                className="flex flex-col items-center gap-2 rounded-2xl bg-surface-2 hover:bg-surface-3 transition-colors px-3 py-4 text-center">
+                <span className="text-text-muted">{CAPTURE_PURPOSE_ICON[p]}</span>
+                <span className="text-[11px] text-text-primary">{t(`siteDiary.capture.${p}`)}</span>
               </button>
             ))}
           </div>
@@ -314,7 +314,7 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
     <Sheet title={t(`siteDiary.capture.${purpose}`)} onClose={onClose}>
       <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
         <button type="button" onClick={() => setPurpose(null)}
-          className="self-start font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+          className="self-start font-mono text-[10px] uppercase tracking-widest text-text-subtle hover:text-text-primary transition-colors">
           ← {t("siteDiary.capture.changePurpose")}
         </button>
 
@@ -557,7 +557,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
 
   return (
     <FormPage title={t(existing ? "siteDiary.editEntry" : "siteDiary.newEntry")} backTo={backTo}>
-      <div className="sticky top-0 z-10 bg-[#0a0a0b] pb-2 pt-1 -mx-4 px-4">
+      <div className="sticky top-0 z-10 bg-background pb-2 pt-1 -mx-4 px-4">
         <SegmentedField options={TAB_OPTIONS} value={activeTab} onChange={setActiveTab} disabled={saving} />
       </div>
       <form onSubmit={handleSubmit} className="pt-3 flex flex-col gap-4">
@@ -591,7 +591,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
                   <input type="time" className={inputCls} value={rainEnd} onChange={(e) => setRainEnd(e.target.value)} disabled={saving} />
                 </label>
                 {rainHours(rainStart, rainEnd) != null && (
-                  <p className="col-span-2 font-mono text-[10px] text-white/35">{t("siteDiary.rainHours", { hours: String(rainHours(rainStart, rainEnd)) })}</p>
+                  <p className="col-span-2 font-mono text-[10px] text-text-subtle">{t("siteDiary.rainHours", { hours: String(rainHours(rainStart, rainEnd)) })}</p>
                 )}
               </div>
             )}
@@ -600,25 +600,25 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
 
         {activeTab === "manpower" && (
           <div className="flex flex-col gap-4">
-            {manpower.length === 0 && <p className="text-white/30 text-[12px]">{t("manpower.noEntriesForDay")}</p>}
+            {manpower.length === 0 && <p className="text-text-subtle text-[12px]">{t("manpower.noEntriesForDay")}</p>}
             <div className="flex flex-col gap-1.5">
               {manpower.map((row, index) => (
-                <div key={index} className="flex items-center gap-2 rounded-xl bg-white/[0.03] px-3 py-2">
+                <div key={index} className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2">
                   <button type="button" className="flex-1 min-w-0 text-left" onClick={() => setManpowerSheet({ editIndex: index })} disabled={saving}>
-                    <p className="text-[12px] text-white/80 truncate">{row.trade}{row.company ? ` — ${row.company}` : ""}</p>
-                    <p className="text-[10px] text-white/30 truncate">
+                    <p className="text-[12px] text-text-primary truncate">{row.trade}{row.company ? ` — ${row.company}` : ""}</p>
+                    <p className="text-[10px] text-text-subtle truncate">
                       {[row.category ? t(`workerCategory.${row.category}`) : null, row.location_id ? locationLabelById.get(row.location_id) : null, row.activity].filter(Boolean).join(" · ")}
                     </p>
                   </button>
                   <div className="flex items-center gap-1 shrink-0">
-                    <button type="button" onClick={() => adjustManpowerCount(index, -1)} disabled={saving} className="w-7 h-7 rounded-lg bg-white/5 text-white/50 flex items-center justify-center text-[14px]" aria-label="decrease">−</button>
+                    <button type="button" onClick={() => adjustManpowerCount(index, -1)} disabled={saving} className="w-7 h-7 rounded-lg bg-surface-2 text-text-muted flex items-center justify-center text-[14px]" aria-label="decrease">−</button>
                     <span className="font-mono text-[13px] w-7 text-center">{row.count}</span>
-                    <button type="button" onClick={() => adjustManpowerCount(index, 1)} disabled={saving} className="w-7 h-7 rounded-lg bg-white/5 text-white/50 flex items-center justify-center text-[14px]" aria-label="increase">+</button>
+                    <button type="button" onClick={() => adjustManpowerCount(index, 1)} disabled={saving} className="w-7 h-7 rounded-lg bg-surface-2 text-text-muted flex items-center justify-center text-[14px]" aria-label="increase">+</button>
                   </div>
                   {manpowerDeleteIndex === index ? (
                     <button type="button" onClick={() => removeManpowerRow(index)} className="shrink-0 font-mono text-[9px] uppercase tracking-widest text-red-400 px-1.5">{t("common.delete")}</button>
                   ) : (
-                    <button type="button" onClick={() => setManpowerDeleteIndex(index)} className="shrink-0 w-6 h-6 rounded-full text-white/20 hover:text-red-400 flex items-center justify-center">×</button>
+                    <button type="button" onClick={() => setManpowerDeleteIndex(index)} className="shrink-0 w-6 h-6 rounded-full text-text-subtle hover:text-red-400 flex items-center justify-center">×</button>
                   )}
                 </div>
               ))}
@@ -630,7 +630,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
 
         {activeTab === "progress" && (
           <div className="flex flex-col gap-4">
-            {(scheduleItems ?? []).length === 0 && <p className="text-white/30 text-[12px]">{t("siteDiary.noScheduleActivities")}</p>}
+            {(scheduleItems ?? []).length === 0 && <p className="text-text-subtle text-[12px]">{t("siteDiary.noScheduleActivities")}</p>}
             <RepeatingRows
               label={t("siteDiary.activityUpdates")}
               addLabel={t("siteDiary.addActivityUpdate")}
@@ -652,7 +652,7 @@ export function NewLogSheet({ ownerId, projectId, existing, logs, backTo, onCrea
                       disabled={saving}
                     />
                     {node && (
-                      <p className="text-[10px] text-white/30">{t("siteDiary.currentProgress")}: {node.actual_percent}%</p>
+                      <p className="text-[10px] text-text-subtle">{t("siteDiary.currentProgress")}: {node.actual_percent}%</p>
                     )}
                     <label className="flex flex-col gap-1.5">
                       <span className={labelCls}>{t("siteDiary.todaysProgress")}</span>
@@ -917,12 +917,12 @@ function ModuleActivityRow({ row, onOpenItem, onOpenPhoto, flashPhotoUrl }: {
   return (
     <div className="flex flex-col gap-2">
       <button type="button" onClick={() => onOpenItem(row.module, row.recordId)}
-        className="w-full flex items-center gap-2.5 rounded-xl bg-white/3 hover:bg-white/6 px-3 py-2 text-left transition-colors">
+        className="w-full flex items-center gap-2.5 rounded-xl bg-surface-2 hover:bg-surface-2 px-3 py-2 text-left transition-colors">
         <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0" style={{ color: MODULE_COLOR[row.module], backgroundColor: `${MODULE_COLOR[row.module]}22` }}>
           {MODULE_ICON[row.module]}
         </span>
-        <span className="flex-1 min-w-0 text-[12px] text-white/70 truncate">{row.title}</span>
-        <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{row.status}</span>
+        <span className="flex-1 min-w-0 text-[12px] text-text-muted truncate">{row.title}</span>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle shrink-0">{row.status}</span>
       </button>
       {thumbs.length > 0 && (
         <div className="flex flex-wrap gap-2 pl-3">
@@ -952,11 +952,11 @@ function InlineActivityRow({ icon, title, subtitle, photos, photoThumbs, onOpenP
   const urls = photos ?? [];
   return (
     <div className="flex flex-col gap-2">
-      <div className="w-full flex items-center gap-2.5 rounded-xl bg-white/3 px-3 py-2">
-        <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-white/50 bg-white/5">{icon}</span>
+      <div className="w-full flex items-center gap-2.5 rounded-xl bg-surface-2 px-3 py-2">
+        <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-text-muted bg-surface-2">{icon}</span>
         <div className="flex-1 min-w-0">
-          <p className="text-[12px] text-white/70 truncate">{title}</p>
-          {subtitle && <p className="text-[10px] text-white/35 truncate">{subtitle}</p>}
+          <p className="text-[12px] text-text-muted truncate">{title}</p>
+          {subtitle && <p className="text-[10px] text-text-subtle truncate">{subtitle}</p>}
         </div>
       </div>
       {thumbs.length > 0 && (
@@ -1051,18 +1051,18 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
     <div className="flex flex-col gap-4">
       {(projectName || log.doc_number) && (
         <div className="flex items-center gap-2">
-          {projectName && <p className="text-[12px] font-medium text-white/50">{projectName}</p>}
-          {log.doc_number && <span className="font-mono text-[10px] text-white/30">{log.doc_number}</span>}
+          {projectName && <p className="text-[12px] font-medium text-text-muted">{projectName}</p>}
+          {log.doc_number && <span className="font-mono text-[10px] text-text-subtle">{log.doc_number}</span>}
         </div>
       )}
 
-      <div className="flex items-center gap-3 rounded-2xl bg-[#0d0d0e] px-4 py-3">
+      <div className="flex items-center gap-3 rounded-2xl bg-surface-1 px-4 py-3">
         <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
           {log.weather ? WEATHER_ICON[log.weather] : WEATHER_ICON.Sunny}
         </span>
         <div className="min-w-0">
-          <p className="text-[13px] text-white/80">{log.weather ? t(`weather.${log.weather}`) : "—"}</p>
-          <p className="font-mono text-[10px] text-white/35">
+          <p className="text-[13px] text-text-primary">{log.weather ? t(`weather.${log.weather}`) : "—"}</p>
+          <p className="font-mono text-[10px] text-text-subtle">
             {log.temperature_c != null ? `${log.temperature_c}°C` : t("siteDiary.temperature")}
             {rainH != null && ` · ${t("siteDiary.rainHours", { hours: String(rainH) })}`}
           </p>
@@ -1071,7 +1071,7 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
 
       {log.activities && <Field label={t("siteDiary.activities")} value={log.activities} />}
 
-      <div className="flex flex-col gap-3 rounded-2xl bg-[#0d0d0e] p-4">
+      <div className="flex flex-col gap-3 rounded-2xl bg-surface-1 p-4">
         <div className="flex items-center justify-between gap-2">
           <span className={labelCls}>{t("siteDiary.resources")}</span>
           <SegmentedField
@@ -1085,7 +1085,7 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
         )}
       </div>
 
-      <div className="flex flex-col gap-3 rounded-2xl bg-[#0d0d0e] p-4">
+      <div className="flex flex-col gap-3 rounded-2xl bg-surface-1 p-4">
         <div className="flex items-center justify-between gap-2">
           <span className={labelCls}>{t("siteDiary.workDone")}</span>
           <SegmentedField
@@ -1099,12 +1099,12 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
                 {planPct != null && <span className="text-emerald-400/70">{t("siteDiary.plan")} {planPct}%</span>}
                 <span style={{ color: "#ff5100" }}>{t("siteDiary.actual")} {log.progress_pct}%</span>
               </div>
-              <div className="relative h-1.5 rounded-full bg-white/10 overflow-hidden">
+              <div className="relative h-1.5 rounded-full bg-surface-3 overflow-hidden">
                 <div className="h-full rounded-full" style={{ width: `${log.progress_pct}%`, backgroundColor: "#ff5100" }} />
                 {planPct != null && <div className="absolute top-0 bottom-0 w-0.5 bg-emerald-300" style={{ left: `${Math.min(planPct, 100)}%` }} />}
               </div>
             </div>
-          ) : <p className="text-[12px] text-white/30">—</p>
+          ) : <p className="text-[12px] text-text-subtle">—</p>
         ) : (
           <ListRow icon={BOQ_ICON} label={t("siteDiary.boqDeliveredToday", { count: String(boqDeliveryCount) })} onClick={() => goTo("/cm/schedule")} />
         )}
@@ -1253,17 +1253,17 @@ function CMSiteDiaryPage() {
     return sortAsc ? [...list].reverse() : list;
   }, [logs, search, sortAsc, dateFilter]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("siteDiary.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/site-diary/settings" />
         <ProjectPicker projects={pickerProjects} value={viewAll ? "all" : projectId} onChange={handlePickerChange} />
@@ -1290,10 +1290,10 @@ function CMSiteDiaryPage() {
               </button>
             )}
 
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             {!isLoading && visibleLogs.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("siteDiary.noneYet")}</p>
+              <div className="rounded-2xl border border-dashed border-border py-16 flex items-center justify-center text-center px-4">
+                <p className="text-text-subtle text-sm">{t("siteDiary.noneYet")}</p>
               </div>
             )}
             {visibleLogs.length > 0 && (

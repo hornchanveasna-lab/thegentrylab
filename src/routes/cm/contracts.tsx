@@ -181,34 +181,34 @@ function ContractCard({ item, userId, projectName, onChanged }: {
   };
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
+    <div className="rounded-2xl bg-surface-1 overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface-3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
-          <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`contractType.${item.contract_type}`)}</span>
-          {item.contract_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.contract_number}</span>}
-          {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-          <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle shrink-0">{t(`contractType.${item.contract_type}`)}</span>
+          {item.contract_number && <span className="font-mono text-[9px] text-text-subtle shrink-0">{item.contract_number}</span>}
+          {projectName && <span className="text-[11px] text-text-subtle truncate">{projectName}</span>}
+          <span className="text-[12px] text-text-muted truncate">{item.title}</span>
         </div>
         <StatusBadge label={t(`contractStatus.${item.status}`)} color={sc} />
       </button>
       {open && (
-        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
+        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-border pt-4">
           <div className="flex flex-wrap items-center gap-2">
-            {counterparty && <span className="text-[11px] text-white/40">{counterparty.name}</span>}
+            {counterparty && <span className="text-[11px] text-text-subtle">{counterparty.name}</span>}
             {item.contract_value != null && (
-              <span className="font-mono text-[10px] text-white/30">{item.currency ?? ""} {item.contract_value.toLocaleString()}</span>
+              <span className="font-mono text-[10px] text-text-subtle">{item.currency ?? ""} {item.contract_value.toLocaleString()}</span>
             )}
-            {item.start_date && <span className="font-mono text-[10px] text-white/30">{item.start_date} → {item.completion_date ?? "—"}</span>}
+            {item.start_date && <span className="font-mono text-[10px] text-text-subtle">{item.start_date} → {item.completion_date ?? "—"}</span>}
           </div>
-          {item.notes && <p className="text-[12px] text-white/45 whitespace-pre-wrap">{item.notes}</p>}
+          {item.notes && <p className="text-[12px] text-text-muted whitespace-pre-wrap">{item.notes}</p>}
           <FileAttachmentList files={item.files} />
           <div className="flex items-center gap-4">
             {canEdit && (
-              <Link to="/cm/contracts/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+              <Link to="/cm/contracts/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-text-subtle hover:text-text-primary transition-colors">
                 {t("contracts.edit")}
               </Link>
             )}
-            <Link to="/cm/ipc" search={{ contract: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+            <Link to="/cm/ipc" search={{ contract: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-text-subtle hover:text-text-primary transition-colors">
               {t("contracts.viewIpcs")}
             </Link>
             {canDelete && <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-red-400/60 hover:text-red-400 transition-colors">{t("common.delete")}</button>}
@@ -250,10 +250,10 @@ function ContractsQuickSettings({ projectId, userId }: { projectId: string; user
         onReset={() => run(writeSettingAndSync(SETTING_DEFINITIONS.contractsContractType, SETTING_DEFINITIONS.contractsContractType.defaultValue, ctx, queryClient))}
       />
       <div className="w-full flex items-center gap-3.5 px-4 py-3">
-        <span className="text-white/70 shrink-0">
+        <span className="text-text-muted shrink-0">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v10" /><path d="M15 9.5c0-1.4-1.3-2.5-3-2.5s-3 1.1-3 2.5 1.3 2 3 2.5 3 1.1 3 2.5-1.3 2.5-3 2.5-3-1.1-3-2.5" /></svg>
         </span>
-        <span className="min-w-0 flex-1 text-[14px] text-white/90">{t("contracts.settingsDefaultCurrency")}</span>
+        <span className="min-w-0 flex-1 text-[14px] text-text-primary">{t("contracts.settingsDefaultCurrency")}</span>
         <input
           value={currency}
           placeholder="USD"
@@ -265,7 +265,7 @@ function ContractsQuickSettings({ projectId, userId }: { projectId: string; user
               setCurrencyDraft(null);
             }
           }}
-          className="w-20 bg-white/8 rounded-full px-3 py-1.5 text-[11px] font-mono text-white/85 text-right focus:outline-none"
+          className="w-20 bg-surface-3 rounded-full px-3 py-1.5 text-[11px] font-mono text-text-primary text-right focus:outline-none"
         />
       </div>
     </>
@@ -314,10 +314,10 @@ function CMContractsPage() {
     return sortAsc ? [...list].reverse() : list;
   }, [items, search, sortAsc, dateFilter]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
@@ -326,7 +326,7 @@ function CMContractsPage() {
   const ownerId = activeProject?.owner_id ?? user.id;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("contracts.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/contracts/settings"
           quickSettings={projectId ? <ContractsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
@@ -350,7 +350,7 @@ function CMContractsPage() {
 
         {(viewAll || projectId) && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
             {!isError && (
               <>

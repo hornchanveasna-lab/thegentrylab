@@ -16,7 +16,7 @@ function EditSiteDiaryEntryPage() {
   const { data: logs, isLoading } = useAllCMDailyLogs(user?.id);
   const existing = logs?.find((l) => l.id === id);
 
-  if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || isLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !existing) return null;
 
   return (

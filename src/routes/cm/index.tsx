@@ -20,7 +20,7 @@ function AvatarButton() {
   const { user, signInWithGoogle } = useAuthCM();
   if (!user) {
     return (
-      <button onClick={() => signInWithGoogle()} className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/5 hover:bg-white/10 transition-colors">
+      <button onClick={() => signInWithGoogle()} className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-surface-2 hover:bg-surface-3 transition-colors">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 21a8 8 0 1 0-16 0" /><circle cx="12" cy="8" r="4" />
         </svg>
@@ -28,11 +28,11 @@ function AvatarButton() {
     );
   }
   return (
-    <a href="/cm/settings" className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden bg-white/5 hover:bg-white/10 transition-colors">
+    <a href="/cm/settings" className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden bg-surface-2 hover:bg-surface-3 transition-colors">
       {user.user_metadata?.avatar_url ? (
         <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" />
       ) : (
-        <span className="text-[13px] font-bold text-white/70">{(user.user_metadata?.full_name ?? user.email ?? "U")[0]?.toUpperCase()}</span>
+        <span className="text-[13px] font-bold text-text-muted">{(user.user_metadata?.full_name ?? user.email ?? "U")[0]?.toUpperCase()}</span>
       )}
     </a>
   );
@@ -46,7 +46,7 @@ function CompanyMark({ userId }: { userId: string | undefined }) {
       {account.company_logo_url && (
         <img src={account.company_logo_url} alt="" className="h-12 max-w-[160px] w-auto object-contain shrink-0" />
       )}
-      {account.company_name && <span className="text-[16px] font-bold text-white/85 truncate">{account.company_name}</span>}
+      {account.company_name && <span className="text-[16px] font-bold text-text-primary truncate">{account.company_name}</span>}
     </div>
   );
 }
@@ -57,22 +57,22 @@ export function CMIndexPage() {
 
   if (!supabaseCM) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center px-4 font-sans" style={{ background: "var(--page-wash)" }}>
-        <p className="text-white/40 text-sm text-center">{t("home.notConfigured")}</p>
+      <div className="min-h-screen text-text-primary flex items-center justify-center px-4 font-sans" style={{ background: "var(--color-background)" }}>
+        <p className="text-text-subtle text-sm text-center">{t("home.notConfigured")}</p>
       </div>
     );
   }
 
   if (authLoading) {
-    return <div className="min-h-screen" style={{ background: "var(--page-wash)" }} />;
+    return <div className="min-h-screen" style={{ background: "var(--color-background)" }} />;
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen text-white flex items-center justify-center px-4 font-sans" style={{ background: "var(--page-wash)" }}>
+      <div className="min-h-screen text-text-primary flex items-center justify-center px-4 font-sans" style={{ background: "var(--color-background)" }}>
         <div className="text-center max-w-sm">
           <h1 className="text-2xl font-extrabold tracking-tight mb-3">{t("home.title")}</h1>
-          <p className="text-white/45 text-sm mb-8">{t("home.signedOutSubtitle")}</p>
+          <p className="text-text-muted text-sm mb-8">{t("home.signedOutSubtitle")}</p>
           <button onClick={() => signInWithGoogle()}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest font-bold"
             style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>
@@ -84,13 +84,13 @@ export function CMIndexPage() {
   }
 
   return (
-    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--color-background)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-8 pb-28">
         <div className="flex items-center justify-between mb-10 gap-3">
           <CompanyMark userId={user.id} />
           <div className="flex items-center gap-2 shrink-0">
             <Link to="/cm/search" aria-label={t("search.title")}
-              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white">
+              className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-surface-2 hover:bg-surface-3 transition-colors text-text-muted hover:text-text-primary">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" />
               </svg>
