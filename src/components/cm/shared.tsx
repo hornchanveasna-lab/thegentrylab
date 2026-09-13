@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useCMProjects, type CMProject, type CMPhotoModule, type CMDailyActivity, type EquipmentStatus, DISCIPLINES, type Discipline,
   useCMProjectLocations, locationBreadcrumb, createCMCompany, createCMProjectLocation,
-  useCMProjectCompanies, addCMProjectCompany,
+  useCMProjectCompanies, addCMProjectCompany, useCMCompanies,
   type ProjectStatus, type CMComputedHealth, type CMHealthBand,
   useCMComments, addCMComment, deleteCMComment,
   useCMProjectMembers,
@@ -696,8 +696,16 @@ export function CompanySelect({ ownerId, projectId, value, onChange, disabled }:
   const { t } = useCMLang();
   const qc = useQueryClient();
   const { data: assigned } = useCMProjectCompanies(projectId);
+  // `null` means the assignment table hasn't been created yet (see
+  // docs/cm-project-companies.sql). Until it exists, keep offering the
+  // account-wide list so the picker never goes empty; the moment the table
+  // is there, the scoped list takes over on its own with no redeploy.
+  const notProvisioned = assigned === null;
+  const { data: allCompanies } = useCMCompanies(notProvisioned ? ownerId : undefined);
 
-  const companies = (assigned ?? []).map((a) => a.company).filter(Boolean);
+  const companies = notProvisioned
+    ? (allCompanies ?? [])
+    : (assigned ?? []).map((a) => a.company).filter(Boolean);
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["cm_project_companies", projectId] });
@@ -710,7 +718,9 @@ export function CompanySelect({ ownerId, projectId, value, onChange, disabled }:
   };
   const handleCreate = async (name: string) => {
     const created = await createCMCompany(ownerId, name);
-    if (projectId) await addCMProjectCompany(ownerId, projectId, created.id, null);
+    // Only assign to the project once the assignment table exists; before
+    // that the insert would fail and lose the company the user just typed.
+    if (projectId && !notProvisioned) await addCMProjectCompany(ownerId, projectId, created.id, null);
     invalidate();
     onChange(created.id, created.name);
   };
@@ -720,10 +730,12 @@ export function CompanySelect({ ownerId, projectId, value, onChange, disabled }:
       value={value ?? ""}
       onChange={handleChange}
       onCreateCustom={handleCreate}
-      disabled={disabled || !projectId}
+      // Without a project there's nothing to scope to — unless we're still
+      // falling back to the account-wide list, which needs no project.
+      disabled={disabled || (!projectId && !notProvisioned)}
       searchable
       allowCustom
-      placeholder={projectId ? t("directory.company") : t("common.createProjectFirst")}
+      placeholder={projectId || notProvisioned ? t("directory.company") : t("common.createProjectFirst")}
       options={companies.map((c) => ({ value: c.id, label: c.name }))}
     />
   );

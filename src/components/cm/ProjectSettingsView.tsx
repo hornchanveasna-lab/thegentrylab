@@ -510,9 +510,13 @@ function ProjectCompaniesSection({ ownerId, projectId, canCreate, canEdit, canDe
   return (
     <Card title={t("projectSettings.companies")}>
       <div className="flex flex-col gap-2">
-        {(assigned ?? []).length === 0 && (
+        {assigned === null ? (
+          // The assignment table hasn't been created yet — say so plainly
+          // rather than showing an empty list that looks like a bug.
+          <p className="text-[12px] text-text-subtle">{t("projectSettings.companiesNotSetUp")}</p>
+        ) : (assigned ?? []).length === 0 ? (
           <p className="text-[12px] text-text-subtle">{t("projectSettings.companiesNone")}</p>
-        )}
+        ) : null}
         {(assigned ?? []).map((a) => (
           <div key={a.id} className="flex items-center gap-3 rounded-xl bg-surface-2 px-3 py-2.5">
             <Avatar name={a.company?.name ?? "?"} photoUrl={a.company?.logo_url ?? null} size={32} />
@@ -550,7 +554,9 @@ function ProjectCompaniesSection({ ownerId, projectId, canCreate, canEdit, canDe
           </div>
         ))}
 
-        {canCreate && (adding ? (
+        {/* Assigning writes to the table that doesn't exist yet, so the
+            control stays hidden until it does rather than failing on click. */}
+        {canCreate && assigned !== null && (adding ? (
           <div className="flex items-center gap-2">
             <FieldSelect
               value={pickId}

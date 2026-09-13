@@ -1591,8 +1591,22 @@ export interface CMProjectCompany {
   company: CMCompany;
 }
 
+/** PostgREST reports a missing relation as 42P01. The assignment table is
+ *  created by docs/cm-project-companies.sql, which has to be run by hand
+ *  because the schema lives outside this repo — so until someone runs it,
+ *  this query would fail and leave every company picker permanently empty.
+ *  Treating "table not there yet" as `null` (rather than an empty list or a
+ *  thrown error) lets callers tell the two apart and keep working. */
+const MISSING_TABLE = "42P01";
+
+/** Companies assigned to a project.
+ *
+ *  Returns `null` — distinct from `[]` — when the assignment table has not
+ *  been created yet. `[]` means "this project has no companies assigned";
+ *  `null` means "the feature isn't provisioned", and callers fall back to
+ *  the account-wide list so nothing regresses before the migration runs. */
 export function useCMProjectCompanies(projectId: string | undefined) {
-  return useQuery<CMProjectCompany[]>({
+  return useQuery<CMProjectCompany[] | null, Error>({
     queryKey: ["cm_project_companies", projectId],
     enabled: !!projectId && !!supabaseCM,
     queryFn: async () => {
@@ -1601,9 +1615,14 @@ export function useCMProjectCompanies(projectId: string | undefined) {
         .select("*, company:cm_companies(*)")
         .eq("project_id", projectId)
         .order("created_at");
-      if (error) throw error;
+      if (error) {
+        if (error.code === MISSING_TABLE) return null;
+        throw error;
+      }
       return data as unknown as CMProjectCompany[];
     },
+    // Don't hammer a table that doesn't exist.
+    retry: (count, err) => (err as { code?: string })?.code !== MISSING_TABLE && count < 2,
     staleTime: STALE_TIME,
   });
 }
