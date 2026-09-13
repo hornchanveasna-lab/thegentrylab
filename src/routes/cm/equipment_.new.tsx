@@ -16,7 +16,7 @@ function NewEquipmentPage() {
   const activeProject = projects?.find((p) => p.id === projectId);
   const typeOptions = (activeProject?.module_defaults?.equipment as { types?: string[] } | undefined)?.types;
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (

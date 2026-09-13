@@ -16,7 +16,7 @@ function NewSiteDiaryEntryPage() {
   const { projectId } = useSelectedProject(user?.id);
   const { data: logs } = useCMDailyLogs(projectId || undefined);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (

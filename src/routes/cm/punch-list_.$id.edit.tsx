@@ -18,7 +18,7 @@ function EditPunchItemPage() {
   const existing = items?.find((i) => i.id === id);
   const canApprove = usePermission(existing?.project_id, user?.id, "punch_list", "approve");
 
-  if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || isLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !existing) return null;
 
   return (

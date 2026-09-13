@@ -1,0 +1,25 @@
+/* ── CM app: flat, opaque page background ────────────────────────────────
+ *
+ * styles.css ends with:
+ *
+ *     [data-app="cm"] .bg-\[\#0a0a0b\],
+ *     [data-app="cm"] .min-h-screen { background: var(--page-wash) !important; }
+ *
+ * which paints every CM screen with the brand-tinted gradient wash. That
+ * `!important` beats the per-page inline background, so the gradient cannot
+ * be removed from the components alone — it has to be unset here.
+ *
+ * Same selectors and the same `!important`, but later in source order, so
+ * this wins on equal specificity. The wash tokens themselves are left alone
+ * because the marketing site still uses them.
+ *
+ * This lives in its own file only to stay clear of concurrent edits in
+ * styles.css during the TenderAI rebuild. Fold both this and
+ * styles-brand-contrast.css back into styles.css once that lands, and delete
+ * the rule above rather than keeping an override of an override.
+ */
+
+[data-app="cm"] .bg-\[\#0a0a0b\],
+[data-app="cm"] .min-h-screen {
+  background: var(--color-background) !important;
+}

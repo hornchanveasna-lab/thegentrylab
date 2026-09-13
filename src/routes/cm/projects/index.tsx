@@ -47,8 +47,8 @@ export const Route = createFileRoute("/cm/projects/")({
   component: CMProjectsPage,
 });
 
-const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
-const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const labelCls = "font-mono text-[10px] uppercase tracking-widest text-text-subtle";
 const chipCls = "px-2.5 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest transition-colors";
 
 type SortKey = "updated" | "name" | "start" | "end" | "value" | "health";
@@ -65,7 +65,7 @@ function matchesSummary(p: CMProject, key: SummaryKey, health: CMComputedHealth)
 
 function BackButton() {
   return (
-    <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
+    <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors shrink-0">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 3L5 8l5 5" />
       </svg>
@@ -192,7 +192,7 @@ function FavoriteButton({ active, onToggle, className }: { active: boolean; onTo
       type="button"
       onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(); }}
       aria-label="Favorite"
-      className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${active ? "text-[#ff5100]" : "text-white/25 hover:text-white/50"} ${className ?? ""}`}
+      className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${active ? "text-[#ff5100]" : "text-text-subtle hover:text-text-primary/50"} ${className ?? ""}`}
     >
       <svg width="15" height="15" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
@@ -209,11 +209,11 @@ function ProjectCard({ project, health, favorite, onToggleFavorite, t }: {
   const value = formatContractValue(project.contract_value, project.currency);
   return (
     <Link to="/cm/$projectId" params={{ projectId: project.id }}
-      className="block rounded-2xl bg-[#0d0d0e] active:scale-[0.98] hover:bg-[#111113] transition-all p-5">
+      className="block rounded-2xl bg-surface-1 active:scale-[0.98] hover:bg-surface-3 transition-all p-5">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h3 className="font-extrabold text-[15px] tracking-tight text-white leading-tight truncate">{project.name}</h3>
-          {project.project_code && <p className="font-mono text-[10px] text-white/25 mt-0.5">{project.project_code}</p>}
+          <h3 className="font-extrabold text-[15px] tracking-tight text-text-primary leading-tight truncate">{project.name}</h3>
+          {project.project_code && <p className="font-mono text-[10px] text-text-subtle mt-0.5">{project.project_code}</p>}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <FavoriteButton active={favorite} onToggle={onToggleFavorite} />
@@ -226,23 +226,23 @@ function ProjectCard({ project, health, favorite, onToggleFavorite, t }: {
           <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{t(`status.${project.status}`)}</span>
         </span>
         {project.sector && (
-          <span className="px-2.5 py-1 rounded-full bg-white/5 font-mono text-[9px] uppercase tracking-widest text-white/40">{t(`sector.${project.sector}`)}</span>
+          <span className="px-2.5 py-1 rounded-full bg-surface-2 font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t(`sector.${project.sector}`)}</span>
         )}
       </div>
-      {project.client && <p className="text-[12px] text-white/45 mb-1">{t("projects.clientLabel")} <span className="text-white/70">{project.client}</span></p>}
+      {project.client && <p className="text-[12px] text-text-muted mb-1">{t("projects.clientLabel")} <span className="text-text-muted">{project.client}</span></p>}
       {project.location && (
-        <p className="text-[12px] text-white/45 flex items-center gap-1.5">
+        <p className="text-[12px] text-text-muted flex items-center gap-1.5">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           {project.location}
         </p>
       )}
       <div className="flex items-center justify-between mt-3">
         {(project.start_date || project.target_end_date) && (
-          <p className="font-mono text-[10px] text-white/25 uppercase tracking-widest">
+          <p className="font-mono text-[10px] text-text-subtle uppercase tracking-widest">
             {project.start_date ?? "—"} → {project.target_end_date ?? "—"}
           </p>
         )}
-        {value && <p className="font-mono text-[10px] text-white/35 uppercase tracking-widest ml-auto">{value}</p>}
+        {value && <p className="font-mono text-[10px] text-text-subtle uppercase tracking-widest ml-auto">{value}</p>}
       </div>
     </Link>
   );
@@ -255,16 +255,16 @@ function ProjectRow({ project, health, favorite, onToggleFavorite, t }: {
   const hc = PROJECT_HEALTH_COLOR[health];
   return (
     <Link to="/cm/$projectId" params={{ projectId: project.id }}
-      className="flex items-center gap-3 rounded-xl bg-[#0d0d0e] hover:bg-[#111113] transition-colors px-4 py-3">
+      className="flex items-center gap-3 rounded-xl bg-surface-1 hover:bg-surface-3 transition-colors px-4 py-3">
       <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: hc }} title={t(`health.${health}`)} />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-bold text-white truncate">{project.name}</p>
-        <p className="text-[11px] text-white/35 truncate">
+        <p className="text-[13px] font-bold text-text-primary truncate">{project.name}</p>
+        <p className="text-[11px] text-text-subtle truncate">
           {project.project_code && <span className="font-mono">{project.project_code} · </span>}
           {project.client ?? t("projects.noClient")}
         </p>
       </div>
-      <p className="hidden sm:block text-[11px] text-white/45 w-32 truncate shrink-0">{project.location ?? "—"}</p>
+      <p className="hidden sm:block text-[11px] text-text-muted w-32 truncate shrink-0">{project.location ?? "—"}</p>
       <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0" style={{ backgroundColor: `${sc}15` }}>
         <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: sc }}>{t(`status.${project.status}`)}</span>
       </span>
@@ -294,7 +294,7 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
           <div className="flex flex-wrap gap-2">
             {PROJECT_STATUS_OPTIONS.map((s) => (
               <button key={s} type="button" onClick={() => onChange({ statuses: toggle(statuses, s) })}
-                className={`${chipCls} ${statuses.has(s) ? "bg-[#ff510022]" : "bg-white/5 text-white/50"}`}
+                className={`${chipCls} ${statuses.has(s) ? "bg-[#ff510022]" : "bg-surface-2 text-text-muted"}`}
                 style={statuses.has(s) ? { color: "#ff5100" } : undefined}>
                 {t(`status.${s}`)}
               </button>
@@ -306,7 +306,7 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
           <div className="flex flex-wrap gap-2">
             {PROJECT_HEALTH_OPTIONS.map((h) => (
               <button key={h} type="button" onClick={() => onChange({ healths: toggle(healths, h) })}
-                className={`${chipCls} ${healths.has(h) ? "bg-[#ff510022]" : "bg-white/5 text-white/50"}`}
+                className={`${chipCls} ${healths.has(h) ? "bg-[#ff510022]" : "bg-surface-2 text-text-muted"}`}
                 style={healths.has(h) ? { color: "#ff5100" } : undefined}>
                 {t(`health.${h}`)}
               </button>
@@ -318,7 +318,7 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
           <div className="flex flex-wrap gap-2">
             {CM_PROJECT_SECTORS.map((s) => (
               <button key={s} type="button" onClick={() => onChange({ sectors: toggle(sectors, s) })}
-                className={`${chipCls} ${sectors.has(s) ? "bg-[#ff510022]" : "bg-white/5 text-white/50"}`}
+                className={`${chipCls} ${sectors.has(s) ? "bg-[#ff510022]" : "bg-surface-2 text-text-muted"}`}
                 style={sectors.has(s) ? { color: "#ff5100" } : undefined}>
                 {t(`sector.${s}`)}
               </button>
@@ -327,12 +327,12 @@ function FilterSheet({ statuses, healths, sectors, favoritesOnly, onChange, onCl
         </div>
         <label className="flex items-center gap-2.5 cursor-pointer">
           <input type="checkbox" checked={favoritesOnly} onChange={(e) => onChange({ favoritesOnly: e.target.checked })} className="w-4 h-4 rounded accent-[#ff5100]" />
-          <span className="text-[13px] text-white/70">{t("projects.favoritesOnly")}</span>
+          <span className="text-[13px] text-text-muted">{t("projects.favoritesOnly")}</span>
         </label>
         <div className="flex gap-2">
           <button type="button" disabled={!hasAny}
             onClick={() => onChange({ statuses: new Set(), healths: new Set(), sectors: new Set(), favoritesOnly: false })}
-            className="flex-1 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest text-white/50 bg-white/5 disabled:opacity-30">
+            className="flex-1 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest text-text-muted bg-surface-2 disabled:opacity-30">
             {t("projects.clearFilters")}
           </button>
           <button type="button" onClick={onClose}
@@ -448,22 +448,22 @@ export function CMProjectsPage() {
 
   if (!supabaseCM) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
-        <p className="text-white/40 text-sm text-center">{t("home.notConfigured")}</p>
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
+        <p className="text-text-subtle text-sm text-center">{t("home.notConfigured")}</p>
       </div>
     );
   }
 
   if (authLoading) {
-    return <div className="min-h-screen bg-[#0a0a0b]" />;
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <div className="text-center max-w-sm">
           <h1 className="text-2xl font-extrabold tracking-tight mb-3">{t("home.title")}</h1>
-          <p className="text-white/45 text-sm mb-8">{t("home.signedOutSubtitle")}</p>
+          <p className="text-text-muted text-sm mb-8">{t("home.signedOutSubtitle")}</p>
           <button onClick={() => signInWithGoogle()}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
             style={{ backgroundColor: "#ff5100" }}>
@@ -475,13 +475,13 @@ export function CMProjectsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-28">
         <div className="flex items-center gap-3 mb-5">
           <BackButton />
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-white">{t("projects.title")}</h1>
-            <p className="text-[12px] text-white/35 mt-0.5">{t("projects.subtitle")}</p>
+            <h1 className="text-xl font-extrabold tracking-tight text-text-primary">{t("projects.title")}</h1>
+            <p className="text-[12px] text-text-subtle mt-0.5">{t("projects.subtitle")}</p>
           </div>
         </div>
 
@@ -490,14 +490,14 @@ export function CMProjectsPage() {
             {SUMMARY_CARDS.map((key) => (
               <button key={key} type="button" onClick={() => applySummary(key)}
                 className={`shrink-0 rounded-xl px-3.5 py-2 flex flex-col items-start gap-0.5 border transition-colors ${
-                  activeSummary === key ? "bg-[#ff510018] border-[#ff510055]" : "bg-[#0d0d0e] border-transparent"
+                  activeSummary === key ? "bg-[#ff510018] border-[#ff510055]" : "bg-surface-1 border-transparent"
                 }`}>
-                <span className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${activeSummary === key ? "" : "text-white/35"}`}
+                <span className={`flex items-center gap-1 font-mono text-[9px] uppercase tracking-widest ${activeSummary === key ? "" : "text-text-subtle"}`}
                   style={activeSummary === key ? { color: "#ff5100" } : undefined}>
                   {SUMMARY_ICON[key]}
                   {t(`projects.summary.${key}`)}
                 </span>
-                <span className="text-[15px] font-extrabold text-white">{summaryCounts.get(key) ?? 0}</span>
+                <span className="text-[15px] font-extrabold text-text-primary">{summaryCounts.get(key) ?? 0}</span>
               </button>
             ))}
           </div>
@@ -509,17 +509,17 @@ export function CMProjectsPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("projects.searchPlaceholder")}
-              className="flex-1 min-w-0 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+              className="flex-1 min-w-0 bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors"
             />
             <button type="button" onClick={() => setShowFilters(true)} aria-label={t("projects.filters")}
-              className="relative w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0">
+              className="relative w-10 h-10 rounded-xl flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors text-text-muted hover:text-text-primary shrink-0">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
               {filterCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#ff5100] text-black text-[9px] font-bold flex items-center justify-center">{filterCount}</span>}
             </button>
             <FieldSelect value={sortBy} onChange={setSortBy} menuClassName="left-auto right-0 w-56" triggerIcon={SORT_ICON}
-              triggerClassName="w-10 h-10 shrink-0 flex items-center justify-center bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-white/60 hover:text-white transition-colors"
+              triggerClassName="w-10 h-10 shrink-0 flex items-center justify-center bg-surface-2 hover:bg-surface-3 rounded-xl border border-border text-text-muted hover:text-text-primary transition-colors"
               options={(["updated", "name", "start", "end", "value", "health"] as SortKey[]).map((k) => ({ value: k, label: t(`projects.sort.${k}`) }))} />
-            <div className="flex items-center gap-1 bg-white/5 rounded-xl p-1 shrink-0">
+            <div className="flex items-center gap-1 bg-surface-2 rounded-xl p-1 shrink-0">
               <button type="button" onClick={() => setView("card")} aria-label={t("projects.viewCard")}
                 className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors" style={view === "card" ? { backgroundColor: "#ff5100", color: "#000" } : { color: "rgba(255,255,255,0.4)" }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -532,12 +532,12 @@ export function CMProjectsPage() {
           </div>
         )}
 
-        {isLoading && <p className="text-white/30 text-sm">{t("projects.loading")}</p>}
+        {isLoading && <p className="text-text-subtle text-sm">{t("projects.loading")}</p>}
         {error && <p className="text-red-400 text-sm">{t("projects.failedLoad")}: {(error as Error).message}</p>}
 
         {!isLoading && !error && (projects?.length ?? 0) === 0 && (
-          <div className="rounded-2xl border border-dashed border-white/10 py-16 flex flex-col items-center justify-center text-center px-4">
-            <p className="text-white/40 text-sm mb-4">{t("projects.noneYet")}</p>
+          <div className="rounded-2xl border border-dashed border-border py-16 flex flex-col items-center justify-center text-center px-4">
+            <p className="text-text-subtle text-sm mb-4">{t("projects.noneYet")}</p>
             <button onClick={() => setShowNew(true)}
               className="px-5 py-2.5 rounded-full text-[11px] font-mono uppercase tracking-widest"
               style={{ backgroundColor: "rgba(255,81,0,0.12)", color: "#ff5100" }}>
@@ -547,7 +547,7 @@ export function CMProjectsPage() {
         )}
 
         {!isLoading && (projects?.length ?? 0) > 0 && favSorted.length === 0 && (
-          <p className="text-white/30 text-sm text-center py-10">{t("projects.noMatches")}</p>
+          <p className="text-text-subtle text-sm text-center py-10">{t("projects.noMatches")}</p>
         )}
 
         {!isLoading && favSorted.length > 0 && view === "card" && (

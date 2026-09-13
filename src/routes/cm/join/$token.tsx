@@ -47,20 +47,20 @@ function CMJoinPage() {
     }
   };
 
-  if (authLoading || inviteLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || inviteLoading) return <div className="min-h-screen bg-background" />;
 
   if (!invite) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans text-center">
-        <p className="text-white/50 text-sm">{t("team.inviteInvalid")}</p>
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans text-center">
+        <p className="text-text-muted text-sm">{t("team.inviteInvalid")}</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+    <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
       <div className="w-full max-w-sm flex flex-col items-center gap-5 text-center">
-        <p className="text-[15px] text-white/80">{t("team.inviteJoinPromptNamed", { project: invite.project_name })}</p>
+        <p className="text-[15px] text-text-primary">{t("team.inviteJoinPromptNamed", { project: invite.project_name })}</p>
         {!user ? (
           <button onClick={handleSignIn}
             className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
@@ -75,7 +75,7 @@ function CMJoinPage() {
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("team.intakeEmailLabel")}</span>
-              <p className="text-[13px] text-white/50 px-3.5 py-2.5">{user.email}</p>
+              <p className="text-[13px] text-text-muted px-3.5 py-2.5">{user.email}</p>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("team.intakePositionLabel")}</span>
@@ -88,7 +88,7 @@ function CMJoinPage() {
             </button>
           </div>
         ) : (
-          <p className="font-mono text-[11px] uppercase tracking-widest text-white/40">{t("team.joining")}</p>
+          <p className="font-mono text-[11px] uppercase tracking-widest text-text-subtle">{t("team.joining")}</p>
         )}
         {status === "error" && <p className="text-red-400 text-[12px]">{t("team.joinFailed")}</p>}
       </div>

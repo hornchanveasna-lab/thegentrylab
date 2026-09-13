@@ -224,26 +224,26 @@ function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpen
   };
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
+    <div className="rounded-2xl bg-surface-1 overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface-3 transition-colors">
         <div className="flex items-center gap-4 min-w-0">
-          <span className="font-mono text-[12px] text-white/70 shrink-0">{item.created_at.slice(0, 10)}</span>
-          {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-          {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-          <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+          <span className="font-mono text-[12px] text-text-muted shrink-0">{item.created_at.slice(0, 10)}</span>
+          {item.doc_number && <span className="font-mono text-[9px] text-text-subtle shrink-0">{item.doc_number}</span>}
+          {projectName && <span className="text-[11px] text-text-subtle truncate">{projectName}</span>}
+          <span className="text-[12px] text-text-muted truncate">{item.title}</span>
         </div>
         <StatusBadge label={t(`instructionStatus.${item.status}`)} color={sc} />
       </button>
       {open && (
-        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-white/6 pt-4">
-          {item.description && <p className="text-[12px] text-white/45 whitespace-pre-wrap">{item.description}</p>}
+        <div className="px-5 pb-5 flex flex-col gap-4 border-t border-border pt-4">
+          {item.description && <p className="text-[12px] text-text-muted whitespace-pre-wrap">{item.description}</p>}
           <div className="flex flex-wrap items-center gap-2">
             <PriorityBadge size="sm" label={t(`instructionPriority.${item.priority}`)} color={pc} />
-            <span className="text-[11px] text-white/40">{t(`instructionSource.${item.source_type}`)}{sourceCompany ? ` — ${sourceCompany.name}` : ""}</span>
+            <span className="text-[11px] text-text-subtle">{t(`instructionSource.${item.source_type}`)}{sourceCompany ? ` — ${sourceCompany.name}` : ""}</span>
             {(recipientCompany || item.recipient_note) && (
-              <span className="text-[11px] text-white/40">→ {recipientCompany?.name ?? item.recipient_note}</span>
+              <span className="text-[11px] text-text-subtle">→ {recipientCompany?.name ?? item.recipient_note}</span>
             )}
-            {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
+            {item.due_date && <span className="font-mono text-[10px] text-text-subtle">{item.due_date}</span>}
           </div>
 
           {canEdit && (
@@ -255,8 +255,8 @@ function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpen
 
           {/* Acknowledgement gate — every issued instruction requires a recorded response. */}
           {item.status === "Issued" && canEdit && (
-            <div className="flex flex-col gap-2 pt-2 border-t border-white/6">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("instructions.acknowledge")}</span>
+            <div className="flex flex-col gap-2 pt-2 border-t border-border">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("instructions.acknowledge")}</span>
               <textarea className={`${inputCls} resize-y min-h-[44px]`} value={ackComments} onChange={(e) => setAckComments(e.target.value)}
                 placeholder={t("instructions.ackCommentsPlaceholder")} disabled={busy} />
               <div className="flex flex-wrap gap-2">
@@ -271,7 +271,7 @@ function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpen
             </div>
           )}
           {item.acknowledged_by && (
-            <p className="font-mono text-[10px] text-white/30">
+            <p className="font-mono text-[10px] text-text-subtle">
               {t("instructions.acknowledgedBy")} {item.acknowledged_at?.slice(0, 10)} — {item.ack_response ? t(`ackResponse.${item.ack_response}`) : ""}
               {item.ack_comments ? `: ${item.ack_comments}` : ""}
             </p>
@@ -279,8 +279,8 @@ function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpen
 
           {/* Impact assessment — available once acknowledged. */}
           {item.status !== "Issued" && canEdit && (
-            <div className="flex flex-col gap-2 pt-2 border-t border-white/6">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("instructions.impactAssessment")}</span>
+            <div className="flex flex-col gap-2 pt-2 border-t border-border">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("instructions.impactAssessment")}</span>
               <SegmentedField value={impactType} onChange={setImpactType} disabled={busy}
                 options={IMPACT_TYPES.map((i) => ({ value: i, label: t(`impactType.${i}`) }))} />
               <textarea className={`${inputCls} resize-y min-h-[44px]`} value={impactNotes} onChange={(e) => setImpactNotes(e.target.value)}
@@ -306,7 +306,7 @@ function InstructionCard({ item, ownerId, userId, projectName, onChanged, onOpen
 
           <div className="flex items-center gap-4">
             {canEdit && (
-              <Link to="/cm/instructions/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors">
+              <Link to="/cm/instructions/$id/edit" params={{ id: item.id }} className="font-mono text-[10px] uppercase tracking-widest text-text-subtle hover:text-text-primary transition-colors">
                 {t("instructions.edit")}
               </Link>
             )}
@@ -407,10 +407,10 @@ function CMInstructionsPage() {
   const pendingAckCount = (items ?? []).filter((i) => i.status === "Issued").length;
   const overdueCount = (items ?? []).filter((i) => i.due_date && i.due_date < today && i.status !== "Completed" && i.status !== "Closed").length;
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
@@ -419,7 +419,7 @@ function CMInstructionsPage() {
   const ownerId = activeProject?.owner_id ?? user.id;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("instructions.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/instructions/settings"
           quickSettings={projectId ? <InstructionsQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
@@ -443,28 +443,28 @@ function CMInstructionsPage() {
 
         {(viewAll || projectId) && items && items.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-4">
-            <div className="rounded-2xl bg-[#0d0d0e] py-3 text-center">
-              <p className="text-[18px] font-bold text-white">{openCount}</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("instructions.openCount")}</p>
+            <div className="rounded-2xl bg-surface-1 py-3 text-center">
+              <p className="text-[18px] font-bold text-text-primary">{openCount}</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("instructions.openCount")}</p>
             </div>
-            <div className="rounded-2xl bg-[#0d0d0e] py-3 text-center">
+            <div className="rounded-2xl bg-surface-1 py-3 text-center">
               <p className="text-[18px] font-bold" style={{ color: "#fbbf24" }}>{pendingAckCount}</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("instructions.pendingAckCount")}</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("instructions.pendingAckCount")}</p>
             </div>
-            <div className="rounded-2xl bg-[#0d0d0e] py-3 text-center">
+            <div className="rounded-2xl bg-surface-1 py-3 text-center">
               <p className="text-[18px] font-bold" style={{ color: "#f43f5e" }}>{overdueCount}</p>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("instructions.overdueCount")}</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("instructions.overdueCount")}</p>
             </div>
           </div>
         )}
 
         {(viewAll || projectId) && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
             {!isError && !viewAll && !isLoading && contracts && contracts.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex flex-col items-center justify-center text-center px-4 gap-3">
-                <p className="text-white/40 text-sm">{t("instructions.noContractsYet")}</p>
+              <div className="rounded-2xl border border-dashed border-border py-16 flex flex-col items-center justify-center text-center px-4 gap-3">
+                <p className="text-text-subtle text-sm">{t("instructions.noContractsYet")}</p>
                 <Link to="/cm/contracts" className="text-[12px] font-bold px-4 py-2 rounded-full" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>
                   {t("instructions.createContractFirst")}
                 </Link>

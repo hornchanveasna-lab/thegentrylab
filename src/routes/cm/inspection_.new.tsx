@@ -19,7 +19,7 @@ function NewInspectionEntryPage() {
   const defaultType = (activeProject?.module_defaults?.inspection as { type?: InspectionType } | undefined)?.type;
   const canApprove = usePermission(projectId || undefined, user?.id, "inspection", "approve");
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (

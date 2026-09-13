@@ -241,16 +241,16 @@ function PunchListDocumentCard({ row, viewAll, canCreate, canApprove, userId, on
   };
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] overflow-hidden shadow-[var(--shadow-sm)]">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-white/3 transition-colors">
+    <div className="rounded-2xl bg-surface-1 overflow-hidden shadow-[var(--shadow-sm)]">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left hover:bg-surface-3 transition-colors">
         <div className="flex items-center gap-3 min-w-0">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              {doc?.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{doc.doc_number}</span>}
-              <span className="text-[12px] text-white/80 truncate">{formatDayHeader(row.date, lang)}</span>
-              {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
+              {doc?.doc_number && <span className="font-mono text-[9px] text-text-subtle shrink-0">{doc.doc_number}</span>}
+              <span className="text-[12px] text-text-primary truncate">{formatDayHeader(row.date, lang)}</span>
+              {projectName && <span className="text-[11px] text-text-subtle truncate">{projectName}</span>}
             </div>
-            <p className="font-mono text-[10px] text-white/30">{row.tasks.length} {t("punchList.itemsSuffix")}{openCount > 0 ? ` · ${openCount} ${t("punchList.openSuffix")}` : ""}</p>
+            <p className="font-mono text-[10px] text-text-subtle">{row.tasks.length} {t("punchList.itemsSuffix")}{openCount > 0 ? ` · ${openCount} ${t("punchList.openSuffix")}` : ""}</p>
           </div>
         </div>
         {doc ? (
@@ -260,10 +260,10 @@ function PunchListDocumentCard({ row, viewAll, canCreate, canApprove, userId, on
         )}
       </button>
       {open && (
-        <div className="px-5 pb-5 flex flex-col gap-3 border-t border-white/6 pt-4">
+        <div className="px-5 pb-5 flex flex-col gap-3 border-t border-border pt-4">
           <div className="flex flex-col gap-2">
             {row.tasks.map((item) => <PunchItemCard key={item.id} item={item} showDate={false} />)}
-            {row.tasks.length === 0 && <p className="text-white/30 text-[12px]">{t("punchList.nothingYet")}</p>}
+            {row.tasks.length === 0 && <p className="text-text-subtle text-[12px]">{t("punchList.nothingYet")}</p>}
           </div>
           <div className="flex items-center gap-4 flex-wrap pt-1">
             {canCreate && (
@@ -273,12 +273,12 @@ function PunchListDocumentCard({ row, viewAll, canCreate, canApprove, userId, on
               </Link>
             )}
             {doc && canApprove && doc.status === "Draft" && (
-              <button onClick={() => setConfirmAction("issue")} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/50 hover:text-white/80 transition-colors">
+              <button onClick={() => setConfirmAction("issue")} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors">
                 {t("punchList.issue")}
               </button>
             )}
             {doc && canApprove && doc.status === "Issued" && (
-              <button onClick={() => setConfirmAction("close")} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-white/50 hover:text-white/80 transition-colors">
+              <button onClick={() => setConfirmAction("close")} disabled={busy} className="font-mono text-[10px] uppercase tracking-widest text-text-muted hover:text-text-primary transition-colors">
                 {t("punchList.close")}
               </button>
             )}
@@ -302,13 +302,13 @@ function PunchItemCard({ item, projectName, showDate = true }: { item: CMTask; p
   const isOpen = item.status !== "Done";
   return (
     <Link to="/cm/punch-list/$id" params={{ id: item.id }}
-      className="relative w-full flex items-center justify-between gap-3 pl-6 pr-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 hover:-translate-y-0.5 transition-all shadow-[var(--shadow-sm)] overflow-hidden">
+      className="relative w-full flex items-center justify-between gap-3 pl-6 pr-5 py-4 rounded-2xl bg-surface-1 hover:bg-surface-3 hover:-translate-y-0.5 transition-all shadow-[var(--shadow-sm)] overflow-hidden">
       {isOpen && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: sc }} />}
       <div className="flex items-center gap-4 min-w-0">
-        {showDate && <span className="font-mono text-[12px] text-white/70 shrink-0">{item.created_at.slice(0, 10)}</span>}
-        {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-        <span className={`text-[12px] truncate ${item.status === "Done" ? "text-white/40 line-through" : "text-white/70"}`}>{item.title}</span>
+        {showDate && <span className="font-mono text-[12px] text-text-muted shrink-0">{item.created_at.slice(0, 10)}</span>}
+        {item.doc_number && <span className="font-mono text-[9px] text-text-subtle shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-text-subtle truncate">{projectName}</span>}
+        <span className={`text-[12px] truncate ${item.status === "Done" ? "text-text-subtle line-through" : "text-text-muted"}`}>{item.title}</span>
       </div>
       <StatusBadge label={t(`taskStatus.${item.status}`)} color={sc} variant="dot" />
     </Link>
@@ -409,11 +409,11 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="font-mono text-[12px] text-white/70">{item.created_at.slice(0, 10)}</span>
-        {item.doc_number && <span className="font-mono text-[9px] text-white/25">{item.doc_number}</span>}
+        <span className="font-mono text-[12px] text-text-muted">{item.created_at.slice(0, 10)}</span>
+        {item.doc_number && <span className="font-mono text-[9px] text-text-subtle">{item.doc_number}</span>}
       </div>
-      <p className="text-[14px] text-white/85">{item.title}</p>
-      {item.description && <p className="text-[12px] text-white/45">{item.description}</p>}
+      <p className="text-[14px] text-text-primary">{item.title}</p>
+      {item.description && <p className="text-[12px] text-text-muted">{item.description}</p>}
       {editableNow ? (
         <SegmentedField
           options={statusOptions.map((s) => ({ value: s, label: t(`taskStatus.${s}`), color: STATUS_COLOR[s] }))}
@@ -424,13 +424,13 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
       )}
       <div className="flex flex-wrap items-center gap-2">
         <PriorityBadge size="sm" label={t(`taskPriority.${item.priority}`)} color={pc} />
-        {location && <span className="text-[11px] text-white/40">{locationBreadcrumb(location, locations ?? [])}</span>}
-        {item.assignee && <span className="text-[11px] text-white/40">{item.assignee}</span>}
-        {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
+        {location && <span className="text-[11px] text-text-subtle">{locationBreadcrumb(location, locations ?? [])}</span>}
+        {item.assignee && <span className="text-[11px] text-text-subtle">{item.assignee}</span>}
+        {item.due_date && <span className="font-mono text-[10px] text-text-subtle">{item.due_date}</span>}
       </div>
       {item.photos.length > 0 && (
         <div className="flex flex-col gap-1">
-          {item.after_photos.length > 0 && <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("punchList.beforePhotos")}</span>}
+          {item.after_photos.length > 0 && <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("punchList.beforePhotos")}</span>}
           <div className="flex flex-wrap gap-2 mt-1">
             {item.photos.map((url, i) => (
               <button key={url} type="button" data-photo-url={url}
@@ -444,7 +444,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
       )}
       {item.after_photos.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("punchList.afterPhotos")}</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("punchList.afterPhotos")}</span>
           <div className="flex flex-wrap gap-2 mt-1">
             {item.after_photos.map((url, i) => (
               <button key={url} type="button" data-photo-url={url}
@@ -460,7 +460,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
 
       {/* Contractor: submit an after-photo to move the item to Ready for Check. */}
       {canEdit && !isClosed && !isReadyForCheck && (
-        <div className="flex flex-col gap-2 pt-2 border-t border-white/6">
+        <div className="flex flex-col gap-2 pt-2 border-t border-border">
           {!showAfterPicker ? (
             <button type="button" onClick={() => setShowAfterPicker(true)} disabled={busy}
               className="self-start text-[11px] font-bold px-3 py-1.5 rounded-full" style={{ backgroundColor: "#a78bfa22", color: "#a78bfa" }}>
@@ -475,7 +475,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
                   {t("punchList.submitForCheck")}
                 </button>
                 <button type="button" onClick={() => { setShowAfterPicker(false); setAfterPhotos([]); }} disabled={busy}
-                  className="px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white/50 bg-white/5">
+                  className="px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-text-muted bg-surface-2">
                   {t("common.cancel")}
                 </button>
               </div>
@@ -486,7 +486,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
 
       {/* Engineer verification: compare before/after, accept & close or reject. */}
       {canApprove && isReadyForCheck && (
-        <div className="flex flex-col gap-2 pt-2 border-t border-white/6">
+        <div className="flex flex-col gap-2 pt-2 border-t border-border">
           <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: "#a78bfa" }}>{t("punchList.readyForCheck")}</span>
           {!rejecting ? (
             <div className="flex gap-2">
@@ -495,7 +495,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
                 {t("punchList.acceptClose")}
               </button>
               <button type="button" onClick={() => setRejecting(true)} disabled={busy}
-                className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white disabled:opacity-40" style={{ backgroundColor: "#f43f5e" }}>
+                className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-text-primary disabled:opacity-40" style={{ backgroundColor: "#f43f5e" }}>
                 {t("punchList.reject")}
               </button>
             </div>
@@ -505,11 +505,11 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
                 placeholder={t("punchList.rejectReasonPlaceholder")} disabled={busy} autoFocus />
               <div className="flex gap-2">
                 <button type="button" onClick={handleReject} disabled={busy || !rejectReason.trim()}
-                  className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white disabled:opacity-40" style={{ backgroundColor: "#f43f5e" }}>
+                  className="flex-1 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-text-primary disabled:opacity-40" style={{ backgroundColor: "#f43f5e" }}>
                   {t("punchList.confirmReject")}
                 </button>
                 <button type="button" onClick={() => { setRejecting(false); setRejectReason(""); }} disabled={busy}
-                  className="px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-white/50 bg-white/5">
+                  className="px-4 py-2 rounded-xl text-[11px] uppercase tracking-widest font-bold text-text-muted bg-surface-2">
                   {t("common.cancel")}
                 </button>
               </div>
@@ -519,7 +519,7 @@ export function PunchListDetail({ item, canEdit, canApprove, canDelete, userId, 
       )}
 
       {isClosed && (verifierName || item.closed_at) && (
-        <p className="font-mono text-[10px] text-white/30">
+        <p className="font-mono text-[10px] text-text-subtle">
           {t("punchList.closedBy")} {verifierName ?? t("punchList.unknownUser")}{item.closed_at ? ` — ${item.closed_at.slice(0, 10)}` : ""}
         </p>
       )}
@@ -643,17 +643,17 @@ function CMPunchListPage() {
   const activeRows = visibleRows.filter((r) => !isRowClosed(r));
   const closedRows = visibleRows.filter((r) => isRowClosed(r));
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest font-bold" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--color-background)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("punchList.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/punch-list/settings"
           quickSettings={projectId ? <PunchListQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
@@ -677,15 +677,15 @@ function CMPunchListPage() {
 
         {(viewAll || projectId) && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             <>
                 {!isLoading && activeRows.length === 0 && closedRows.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                    <p className="text-white/40 text-sm">{t("punchList.nothingYet")}</p>
+                  <div className="rounded-2xl border border-dashed border-border py-16 flex items-center justify-center text-center px-4">
+                    <p className="text-text-subtle text-sm">{t("punchList.nothingYet")}</p>
                   </div>
                 )}
                 {!isLoading && activeRows.length === 0 && closedRows.length > 0 && (
-                  <p className="text-white/30 text-sm mb-3">{t("punchList.allDone")}</p>
+                  <p className="text-text-subtle text-sm mb-3">{t("punchList.allDone")}</p>
                 )}
                 <div className="flex flex-col gap-2">
                   {activeRows.map((row) => (
@@ -695,7 +695,7 @@ function CMPunchListPage() {
 
                 {closedRows.length > 0 && (
                   <div className="mt-6">
-                    <button onClick={() => setShowCompleted((v) => !v)} className="font-mono text-[10px] uppercase tracking-widest text-white/30 hover:text-white/55 transition-colors">
+                    <button onClick={() => setShowCompleted((v) => !v)} className="font-mono text-[10px] uppercase tracking-widest text-text-subtle hover:text-text-primary/55 transition-colors">
                       {showCompleted ? t("punchList.hideCompleted") : t("punchList.showCompleted")} {closedRows.length} {t("punchList.completedSuffix")}
                     </button>
                     {showCompleted && (

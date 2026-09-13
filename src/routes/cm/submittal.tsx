@@ -190,13 +190,13 @@ function SubmittalCard({ item, projectName }: { item: CMSubmittal; projectName?:
   const sc = STATUS_COLOR[item.status];
   return (
     <Link to="/cm/submittal/$id" params={{ id: item.id }}
-      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-surface-1 hover:bg-surface-3 transition-colors">
       <div className="flex items-center gap-4 min-w-0">
-        <span className="font-mono text-[12px] text-white/70 shrink-0">{item.submitted_date ?? item.created_at.slice(0, 10)}</span>
-        {item.submittal_type && <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`)}</span>}
-        {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-        <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+        <span className="font-mono text-[12px] text-text-muted shrink-0">{item.submitted_date ?? item.created_at.slice(0, 10)}</span>
+        {item.submittal_type && <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle shrink-0">{t(`submittalType.${SUBMITTAL_TYPE_KEY[item.submittal_type]}`)}</span>}
+        {item.doc_number && <span className="font-mono text-[9px] text-text-subtle shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-text-subtle truncate">{projectName}</span>}
+        <span className="text-[12px] text-text-muted truncate">{item.title}</span>
       </div>
       <StatusBadge label={t(`submittalStatus.${item.status}`)} color={sc} />
     </Link>
@@ -239,7 +239,7 @@ export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, 
 
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
-      <p className="font-mono text-[10px] text-white/30">
+      <p className="font-mono text-[10px] text-text-subtle">
         {[item.discipline && t(`discipline.${item.discipline}`), item.spec_section, `Rev ${item.revision}`].filter(Boolean).join(" · ")}
       </p>
       {canEdit && (
@@ -250,10 +250,10 @@ export function SubmittalDetail({ item, canEdit, canApprove, canDelete, userId, 
       )}
       <div className="flex flex-wrap items-center gap-2">
         {item.approval_code && (
-          <span className="px-2 py-0.5 rounded-full bg-white/5 font-mono text-[10px] text-white/60" title={t(`approvalCode.${item.approval_code}`)}>{item.approval_code}</span>
+          <span className="px-2 py-0.5 rounded-full bg-surface-2 font-mono text-[10px] text-text-muted" title={t(`approvalCode.${item.approval_code}`)}>{item.approval_code}</span>
         )}
-        {item.reviewer && <span className="text-[11px] text-white/40">{item.reviewer}</span>}
-        {item.due_date && <span className="font-mono text-[10px] text-white/30">{item.due_date}</span>}
+        {item.reviewer && <span className="text-[11px] text-text-subtle">{item.reviewer}</span>}
+        {item.due_date && <span className="font-mono text-[10px] text-text-subtle">{item.due_date}</span>}
       </div>
       {item.photos.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -341,17 +341,17 @@ function CMSubmittalPage() {
     return sortAsc ? [...list].reverse() : list;
   }, [submittals, search, sortAsc, dateFilter]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("submittal.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/submittal/settings"
           quickSettings={projectId ? <SubmittalQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
@@ -375,11 +375,11 @@ function CMSubmittalPage() {
 
         {(viewAll || projectId) && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             <>
               {!isLoading && visibleSubmittals.length === 0 && (
-                <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                  <p className="text-white/40 text-sm">{t("submittal.noneYet")}</p>
+                <div className="rounded-2xl border border-dashed border-border py-16 flex items-center justify-center text-center px-4">
+                  <p className="text-text-subtle text-sm">{t("submittal.noneYet")}</p>
                 </div>
               )}
               <div className="flex flex-col gap-3">

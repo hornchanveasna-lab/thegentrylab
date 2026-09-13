@@ -31,7 +31,7 @@ function Row({ children, onClick }: { children: React.ReactNode; onClick?: () =>
   return (
     <Comp
       onClick={onClick}
-      className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-[#0d0d0e] first:rounded-t-2xl last:rounded-b-2xl border-b border-white/6 last:border-b-0 text-left"
+      className="w-full flex items-center justify-between gap-3 px-4 py-3.5 bg-surface-1 first:rounded-t-2xl last:rounded-b-2xl border-b border-border last:border-b-0 text-left"
     >
       {children}
     </Comp>
@@ -66,15 +66,15 @@ function BrandColorSection({ account, ownerId, onSaved }: {
   };
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.brandColor")}</p>
+    <div className="rounded-2xl bg-surface-1 p-4 mb-5">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-3">{t("settings.brandColor")}</p>
       <SegmentedField value={mode} onChange={setMode} disabled={saving}
         options={[
           { value: "auto" as const, label: t("settings.brandColorAuto") },
           { value: "manual" as const, label: t("settings.brandColorManual") },
         ]} />
       {mode === "auto" && (
-        <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mt-3">{t("settings.brandColorAutoHint")}</p>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mt-3">{t("settings.brandColorAutoHint")}</p>
       )}
       {mode === "manual" && (
         <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -83,7 +83,7 @@ function BrandColorSection({ account, ownerId, onSaved }: {
               className="w-8 h-8 rounded-full shrink-0 transition-transform active:scale-90"
               style={{ backgroundColor: hex, boxShadow: account?.brand_color === hex ? "0 0 0 2px #0d0d0e, 0 0 0 4px currentColor" : undefined, color: hex }} />
           ))}
-          <label className="w-8 h-8 rounded-full shrink-0 overflow-hidden relative border border-dashed border-white/20 flex items-center justify-center text-white/40 text-[14px]">
+          <label className="w-8 h-8 rounded-full shrink-0 overflow-hidden relative border border-dashed border-border flex items-center justify-center text-text-subtle text-[14px]">
             +
             <input type="color" value={account?.brand_color ?? "#ff5100"} onChange={(e) => setColor(e.target.value)}
               className="absolute inset-0 opacity-0 cursor-pointer" />
@@ -148,13 +148,13 @@ function GlobalAuditLogSection({ userId, projects, onBack }: {
 
   return (
     <div className="flex flex-col gap-4">
-      <button onClick={onBack} className="flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors self-start">
+      <button onClick={onBack} className="flex items-center gap-2 text-text-muted hover:text-text-primary transition-colors self-start">
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
         <span className="text-[12px] font-mono uppercase tracking-widest">{t("settings.appTab")}</span>
       </button>
 
-      <div className="rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-3">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("appSettingsNav.auditLog")}</p>
+      <div className="rounded-2xl bg-surface-1 p-4 flex flex-col gap-3">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("appSettingsNav.auditLog")}</p>
         <div className="grid grid-cols-2 gap-2">
           <FieldSelect value={projectFilter} onChange={setProjectFilter}
             placeholder={t("auditLog.allProjects")}
@@ -166,27 +166,27 @@ function GlobalAuditLogSection({ userId, projects, onBack }: {
             placeholder={t("auditLog.allActions")}
             options={[{ value: "", label: t("auditLog.allActions") }, ...actions.map((a) => ({ value: a, label: a }))]} />
           <div />
-          <input type="date" className="bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#ff5100]/60"
+          <input type="date" className="bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[#ff5100]/60"
             value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
-          <input type="date" className="bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white focus:outline-none focus:border-[#ff5100]/60"
+          <input type="date" className="bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary focus:outline-none focus:border-[#ff5100]/60"
             value={toDate} onChange={(e) => setToDate(e.target.value)} />
         </div>
       </div>
 
       <div className="flex flex-col gap-2">
-        {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+        {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
         {!isLoading && filtered.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-white/10 py-12 flex items-center justify-center text-center px-4">
-            <p className="text-white/40 text-sm">{t("auditLog.nothingYet")}</p>
+          <div className="rounded-2xl border border-dashed border-border py-12 flex items-center justify-center text-center px-4">
+            <p className="text-text-subtle text-sm">{t("auditLog.nothingYet")}</p>
           </div>
         )}
         {filtered.map((e) => (
-          <div key={e.id} className="rounded-xl bg-[#0d0d0e] px-4 py-3 flex flex-col gap-1">
+          <div key={e.id} className="rounded-xl bg-surface-1 px-4 py-3 flex flex-col gap-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[12px] text-white/80 truncate">{projectNameById.get(e.project_id) ?? e.project_id}</span>
-              <span className="font-mono text-[9px] text-white/30 shrink-0">{e.created_at.slice(0, 16).replace("T", " ")}</span>
+              <span className="text-[12px] text-text-primary truncate">{projectNameById.get(e.project_id) ?? e.project_id}</span>
+              <span className="font-mono text-[9px] text-text-subtle shrink-0">{e.created_at.slice(0, 16).replace("T", " ")}</span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap text-[11px] text-white/50">
+            <div className="flex items-center gap-2 flex-wrap text-[11px] text-text-muted">
               <span className="font-mono uppercase tracking-widest" style={{ color: "#ff5100" }}>{e.action}</span>
               <span>·</span>
               <span>{e.entity_type}</span>
@@ -267,10 +267,10 @@ function CMSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen text-white flex flex-col font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary flex flex-col font-sans" style={{ background: "var(--color-background)" }}>
       <div className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24 flex-1">
         <div className="flex items-center gap-3 mb-6">
-          <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
+          <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M10 3L5 8l5 5" />
             </svg>
@@ -279,7 +279,7 @@ function CMSettingsPage() {
         </div>
 
         {user && (
-          <div className="flex items-center gap-3 px-4 py-4 mb-5 rounded-2xl bg-[#0d0d0e]">
+          <div className="flex items-center gap-3 px-4 py-4 mb-5 rounded-2xl bg-surface-1">
             {user.user_metadata?.avatar_url ? (
               <img src={user.user_metadata.avatar_url} alt="" className="w-12 h-12 rounded-full object-cover" />
             ) : (
@@ -289,7 +289,7 @@ function CMSettingsPage() {
             )}
             <div className="min-w-0">
               <p className="text-[13px] font-bold truncate">{user.user_metadata?.full_name ?? t("settings.signedIn")}</p>
-              <p className="text-[11px] text-white/40 truncate">{user.email}</p>
+              <p className="text-[11px] text-text-subtle truncate">{user.email}</p>
             </div>
           </div>
         )}
@@ -308,8 +308,8 @@ function CMSettingsPage() {
 
         {tab === "app" && (
           <>
-            <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.language")}</p>
+            <div className="rounded-2xl bg-surface-1 p-4 mb-5">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-3">{t("settings.language")}</p>
               <SegmentedField
                 options={LANG_OPTIONS.map((l) => ({ value: l, label: t(`settings.lang.${l}`) }))}
                 value={lang}
@@ -319,8 +319,8 @@ function CMSettingsPage() {
 
             <div className="rounded-2xl overflow-hidden mb-5">
               <Row onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}>
-                <span className="text-[13px] text-white/85">{t("settings.appearance")}</span>
-                <span className="text-[12px] text-white/40 font-mono uppercase tracking-widest">{theme === "dark" ? t("settings.dark") : t("settings.light")}</span>
+                <span className="text-[13px] text-text-primary">{t("settings.appearance")}</span>
+                <span className="text-[12px] text-text-subtle font-mono uppercase tracking-widest">{theme === "dark" ? t("settings.dark") : t("settings.light")}</span>
               </Row>
             </div>
 
@@ -328,8 +328,8 @@ function CMSettingsPage() {
               {APP_PLACEHOLDER_KEYS.map((k) => (
                 <Row key={k}>
                   <div className="min-w-0">
-                    <p className="text-[13px] text-white/85">{t(`appSettingsNav.${k}`)}</p>
-                    <p className="text-[10px] text-white/30 mt-0.5">{t("settingsNav.notBuiltYet")}</p>
+                    <p className="text-[13px] text-text-primary">{t(`appSettingsNav.${k}`)}</p>
+                    <p className="text-[10px] text-text-subtle mt-0.5">{t("settingsNav.notBuiltYet")}</p>
                   </div>
                 </Row>
               ))}
@@ -337,10 +337,10 @@ function CMSettingsPage() {
 
             <div className="rounded-2xl overflow-hidden mb-5">
               <Row>
-                <a href="https://thegentrylab.com" className="text-[13px] text-white/85">
+                <a href="https://thegentrylab.com" className="text-[13px] text-text-primary">
                   {t("settings.gentryLabHome")}
                 </a>
-                <span className="text-white/25">↗</span>
+                <span className="text-text-subtle">↗</span>
               </Row>
             </div>
           </>
@@ -352,24 +352,24 @@ function CMSettingsPage() {
 
         {tab === "organization" && !showAuditLog && user && (
           <>
-            <div className="rounded-2xl bg-[#0d0d0e] p-4 mb-5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-3">{t("settings.companyBranding")}</p>
+            <div className="rounded-2xl bg-surface-1 p-4 mb-5">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-3">{t("settings.companyBranding")}</p>
               <div className="flex items-center gap-4 mb-4">
                 {account?.company_logo_url ? (
                   <img src={account.company_logo_url} alt="" className="h-16 max-w-[180px] w-auto object-contain shrink-0" />
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl border border-dashed border-white/10 flex items-center justify-center shrink-0">
-                    <span className="text-white/20 text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>
+                  <div className="w-16 h-16 rounded-2xl border border-dashed border-border flex items-center justify-center shrink-0">
+                    <span className="text-text-subtle text-[9px] font-mono uppercase">{t("projectSettings.none")}</span>
                   </div>
                 )}
                 <div className="flex flex-col gap-1">
-                  <span className="text-[11px] text-white/50">{t("settings.companyLogo")}</span>
+                  <span className="text-[11px] text-text-muted">{t("settings.companyLogo")}</span>
                   <input type="file" accept="image/*" disabled={uploadingLogo}
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadLogo(f); }}
-                    className="text-[11px] text-white/50 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-white/10 file:text-white/60 file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
+                    className="text-[11px] text-text-muted file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-surface-3 file:text-text-muted file:text-[10px] file:font-mono file:uppercase file:tracking-widest" />
                 </div>
               </div>
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-4">{t("settings.companyLogoHint")}</p>
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mb-4">{t("settings.companyLogoHint")}</p>
               <div className="flex gap-2">
                 <input
                   className={inputCls}
@@ -389,31 +389,31 @@ function CMSettingsPage() {
             <BrandColorSection account={account} ownerId={user.id} onSaved={invalidateAccount} />
 
             <div className="mb-5">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2 px-1">{t("appSettingsNav.companies")}</p>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-2 px-1">{t("appSettingsNav.companies")}</p>
               <CompaniesSection ownerId={user.id} canCreate canEdit />
             </div>
 
             <div className="rounded-2xl overflow-hidden mb-5">
               <Row>
                 <Link to="/cm/directory" className="min-w-0">
-                  <p className="text-[13px] text-white/85">{t("appSettingsNav.users")}</p>
-                  <p className="text-[10px] text-white/30 mt-0.5">{t("appSettingsNav.usersHint")}</p>
+                  <p className="text-[13px] text-text-primary">{t("appSettingsNav.users")}</p>
+                  <p className="text-[10px] text-text-subtle mt-0.5">{t("appSettingsNav.usersHint")}</p>
                 </Link>
-                <span className="text-white/25 shrink-0">›</span>
+                <span className="text-text-subtle shrink-0">›</span>
               </Row>
               <Row>
                 <Link to="/cm/role-permissions" className="min-w-0">
-                  <p className="text-[13px] text-white/85">{t("appSettingsNav.roles")}</p>
-                  <p className="text-[10px] text-white/30 mt-0.5">{t("appSettingsNav.rolesHint")}</p>
+                  <p className="text-[13px] text-text-primary">{t("appSettingsNav.roles")}</p>
+                  <p className="text-[10px] text-text-subtle mt-0.5">{t("appSettingsNav.rolesHint")}</p>
                 </Link>
-                <span className="text-white/25 shrink-0">›</span>
+                <span className="text-text-subtle shrink-0">›</span>
               </Row>
               <Row onClick={() => setShowAuditLog(true)}>
                 <div className="min-w-0">
-                  <p className="text-[13px] text-white/85">{t("appSettingsNav.auditLog")}</p>
-                  <p className="text-[10px] text-white/30 mt-0.5">{t("appSettingsNav.auditLogHint")}</p>
+                  <p className="text-[13px] text-text-primary">{t("appSettingsNav.auditLog")}</p>
+                  <p className="text-[10px] text-text-subtle mt-0.5">{t("appSettingsNav.auditLogHint")}</p>
                 </div>
-                <span className="text-white/25 shrink-0">›</span>
+                <span className="text-text-subtle shrink-0">›</span>
               </Row>
             </div>
 
@@ -421,8 +421,8 @@ function CMSettingsPage() {
               {ORG_PLACEHOLDER_KEYS.map((k) => (
                 <Row key={k}>
                   <div className="min-w-0">
-                    <p className="text-[13px] text-white/85">{t(`appSettingsNav.${k}`)}</p>
-                    <p className="text-[10px] text-white/30 mt-0.5">
+                    <p className="text-[13px] text-text-primary">{t(`appSettingsNav.${k}`)}</p>
+                    <p className="text-[10px] text-text-subtle mt-0.5">
                       {k === "organizations" ? t("settingsNav.notApplicableSingleTenant") : t("settingsNav.notBuiltYet")}
                     </p>
                   </div>
@@ -434,7 +434,7 @@ function CMSettingsPage() {
 
         {tab === "project" && (
           <>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2 px-1">{t("settings.currentProject")}</p>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-2 px-1">{t("settings.currentProject")}</p>
             <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
             {activeProject && user && (
               <ProjectSettingsView project={activeProject} ownerId={activeProject.owner_id} currentUserId={user.id} onProjectChanged={invalidateProjects} />

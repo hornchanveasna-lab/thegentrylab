@@ -27,7 +27,7 @@ function NewPunchItemPage() {
   const defaultPriority = (activeProject?.module_defaults?.punch_list as { priority?: TaskPriority } | undefined)?.priority;
   const canApprove = usePermission(projectId || undefined, user?.id, "punch_list", "approve");
 
-  if (authLoading || (search.document && !targetDoc)) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || (search.document && !targetDoc)) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (

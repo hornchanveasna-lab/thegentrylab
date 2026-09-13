@@ -32,10 +32,10 @@ export const Route = createFileRoute("/cm/reports")({
   component: CMReportsPage,
 });
 
-const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white focus:outline-none focus:border-[#ff5100]/60 transition-colors";
-const labelCls = "font-mono text-[10px] uppercase tracking-widest text-white/35";
-const cardCls = "rounded-2xl bg-[#0d0d0e] print:bg-white print:border print:border-black/10 px-3 py-3 text-center";
-const rowCls = "rounded-2xl bg-[#0d0d0e] print:bg-white print:border print:border-black/10 px-4 py-3";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const labelCls = "font-mono text-[10px] uppercase tracking-widest text-text-subtle";
+const cardCls = "rounded-2xl bg-surface-1 print:bg-white print:border print:border-black/10 px-3 py-3 text-center";
+const rowCls = "rounded-2xl bg-surface-1 print:bg-white print:border print:border-black/10 px-4 py-3";
 
 const INSPECTION_STATUS_COLOR: Record<InspectionStatus, string> = { Scheduled: "#94a3b8", Passed: "#34d399", Failed: "#f43f5e", "Not Applicable": "#fbbf24" };
 const TASK_STATUS_COLOR: Record<TaskStatus, string> = { "To Do": "#94a3b8", "In Progress": "#fbbf24", Blocked: "#f43f5e", "Ready for Check": "#a78bfa", Done: "#34d399" };
@@ -58,7 +58,7 @@ function StatGrid({ stats }: { stats: { label: string; value: string | number }[
       {stats.map((s) => (
         <div key={s.label} className={cardCls}>
           <p className="text-lg font-extrabold print:text-black">{s.value}</p>
-          <p className="font-mono text-[8px] uppercase tracking-widest text-white/30 print:text-black/50 mt-1">{s.label}</p>
+          <p className="font-mono text-[8px] uppercase tracking-widest text-text-subtle print:text-black/50 mt-1">{s.label}</p>
         </div>
       ))}
     </div>
@@ -204,11 +204,11 @@ function CMReportsPage() {
     dashboard: t("reports.type.dashboard"), photo: t("reports.type.photo"),
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
           style={{ backgroundColor: "#ff5100" }}>
@@ -219,13 +219,13 @@ function CMReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans print:bg-white print:text-black">
+    <div className="min-h-screen bg-background text-text-primary font-sans print:bg-white print:text-black">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-6 print:hidden">
-          <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors shrink-0">
+          <Link to="/cm" className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors shrink-0">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 3L5 8l5 5" /></svg>
           </Link>
-          <h1 className="text-xl font-extrabold tracking-tight text-white">{t("reports.title")}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary">{t("reports.title")}</h1>
         </div>
 
         <div className="flex flex-col gap-3 mb-6 print:hidden">
@@ -255,29 +255,29 @@ function CMReportsPage() {
           <div className="flex gap-2">
             {[{ label: t("reports.days7"), days: 7 }, { label: t("reports.days30"), days: 30 }, { label: t("reports.days90"), days: 90 }].map((r) => (
               <button key={r.days} onClick={() => setFromDate(isoDaysAgo(r.days))}
-                className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 text-white/50 hover:text-white transition-colors">
+                className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest bg-surface-2 text-text-muted hover:text-text-primary transition-colors">
                 {r.label}
               </button>
             ))}
           </div>
         </div>
 
-        {!projectId && <p className="text-white/30 text-sm print:hidden">{t("reports.pickPrompt")}</p>}
+        {!projectId && <p className="text-text-subtle text-sm print:hidden">{t("reports.pickPrompt")}</p>}
 
         {projectId && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between print:mb-4">
               <div>
                 <h2 className="text-lg font-extrabold tracking-tight print:text-black">{activeProject?.name}</h2>
-                <p className="font-mono text-[10px] uppercase tracking-widest text-white/30 print:text-black/50">{reportTitle[reportType]}</p>
-                <p className="font-mono text-[11px] text-white/40 print:text-black/60 mt-0.5">{fromDate} → {toDate}</p>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle print:text-black/50">{reportTitle[reportType]}</p>
+                <p className="font-mono text-[11px] text-text-subtle print:text-black/60 mt-0.5">{fromDate} → {toDate}</p>
               </div>
-              <button onClick={() => window.print()} className="px-4 py-2 rounded-full text-[10px] font-mono uppercase tracking-widest bg-white/5 hover:bg-white/10 transition-colors print:hidden">
+              <button onClick={() => window.print()} className="px-4 py-2 rounded-full text-[10px] font-mono uppercase tracking-widest bg-surface-2 hover:bg-surface-3 transition-colors print:hidden">
                 {t("reports.print")}
               </button>
             </div>
 
-            {logsLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {logsLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
 
             {!logsLoading && reportType === "daily" && (
               <>
@@ -287,17 +287,17 @@ function CMReportsPage() {
                   { label: t("reports.latestProgress"), value: latestProgress != null ? `${latestProgress}%` : "—" },
                   { label: t("reports.delayHours"), value: totalDelayHours > 0 ? totalDelayHours : "—" },
                 ]} />
-                {totalPhotos > 0 && <p className="text-[12px] text-white/40 print:text-black/60">{totalPhotos} {t("reports.photosLogged")}</p>}
-                {filteredLogs.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {totalPhotos > 0 && <p className="text-[12px] text-text-subtle print:text-black/60">{totalPhotos} {t("reports.photosLogged")}</p>}
+                {filteredLogs.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="flex flex-col gap-2">
                   {filteredLogs.map((l) => (
                     <div key={l.id} className={rowCls}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono text-[11px] text-white/70 print:text-black">{l.log_date}</span>
+                        <span className="font-mono text-[11px] text-text-muted print:text-black">{l.log_date}</span>
                         {l.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{l.progress_pct}%</span>}
                       </div>
-                      {l.weather && <p className="font-mono text-[9px] uppercase tracking-widest text-white/30 print:text-black/50 mb-1">{t(`weather.${l.weather}`)}{l.manpower.length > 0 ? ` · ${l.manpower.reduce((s, m) => s + m.count, 0)} ${t("reports.workers")}` : ""}</p>}
-                      {l.activities && <p className="text-[12px] text-white/60 print:text-black/80">{l.activities}</p>}
+                      {l.weather && <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle print:text-black/50 mb-1">{t(`weather.${l.weather}`)}{l.manpower.length > 0 ? ` · ${l.manpower.reduce((s, m) => s + m.count, 0)} ${t("reports.workers")}` : ""}</p>}
+                      {l.activities && <p className="text-[12px] text-text-muted print:text-black/80">{l.activities}</p>}
                       {l.issues && <p className="text-[11px] text-red-400/80 print:text-red-700 mt-1">{t("reports.issue")} {l.issues}</p>}
                       <div className="print:hidden mt-2">
                         <CMDailyActivityList activity={activityByDate?.get(l.log_date)} projectId={l.project_id}
@@ -317,7 +317,7 @@ function CMReportsPage() {
                   { label: t("reports.variance"), value: variance != null ? `${variance > 0 ? "+" : ""}${variance}%` : "—" },
                   { label: t("reports.delayHours"), value: totalDelayHours > 0 ? totalDelayHours : "—" },
                 ]} />
-                <p className="text-[12px] text-white/40 print:text-black/60">{filteredLogs.length} {t("reports.diaryEntries").toLowerCase()} · {t("reports.avgWorkforce").toLowerCase()}: {avgWorkforce ?? "—"}</p>
+                <p className="text-[12px] text-text-subtle print:text-black/60">{filteredLogs.length} {t("reports.diaryEntries").toLowerCase()} · {t("reports.avgWorkforce").toLowerCase()}: {avgWorkforce ?? "—"}</p>
               </>
             )}
 
@@ -329,13 +329,13 @@ function CMReportsPage() {
                   { label: t("inspectionStatus.Failed"), value: filteredInspections.filter((i) => i.status === "Failed").length },
                   { label: t("inspectionStatus.Scheduled"), value: filteredInspections.filter((i) => i.status === "Scheduled").length },
                 ]} />
-                {filteredInspections.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {filteredInspections.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="flex flex-col gap-2">
                   {filteredInspections.map((i) => (
                     <div key={i.id} className={`${rowCls} flex items-center justify-between gap-3`}>
                       <div className="min-w-0">
-                        <p className="font-mono text-[10px] text-white/30 print:text-black/50">{i.inspection_date} {i.doc_number ? `· ${i.doc_number}` : ""}</p>
-                        <p className="text-[12px] text-white/80 print:text-black truncate">{i.title}</p>
+                        <p className="font-mono text-[10px] text-text-subtle print:text-black/50">{i.inspection_date} {i.doc_number ? `· ${i.doc_number}` : ""}</p>
+                        <p className="text-[12px] text-text-primary print:text-black truncate">{i.title}</p>
                       </div>
                       <span className="font-mono text-[10px] uppercase tracking-widest shrink-0" style={{ color: INSPECTION_STATUS_COLOR[i.status] }}>{t(`inspectionStatus.${i.status}`)}</span>
                     </div>
@@ -352,13 +352,13 @@ function CMReportsPage() {
                   { label: t("taskStatus.In Progress"), value: (tasks ?? []).filter((tk) => tk.status === "In Progress").length },
                   { label: t("reports.overdue"), value: openOverdueTasks.length },
                 ]} />
-                {filteredTasks.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {filteredTasks.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="flex flex-col gap-2">
                   {filteredTasks.map((tk) => (
                     <div key={tk.id} className={`${rowCls} flex items-center justify-between gap-3`}>
                       <div className="min-w-0">
-                        <p className="font-mono text-[10px] text-white/30 print:text-black/50">{tk.due_date ?? tk.created_at.slice(0, 10)} {tk.doc_number ? `· ${tk.doc_number}` : ""}</p>
-                        <p className="text-[12px] text-white/80 print:text-black truncate">{tk.title}</p>
+                        <p className="font-mono text-[10px] text-text-subtle print:text-black/50">{tk.due_date ?? tk.created_at.slice(0, 10)} {tk.doc_number ? `· ${tk.doc_number}` : ""}</p>
+                        <p className="text-[12px] text-text-primary print:text-black truncate">{tk.title}</p>
                       </div>
                       <span className="font-mono text-[10px] uppercase tracking-widest shrink-0" style={{ color: TASK_STATUS_COLOR[tk.status] }}>{t(`taskStatus.${tk.status}`)}</span>
                     </div>
@@ -375,13 +375,13 @@ function CMReportsPage() {
                   { label: t("safetySeverity.High"), value: filteredSafety.filter((r) => r.severity === "High").length },
                   { label: t("safety.resolved"), value: filteredSafety.filter((r) => r.status === "Resolved").length },
                 ]} />
-                {filteredSafety.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {filteredSafety.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="flex flex-col gap-2">
                   {filteredSafety.map((r) => (
                     <div key={r.id} className={`${rowCls} flex items-center justify-between gap-3`}>
                       <div className="min-w-0">
-                        <p className="font-mono text-[10px] text-white/30 print:text-black/50">{r.record_date} {r.doc_number ? `· ${r.doc_number}` : ""} · {t(`safetyType.${r.record_type}`)}</p>
-                        <p className="text-[12px] text-white/80 print:text-black truncate">{r.title}</p>
+                        <p className="font-mono text-[10px] text-text-subtle print:text-black/50">{r.record_date} {r.doc_number ? `· ${r.doc_number}` : ""} · {t(`safetyType.${r.record_type}`)}</p>
+                        <p className="text-[12px] text-text-primary print:text-black truncate">{r.title}</p>
                       </div>
                       <span className="font-mono text-[10px] uppercase tracking-widest shrink-0" style={{ color: SAFETY_SEVERITY_COLOR[r.severity] }}>{t(`safetySeverity.${r.severity}`)}</span>
                     </div>
@@ -401,14 +401,14 @@ function CMReportsPage() {
 
                 {plannedInRange > 0 && (
                   <div className={`${rowCls} flex items-center justify-between gap-3`}>
-                    <span className="text-[12px] text-white/80 print:text-black">{t("manpower.plannedVsActual")}</span>
-                    <span className="font-mono text-[12px] text-white/50 print:text-black/60">
+                    <span className="text-[12px] text-text-primary print:text-black">{t("manpower.plannedVsActual")}</span>
+                    <span className="font-mono text-[12px] text-text-muted print:text-black/60">
                       {t("manpower.planned")} {plannedInRange} · {t("manpower.actual")} {totalManDays} ({totalManDays - plannedInRange >= 0 ? "+" : ""}{totalManDays - plannedInRange})
                     </span>
                   </div>
                 )}
 
-                {manpowerByTrade.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {manpowerByTrade.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
 
                 {manpowerGroups.byCompany.length > 0 && (
                   <>
@@ -416,8 +416,8 @@ function CMReportsPage() {
                     <div className="flex flex-col gap-2">
                       {manpowerGroups.byCompany.map(([company, g]) => (
                         <div key={company} className={`${rowCls} flex items-center justify-between gap-3`}>
-                          <span className="text-[12px] text-white/80 print:text-black truncate">{company}</span>
-                          <span className="font-mono text-[11px] text-white/50 print:text-black/60 shrink-0">
+                          <span className="text-[12px] text-text-primary print:text-black truncate">{company}</span>
+                          <span className="font-mono text-[11px] text-text-muted print:text-black/60 shrink-0">
                             {g.count} · {g.normal.toLocaleString()}h{g.ot > 0 ? ` + ${g.ot.toLocaleString()} OT` : ""}
                           </span>
                         </div>
@@ -432,8 +432,8 @@ function CMReportsPage() {
                     <div className="flex flex-col gap-2">
                       {manpowerByTrade.map(([trade, g]) => (
                         <div key={trade} className={`${rowCls} flex items-center justify-between gap-3`}>
-                          <span className="text-[12px] text-white/80 print:text-black truncate">{trade}</span>
-                          <span className="font-mono text-[11px] text-white/50 print:text-black/60 shrink-0">
+                          <span className="text-[12px] text-text-primary print:text-black truncate">{trade}</span>
+                          <span className="font-mono text-[11px] text-text-muted print:text-black/60 shrink-0">
                             {g.count} · {g.normal.toLocaleString()}h{g.ot > 0 ? ` + ${g.ot.toLocaleString()} OT` : ""}
                           </span>
                         </div>
@@ -448,8 +448,8 @@ function CMReportsPage() {
                     <div className="flex flex-col gap-2">
                       {dailyManpower.map((d) => (
                         <div key={d.date} className={`${rowCls} flex items-center justify-between gap-3`}>
-                          <span className="font-mono text-[11px] text-white/70 print:text-black">{d.date}</span>
-                          <span className="font-mono text-[11px] text-white/50 print:text-black/60 shrink-0">
+                          <span className="font-mono text-[11px] text-text-muted print:text-black">{d.date}</span>
+                          <span className="font-mono text-[11px] text-text-muted print:text-black/60 shrink-0">
                             {d.workers} {t("reports.workers")} · {d.hours.normal.toLocaleString()}h{d.hours.ot > 0 ? ` + ${d.hours.ot.toLocaleString()} OT` : ""}
                           </span>
                         </div>
@@ -468,13 +468,13 @@ function CMReportsPage() {
                   { label: t("equipmentStatus.Maintenance"), value: (equipment ?? []).filter((e) => e.status === "Maintenance").length },
                   { label: t("equipmentStatus.Out of Service"), value: (equipment ?? []).filter((e) => e.status === "Out of Service").length },
                 ]} />
-                {(equipment ?? []).length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {(equipment ?? []).length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="flex flex-col gap-2">
                   {(equipment ?? []).map((e) => (
                     <div key={e.id} className={`${rowCls} flex items-center justify-between gap-3`}>
                       <div className="min-w-0">
-                        <p className="text-[12px] text-white/80 print:text-black truncate">{e.name}</p>
-                        {e.type && <p className="font-mono text-[10px] text-white/30 print:text-black/50">{e.type} · ×{e.quantity}</p>}
+                        <p className="text-[12px] text-text-primary print:text-black truncate">{e.name}</p>
+                        {e.type && <p className="font-mono text-[10px] text-text-subtle print:text-black/50">{e.type} · ×{e.quantity}</p>}
                       </div>
                       <span className="font-mono text-[10px] uppercase tracking-widest shrink-0" style={{ color: EQUIPMENT_STATUS_COLOR[e.status] }}>{t(`equipmentStatus.${e.status}`)}</span>
                     </div>
@@ -491,13 +491,13 @@ function CMReportsPage() {
                   { label: t("reports.pending"), value: filteredSubmittals.filter((s) => s.status === "Submitted" || s.status === "Under Review").length },
                   { label: t("submittalStatus.Rejected"), value: filteredSubmittals.filter((s) => s.status === "Rejected").length },
                 ]} />
-                {filteredSubmittals.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {filteredSubmittals.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="flex flex-col gap-2">
                   {filteredSubmittals.map((s) => (
                     <div key={s.id} className={`${rowCls} flex items-center justify-between gap-3`}>
                       <div className="min-w-0">
-                        <p className="font-mono text-[10px] text-white/30 print:text-black/50">{s.submitted_date ?? s.due_date} {s.doc_number ? `· ${s.doc_number}` : ""}</p>
-                        <p className="text-[12px] text-white/80 print:text-black truncate">{s.title}</p>
+                        <p className="font-mono text-[10px] text-text-subtle print:text-black/50">{s.submitted_date ?? s.due_date} {s.doc_number ? `· ${s.doc_number}` : ""}</p>
+                        <p className="text-[12px] text-text-primary print:text-black truncate">{s.title}</p>
                       </div>
                       <span className="font-mono text-[10px] uppercase tracking-widest shrink-0" style={{ color: SUBMITTAL_STATUS_COLOR[s.status] }}>{t(`submittalStatus.${s.status}`)}</span>
                     </div>
@@ -512,16 +512,16 @@ function CMReportsPage() {
                   { label: t("reports.overallProgress"), value: `${boqOverallPct}%` },
                   { label: t("reports.total"), value: boqProgress.length },
                 ]} />
-                {boqProgress.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {boqProgress.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="flex flex-col gap-2">
                   {boqProgress.map((b) => (
                     <div key={b.id} className={rowCls}>
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-[12px] text-white/80 print:text-black truncate">{b.description}</p>
+                        <p className="text-[12px] text-text-primary print:text-black truncate">{b.description}</p>
                         <span className="font-mono text-[11px] shrink-0" style={{ color: "#ff5100" }}>{b.pct}%</span>
                       </div>
-                      <p className="font-mono text-[9px] text-white/30 print:text-black/50">{b.deliveredQty} / {b.quantity} {b.unit ?? ""}</p>
-                      <div className="h-1.5 rounded-full bg-white/5 print:bg-black/10 mt-1.5 overflow-hidden">
+                      <p className="font-mono text-[9px] text-text-subtle print:text-black/50">{b.deliveredQty} / {b.quantity} {b.unit ?? ""}</p>
+                      <div className="h-1.5 rounded-full bg-surface-2 print:bg-black/10 mt-1.5 overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: `${b.pct}%`, backgroundColor: "#ff5100" }} />
                       </div>
                     </div>
@@ -546,10 +546,10 @@ function CMReportsPage() {
             {reportType === "photo" && (
               <>
                 <StatGrid stats={[{ label: t("reports.total"), value: filteredPhotos.length }]} />
-                {filteredPhotos.length === 0 && <p className="text-white/30 text-sm">{t("reports.noEntriesInRange")}</p>}
+                {filteredPhotos.length === 0 && <p className="text-text-subtle text-sm">{t("reports.noEntriesInRange")}</p>}
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {filteredPhotos.map((p) => (
-                    <div key={p.recordId + p.url} className="aspect-square rounded-xl overflow-hidden bg-white/5">
+                    <div key={p.recordId + p.url} className="aspect-square rounded-xl overflow-hidden bg-surface-2">
                       <img src={p.thumbUrl || p.url} alt="" className="w-full h-full object-cover" />
                     </div>
                   ))}

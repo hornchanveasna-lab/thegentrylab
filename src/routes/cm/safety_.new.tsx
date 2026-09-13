@@ -17,7 +17,7 @@ function NewSafetyEntryPage() {
   const activeProject = projects?.find((p) => p.id === projectId);
   const safetyDefaults = activeProject?.module_defaults?.safety as { recordType?: SafetyRecordType; severity?: SafetySeverity } | undefined;
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   return (

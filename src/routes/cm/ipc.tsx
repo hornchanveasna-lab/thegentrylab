@@ -56,23 +56,23 @@ function CMIPCPage() {
     [activeContract, scheduleItems, contractIPCs],
   );
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-28">
         <div className="flex items-center gap-3 mb-6">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("ipc.title")}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{t("ipc.title")}</h1>
         </div>
-        <p className="text-[12px] text-white/35 mb-5">{t("ipc.subtitle")}</p>
+        <p className="text-[12px] text-text-subtle mb-5">{t("ipc.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (contracts?.length ?? 0) > 0 && (
@@ -108,7 +108,7 @@ function CMIPCPage() {
             )}
 
             <div className="flex items-center justify-between mt-5 mb-3">
-              <p className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("ipc.certificates")}</p>
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("ipc.certificates")}</p>
               {canCreate && (
                 <button onClick={() => navigate({ to: "/cm/ipc/new", search: { contract: activeContract.id } })}
                   className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ color: "#ff5100" }}>
@@ -121,13 +121,13 @@ function CMIPCPage() {
             <div className="flex flex-col gap-2">
               {contractIPCs.map((ipc) => (
                 <Link key={ipc.id} to="/cm/ipc/$id" params={{ id: ipc.id }}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-[#0d0d0e] px-4 py-3 hover:bg-white/3 transition-colors">
+                  className="flex items-center justify-between gap-3 rounded-xl bg-surface-1 px-4 py-3 hover:bg-surface-3 transition-colors">
                   <div className="min-w-0">
-                    <p className="text-[12px] text-white/80">{t("ipc.number")} {ipc.ipc_number}</p>
-                    <p className="font-mono text-[10px] text-white/30">{ipc.period_start} → {ipc.period_end}</p>
+                    <p className="text-[12px] text-text-primary">{t("ipc.number")} {ipc.ipc_number}</p>
+                    <p className="font-mono text-[10px] text-text-subtle">{ipc.period_start} → {ipc.period_end}</p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono text-[11px] text-white/50">{activeContract.currency ?? ""} {ipc.net_payable_this_period.toLocaleString()}</span>
+                    <span className="font-mono text-[11px] text-text-muted">{activeContract.currency ?? ""} {ipc.net_payable_this_period.toLocaleString()}</span>
                     <StatusBadge label={t(`ipcStatus.${ipc.status}`)} color={IPC_STATUS_COLOR[ipc.status]} />
                   </div>
                 </Link>

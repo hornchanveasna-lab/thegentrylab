@@ -17,7 +17,7 @@ function NewInstructionPage() {
   const activeProject = projects?.find((p) => p.id === projectId);
   const instructionDefaults = activeProject?.module_defaults?.instructions as { sourceType?: InstructionSourceType; priority?: InstructionPriority } | undefined;
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !projectId) return null;
 
   const ownerId = activeProject?.owner_id ?? user.id;

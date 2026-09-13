@@ -10,7 +10,7 @@ export const Route = createFileRoute("/cm/search")({
   component: CMSearchPage,
 });
 
-const inputCls = "w-full bg-white/5 rounded-xl border border-white/10 px-3.5 py-2.5 text-[13px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors";
+const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors";
 
 const SEARCH_MODULE_COLOR: Record<CMSearchResult["module"], string> = {
   siteDiary: "#3b82f6", inspection: "#22c55e", punchList: "#a855f7", safety: "#ef4444", submittal: "#06b6d4",
@@ -30,10 +30,10 @@ function CMSearchPage() {
     navigate({ to });
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
           {t("common.signInGoogle")}
         </button>
@@ -42,11 +42,11 @@ function CMSearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-5">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("search.title")}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{t("search.title")}</h1>
         </div>
 
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
@@ -59,7 +59,7 @@ function CMSearchPage() {
           className={`${inputCls} mb-4`}
         />
 
-        {!query.trim() && <p className="text-white/30 text-[13px] text-center py-10">{t("search.prompt")}</p>}
+        {!query.trim() && <p className="text-text-subtle text-[13px] text-center py-10">{t("search.prompt")}</p>}
 
         {query.trim() && results.length === 0 && <EmptyState message={t("search.noResults")} />}
 
@@ -67,15 +67,15 @@ function CMSearchPage() {
           <div className="flex flex-col gap-2">
             {results.map((r) => (
               <Link key={`${r.module}-${r.id}`} to={r.to} onClick={() => goTo(r.to)}
-                className="flex items-center gap-3 rounded-xl bg-[#0d0d0e] hover:bg-[#111113] transition-colors px-4 py-3">
+                className="flex items-center gap-3 rounded-xl bg-surface-1 hover:bg-surface-3 transition-colors px-4 py-3">
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: SEARCH_MODULE_COLOR[r.module] }} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] text-white/85 truncate">{r.title}</p>
-                  <p className="font-mono text-[10px] text-white/30 truncate">
+                  <p className="text-[13px] text-text-primary truncate">{r.title}</p>
+                  <p className="font-mono text-[10px] text-text-subtle truncate">
                     {[t(`search.module.${r.module}`), r.docNumber, r.subtitle].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                <span className="text-white/25 shrink-0">›</span>
+                <span className="text-text-subtle shrink-0">›</span>
               </Link>
             ))}
           </div>

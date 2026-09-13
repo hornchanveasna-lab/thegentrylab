@@ -16,7 +16,7 @@ function EditInstructionPage() {
   const { data: items, isLoading } = useAllCMInstructions(user?.id);
   const existing = items?.find((i) => i.id === id);
 
-  if (authLoading || isLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading || isLoading) return <div className="min-h-screen bg-background" />;
   if (!user || !existing) return null;
 
   return (

@@ -176,7 +176,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
         <div className="px-6 pb-8 pt-4 flex flex-col gap-3">
           {files.length > 0 && (
             <button type="button" onClick={() => setPickerOpen(false)}
-              className="self-start font-mono text-[10px] uppercase tracking-widest text-white/40 hover:text-white/70 transition-colors mb-1">
+              className="self-start font-mono text-[10px] uppercase tracking-widest text-text-subtle hover:text-text-primary transition-colors mb-1">
               ← {t("photos.backToReview", { count: String(files.length) })}
             </button>
           )}
@@ -190,7 +190,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
             <input type="file" accept="image/*" capture="environment" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           </label>
-          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-white/70 bg-white/5 hover:bg-white/10 cursor-pointer text-center transition-colors">
+          <label className="relative flex flex-col items-center justify-center gap-3 py-10 rounded-3xl text-text-muted bg-surface-2 hover:bg-surface-3 cursor-pointer text-center transition-colors">
             <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="16" rx="2" />
               <circle cx="8.5" cy="9.5" r="1.5" />
@@ -214,7 +214,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
               <div className="relative w-20 h-20">
                 <img src={URL.createObjectURL(f)} alt="" className="w-20 h-20 rounded-xl object-cover" />
                 <button type="button" onClick={() => removeFile(f)}
-                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] flex items-center justify-center">×</button>
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-text-primary text-[9px] flex items-center justify-center">×</button>
               </div>
               {!!projectId && (boqItems ?? []).length > 0 && (
                 <FieldSelect
@@ -224,7 +224,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
                   searchable
                   searchPlaceholder={t("photos.searchBoq")}
                   disabled={saving}
-                  triggerClassName="w-20 flex items-center justify-between gap-1 bg-white/5 rounded-lg border border-white/10 px-1.5 py-1 text-[9px] text-white/60 disabled:opacity-40"
+                  triggerClassName="w-20 flex items-center justify-between gap-1 bg-surface-2 rounded-lg border border-border px-1.5 py-1 text-[9px] text-text-muted disabled:opacity-40"
                   menuClassName="left-0 w-56"
                   options={[{ value: "", label: t("photos.tagBoq") }, ...(boqItems ?? []).map((b) => ({ value: b.id, label: b.description }))]}
                 />
@@ -232,7 +232,7 @@ function NewPhotoSheet({ ownerId, projects, projectId, setProjectId, companyLogo
             </div>
           ))}
           <button type="button" disabled={saving} onClick={() => setPickerOpen(true)}
-            className="w-20 h-20 rounded-xl border border-dashed border-white/20 flex items-center justify-center text-white/40 hover:border-white/40 hover:text-white/60 transition-colors disabled:opacity-40">
+            className="w-20 h-20 rounded-xl border border-dashed border-border flex items-center justify-center text-text-subtle hover:border-border hover:text-text-primary/60 transition-colors disabled:opacity-40">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           </button>
         </div>
@@ -377,11 +377,11 @@ function CMPhotosPage() {
     return Array.from(map.values());
   }, [filtered, groupBy, t]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold"
           style={{ backgroundColor: "#ff5100" }}>
@@ -392,9 +392,9 @@ function CMPhotosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
-        <div className="sticky top-0 z-30 bg-[#0a0a0b] pt-6 pb-4 flex items-center gap-3">
+        <div className="sticky top-0 z-30 bg-background pt-6 pb-4 flex items-center gap-3">
           <BackButton to="/cm" />
           {showSearch ? (
             <input
@@ -402,17 +402,17 @@ function CMPhotosPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("common.search")}
-              className="flex-1 min-w-0 bg-white/5 rounded-xl border border-white/10 px-3.5 py-2 text-[14px] text-white placeholder-white/20 focus:outline-none focus:border-[#ff5100]/60 transition-colors"
+              className="flex-1 min-w-0 bg-surface-2 rounded-xl border border-border px-3.5 py-2 text-[14px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-[#ff5100]/60 transition-colors"
             />
           ) : (
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-extrabold tracking-tight text-white truncate">{t("photos.title")}</h1>
-              <p className="text-[11px] text-white/40 truncate">{filterSubtitle}</p>
+              <h1 className="text-xl font-extrabold tracking-tight text-text-primary truncate">{t("photos.title")}</h1>
+              <p className="text-[11px] text-text-subtle truncate">{filterSubtitle}</p>
             </div>
           )}
           <button type="button" aria-label={t("common.search")}
             onClick={() => setShowSearch((v) => { const next = !v; if (!next) setSearch(""); return next; })}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0">
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors text-text-muted hover:text-text-primary shrink-0">
             {showSearch ? (
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             ) : (
@@ -420,7 +420,7 @@ function CMPhotosPage() {
             )}
           </button>
           <Link to="/cm/photos/settings" aria-label={t("photos.settingsTitle")}
-            className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 transition-colors text-white/60 hover:text-white shrink-0">
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 transition-colors text-text-muted hover:text-text-primary shrink-0">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
             </svg>
@@ -431,7 +431,7 @@ function CMPhotosPage() {
           {projectOptions.length > 1 && (
             <FieldSelect
               className="flex-1 min-w-[120px]"
-              triggerClassName="w-full flex items-center justify-between gap-2 bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white transition-colors"
+              triggerClassName="w-full flex items-center justify-between gap-2 bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary transition-colors"
               value={projectFilter}
               onChange={setProjectFilter}
               options={[{ value: "all", label: t("photos.allProjects") }, ...projectOptions.map(([id, name]) => ({ value: id, label: name }))]}
@@ -439,7 +439,7 @@ function CMPhotosPage() {
           )}
           <FieldSelect
             className="flex-1 min-w-[120px]"
-            triggerClassName="w-full flex items-center justify-between gap-2 bg-white/5 rounded-xl border border-white/10 px-3 py-2 text-[12px] text-white transition-colors"
+            triggerClassName="w-full flex items-center justify-between gap-2 bg-surface-2 rounded-xl border border-border px-3 py-2 text-[12px] text-text-primary transition-colors"
             value={typeFilter}
             onChange={(v) => setTypeFilter(v as "all" | CMPhotoModule)}
             options={[{ value: "all", label: t("photos.allTypes") }, ...MODULE_OPTIONS.map((m) => ({ value: m, label: t(`tile.${m}`) }))]}
@@ -458,7 +458,7 @@ function CMPhotosPage() {
         <div className="flex items-center justify-between gap-2 mb-5">
           <div ref={groupMenuRef} className="relative inline-block">
             <button onClick={() => setGroupMenuOpen((v) => !v)}
-              className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-white/5 border border-white/10 text-white/75 hover:text-white transition-colors">
+              className="flex items-center gap-2 pl-3 pr-2.5 py-2 rounded-xl bg-surface-2 border border-border text-text-primary hover:text-text-primary transition-colors">
               {GROUP_ICON[groupBy]}
               <span className="text-[12px] font-medium">{t(`photos.group${groupBy === "date" ? "Date" : groupBy === "project" ? "Project" : "Type"}`)}</span>
               <svg width="10" height="10" viewBox="0 0 14 14" fill="none" className="transition-transform" style={{ transform: groupMenuOpen ? "rotate(180deg)" : "none" }}>
@@ -467,12 +467,12 @@ function CMPhotosPage() {
             </button>
 
             {groupMenuOpen && (
-              <div className="absolute left-0 top-11 z-20 w-48 rounded-2xl bg-[#0d0d0e] border border-white/10 overflow-hidden shadow-xl">
+              <div className="absolute left-0 top-11 z-20 w-48 rounded-2xl bg-surface-1 border border-border overflow-hidden shadow-xl">
                 {GROUP_OPTIONS.map((g) => (
                   <button key={g} onClick={() => { setGroupBy(g); setGroupMenuOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors border-b border-white/6 last:border-b-0">
-                    <span className="text-white/50 shrink-0">{GROUP_ICON[g]}</span>
-                    <span className="flex-1 text-[13px] text-white/85">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-3 transition-colors border-b border-border last:border-b-0">
+                    <span className="text-text-muted shrink-0">{GROUP_ICON[g]}</span>
+                    <span className="flex-1 text-[13px] text-text-primary">{t(`photos.group${g === "date" ? "Date" : g === "project" ? "Project" : "Type"}`)}</span>
                     {groupBy === g && (
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff5100" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
                         <path d="M4 12.5l5 5L20 6" />
@@ -485,13 +485,13 @@ function CMPhotosPage() {
           </div>
         </div>
 
-        {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
-        {!isLoading && filtered.length === 0 && <p className="text-white/30 text-sm">{t("photos.noneYet")}</p>}
+        {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
+        {!isLoading && filtered.length === 0 && <p className="text-text-subtle text-sm">{t("photos.noneYet")}</p>}
 
         <div className="flex flex-col gap-6">
             {groups.map((group, gi) => (
               <div key={gi}>
-                <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 mb-2.5">{group.label}</p>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle mb-2.5">{group.label}</p>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-0.5 rounded-t-2xl overflow-hidden">
                   {group.items.map((p, i) => {
                     const checked = selectedUrls.has(p.url);
@@ -568,12 +568,12 @@ function CMPhotosPage() {
       )}
 
       {selectMode && (
-        <div className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-between gap-3 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-[#0d0d0e] border-t border-white/10">
-          <button onClick={() => setSelectedUrls(new Set())} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-colors shrink-0">
+        <div className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-between gap-3 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] bg-surface-1 border-t border-border">
+          <button onClick={() => setSelectedUrls(new Set())} className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-text-primary transition-colors shrink-0">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></svg>
           </button>
-          <span className="text-[12px] text-white/60 flex-1 text-center">{t("photos.selectedCount", { count: String(selectedUrls.size) })}</span>
-          <button onClick={handleShareSelected} className="w-9 h-9 rounded-full flex items-center justify-center bg-white/5 hover:bg-white/10 text-white/85 hover:text-white transition-colors shrink-0">
+          <span className="text-[12px] text-text-muted flex-1 text-center">{t("photos.selectedCount", { count: String(selectedUrls.size) })}</span>
+          <button onClick={handleShareSelected} className="w-9 h-9 rounded-full flex items-center justify-center bg-surface-2 hover:bg-surface-3 text-text-primary hover:text-text-primary transition-colors shrink-0">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" /><path d="M16 6l-4-4-4 4" /><path d="M12 2v14" />
             </svg>

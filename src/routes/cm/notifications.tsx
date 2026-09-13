@@ -34,10 +34,10 @@ function CMNotificationsPage() {
     if (to) navigate({ to });
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>
           {t("common.signInGoogle")}
         </button>
@@ -46,11 +46,11 @@ function CMNotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-5">
           <BackButton to="/cm" />
-          <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("notifications.bell.title")}</h1>
+          <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{t("notifications.bell.title")}</h1>
           {unread > 0 && (
             <button type="button" onClick={() => markAllCMNotificationsRead(user.id).then(invalidate)}
               className="text-[11px] font-mono uppercase tracking-widest text-[#ff5100] hover:text-[#ff5100]/80 transition-colors shrink-0">
@@ -65,12 +65,12 @@ function CMNotificationsPage() {
           <div className="flex flex-col gap-2">
             {notifications.map((n) => (
               <button key={n.id} type="button" onClick={() => handleOpen(n)}
-                className="flex items-start gap-3 rounded-xl bg-[#0d0d0e] hover:bg-[#111113] transition-colors px-4 py-3 text-left w-full">
+                className="flex items-start gap-3 rounded-xl bg-surface-1 hover:bg-surface-3 transition-colors px-4 py-3 text-left w-full">
                 <span className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: n.read_at ? "transparent" : "#ff5100" }} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13px] text-white/85 truncate">{n.title}</p>
-                  {n.body && <p className="text-[12px] text-white/45 mt-0.5">{n.body}</p>}
-                  <p className="font-mono text-[9px] text-white/25 mt-1">{n.created_at.slice(0, 16).replace("T", " ")}</p>
+                  <p className="text-[13px] text-text-primary truncate">{n.title}</p>
+                  {n.body && <p className="text-[12px] text-text-muted mt-0.5">{n.body}</p>}
+                  <p className="font-mono text-[9px] text-text-subtle mt-1">{n.created_at.slice(0, 16).replace("T", " ")}</p>
                 </div>
               </button>
             ))}

@@ -75,7 +75,7 @@ function formatContractValue(value: number | null, currency: string | null): str
 function FavoriteButton({ active, onToggle }: { active: boolean; onToggle: () => void }) {
   return (
     <button type="button" onClick={onToggle} aria-label="Favorite"
-      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 bg-white/5 hover:bg-white/10 ${active ? "text-[#ff5100]" : "text-white/40"}`}>
+      className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 bg-surface-2 hover:bg-surface-3 ${active ? "text-[#ff5100]" : "text-text-subtle"}`}>
       <svg width="16" height="16" viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
       </svg>
@@ -86,19 +86,19 @@ function FavoriteButton({ active, onToggle }: { active: boolean; onToggle: () =>
 function OverviewCard({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{label}</p>
-      <p className="text-white/80 font-bold text-[14px]">{value}</p>
+      <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mb-1">{label}</p>
+      <p className="text-text-primary font-bold text-[14px]">{value}</p>
     </div>
   );
 }
 
 function AttentionRow({ label, count, to, projectId }: { label: string; count: number; to: string; projectId: string }) {
   return (
-    <Link to={to} onClick={() => setLastProject(projectId)} className="flex items-center justify-between rounded-xl bg-white/3 hover:bg-white/6 px-3.5 py-2.5 transition-colors">
+    <Link to={to} onClick={() => setLastProject(projectId)} className="flex items-center justify-between rounded-xl bg-surface-2 hover:bg-surface-2 px-3.5 py-2.5 transition-colors">
       <StatusBadge variant="dot" color="#f43f5e" label={label} size="sm" />
       <span className="flex items-center gap-1.5 shrink-0">
         <span className="font-mono text-[12px] font-bold text-red-400">{count}</span>
-        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/25"><path d="M6 3l5 5-5 5" /></svg>
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-subtle"><path d="M6 3l5 5-5 5" /></svg>
       </span>
     </Link>
   );
@@ -265,7 +265,7 @@ function CMProjectPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()}
           className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest font-bold"
           style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" }}>
@@ -276,13 +276,13 @@ function CMProjectPage() {
   }
 
   if (projectLoading) {
-    return <div className="min-h-screen bg-[#0a0a0b]" />;
+    return <div className="min-h-screen bg-background" />;
   }
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex flex-col items-center justify-center gap-3 font-sans">
-        <p className="text-white/40 text-sm">{t("projects.notFound")}</p>
+      <div className="min-h-screen bg-background text-text-primary flex flex-col items-center justify-center gap-3 font-sans">
+        <p className="text-text-subtle text-sm">{t("projects.notFound")}</p>
         <Link to="/cm/projects" className="font-mono text-[11px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>← {t("projects.title")}</Link>
       </div>
     );
@@ -305,7 +305,7 @@ function CMProjectPage() {
   ];
 
   return (
-    <div className="min-h-screen text-white font-sans" style={{ background: "var(--page-wash)" }}>
+    <div className="min-h-screen text-text-primary font-sans" style={{ background: "var(--color-background)" }}>
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pt-6 pb-24">
         <div className="flex items-center gap-3 mb-4">
           <BackButton to="/cm/projects" />
@@ -315,19 +315,19 @@ function CMProjectPage() {
               <select
                 value={projectId}
                 onChange={(e) => switchProject(e.target.value)}
-                className="w-full bg-transparent text-xl font-extrabold tracking-tight text-white truncate focus:outline-none cursor-pointer"
+                className="w-full bg-transparent text-xl font-extrabold tracking-tight text-text-primary truncate focus:outline-none cursor-pointer"
               >
                 {allProjects.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-[#0d0d0e] text-white text-base font-normal">{p.name}</option>
+                  <option key={p.id} value={p.id} className="bg-surface-1 text-text-primary text-base font-normal">{p.name}</option>
                 ))}
               </select>
             </label>
           ) : (
-            <h1 className="text-xl font-extrabold tracking-tight text-white flex-1 truncate">{t("insight.title")}</h1>
+            <h1 className="text-xl font-extrabold tracking-tight text-text-primary flex-1 truncate">{t("insight.title")}</h1>
           )}
           <FavoriteButton active={favorites?.has(projectId) ?? false} onToggle={toggleFavorite} />
           <button type="button" onClick={() => setTab("settings")} aria-label={t("projectSettings.title")}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${tab === "settings" ? "" : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10"}`}
+            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${tab === "settings" ? "" : "bg-surface-2 text-text-muted hover:text-text-primary hover:bg-surface-3"}`}
             style={tab === "settings" ? { backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" } : undefined}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
@@ -336,37 +336,37 @@ function CMProjectPage() {
           </button>
         </div>
 
-        <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-5 shadow-[var(--shadow-md)]">
+        <div className="rounded-2xl bg-surface-1 p-5 mb-5 shadow-[var(--shadow-md)]">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="min-w-0 flex items-center gap-3">
-              {project.client_logo_url && <img src={project.client_logo_url} alt="" className="w-11 h-11 rounded-xl object-contain bg-white/15 shrink-0" />}
+              {project.client_logo_url && <img src={project.client_logo_url} alt="" className="w-11 h-11 rounded-xl object-contain bg-surface-3 shrink-0" />}
               <div className="min-w-0">
-                <h2 className="text-lg font-extrabold tracking-tight text-white truncate">{project.name}</h2>
-                {project.project_code && <p className="font-mono text-[10px] text-white/60">{project.project_code}</p>}
+                <h2 className="text-lg font-extrabold tracking-tight text-text-primary truncate">{project.name}</h2>
+                {project.project_code && <p className="font-mono text-[10px] text-text-muted">{project.project_code}</p>}
               </div>
             </div>
             <CircularProgress value={healthScore.score} color={hc} gradient={false} size={56} strokeWidth={5}
-              label={<span className="text-[12px] font-extrabold text-white">{healthScore.score}</span>} />
+              label={<span className="text-[12px] font-extrabold text-text-primary">{healthScore.score}</span>} />
           </div>
           <div className="flex items-center gap-1.5 flex-wrap mb-2">
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 bg-white/15">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 bg-surface-3">
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest text-white">{t(`status.${project.status}`)}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-text-primary">{t(`status.${project.status}`)}</span>
             </span>
-            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 bg-white/15">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full shrink-0 bg-surface-3">
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: hc }} />
-              <span className="font-mono text-[9px] uppercase tracking-widest text-white">{t(`health.${healthScore.band}`)}</span>
+              <span className="font-mono text-[9px] uppercase tracking-widest text-text-primary">{t(`health.${healthScore.band}`)}</span>
             </span>
-            {project.sector && <span className="px-2.5 py-1 rounded-full bg-white/15 font-mono text-[9px] uppercase tracking-widest text-white/80">{t(`sector.${project.sector}`)}</span>}
+            {project.sector && <span className="px-2.5 py-1 rounded-full bg-surface-3 font-mono text-[9px] uppercase tracking-widest text-text-primary">{t(`sector.${project.sector}`)}</span>}
           </div>
-          {project.client && <p className="text-[12px] text-white/75 mb-1">{t("projects.clientLabel")} <span className="text-white">{project.client}</span></p>}
-          {project.location && <p className="text-[12px] text-white/75 mb-1">{project.location}</p>}
-          {projectManager && <p className="text-[12px] text-white/75 mb-1">{jobRoleLabel("project_manager", t)}: <span className="text-white">{projectManager.display_name || projectManager.email}</span></p>}
+          {project.client && <p className="text-[12px] text-text-primary mb-1">{t("projects.clientLabel")} <span className="text-text-primary">{project.client}</span></p>}
+          {project.location && <p className="text-[12px] text-text-primary mb-1">{project.location}</p>}
+          {projectManager && <p className="text-[12px] text-text-primary mb-1">{jobRoleLabel("project_manager", t)}: <span className="text-text-primary">{projectManager.display_name || projectManager.email}</span></p>}
           <div className="flex items-center justify-between mt-2">
             {(project.start_date || project.target_end_date) && (
-              <p className="font-mono text-[10px] text-white/60 uppercase tracking-widest">{project.start_date ?? "—"} → {project.target_end_date ?? "—"}</p>
+              <p className="font-mono text-[10px] text-text-muted uppercase tracking-widest">{project.start_date ?? "—"} → {project.target_end_date ?? "—"}</p>
             )}
-            {value && commercialVisible && <p className="font-mono text-[10px] text-white/75 uppercase tracking-widest ml-auto">{value}</p>}
+            {value && commercialVisible && <p className="font-mono text-[10px] text-text-primary uppercase tracking-widest ml-auto">{value}</p>}
           </div>
         </div>
 
@@ -403,7 +403,7 @@ function CMProjectPage() {
                 {actionSubmittals > 0 && <AttentionRow label={t("insight.actionSubmittals")} count={actionSubmittals} to="/cm/submittal" projectId={projectId} />}
                 {scheduleBuckets.behind > 0 && <AttentionRow label={t("insight.behindSchedule")} count={scheduleBuckets.behind} to="/cm/schedule" projectId={projectId} />}
                 {criticalSafety === 0 && overduePunch === 0 && failedInspections === 0 && actionSubmittals === 0 && scheduleBuckets.behind === 0 && (
-                  <p className="text-white/30 text-[12px] text-center py-3">{t("insight.nothingNeedsAttention")}</p>
+                  <p className="text-text-subtle text-[12px] text-center py-3">{t("insight.nothingNeedsAttention")}</p>
                 )}
               </div>
             </Card>
@@ -411,7 +411,7 @@ function CMProjectPage() {
             <Card title={t("insight.modules")}>
               <div className="grid grid-cols-4 gap-3">
                 {MODULE_SHORTCUTS.map((m) => (
-                  <button key={m.to} onClick={() => goToModule(m.to)} className="flex flex-col items-center gap-1.5 text-white/70 hover:text-white transition-colors">
+                  <button key={m.to} onClick={() => goToModule(m.to)} className="flex flex-col items-center gap-1.5 text-text-muted hover:text-text-primary transition-colors">
                     <span className="app-tile-icon w-11 h-11 rounded-2xl flex items-center justify-center shadow-sm" style={{ backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 80%, transparent)", color: "#fff" }}>{m.icon}</span>
                     <span className="text-[10px] text-center leading-tight">{t(m.labelKey)}</span>
                   </button>
@@ -425,7 +425,7 @@ function CMProjectPage() {
           <div className="flex flex-col gap-4">
             <Card title={t("dashboard.sCurve")}>
               {series.length === 0 ? (
-                <p className="text-white/30 text-[12px]">{t("dashboard.notEnoughData")}</p>
+                <p className="text-text-subtle text-[12px]">{t("dashboard.notEnoughData")}</p>
               ) : (
                 <div style={{ height: 220 }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -446,16 +446,16 @@ function CMProjectPage() {
             </Card>
             <Card title={t("dashboard.scheduleSummary")}>
               <div className="flex items-center gap-4 mb-3">
-                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{scheduleBuckets.ahead}</p><p className="font-mono text-[9px] text-white/30">{t("dashboard.statusAhead")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{scheduleBuckets.onTrack}</p><p className="font-mono text-[9px] text-white/30">{t("dashboard.statusOnTrack")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{scheduleBuckets.behind}</p><p className="font-mono text-[9px] text-white/30">{t("dashboard.statusBehind")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{scheduleBuckets.ahead}</p><p className="font-mono text-[9px] text-text-subtle">{t("dashboard.statusAhead")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{scheduleBuckets.onTrack}</p><p className="font-mono text-[9px] text-text-subtle">{t("dashboard.statusOnTrack")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{scheduleBuckets.behind}</p><p className="font-mono text-[9px] text-text-subtle">{t("dashboard.statusBehind")}</p></div>
               </div>
               <button onClick={() => goToModule("/cm/schedule")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewSchedule")}</button>
             </Card>
             <Card title={t("dashboard.manpowerCard")}>
               <div className="flex items-center justify-between mb-3">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.latestHeadcount")}</span>
-                <span className="font-bold text-[14px] text-white/80">{latestHeadcount}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("dashboard.latestHeadcount")}</span>
+                <span className="font-bold text-[14px] text-text-primary">{latestHeadcount}</span>
               </div>
               <button onClick={() => goToModule("/cm/manpower")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewManpower")}</button>
             </Card>
@@ -466,18 +466,18 @@ function CMProjectPage() {
           <div className="flex flex-col gap-4">
             <Card title={t("inspection.title")}>
               <div className="flex items-center gap-4 mb-3 flex-wrap">
-                <div><p className="font-bold text-[14px] text-white/80">{(inspections ?? []).length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.total")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(inspections ?? []).filter((i) => i.status === "Passed").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.passed")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{failedInspections}</p><p className="font-mono text-[9px] text-white/30">{t("insight.failed")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{pendingInspections}</p><p className="font-mono text-[9px] text-white/30">{t("insight.scheduled")}</p></div>
+                <div><p className="font-bold text-[14px] text-text-primary">{(inspections ?? []).length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.total")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(inspections ?? []).filter((i) => i.status === "Passed").length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.passed")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{failedInspections}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.failed")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{pendingInspections}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.scheduled")}</p></div>
               </div>
               <button onClick={() => goToModule("/cm/inspection")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewInspections")}</button>
             </Card>
             <Card title={t("punchList.title")}>
               <div className="flex items-center gap-4 mb-3">
-                <div><p className="font-bold text-[14px] text-white/80">{openPunch}</p><p className="font-mono text-[9px] text-white/30">{t("insight.open")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(tasks ?? []).filter((x) => x.status === "Done").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.closed")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{overduePunch}</p><p className="font-mono text-[9px] text-white/30">{t("insight.overdue")}</p></div>
+                <div><p className="font-bold text-[14px] text-text-primary">{openPunch}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.open")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(tasks ?? []).filter((x) => x.status === "Done").length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.closed")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{overduePunch}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.overdue")}</p></div>
               </div>
               <button onClick={() => goToModule("/cm/punch-list")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewPunchList")}</button>
             </Card>
@@ -488,14 +488,14 @@ function CMProjectPage() {
           <div className="flex flex-col gap-4">
             <Card title={t("safety.title")}>
               <div className="flex items-center gap-4 mb-3 flex-wrap">
-                <div><p className="font-bold text-[14px] text-white/80">{(safetyRecords ?? []).length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.total")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{openSafety}</p><p className="font-mono text-[9px] text-white/30">{t("insight.open")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(safetyRecords ?? []).filter((x) => x.status === "Resolved").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.resolved")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{criticalSafety}</p><p className="font-mono text-[9px] text-white/30">{t("insight.critical")}</p></div>
+                <div><p className="font-bold text-[14px] text-text-primary">{(safetyRecords ?? []).length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.total")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{openSafety}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.open")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(safetyRecords ?? []).filter((x) => x.status === "Resolved").length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.resolved")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{criticalSafety}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.critical")}</p></div>
               </div>
               <div className="flex items-center gap-4 mb-3">
-                <div><p className="font-bold text-[13px] text-white/70">{(safetyRecords ?? []).filter((x) => x.record_type === "Toolbox Talk").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.toolboxTalks")}</p></div>
-                <div><p className="font-bold text-[13px] text-white/70">{(safetyRecords ?? []).filter((x) => x.record_type === "Incident").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.incidents")}</p></div>
+                <div><p className="font-bold text-[13px] text-text-muted">{(safetyRecords ?? []).filter((x) => x.record_type === "Toolbox Talk").length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.toolboxTalks")}</p></div>
+                <div><p className="font-bold text-[13px] text-text-muted">{(safetyRecords ?? []).filter((x) => x.record_type === "Incident").length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.incidents")}</p></div>
               </div>
               <button onClick={() => goToModule("/cm/safety")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewSafety")}</button>
             </Card>
@@ -506,15 +506,15 @@ function CMProjectPage() {
           <div className="flex flex-col gap-4">
             <Card title={t("submittal.title")}>
               <div className="flex items-center gap-4 mb-3 flex-wrap">
-                <div><p className="font-bold text-[14px] text-white/80">{(submittals ?? []).length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.total")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{pendingSubmittals}</p><p className="font-mono text-[9px] text-white/30">{t("insight.pending")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(submittals ?? []).filter((x) => x.status === "Approved" || x.status === "Approved as Noted").length}</p><p className="font-mono text-[9px] text-white/30">{t("insight.approved")}</p></div>
-                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{actionSubmittals}</p><p className="font-mono text-[9px] text-white/30">{t("insight.needsAction")}</p></div>
+                <div><p className="font-bold text-[14px] text-text-primary">{(submittals ?? []).length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.total")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#fbbf24" }}>{pendingSubmittals}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.pending")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#34d399" }}>{(submittals ?? []).filter((x) => x.status === "Approved" || x.status === "Approved as Noted").length}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.approved")}</p></div>
+                <div><p className="font-bold text-[14px]" style={{ color: "#f43f5e" }}>{actionSubmittals}</p><p className="font-mono text-[9px] text-text-subtle">{t("insight.needsAction")}</p></div>
               </div>
               <button onClick={() => goToModule("/cm/submittal")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewSubmittals")}</button>
             </Card>
             <Card title={t("tile.photo")}>
-              <p className="text-[12px] text-white/45 mb-3">{t("insight.photosHint")}</p>
+              <p className="text-[12px] text-text-muted mb-3">{t("insight.photosHint")}</p>
               <button onClick={() => goToModule("/cm/photos")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("insight.viewPhotos")}</button>
             </Card>
           </div>
@@ -525,12 +525,12 @@ function CMProjectPage() {
             <Card title={t("insight.commercial")}>
               <div className="flex flex-col gap-2 mb-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("projectSettings.contractValue")}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("projectSettings.contractValue")}</span>
                   <span className="font-mono text-[13px] font-bold" style={{ color: "var(--color-brand-accent)" }}>{value ?? "—"}</span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("dashboard.totalValue")} ({t("boq.title")})</span>
-                  <span className="font-mono text-[13px] font-bold text-white/70">{boqTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("dashboard.totalValue")} ({t("boq.title")})</span>
+                  <span className="font-mono text-[13px] font-bold text-text-muted">{boqTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               <button onClick={() => goToModule("/cm/schedule")} className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "var(--color-brand-accent)" }}>{t("dashboard.viewBoq")}</button>
@@ -549,9 +549,9 @@ function CMProjectPage() {
             ) : (
               <div className="flex flex-col gap-1">
                 {activityFeed.map((row) => (
-                  <button key={row.id} onClick={() => (row.to === "settings" ? setTab("settings") : goToModule(row.to))} className="flex items-center justify-between gap-2 rounded-xl hover:bg-white/5 px-2 py-2 text-left transition-colors">
-                    <span className="text-[12px] text-white/70 truncate">{row.label}</span>
-                    <span className="font-mono text-[9px] text-white/25 shrink-0">{row.ts.slice(0, 10)}</span>
+                  <button key={row.id} onClick={() => (row.to === "settings" ? setTab("settings") : goToModule(row.to))} className="flex items-center justify-between gap-2 rounded-xl hover:bg-surface-3 px-2 py-2 text-left transition-colors">
+                    <span className="text-[12px] text-text-muted truncate">{row.label}</span>
+                    <span className="font-mono text-[9px] text-text-subtle shrink-0">{row.ts.slice(0, 10)}</span>
                   </button>
                 ))}
               </div>

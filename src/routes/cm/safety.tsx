@@ -157,13 +157,13 @@ function SafetyCard({ item, projectName }: { item: CMSafetyRecord; projectName?:
   const sc = SEVERITY_COLOR[item.severity];
   return (
     <Link to="/cm/safety/$id" params={{ id: item.id }}
-      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-surface-1 hover:bg-surface-3 transition-colors">
       <div className="flex items-center gap-4 min-w-0">
-        <span className="font-mono text-[12px] text-white/70 shrink-0">{item.record_date}</span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">{t(`safetyType.${item.record_type}`)}</span>
-        {item.doc_number && <span className="font-mono text-[9px] text-white/25 shrink-0">{item.doc_number}</span>}
-        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
-        <span className="text-[12px] text-white/70 truncate">{item.title}</span>
+        <span className="font-mono text-[12px] text-text-muted shrink-0">{item.record_date}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle shrink-0">{t(`safetyType.${item.record_type}`)}</span>
+        {item.doc_number && <span className="font-mono text-[9px] text-text-subtle shrink-0">{item.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-text-subtle truncate">{projectName}</span>}
+        <span className="text-[12px] text-text-muted truncate">{item.title}</span>
       </div>
       <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />
     </Link>
@@ -202,14 +202,14 @@ export function SafetyDetail({ item, canEdit, canApprove, canDelete, userId, fla
   return (
     <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="font-mono text-[12px] text-white/70">{item.record_date}</span>
-        <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t(`safetyType.${item.record_type}`)}</span>
-        {item.doc_number && <span className="font-mono text-[9px] text-white/25">{item.doc_number}</span>}
+        <span className="font-mono text-[12px] text-text-muted">{item.record_date}</span>
+        <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t(`safetyType.${item.record_type}`)}</span>
+        {item.doc_number && <span className="font-mono text-[9px] text-text-subtle">{item.doc_number}</span>}
       </div>
-      <p className="text-[14px] text-white/85">{item.title}</p>
+      <p className="text-[14px] text-text-primary">{item.title}</p>
       <StatusBadge label={t(`safetySeverity.${item.severity}`)} color={sc} />
-      {item.description && <p className="text-[12px] text-white/65 whitespace-pre-wrap">{item.description}</p>}
-      {item.involved && <p className="text-[12px] text-white/50">{t("safety.involved")}: {item.involved}</p>}
+      {item.description && <p className="text-[12px] text-text-muted whitespace-pre-wrap">{item.description}</p>}
+      {item.involved && <p className="text-[12px] text-text-muted">{t("safety.involved")}: {item.involved}</p>}
       {item.photos.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {item.photos.map((url, i) => (
@@ -315,17 +315,17 @@ function CMSafetyPage() {
     return sortAsc ? [...list].reverse() : list;
   }, [records, search, sortAsc, dateFilter]);
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("safety.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/safety/settings"
           quickSettings={projectId ? <SafetyQuickSettings projectId={projectId} userId={user.id} /> : undefined} />
@@ -349,7 +349,7 @@ function CMSafetyPage() {
 
         {(viewAll || projectId) && (
           <>
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             {isError && <ErrorState message={t("common.error")} onRetry={() => refetch()} />}
             {!isError && (
               <>

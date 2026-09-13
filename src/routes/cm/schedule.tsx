@@ -229,7 +229,7 @@ export function NewActivitySheet({ ownerId, projectId, groupOptions, boqCategory
                 <input type="date" className={inputCls} value={planFinish} onChange={(e) => setPlanFinish(e.target.value)} disabled={saving} />
               </label>
             </div>
-            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 -mb-1">{t("schedule.actualDatesHint")}</p>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle -mb-1">{t("schedule.actualDatesHint")}</p>
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5">
                 <span className={labelCls}>{t("schedule.actualStart")}</span>
@@ -332,8 +332,8 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
       <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
         {step === "upload" && (
           <>
-            <p className="text-[12px] text-white/40">{t("schedule.import.uploadHint")}</p>
-            <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl border border-dashed border-white/15 text-white/60 hover:border-white/30 cursor-pointer text-center transition-colors">
+            <p className="text-[12px] text-text-subtle">{t("schedule.import.uploadHint")}</p>
+            <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl border border-dashed border-border text-text-muted hover:border-border cursor-pointer text-center transition-colors">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
               </svg>
@@ -346,7 +346,7 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
         )}
         {step === "review" && sheet && (
           <>
-            <p className="text-[12px] text-white/40">{t("boq.import.reviewHint")}</p>
+            <p className="text-[12px] text-text-subtle">{t("boq.import.reviewHint")}</p>
             {sheets.length > 1 && (
               <label className="flex flex-col gap-1.5">
                 <span className={labelCls}>{t("manpower.import.sheet")}</span>
@@ -376,16 +376,16 @@ function ImportScheduleSheet({ ownerId, projectId, onImported, onClose }: {
                 />
               </label>
             ))}
-            <div className="rounded-xl bg-white/3 p-3 flex flex-col gap-1.5">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.import.preview")} — {sheet.sheetName}</p>
+            <div className="rounded-xl bg-surface-2 p-3 flex flex-col gap-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("boq.import.preview")} — {sheet.sheetName}</p>
               {drafts.slice(0, 6).map((d, i) => (
-                <p key={i} className="text-[11px] text-white/60 truncate">
+                <p key={i} className="text-[11px] text-text-muted truncate">
                   {d.activity_code ? `${d.activity_code} · ` : ""}{d.title} — {d.plan_start} → {d.plan_finish}{d.actual_percent > 0 ? ` · ${d.actual_percent}%` : ""}
                 </p>
               ))}
-              {drafts.length === 0 && <p className="text-[11px] text-white/30">{t("boq.import.noItemsDetected")}</p>}
+              {drafts.length === 0 && <p className="text-[11px] text-text-subtle">{t("boq.import.noItemsDetected")}</p>}
             </div>
-            <div className="rounded-xl bg-white/3 p-3 text-[12px] text-white/60">
+            <div className="rounded-xl bg-surface-2 p-3 text-[12px] text-text-muted">
               {t("schedule.import.summary", { count: String(drafts.length), groups: String(new Set(drafts.map((d) => d.group_label)).size) })}
             </div>
             {error && <p className="text-[12px] text-red-400">{error}</p>}
@@ -443,13 +443,13 @@ function ActivityRow({ item, projectId, actorId, canEdit, canDelete, locationLab
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-white/3 px-3.5 py-3">
+    <div className="flex items-center gap-3 rounded-xl bg-surface-2 px-3.5 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] text-white/80 truncate">
-          {item.activity_code ? <span className="font-mono text-[10px] text-white/35">{item.activity_code} · </span> : null}
+        <p className="text-[12px] text-text-primary truncate">
+          {item.activity_code ? <span className="font-mono text-[10px] text-text-subtle">{item.activity_code} · </span> : null}
           {item.title}
         </p>
-        <p className="font-mono text-[10px] text-white/30 truncate">
+        <p className="font-mono text-[10px] text-text-subtle truncate">
           {item.plan_start} → {item.plan_finish}
           {locationLabel ? ` · ${locationLabel}` : ""}
         </p>
@@ -466,28 +466,28 @@ function ActivityRow({ item, projectId, actorId, canEdit, canDelete, locationLab
         </div>
       </div>
       <div className="text-right shrink-0">
-        <p className="font-mono text-[10px] text-white/35">{t("schedule.planPct")} {plan.toFixed(0)}%</p>
+        <p className="font-mono text-[10px] text-text-subtle">{t("schedule.planPct")} {plan.toFixed(0)}%</p>
         <div className="flex items-center gap-1 mt-0.5">
           {canEdit ? (
             <input type="number" min={0} max={100} value={actual} disabled={busy}
               onChange={(e) => setActual(e.target.value)} onBlur={commitActual}
-              className="w-14 text-right bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[11px] text-white focus:outline-none focus:border-[#ff5100]/60" />
+              className="w-14 text-right bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[11px] text-text-primary focus:outline-none focus:border-[#ff5100]/60" />
           ) : (
-            <span className="font-mono text-[11px] text-white">{item.actual_percent}</span>
+            <span className="font-mono text-[11px] text-text-primary">{item.actual_percent}</span>
           )}
           <span className="font-mono text-[11px]" style={{ color: varianceColor(Number(actual) || 0, plan) }}>%</span>
         </div>
       </div>
       {canEdit && (
         <Link to="/cm/schedule/$id/edit" params={{ id: item.id }}
-          className="text-white/25 hover:text-white/70 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+          className="text-text-subtle hover:text-text-primary shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
           </svg>
         </Link>
       )}
       {canDelete && (
-        <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-white/25 hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+        <button onClick={() => setConfirmingDelete(true)} disabled={busy} className="text-text-subtle hover:text-red-400 shrink-0 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3">×</button>
       )}
       {confirmingDelete && (
         <ConfirmationDialog message={t("schedule.confirmDelete")} confirmLabel={t("common.delete")}
@@ -587,8 +587,8 @@ function BoqCategoryBarChart({ data }: { data: { name: string; value: number; co
   const { t } = useCMLang();
   if (data.length < 2) return null;
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-3">
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-3">{t("boq.categoryRanking")}</p>
+    <div className="rounded-2xl bg-surface-1 p-5 mb-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mb-3">{t("boq.categoryRanking")}</p>
       <ResponsiveContainer width="100%" height={Math.max(140, data.length * 34)}>
         <BarChart data={data} layout="vertical" barCategoryGap="28%" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
           <XAxis type="number" hide />
@@ -611,8 +611,8 @@ function BoqCostDonut({ data, total }: { data: { name: string; value: number; co
   const { t } = useCMLang();
   if (data.length === 0) return null;
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] p-5 mb-3">
-      <p className="font-mono text-[9px] uppercase tracking-widest text-white/35 mb-1">{t("boq.costBreakdown")}</p>
+    <div className="rounded-2xl bg-surface-1 p-5 mb-3">
+      <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mb-1">{t("boq.costBreakdown")}</p>
       <div className="relative">
         <ResponsiveContainer width="100%" height={180}>
           <PieChart>
@@ -627,15 +627,15 @@ function BoqCostDonut({ data, total }: { data: { name: string; value: number; co
           </PieChart>
         </ResponsiveContainer>
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-white/30">{t("boq.grandTotal")}</span>
-          <span className="font-mono text-[16px] font-bold text-white">{total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("boq.grandTotal")}</span>
+          <span className="font-mono text-[16px] font-bold text-text-primary">{total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
         </div>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 mt-2">
         {data.map((d) => (
           <div key={d.name} className="flex items-center gap-1.5" style={{ color: d.color }}>
             <CategoryIcon name={d.name} size={12} />
-            <span className="text-[10px] text-white/50 truncate max-w-[130px]">{d.name}</span>
+            <span className="text-[10px] text-text-muted truncate max-w-[130px]">{d.name}</span>
           </div>
         ))}
       </div>
@@ -652,22 +652,22 @@ function CategoryTile({ name, count, subtotal, pct, color, avgActual, onClick }:
   const { t } = useCMLang();
   return (
     <button type="button" onClick={onClick}
-      className="text-left rounded-2xl bg-[#0d0d0e] p-4 flex flex-col gap-2.5 active:scale-[0.98] transition-transform">
+      className="text-left rounded-2xl bg-surface-1 p-4 flex flex-col gap-2.5 active:scale-[0.98] transition-transform">
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="app-tile-icon w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 80%, transparent)`, color: "#fff" }}>
           <CategoryIcon name={name} size={15} />
         </span>
-        <p className="font-mono text-[9px] uppercase tracking-widest text-white/45 truncate">{name}</p>
+        <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted truncate">{name}</p>
       </div>
       <p className="font-mono text-[16px] font-bold truncate" style={{ color }}>
         {subtotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
       </p>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-white/30">{count === 1 ? t("boq.item") : t("boq.items", { count: String(count) })}</span>
-        <span className="font-mono text-[10px] text-white/35">{pct.toFixed(0)}%</span>
+        <span className="text-[10px] text-text-subtle">{count === 1 ? t("boq.item") : t("boq.items", { count: String(count) })}</span>
+        <span className="font-mono text-[10px] text-text-subtle">{pct.toFixed(0)}%</span>
       </div>
       {avgActual != null && (
-        <div className="h-1 rounded-full bg-white/8 overflow-hidden">
+        <div className="h-1 rounded-full bg-surface-3 overflow-hidden">
           <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, avgActual))}%`, backgroundColor: color }} />
         </div>
       )}
@@ -691,27 +691,27 @@ function CategorySection({ category, items, projectId, actorId, grandTotal, link
   const ratio = grandTotal > 0 ? (subtotal / grandTotal) * 100 : 0;
 
   return (
-    <div className="rounded-2xl bg-[#0d0d0e] p-5">
+    <div className="rounded-2xl bg-surface-1 p-5">
       <button type="button" onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between gap-3 text-left">
         <div className="flex items-center gap-2 min-w-0">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-            className={`shrink-0 text-white/35 transition-transform duration-150 ${open ? "rotate-90" : ""}`}>
+            className={`shrink-0 text-text-subtle transition-transform duration-150 ${open ? "rotate-90" : ""}`}>
             <path d="M9 6l6 6-6 6" />
           </svg>
-          <p className="font-mono text-[10px] uppercase tracking-widest text-white/35 truncate">{category}</p>
-          <span className="font-mono text-[9px] text-white/20 shrink-0">({items.length})</span>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-text-subtle truncate">{category}</p>
+          <span className="font-mono text-[9px] text-text-subtle shrink-0">({items.length})</span>
         </div>
         <span className="font-mono text-[10px] shrink-0" style={{ color: "#ff5100" }}>{ratio.toFixed(1)}%</span>
       </button>
       {open && (
         <div className="flex flex-col gap-2 mt-4">
           {items.map((item) => <BoqItemRow key={item.id} item={item} projectId={projectId} actorId={actorId} delivered={deliveredByBoqItem.get(item.id)} canEdit={canEdit} canDelete={canDelete} onChanged={onChanged} onOpenDetail={() => onOpenDetail(item)} />)}
-          <div className="flex items-center justify-between px-3 pt-2 border-t border-white/6">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
+          <div className="flex items-center justify-between px-3 pt-2 border-t border-border">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("boq.total")}</span>
             <span className="font-mono text-[13px] font-bold" style={{ color: "#ff5100" }}>{subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
           {linkedCount > 0 && (
-            <p className="font-mono text-[10px] text-white/30">
+            <p className="font-mono text-[10px] text-text-subtle">
               {linkedCount} {t("boq.linkedActivities")}{linkedAvgActual != null ? ` — ${linkedAvgActual.toFixed(0)}% ${t("boq.avgComplete")}` : ""}
             </p>
           )}
@@ -740,10 +740,10 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl bg-white/3 px-3 py-2.5">
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-surface-2 px-3 py-2.5">
       <div className="min-w-0 flex-1">
         <button type="button" onClick={onOpenDetail} className="text-left w-full">
-          <p className="text-[12px] text-white/80 truncate hover:text-white transition-colors">{item.description}</p>
+          <p className="text-[12px] text-text-primary truncate hover:text-text-primary transition-colors">{item.description}</p>
         </button>
         <div className="flex items-center gap-1.5 mt-1">
           {canEdit ? (
@@ -751,21 +751,21 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
               <input type="number" min={0} value={quantity} disabled={busy}
                 onChange={(e) => setQuantity(e.target.value)}
                 onBlur={() => { const v = Number(quantity) || 0; if (v !== item.quantity) commit({ quantity: v }); }}
-                className="w-16 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
-              <span className="font-mono text-[10px] text-white/30">{item.unit ?? ""} ×</span>
+                className="w-16 bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted focus:outline-none focus:border-[#ff5100]/60" />
+              <span className="font-mono text-[10px] text-text-subtle">{item.unit ?? ""} ×</span>
               <input type="number" min={0} value={unitCost} disabled={busy}
                 onChange={(e) => setUnitCost(e.target.value)}
                 onBlur={() => { const v = Number(unitCost) || 0; if (v !== item.unit_cost) commit({ unit_cost: v }); }}
-                className="w-20 bg-white/5 rounded-lg border border-white/10 px-1.5 py-0.5 font-mono text-[10px] text-white/70 focus:outline-none focus:border-[#ff5100]/60" />
+                className="w-20 bg-surface-2 rounded-lg border border-border px-1.5 py-0.5 font-mono text-[10px] text-text-muted focus:outline-none focus:border-[#ff5100]/60" />
             </>
           ) : (
-            <span className="font-mono text-[10px] text-white/50">
+            <span className="font-mono text-[10px] text-text-muted">
               {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""} × {item.unit_cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </span>
           )}
         </div>
         {delivered != null && (
-          <p className="font-mono text-[9px] text-white/30 mt-1">
+          <p className="font-mono text-[9px] text-text-subtle mt-1">
             {t("boq.deliveredToDate")} {delivered.toLocaleString(undefined, { maximumFractionDigits: 2 })} / {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}
             {item.quantity > 0 && ` (${((delivered / item.quantity) * 100).toFixed(0)}%)`}
           </p>
@@ -777,7 +777,7 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
         </span>
         {canEdit && (
           <Link to="/cm/boq/$id/edit" params={{ id: item.id }}
-            className="text-white/25 hover:text-white/70 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">
+            className="text-text-subtle hover:text-text-primary w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
             </svg>
@@ -785,7 +785,7 @@ function BoqItemRow({ item, projectId, actorId, delivered, canEdit, canDelete, o
         )}
         {canDelete && (
           <button onClick={() => setConfirmingDelete(true)} disabled={busy}
-            className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5">×</button>
+            className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3">×</button>
         )}
       </div>
       {confirmingDelete && (
@@ -805,9 +805,9 @@ function DeliveryStatusRow({ logId, logDate, index, row, unit, canEdit, busy, on
   const [certifiedQty, setCertifiedQty] = useState(row.certified_quantity ?? row.quantity);
 
   return (
-    <div className="rounded-xl bg-white/3 px-3 py-2.5 flex flex-col gap-1.5">
+    <div className="rounded-xl bg-surface-2 px-3 py-2.5 flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-white/50">{logDate}</span>
+        <span className="text-[11px] text-text-muted">{logDate}</span>
         <span className="font-mono text-[11px]" style={{ color: "#ff5100" }}>{row.quantity} {unit ?? ""}</span>
       </div>
       {canEdit ? (
@@ -824,7 +824,7 @@ function DeliveryStatusRow({ logId, logDate, index, row, unit, canEdit, busy, on
       )}
       {status === "Certified" && canEdit && (
         <label className="flex flex-col gap-1 mt-0.5">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.detail.certifiedQty")}</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("boq.detail.certifiedQty")}</span>
           <input type="number" className={inputCls} value={certifiedQty} disabled={busy}
             onChange={(e) => setCertifiedQty(e.target.value)}
             onBlur={() => onStatusChange(logId, index, "Certified", certifiedQty)} />
@@ -898,41 +898,41 @@ function BoqItemDetailSheet({ item, projectId, actorId, dailyLogs, scheduleItems
   return (
     <Sheet title={item.description} onClose={onClose}>
       <div className="px-6 pb-8 pt-2 flex flex-col gap-5">
-        <div className="rounded-2xl bg-white/3 p-4 flex flex-col gap-1.5">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("boq.detail.overview")}</p>
-          <div className="flex items-center justify-between text-[12px] text-white/60">
+        <div className="rounded-2xl bg-surface-2 p-4 flex flex-col gap-1.5">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mb-1">{t("boq.detail.overview")}</p>
+          <div className="flex items-center justify-between text-[12px] text-text-muted">
             <span>{t("boq.qty")}</span>
             <span className="font-mono">{item.quantity.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}</span>
           </div>
-          <div className="flex items-center justify-between text-[12px] text-white/60">
+          <div className="flex items-center justify-between text-[12px] text-text-muted">
             <span>{t("boq.unitCost")}</span>
             <span className="font-mono">{item.unit_cost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
-          <div className="flex items-center justify-between text-[12px] text-white/60 pt-1 border-t border-white/6">
+          <div className="flex items-center justify-between text-[12px] text-text-muted pt-1 border-t border-border">
             <span>{t("boq.total")}</span>
             <span className="font-mono font-bold" style={{ color: "#ff5100" }}>{(item.quantity * item.unit_cost).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white/3 p-4 flex flex-col gap-2">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 mb-1">{t("boq.detail.pipelineTitle")}</p>
+        <div className="rounded-2xl bg-surface-2 p-4 flex flex-col gap-2">
+          <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle mb-1">{t("boq.detail.pipelineTitle")}</p>
           {([["reported", totals.reported, "Reported"], ["accepted", totals.accepted, "Accepted"], ["claimed", totals.claimed, "Claimed"], ["certified", totals.certified, "Certified"]] as const).map(([key, value, statusKey]) => (
             <div key={key} className="flex items-center justify-between text-[12px]">
-              <span className="text-white/50">{t(`boq.status.${key}`)}</span>
+              <span className="text-text-muted">{t(`boq.status.${key}`)}</span>
               <span className="font-mono" style={{ color: QUANTITY_STATUS_COLOR[statusKey] }}>
                 {value.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}
               </span>
             </div>
           ))}
-          <div className="flex items-center justify-between text-[12px] pt-1.5 border-t border-white/6">
-            <span className="text-white/50">{t("boq.detail.remaining")}</span>
-            <span className="font-mono font-bold text-white/80">{totals.remaining.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}</span>
+          <div className="flex items-center justify-between text-[12px] pt-1.5 border-t border-border">
+            <span className="text-text-muted">{t("boq.detail.remaining")}</span>
+            <span className="font-mono font-bold text-text-primary">{totals.remaining.toLocaleString(undefined, { maximumFractionDigits: 2 })} {item.unit ?? ""}</span>
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.records")}</p>
-          {linkedDeliveries.length === 0 && <p className="text-[12px] text-white/30 px-1">{t("boq.detail.noRecords")}</p>}
+          <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle px-1">{t("boq.detail.records")}</p>
+          {linkedDeliveries.length === 0 && <p className="text-[12px] text-text-subtle px-1">{t("boq.detail.noRecords")}</p>}
           {linkedDeliveries.map(({ logId, logDate, index, row }) => (
             <DeliveryStatusRow key={`${logId}-${index}`} logId={logId} logDate={logDate} index={index} row={row}
               unit={item.unit} canEdit={canEdit} busy={busyKey === `${logId}-${index}`} onStatusChange={handleStatusChange} />
@@ -941,7 +941,7 @@ function BoqItemDetailSheet({ item, projectId, actorId, dailyLogs, scheduleItems
 
         {linkedPhotos.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.photos")}</p>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle px-1">{t("boq.detail.photos")}</p>
             <div className="grid grid-cols-4 gap-1.5">
               {linkedPhotos.map((url, i) => (
                 <img key={i} src={url} alt="" className="w-full aspect-square rounded-lg object-cover" />
@@ -952,11 +952,11 @@ function BoqItemDetailSheet({ item, projectId, actorId, dailyLogs, scheduleItems
 
         {linkedSchedule.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-white/25 px-1">{t("boq.detail.schedule")}</p>
+            <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle px-1">{t("boq.detail.schedule")}</p>
             {linkedSchedule.map((s) => (
-              <div key={s.id} className="flex items-center justify-between rounded-xl bg-white/3 px-3 py-2 text-[12px]">
-                <span className="text-white/60 truncate">{s.title}</span>
-                <span className="font-mono text-white/40">{s.actual_percent}%</span>
+              <div key={s.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2 text-[12px]">
+                <span className="text-text-muted truncate">{s.title}</span>
+                <span className="font-mono text-text-subtle">{s.actual_percent}%</span>
               </div>
             ))}
           </div>
@@ -1064,7 +1064,7 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
       <div className="px-6 pb-8 pt-2 flex flex-col gap-4">
         {step === "upload" && (
           <>
-            <p className="text-[12px] text-white/40">{t("boq.import.uploadHint")}</p>
+            <p className="text-[12px] text-text-subtle">{t("boq.import.uploadHint")}</p>
             <label className="flex flex-col gap-1.5">
               <span className={labelCls}>{t("boq.version.importInto")}</span>
               <FieldSelect
@@ -1082,7 +1082,7 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
                 <input className={inputCls} value={newVersionName} onChange={(e) => setNewVersionName(e.target.value)} />
               </label>
             )}
-            <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl border border-dashed border-white/15 text-white/60 hover:border-white/30 cursor-pointer text-center transition-colors">
+            <label className="flex flex-col items-center justify-center gap-3 py-10 rounded-3xl border border-dashed border-border text-text-muted hover:border-border cursor-pointer text-center transition-colors">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 3v12m0-12l-4 4m4-4l4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
               </svg>
@@ -1096,7 +1096,7 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
 
         {step === "review" && referenceSheet && (
           <>
-            <p className="text-[12px] text-white/40">{t("boq.import.reviewHint")}</p>
+            <p className="text-[12px] text-text-subtle">{t("boq.import.reviewHint")}</p>
             {BOQ_IMPORT_FIELDS.map((field) => (
               <label key={field} className="flex flex-col gap-1.5">
                 <span className={labelCls}>{t(`boq.import.field.${field}`)}</span>
@@ -1110,19 +1110,19 @@ function ImportBoqSheet({ ownerId, projectId, versions, defaultVersionId, onClos
               </label>
             ))}
 
-            <div className="rounded-xl bg-white/3 p-3 flex flex-col gap-1.5">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-white/25">{t("boq.import.preview")} — {referenceSheet.sheetName}</p>
+            <div className="rounded-xl bg-surface-2 p-3 flex flex-col gap-1.5">
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-subtle">{t("boq.import.preview")} — {referenceSheet.sheetName}</p>
               {previewItems.slice(0, 5).map((item, i) => (
-                <p key={i} className="text-[11px] text-white/60 truncate">
+                <p key={i} className="text-[11px] text-text-muted truncate">
                   {item.description} — {item.quantity} {item.unit ?? ""} × {item.unit_cost.toLocaleString()}
                 </p>
               ))}
-              {previewItems.length === 0 && <p className="text-[11px] text-white/30">{t("boq.import.noItemsDetected")}</p>}
+              {previewItems.length === 0 && <p className="text-[11px] text-text-subtle">{t("boq.import.noItemsDetected")}</p>}
             </div>
 
-            <div className="rounded-xl bg-white/3 p-3 text-[12px] text-white/60">
+            <div className="rounded-xl bg-surface-2 p-3 text-[12px] text-text-muted">
               {t("boq.import.summary", { count: String(allDraftItems.length), categories: String(categoryCount) })}
-              {skippedCount > 0 && <p className="text-white/30 mt-1">{t("boq.import.skipped", { count: String(skippedCount) })}</p>}
+              {skippedCount > 0 && <p className="text-text-subtle mt-1">{t("boq.import.skipped", { count: String(skippedCount) })}</p>}
             </div>
 
             {error && <p className="text-[12px] text-red-400">{error}</p>}
@@ -1180,7 +1180,7 @@ function WBSNodeRow({ node, depth, isLeaf, rollup, canEdit, canDelete, editing, 
   const { t } = useCMLang();
   const color = categoryColorForName(node.name);
   return (
-    <div className="rounded-xl bg-white/3 px-3 py-2.5" style={{ marginLeft: depth * 16 }}>
+    <div className="rounded-xl bg-surface-2 px-3 py-2.5" style={{ marginLeft: depth * 16 }}>
       <div className="flex items-center gap-3">
         {!isLeaf && (
           <span className="app-tile-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${color} 80%, transparent)`, color: "#fff" }}>
@@ -1189,17 +1189,17 @@ function WBSNodeRow({ node, depth, isLeaf, rollup, canEdit, canDelete, editing, 
         )}
         {editing && canEdit ? (
           <input
-            className="flex-1 min-w-0 bg-transparent text-[12px] text-white/80 focus:outline-none border-b border-[#ff5100]/60"
+            className="flex-1 min-w-0 bg-transparent text-[12px] text-text-primary focus:outline-none border-b border-[#ff5100]/60"
             value={editValue} autoFocus onChange={(e) => onEditValueChange(e.target.value)}
             onBlur={onCommitEdit}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") onCancelEdit(); }}
           />
         ) : (
-          <p onClick={canEdit ? onStartEdit : undefined} className={`text-[12px] text-white/80 flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>
+          <p onClick={canEdit ? onStartEdit : undefined} className={`text-[12px] text-text-primary flex-1 truncate ${canEdit ? "cursor-text" : ""}`}>
             {node.name}
           </p>
         )}
-        <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{node.level}</span>
+        <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle shrink-0">{node.level}</span>
         {isLeaf && node.quantity == null && (
           <span className="font-mono text-[8px] uppercase tracking-widest px-1.5 py-0.5 rounded-full shrink-0" style={{ backgroundColor: "#ff510022", color: "#ff5100" }}>{t("wbs.leaf")}</span>
         )}
@@ -1208,10 +1208,10 @@ function WBSNodeRow({ node, depth, isLeaf, rollup, canEdit, canDelete, editing, 
             {rollup.actual.toFixed(0)}% / {rollup.plan.toFixed(0)}%
           </span>
         )}
-        {canDelete && <button onClick={onDelete} className="text-white/25 hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-white/5 shrink-0">×</button>}
+        {canDelete && <button onClick={onDelete} className="text-text-subtle hover:text-red-400 w-6 h-6 rounded-full flex items-center justify-center hover:bg-surface-3 shrink-0">×</button>}
       </div>
       {node.quantity != null && (
-        <p className="text-[10px] text-white/35 truncate mt-1 pl-1">{node.quantity} {node.unit ?? ""} @ {node.unit_cost ?? 0}</p>
+        <p className="text-[10px] text-text-subtle truncate mt-1 pl-1">{node.quantity} {node.unit ?? ""} @ {node.unit_cost ?? 0}</p>
       )}
     </div>
   );
@@ -1366,26 +1366,26 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-0 sm:px-6" onClick={onClose}>
-      <div className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto bg-[#141415] rounded-t-3xl sm:rounded-3xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
-        <p className="text-[14px] font-bold text-white/85">{t("wbs.aiImport")}</p>
+    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-6" onClick={onClose}>
+      <div className="w-full sm:max-w-lg max-h-[85vh] overflow-y-auto bg-surface-3 rounded-t-3xl sm:rounded-3xl p-5 flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
+        <p className="text-[14px] font-bold text-text-primary">{t("wbs.aiImport")}</p>
 
         {!proposal && (
           <>
-            <p className="text-[12px] text-white/45">{t("wbs.aiImportHint")}</p>
-            {aiCredits && <p className="text-[10px] text-white/30">{t("wbs.creditsBalance").replace("{n}", String(aiCredits.balance))}</p>}
+            <p className="text-[12px] text-text-muted">{t("wbs.aiImportHint")}</p>
+            {aiCredits && <p className="text-[10px] text-text-subtle">{t("wbs.creditsBalance").replace("{n}", String(aiCredits.balance))}</p>}
             <input type="file" accept=".xlsx,.xls,.csv,.pdf" onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
-              className="text-[12px] text-white/60 file:mr-3 file:px-3 file:py-1.5 file:rounded-full file:border-0 file:text-[10px] file:uppercase file:tracking-widest file:font-bold file:text-black"
+              className="text-[12px] text-text-muted file:mr-3 file:px-3 file:py-1.5 file:rounded-full file:border-0 file:text-[10px] file:uppercase file:tracking-widest file:font-bold file:text-black"
               style={{ colorScheme: "dark" }} />
             {parseError && <p className="text-[12px] text-red-400">{parseError}</p>}
             {sheets && sheets.length > 1 && (
               <label className="flex flex-col gap-1.5">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("wbs.sheet")}</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("wbs.sheet")}</span>
                 <FieldSelect value={String(sheetIndex)} onChange={(v) => setSheetIndex(Number(v))}
                   options={sheets.map((s, i) => ({ value: String(i), label: `${s.sheetName} (${s.rows.length})` }))} />
               </label>
             )}
-            {sheets && <p className="text-[11px] text-white/30">{t("wbs.rowsFound").replace("{n}", String(sheets[sheetIndex]?.rows.length ?? 0))}</p>}
+            {sheets && <p className="text-[11px] text-text-subtle">{t("wbs.rowsFound").replace("{n}", String(sheets[sheetIndex]?.rows.length ?? 0))}</p>}
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             {insufficientBalance != null && (
               <p className="text-[12px] text-red-400">{t("wbs.insufficientCredits").replace("{n}", String(insufficientBalance))}</p>
@@ -1395,20 +1395,20 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
               style={{ backgroundColor: "#ff5100" }}>
               {loading ? t("wbs.aiSuggesting") : t("wbs.aiSuggestRun")}
             </button>
-            <button onClick={onClose} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-white/40">{t("common.cancel")}</button>
+            <button onClick={onClose} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
           </>
         )}
 
         {proposal && (
           <>
-            <div className="rounded-xl bg-white/5 px-3 py-2.5">
-              <p className="text-[11px] text-white/60">
+            <div className="rounded-xl bg-surface-2 px-3 py-2.5">
+              <p className="text-[11px] text-text-muted">
                 {proposal.scheduleSource === "file" ? t("wbs.scheduleFromFile")
                   : proposal.scheduleSource === "mixed" ? t("wbs.scheduleMixed")
                   : t("wbs.scheduleInferred")}
               </p>
               {proposal.creditsCharged != null && (
-                <p className="text-[10px] text-white/30 mt-1">
+                <p className="text-[10px] text-text-subtle mt-1">
                   {t("wbs.creditsUsed").replace("{used}", String(proposal.creditsCharged)).replace("{n}", String(proposal.creditsRemaining ?? 0))}
                 </p>
               )}
@@ -1423,16 +1423,16 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
                 })();
                 const nodeActivities = proposal.activities.filter((a) => a.nodeTempId === n.tempId);
                 return (
-                  <div key={n.tempId} className="rounded-xl bg-white/3 px-3 py-2" style={{ marginLeft: depth * 16 }}>
+                  <div key={n.tempId} className="rounded-xl bg-surface-2 px-3 py-2" style={{ marginLeft: depth * 16 }}>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-white/30 shrink-0">{n.level}</span>
-                      <p className="text-[12px] text-white/80 truncate">{n.name}</p>
+                      <span className="font-mono text-[9px] uppercase tracking-widest text-text-subtle shrink-0">{n.level}</span>
+                      <p className="text-[12px] text-text-primary truncate">{n.name}</p>
                     </div>
                     {isLeafProposal && (
                       <div className="flex flex-col gap-0.5 mt-1">
                         {proposal.items.filter((it) => it.nodeTempId === n.tempId).map((it, i) => (
-                          <p key={i} className="text-[10px] text-white/35 truncate pl-2">
-                            · {it.description} — {it.quantity} {it.unit ?? ""} @ {it.unit_cost} <span className="text-white/20">({Math.round(it.confidence * 100)}%)</span>
+                          <p key={i} className="text-[10px] text-text-subtle truncate pl-2">
+                            · {it.description} — {it.quantity} {it.unit ?? ""} @ {it.unit_cost} <span className="text-text-subtle">({Math.round(it.confidence * 100)}%)</span>
                           </p>
                         ))}
                       </div>
@@ -1462,7 +1462,7 @@ function AIImportPanel({ ownerId, projectId, projectStartDate, projectEndDate, a
                 style={{ backgroundColor: "#ff5100" }}>
                 {applying ? t("wbs.aiApplying") : t("wbs.aiApply")}
               </button>
-              <button onClick={() => { setProposal(null); setFile(null); setSheets(null); }} className="px-5 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-white/40">{t("common.cancel")}</button>
+              <button onClick={() => { setProposal(null); setFile(null); setSheets(null); }} className="px-5 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
             </div>
           </>
         )}
@@ -1522,7 +1522,7 @@ function GanttView({ groups }: { groups: [string, CMScheduleItem[]][] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[11px] text-white/40 px-1">{t("schedule.ganttHint")}</p>
+      <p className="text-[11px] text-text-subtle px-1">{t("schedule.ganttHint")}</p>
       {groups.map(([groupLabel, items]) => {
         const rows: GanttRow[] = items.map((item) => {
           const estStart = weekOf(item.plan_start);
@@ -1543,8 +1543,8 @@ function GanttView({ groups }: { groups: [string, CMScheduleItem[]][] }) {
           };
         });
         return (
-          <div key={groupLabel} className="rounded-2xl bg-[#0d0d0e] px-4 py-4">
-            <p className="text-[11px] text-white/60 font-medium mb-2">{groupLabel}</p>
+          <div key={groupLabel} className="rounded-2xl bg-surface-1 px-4 py-4">
+            <p className="text-[11px] text-text-muted font-medium mb-2">{groupLabel}</p>
             <div style={{ height: rows.length * 46 + 40 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={rows} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }} barCategoryGap="28%" barGap={2}>
@@ -1595,14 +1595,14 @@ function ScheduleQuickSettings({ projectId, userId }: { projectId: string; userI
 
   return (
     <div className="w-full flex items-center gap-3.5 px-4 py-3">
-      <span className="text-white/70 shrink-0">
+      <span className="text-text-muted shrink-0">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4" /><path d="M12 17h.01" /><circle cx="12" cy="12" r="9" /></svg>
       </span>
-      <span className="min-w-0 flex-1 text-[14px] text-white/90">{t("schedule.settingsThreshold")}</span>
+      <span className="min-w-0 flex-1 text-[14px] text-text-primary">{t("schedule.settingsThreshold")}</span>
       <input type="number" min={0} step="1" value={thresholdValue} disabled={!canEdit || busy}
         onChange={(e) => setThresholdDraft(e.target.value)}
         onBlur={commit}
-        className="w-16 bg-white/8 rounded-full px-3 py-1.5 text-[11px] font-mono text-white/85 text-right focus:outline-none" />
+        className="w-16 bg-surface-3 rounded-full px-3 py-1.5 text-[11px] font-mono text-text-primary text-right focus:outline-none" />
     </div>
   );
 }
@@ -1863,37 +1863,37 @@ function CMSchedulePage() {
     invalidate();
   };
 
-  if (authLoading) return <div className="min-h-screen bg-[#0a0a0b]" />;
+  if (authLoading) return <div className="min-h-screen bg-background" />;
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0a0a0b] text-white flex items-center justify-center px-4 font-sans">
+      <div className="min-h-screen bg-background text-text-primary flex items-center justify-center px-4 font-sans">
         <button onClick={() => signInWithGoogle()} className="px-7 py-3 rounded-2xl text-[12px] uppercase tracking-widest text-black font-bold" style={{ backgroundColor: "#ff5100" }}>{t("common.signInGoogle")}</button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans">
+    <div className="min-h-screen bg-background text-text-primary font-sans">
       <main className="max-w-md sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto w-full px-4 pb-28">
         <ModuleHeader title={t("schedule.title")} search={search} onSearchChange={setSearch} sortAsc={sortAsc} onToggleSort={setSortAsc} settingsTo="/cm/schedule/settings"
           quickSettings={projectId ? <ScheduleQuickSettings projectId={projectId} userId={user.id} /> : undefined}
           extraAction={view === "cost" ? (
             <button type="button" aria-label={t("boq.editList")} aria-pressed={costDisplay === "list"}
               onClick={() => setCostDisplay((v) => (v === "list" ? "tiles" : "list"))}
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${costDisplay === "list" ? "" : "bg-white/5 hover:bg-white/10 text-white/60 hover:text-white"}`}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors shrink-0 ${costDisplay === "list" ? "" : "bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-text-primary"}`}
               style={costDisplay === "list" ? { backgroundColor: "color-mix(in srgb, var(--color-brand-accent) 20%, transparent)", color: "var(--color-brand-accent)" } : undefined}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
               </svg>
             </button>
           ) : undefined} />
-        <p className="text-[12px] text-white/35 mb-5">{t("schedule.subtitle")}</p>
+        <p className="text-[12px] text-text-subtle mb-5">{t("schedule.subtitle")}</p>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
 
         {projectId && (
           <>
             {(items?.length ?? 0) > 0 && (
-              <div className="rounded-2xl bg-[#0d0d0e] px-4 py-3.5 mb-3 grid grid-cols-5 gap-2">
+              <div className="rounded-2xl bg-surface-1 px-4 py-3.5 mb-3 grid grid-cols-5 gap-2">
                 {[
                   { label: t("schedule.summary.planned"), value: `${summary.planned.toFixed(0)}%` },
                   { label: t("schedule.summary.actual"), value: `${summary.actual.toFixed(0)}%`, color: varianceColor(summary.actual, summary.planned) },
@@ -1903,7 +1903,7 @@ function CMSchedulePage() {
                 ].map((s) => (
                   <div key={s.label} className="flex flex-col items-center gap-0.5 min-w-0">
                     <span className="font-mono text-[15px] leading-none" style={s.color ? { color: s.color } : undefined}>{s.value}</span>
-                    <span className="text-[9px] uppercase tracking-widest text-white/30 text-center">{s.label}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-text-subtle text-center">{s.label}</span>
                   </div>
                 ))}
               </div>
@@ -1923,7 +1923,7 @@ function CMSchedulePage() {
               )}
               {view === "cost" ? (
                 canCreateBoq && (
-                  <button onClick={() => setShowBoqImport(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors">
+                  <button onClick={() => setShowBoqImport(true)} className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-surface-2 text-text-muted hover:bg-surface-3 transition-colors">
                     {t("boq.import.title")}
                   </button>
                 )
@@ -1935,7 +1935,7 @@ function CMSchedulePage() {
                       else if (canCreate) setShowImport(true);
                       else setAiOpen(true);
                     }}
-                    className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-white/5 text-white/70 hover:bg-white/10 transition-colors"
+                    className="px-3.5 py-1.5 rounded-full text-[12px] font-medium bg-surface-2 text-text-muted hover:bg-surface-3 transition-colors"
                   >
                     {t("schedule.import.title")}
                   </button>
@@ -1968,17 +1968,17 @@ function CMSchedulePage() {
                   )}
                   {canCreateBoq && boqLocked && (
                     <button type="button" onClick={() => setConfirmingRevision(true)} disabled={versionBusy}
-                      className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/8 text-white/60">
+                      className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-surface-3 text-text-muted">
                       {t("boq.version.createRevision")}
                     </button>
                   )}
                   {canCreateBoq && (
                     <button type="button" onClick={handleCreateVersion} disabled={versionBusy}
-                      className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/8 text-white/60">
+                      className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-surface-3 text-text-muted">
                       + {t("boq.version.newVersion")}
                     </button>
                   )}
-                  <Link to="/cm/boq/settings" className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/8 text-white/60">
+                  <Link to="/cm/boq/settings" className="font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-surface-3 text-text-muted">
                     {t("common.settings")}
                   </Link>
                 </div>
@@ -1990,15 +1990,15 @@ function CMSchedulePage() {
               </div>
             )}
 
-            {isLoading && <p className="text-white/30 text-sm">{t("common.loading")}</p>}
+            {isLoading && <p className="text-text-subtle text-sm">{t("common.loading")}</p>}
             {!isLoading && view !== "cost" && (wbsNodes?.length ?? 0) === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("schedule.nothingYet")}</p>
+              <div className="rounded-2xl border border-dashed border-border py-16 flex items-center justify-center text-center px-4">
+                <p className="text-text-subtle text-sm">{t("schedule.nothingYet")}</p>
               </div>
             )}
             {!isLoading && view === "cost" && boqCategories.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-white/10 py-16 flex items-center justify-center text-center px-4">
-                <p className="text-white/40 text-sm">{t("boq.nothingYet")}</p>
+              <div className="rounded-2xl border border-dashed border-border py-16 flex items-center justify-center text-center px-4">
+                <p className="text-text-subtle text-sm">{t("boq.nothingYet")}</p>
               </div>
             )}
             {view === "gantt" && groups.length > 0 ? (
@@ -2020,8 +2020,8 @@ function CMSchedulePage() {
                 )}
                 {boqCategories.length > 0 && costDisplay === "list" && (
                   <>
-                    <div className="flex items-center justify-between rounded-2xl bg-[#0d0d0e] px-5 py-4 mb-3">
-                      <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.grandTotal")}</span>
+                    <div className="flex items-center justify-between rounded-2xl bg-surface-1 px-5 py-4 mb-3">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("boq.grandTotal")}</span>
                       <span className="font-mono text-[15px] font-bold" style={{ color: "#ff5100" }}>{boqGrandTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex flex-col gap-3">
@@ -2081,7 +2081,7 @@ function CMSchedulePage() {
                     />
                     <div className="flex gap-2">
                       <button onClick={handleStructureAdd} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest" style={{ backgroundColor: "#ff5100", color: "#000" }}>{t("common.add")}</button>
-                      <button onClick={() => setStructureAdding(false)} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest text-white/40">{t("common.cancel")}</button>
+                      <button onClick={() => setStructureAdding(false)} className="px-3 py-1.5 rounded-full text-[10px] font-mono uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
                     </div>
                   </div>
                 ) : (
@@ -2099,24 +2099,24 @@ function CMSchedulePage() {
       </main>
 
       {importChooserOpen && (
-        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm px-0 sm:px-6" onClick={() => setImportChooserOpen(false)}>
-          <div className="w-full sm:max-w-md bg-[#141415] rounded-t-3xl sm:rounded-3xl p-5 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
-            <p className="text-[14px] font-bold text-white/85">{t("schedule.import.chooseMethod")}</p>
+        <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/70 px-0 sm:px-6" onClick={() => setImportChooserOpen(false)}>
+          <div className="w-full sm:max-w-md bg-surface-3 rounded-t-3xl sm:rounded-3xl p-5 flex flex-col gap-3" onClick={(e) => e.stopPropagation()}>
+            <p className="text-[14px] font-bold text-text-primary">{t("schedule.import.chooseMethod")}</p>
             <button
               onClick={() => { setImportChooserOpen(false); setShowImport(true); }}
-              className="text-left rounded-2xl bg-white/5 hover:bg-white/10 transition-colors p-4 flex flex-col gap-1"
+              className="text-left rounded-2xl bg-surface-2 hover:bg-surface-3 transition-colors p-4 flex flex-col gap-1"
             >
-              <span className="text-[13px] font-bold text-white/85">{t("schedule.import.quickMethod")}</span>
-              <span className="text-[11px] text-white/45">{t("schedule.import.quickMethodHint")}</span>
+              <span className="text-[13px] font-bold text-text-primary">{t("schedule.import.quickMethod")}</span>
+              <span className="text-[11px] text-text-muted">{t("schedule.import.quickMethodHint")}</span>
             </button>
             <button
               onClick={() => { setImportChooserOpen(false); setAiOpen(true); }}
-              className="text-left rounded-2xl bg-white/5 hover:bg-white/10 transition-colors p-4 flex flex-col gap-1"
+              className="text-left rounded-2xl bg-surface-2 hover:bg-surface-3 transition-colors p-4 flex flex-col gap-1"
             >
               <span className="text-[13px] font-bold" style={{ color: "#ff5100" }}>{t("wbs.aiImport")}</span>
-              <span className="text-[11px] text-white/45">{t("wbs.aiImportHint")}</span>
+              <span className="text-[11px] text-text-muted">{t("wbs.aiImportHint")}</span>
             </button>
-            <button onClick={() => setImportChooserOpen(false)} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-white/40">{t("common.cancel")}</button>
+            <button onClick={() => setImportChooserOpen(false)} className="w-full py-2.5 rounded-2xl text-[12px] uppercase tracking-widest text-text-subtle">{t("common.cancel")}</button>
           </div>
         </div>
       )}
@@ -2146,10 +2146,10 @@ function CMSchedulePage() {
               <span className="app-tile-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `color-mix(in srgb, ${drillCategoryData.color} 80%, transparent)`, color: "#fff" }}>
                 <CategoryIcon name={drillCategoryData.name} size={13} />
               </span>
-              <span className="text-[11px] text-white/40">{drillCategoryData.items.length === 1 ? t("boq.item") : t("boq.items", { count: String(drillCategoryData.items.length) })}</span>
+              <span className="text-[11px] text-text-subtle">{drillCategoryData.items.length === 1 ? t("boq.item") : t("boq.items", { count: String(drillCategoryData.items.length) })}</span>
             </div>
-            <div className="flex items-center justify-between px-1 pb-3 mb-1 border-b border-white/6">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{t("boq.total")}</span>
+            <div className="flex items-center justify-between px-1 pb-3 mb-1 border-b border-border">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-text-subtle">{t("boq.total")}</span>
               <span className="font-mono text-[14px] font-bold" style={{ color: drillCategoryData.color }}>
                 {drillCategoryData.subtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </span>
