@@ -70,7 +70,7 @@ export function DockPanel({ panel, onFocus, onMove, onResize, onClose, onToggleM
 
   return (
     <div
-      className="fixed rounded-xl bg-[#0d0d0e] border border-white/12 shadow-2xl flex flex-col overflow-hidden"
+      className="fixed rounded-lg bg-white border border-gray-200 shadow-xl flex flex-col overflow-hidden"
       style={{
         left: panel.x, top: panel.y,
         width: panel.width, height: panel.minimized ? "auto" : panel.height,
@@ -79,17 +79,17 @@ export function DockPanel({ panel, onFocus, onMove, onResize, onClose, onToggleM
       onPointerDown={() => onFocus(panel.id)}
     >
       <div
-        className="flex items-center gap-2 px-3 py-2 bg-white/[0.04] border-b border-white/8 cursor-grab active:cursor-grabbing select-none shrink-0"
+        className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-200 cursor-grab active:cursor-grabbing select-none shrink-0"
         onPointerDown={handleHeaderPointerDown}
         onPointerMove={handleHeaderPointerMove}
         onPointerUp={handleHeaderPointerUp}
       >
         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "#0696D7" }} />
-        <p className="text-[11px] font-semibold truncate flex-1">{panel.title}</p>
-        <button onClick={() => onToggleMinimize(panel.id)} className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-white transition-colors shrink-0" title={panel.minimized ? "Expand" : "Minimize"}>
+        <p className="text-[12px] font-semibold text-gray-900 truncate flex-1">{panel.title}</p>
+        <button onClick={() => onToggleMinimize(panel.id)} className="w-5 h-5 flex items-center justify-center rounded text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-colors shrink-0" title={panel.minimized ? "Expand" : "Minimize"}>
           {panel.minimized ? "▢" : "—"}
         </button>
-        <button onClick={() => onClose(panel.id)} className="w-5 h-5 flex items-center justify-center text-white/40 hover:text-red-400 transition-colors shrink-0" title="Close">
+        <button onClick={() => onClose(panel.id)} className="w-5 h-5 flex items-center justify-center rounded text-gray-500 hover:text-red-700 hover:bg-red-50 transition-colors shrink-0" title="Close">
           ✕
         </button>
       </div>
@@ -104,7 +104,7 @@ export function DockPanel({ panel, onFocus, onMove, onResize, onClose, onToggleM
             onPointerUp={handleResizePointerUp}
           >
             <svg width="14" height="14" viewBox="0 0 14 14" className="absolute bottom-0.5 right-0.5 opacity-30">
-              <path d="M12 2 L2 12 M12 7 L7 12 M12 12 L12 12" stroke="black" strokeWidth="1.2" />
+              <path d="M12 2 L2 12 M12 7 L7 12 M12 12 L12 12" stroke="currentColor" strokeWidth="1.2" className="text-gray-500" />
             </svg>
           </div>
         </div>
