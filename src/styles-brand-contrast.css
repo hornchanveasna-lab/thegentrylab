@@ -1,0 +1,33 @@
+/* ── Brand-filled surfaces keep their white foreground in light mode ──────
+ *
+ * styles.css contains a blanket light-mode sweep:
+ *
+ *     [data-theme="light"] .text-white { color: var(--text-primary) !important; }
+ *
+ * That is correct for text sitting on the light *page* background — it was
+ * added so dark-era markup stayed readable after light mode arrived. But it
+ * cannot tell that case apart from text sitting on a *filled* control.
+ *
+ * A primary button painted with the account's brand color still needs white
+ * text. With the default orange the sweep's dark override merely looked
+ * off; with a dark brand color (a navy corporate palette, say) it turns the
+ * label dark-on-dark and the button reads as blank — see the Contracts
+ * screen's "Upload File" button.
+ *
+ * So: an element that paints itself with --color-brand-accent owns its own
+ * foreground. Scoped to elements that already asked for `.text-white`, so
+ * this only restores intent and never restyles a control that deliberately
+ * uses dark text on the brand color. The selector is more specific than the
+ * bare `.text-white` sweep, so it wins regardless of import order.
+ *
+ * This lives in its own file rather than in styles.css only to stay out of
+ * the way of concurrent edits there; fold it in whenever convenient. The
+ * real cure is retiring the sweep entirely by migrating the remaining CM
+ * route files onto semantic tokens (bg-surface-*, text-text-*), at which
+ * point both this file and the sweep can go.
+ */
+
+[data-theme="light"] [style*="background-color: var(--color-brand-accent)"].text-white,
+[data-theme="light"] [style*="background-color: var(--color-brand-accent)"] .text-white {
+  color: #fff !important;
+}

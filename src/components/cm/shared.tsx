@@ -390,8 +390,8 @@ export function StringListEditor({ label, hint, values, onChange, canEdit }: {
           <input className={inputCls} value={draft} onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
           <button type="button" onClick={add} disabled={!draft.trim()}
-            className="px-4 py-1.5 rounded-full text-[12px] font-semibold shrink-0 disabled:opacity-40 text-white"
-            style={{ backgroundColor: "var(--color-brand-accent)" }}>
+            className="px-4 py-1.5 rounded-full text-[12px] font-semibold shrink-0 disabled:opacity-40"
+            style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
             {t("common.add")}
           </button>
         </div>
@@ -1297,8 +1297,8 @@ export function FAB({ onClick, label }: { onClick: () => void; label: string }) 
     <button
       onClick={onClick}
       aria-label={label}
-      className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-[var(--shadow-md)] active:scale-95 transition-transform z-30 text-white"
-      style={{ backgroundColor: "var(--color-brand-accent)", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+      className="fixed right-6 w-14 h-14 rounded-full flex items-center justify-center shadow-[var(--shadow-md)] active:scale-95 transition-transform z-30"
+      style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff", bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
     >
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v14M3 10h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
     </button>
@@ -1323,8 +1323,8 @@ export function BottomActionBar({ primary, secondary }: {
         </button>
       )}
       <button type="button" onClick={primary.onClick} disabled={primary.disabled}
-        className="w-full rounded-full py-3.5 text-[14px] font-semibold text-white transition-opacity disabled:opacity-40"
-        style={{ backgroundColor: "var(--color-brand-accent)" }}>
+        className="w-full rounded-full py-3.5 text-[14px] font-semibold transition-opacity disabled:opacity-40"
+        style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
         {primary.label}
       </button>
     </div>
@@ -1694,8 +1694,8 @@ export function QuickUploadButton({ label, onFilesSelected }: { label: string; o
   return (
     <>
       <button type="button" onClick={() => inputRef.current?.click()}
-        className="w-full flex items-center justify-center gap-2 rounded-full py-3.5 mb-4 text-[14px] font-semibold transition-transform active:scale-[0.98] text-white"
-        style={{ backgroundColor: "var(--color-brand-accent)" }}>
+        className="w-full flex items-center justify-center gap-2 rounded-full py-3.5 mb-4 text-[14px] font-semibold transition-transform active:scale-[0.98]"
+        style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 16V4M12 4l-4 4M12 4l4 4" /><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
         </svg>
@@ -2491,8 +2491,8 @@ export function CommentsPanel({ projectId, entityType, entityId, userId }: {
         <textarea className={`${inputCls} flex-1 resize-y min-h-[44px]`} value={body} disabled={posting}
           onChange={(e) => setBody(e.target.value)} placeholder={t("comments.placeholder")} />
         <button type="button" onClick={handlePost} disabled={posting || !body.trim()}
-          className="px-4 py-2.5 rounded-full text-[13px] font-semibold text-white disabled:opacity-40 shrink-0"
-          style={{ backgroundColor: "var(--color-brand-accent)" }}>
+          className="px-4 py-2.5 rounded-full text-[13px] font-semibold disabled:opacity-40 shrink-0"
+          style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {t("comments.post")}
         </button>
       </div>
@@ -2628,7 +2628,7 @@ export function NotificationBell({ userId }: { userId: string | undefined }) {
         <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" />
       </svg>
       {unread > 0 && (
-        <span className="absolute top-1 right-1 min-w-[15px] h-[15px] px-[3px] rounded-full text-[9px] leading-[15px] font-bold text-white text-center" style={{ backgroundColor: "var(--color-brand-accent)" }}>
+        <span className="absolute top-1 right-1 min-w-[15px] h-[15px] px-[3px] rounded-full text-[9px] leading-[15px] font-bold text-center" style={{ backgroundColor: "var(--color-brand-accent)", color: "#fff" }}>
           {unread > 9 ? "9+" : unread}
         </span>
       )}
