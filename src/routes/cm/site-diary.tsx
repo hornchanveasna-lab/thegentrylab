@@ -6,7 +6,7 @@ import { useCMLang, type CMLang } from "@/lib/cm-i18n";
 import { usePermission } from "@/lib/cm-permissions";
 import {
   ModuleHeader, Sheet, FormPage, FAB, PhotoPicker, ProjectPicker, FieldSelect, RepeatingRows, useSelectedProject, inputCls, labelCls,
-  setLastProject, moduleDetailRoute, MODULE_COLOR, MODULE_ICON,
+  setLastProject, moduleDetailRoute, MODULE_COLOR, MODULE_ICON, ListRow,
   WeekCalendarStrip, CALENDAR_MONTH_LOCALE, SegmentedField, ConfirmationDialog, RecordDetailExtras, LocationSelect, DisciplineSelect,
   ManpowerEntrySheet, type RecordMenuItem,
 } from "@/components/cm/shared";
@@ -805,22 +805,22 @@ function LogCard({ log, projectName }: { log: CMDailyLog; projectName?: string }
   const { t } = useCMLang();
   return (
     <Link to="/cm/site-diary/$id" params={{ id: log.id }}
-      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-[#0d0d0e] hover:bg-white/3 transition-colors">
+      className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl bg-surface-1 border border-border shadow-[var(--shadow-sm)] hover:bg-surface-2 transition-colors">
       <div className="flex items-center gap-4 min-w-0">
-        <span className="font-mono text-[12px] text-white/70 shrink-0">{log.log_date}</span>
-        {log.doc_number && <span className="font-mono text-[10px] text-white/30 shrink-0">{log.doc_number}</span>}
-        {projectName && <span className="text-[11px] text-white/40 truncate">{projectName}</span>}
+        <span className="font-mono text-[12px] text-text-primary shrink-0">{log.log_date}</span>
+        {log.doc_number && <span className="font-mono text-[11px] text-text-subtle shrink-0">{log.doc_number}</span>}
+        {projectName && <span className="text-[11px] text-text-muted truncate">{projectName}</span>}
         {log.weather && (
-          <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-white/35 shrink-0">
+          <span className="flex items-center gap-1 text-[11px] font-medium text-text-muted shrink-0 bg-surface-2 rounded-full px-2 py-0.5">
             {WEATHER_ICON[log.weather]}
             {t(`weather.${log.weather}`)}
           </span>
         )}
-        {log.activities && <span className="text-[12px] text-white/45 truncate">{log.activities}</span>}
+        {log.activities && <span className="text-[12px] text-text-muted truncate">{log.activities}</span>}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        {log.progress_pct != null && <span className="font-mono text-[10px]" style={{ color: "#ff5100" }}>{log.progress_pct}%</span>}
-        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25">
+        {log.progress_pct != null && <span className="font-mono text-[12px] font-semibold" style={{ color: "var(--color-brand-accent)" }}>{log.progress_pct}%</span>}
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-text-subtle">
           <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
       </div>
@@ -831,25 +831,9 @@ function LogCard({ log, projectName }: { log: CMDailyLog; projectName?: string }
 function Field({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div>
-      <p className="font-mono text-[9px] uppercase tracking-widest mb-1" style={{ color: accent ?? "rgba(255,255,255,0.25)" }}>{label}</p>
-      <p className="text-[12px] text-white/65 whitespace-pre-wrap leading-relaxed">{value}</p>
+      <p className="text-[11px] font-medium mb-1" style={{ color: accent ?? "var(--text-subtle)" }}>{label}</p>
+      <p className="text-[12px] text-text-muted whitespace-pre-wrap leading-relaxed">{value}</p>
     </div>
-  );
-}
-
-function CategoryRow({ icon, label, count, onClick }: {
-  icon: React.ReactNode; label: string; count?: number; onClick: () => void;
-}) {
-  return (
-    <button type="button" onClick={onClick}
-      className="w-full flex items-center gap-3 rounded-2xl bg-[#0d0d0e] hover:bg-white/4 px-4 py-3 transition-colors text-left">
-      <span className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white/70 bg-white/5">{icon}</span>
-      <span className="flex-1 min-w-0 text-[13px] text-white/80">{label}</span>
-      {count != null && <span className="font-mono text-[12px] text-white/40 shrink-0">{count}</span>}
-      <svg width="12" height="12" viewBox="0 0 14 14" fill="none" className="text-white/25 shrink-0">
-        <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    </button>
   );
 }
 
@@ -1089,9 +1073,9 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
             value={resourceTab} onChange={setResourceTab} />
         </div>
         {resourceTab === "manpower" ? (
-          <CategoryRow icon={MANPOWER_ICON} label={t("siteDiary.manpower")} count={totalManpower(log.manpower)} onClick={() => goTo("/cm/manpower")} />
+          <ListRow icon={MANPOWER_ICON} label={t("siteDiary.manpower")} count={totalManpower(log.manpower)} onClick={() => goTo("/cm/manpower")} />
         ) : (
-          <CategoryRow icon={EQUIPMENT_ICON} label={t("siteDiary.equipmentTab")} count={(equipment ?? []).length} onClick={() => goTo("/cm/equipment")} />
+          <ListRow icon={EQUIPMENT_ICON} label={t("siteDiary.equipmentTab")} count={(equipment ?? []).length} onClick={() => goTo("/cm/equipment")} />
         )}
       </div>
 
@@ -1116,7 +1100,7 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
             </div>
           ) : <p className="text-[12px] text-white/30">—</p>
         ) : (
-          <CategoryRow icon={BOQ_ICON} label={t("siteDiary.boqDeliveredToday", { count: String(boqDeliveryCount) })} onClick={() => goTo("/cm/schedule")} />
+          <ListRow icon={BOQ_ICON} label={t("siteDiary.boqDeliveredToday", { count: String(boqDeliveryCount) })} onClick={() => goTo("/cm/schedule")} />
         )}
         {log.photos.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -1173,9 +1157,9 @@ export function DayDetailContent({ log, projectName, canEdit, canDelete, userId,
         </div>
       )}
 
-      <CategoryRow icon={REPORT_ICON} label={t("siteDiary.previewReport")} onClick={goToReport} />
+      <ListRow icon={REPORT_ICON} label={t("siteDiary.previewReport")} onClick={goToReport} />
 
-      <CategoryRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotosCount} onClick={() => goTo("/cm/photos")} />
+      <ListRow icon={PHOTOS_ICON} label={t("common.photos")} count={allDayPhotosCount} onClick={() => goTo("/cm/photos")} />
 
       {confirmingDelete && (
         <ConfirmationDialog message={t("siteDiary.confirmDelete")} confirmLabel={t("common.delete")}
