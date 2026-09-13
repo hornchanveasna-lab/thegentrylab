@@ -172,7 +172,13 @@ function CaptureSheet({ ownerId, projectId, disciplines, onClose, onSaved, onCre
 
   const addFiles = (list: FileList | null) => {
     if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)]);
+    // Read the FileList NOW — see the matching note in photos.tsx. The
+    // onChange handler clears `e.target.value` right after this call, which
+    // empties the live FileList, so `Array.from(list)` must not be deferred
+    // into the state updater.
+    const picked = Array.from(list);
+    if (picked.length === 0) return;
+    setFiles((prev) => [...prev, ...picked]);
     setPickerOpen(false);
     setSavedFlash(false);
   };
