@@ -16,6 +16,8 @@ import siteVisitGateDelegation from "@/assets/research/beyond-the-factory/site-v
 import siteVisitGateClose from "@/assets/research/beyond-the-factory/site-visit-gate-close.jpg";
 import siteVisitRawMaterials from "@/assets/research/beyond-the-factory/site-visit-raw-materials.jpg";
 import siteVisitWarehouseTour from "@/assets/research/beyond-the-factory/site-visit-warehouse-tour.jpg";
+import siteVisitPackagingWalkthrough from "@/assets/research/beyond-the-factory/site-visit-packaging-walkthrough.jpg";
+import siteVisitDelegationBriefing from "@/assets/research/beyond-the-factory/site-visit-delegation-briefing.jpg";
 
 export const Route = createFileRoute("/research/beyond-the-factory-2026")({
   head: () => ({
@@ -579,6 +581,8 @@ function BeyondTheFactory() {
             <GalleryTile src={aerialRiver} alt="Aerial view of the ISI SEZ site with a river and open land in the background" caption="Adjacent land reserved for future expansion" />
             <GalleryTile src={siteVisitGateClose} alt="The Sihanoukville Governor and delegation at the ISI SEZ entrance sign" caption="The Governor's delegation at the ISI SEZ entrance" />
             <GalleryTile src={siteVisitWarehouseTour} alt="The Sihanoukville Governor and delegation touring a warehouse with electrical equipment" caption="Touring the utility and electrical systems with the provincial delegation" />
+            <GalleryTile src={siteVisitPackagingWalkthrough} alt="ISI SEZ staff and engineers walking past the packaging plant building" caption="Site staff and engineers on their way to the packaging plant" />
+            <GalleryTile src={siteVisitDelegationBriefing} alt="ISI E&C site engineers briefing company management during a site walkthrough" caption="Site engineers briefing management during a walkthrough" />
           </div>
         </section>
 
