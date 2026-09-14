@@ -1,0 +1,171 @@
+{
+  "tender": "SAMPLE — Meakara PPSEZ Warehouse (synthetic)",
+  "document": "Instructions to Tenderers.pdf",
+  "notes": "Synthetic fixture, committed so the harness runs out of the box. Fictional employer, consultant and figures — not a real tender. Real fixtures are gitignored; see ../../README.md. Short enough that it does not truncate at the real 40,000-char cap: run with --cap=3000 to see the beyond-cap metric behave.",
+  "requirements": [
+    {
+      "id": "ITT-001",
+      "clause": "2.3",
+      "page": 2,
+      "mandatory": true,
+      "category": "administrative",
+      "text": "Acknowledge receipt of every Addendum in writing and confirm in the Form of Tender that the tender price includes the effect of all Addenda issued.",
+      "keywords": ["addend"]
+    },
+    {
+      "id": "ITT-002",
+      "clause": "3.1",
+      "page": 4,
+      "mandatory": true,
+      "category": "commercial",
+      "text": "Keep the tender valid and open for acceptance for 120 calendar days from the submission deadline.",
+      "keywords": ["120"]
+    },
+    {
+      "id": "ITT-003",
+      "clause": "4.1",
+      "page": 5,
+      "mandatory": true,
+      "category": "bond",
+      "text": "Furnish a Tender Security (bid bond) of 2% of the tender price, issued by a bank licensed by the National Bank of Cambodia, denominated in US Dollars.",
+      "keywords": ["2%"]
+    },
+    {
+      "id": "ITT-004",
+      "clause": "4.3",
+      "page": 5,
+      "mandatory": true,
+      "category": "bond",
+      "text": "Ensure the Tender Security remains valid for 28 days beyond the expiry of the tender validity period.",
+      "keywords": ["28", "valid"]
+    },
+    {
+      "id": "ITT-005",
+      "clause": "5.1",
+      "page": 7,
+      "mandatory": true,
+      "category": "legal",
+      "text": "Submit a valid Certificate of Incorporation, Patent Tax Certificate and VAT registration certificate."
+    },
+    {
+      "id": "ITT-006",
+      "clause": "5.2",
+      "page": 7,
+      "mandatory": true,
+      "category": "financial",
+      "text": "Demonstrate average annual construction turnover of at least USD 8,000,000 over the last three financial years, supported by audited financial statements.",
+      "keywords": ["8,000,000"]
+    },
+    {
+      "id": "ITT-007",
+      "clause": "5.3",
+      "page": 7,
+      "mandatory": true,
+      "category": "experience",
+      "text": "Demonstrate completion as main contractor of at least two similar projects in the last seven years, each not less than USD 4,000,000, with employer-signed completion certificates.",
+      "keywords": ["4,000,000"]
+    },
+    {
+      "id": "ITT-008",
+      "clause": "5.4",
+      "page": 7,
+      "mandatory": true,
+      "category": "financial",
+      "text": "Demonstrate liquid assets or credit facilities of at least USD 1,500,000 with a bank reference letter issued within the last 90 days.",
+      "keywords": ["1,500,000"]
+    },
+    {
+      "id": "ITT-009",
+      "clause": "6.2",
+      "page": 9,
+      "mandatory": true,
+      "category": "personnel",
+      "text": "Nominate a Project Manager with a Civil or Structural Engineering degree and at least ten years of industrial construction experience, including three years as PM on pre-engineered steel buildings."
+    },
+    {
+      "id": "ITT-010",
+      "clause": "6.3",
+      "page": 9,
+      "mandatory": true,
+      "category": "hse",
+      "text": "Nominate a Site Safety Officer holding a current recognised occupational health and safety qualification, present on site at all times during working hours."
+    },
+    {
+      "id": "ITT-011",
+      "clause": "7.1",
+      "page": 11,
+      "mandatory": true,
+      "category": "pricing",
+      "text": "Price every item in the Bill of Quantities; unpriced items are deemed included in other rates with no additional payment."
+    },
+    {
+      "id": "ITT-012",
+      "clause": "7.2",
+      "page": 11,
+      "mandatory": true,
+      "category": "pricing",
+      "text": "Quote rates in US Dollars as fixed for the duration of the Contract, with no adjustment for fluctuation in labour, materials or plant.",
+      "keywords": ["fluctuat"]
+    },
+    {
+      "id": "ITT-013",
+      "clause": "8.1",
+      "page": 13,
+      "mandatory": true,
+      "category": "administrative",
+      "text": "Submit one original plus three hard copies and one complete electronic copy on USB in searchable PDF format."
+    },
+    {
+      "id": "ITT-014",
+      "clause": "8.2",
+      "page": 13,
+      "mandatory": true,
+      "category": "administrative",
+      "text": "Submit the Technical Proposal and the Price Proposal in separate sealed envelopes, each marked with the Tender Reference."
+    },
+    {
+      "id": "ITT-015",
+      "clause": "8.4",
+      "page": 13,
+      "mandatory": true,
+      "category": "tender_forms",
+      "text": "Sign and stamp every page of the Form of Tender, Appendix to Tender and priced Bill of Quantities, and submit a Power of Attorney evidencing signing authority.",
+      "keywords": ["power of attorney"]
+    },
+    {
+      "id": "ITT-016",
+      "clause": "9.1",
+      "page": 15,
+      "mandatory": false,
+      "category": "administrative",
+      "text": "Submit any request for clarification in writing to the Consultant not later than 14 days before the submission deadline."
+    },
+    {
+      "id": "ITT-017",
+      "clause": "10.1",
+      "page": 17,
+      "mandatory": true,
+      "category": "insurance",
+      "text": "Within 28 days of the Letter of Acceptance, effect Contractor's All Risks insurance in joint names for the Accepted Contract Amount plus 15%.",
+      "keywords": ["all risks"]
+    },
+    {
+      "id": "ITT-018",
+      "clause": "10.2",
+      "page": 17,
+      "mandatory": true,
+      "category": "insurance",
+      "text": "Effect and maintain Workmen's Compensation and Third Party Liability insurance with a limit of indemnity of at least USD 500,000 per occurrence.",
+      "keywords": ["500,000"]
+    },
+    {
+      "id": "ITT-019",
+      "clause": "10.3",
+      "page": 17,
+      "mandatory": true,
+      "category": "planning",
+      "text": "Submit with the tender a preliminary construction programme in bar chart form demonstrating completion within the 420-day Time for Completion.",
+      "keywords": ["420"]
+    }
+  ]
+}
