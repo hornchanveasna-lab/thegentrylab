@@ -197,19 +197,19 @@ export function PdfCanvasViewer({ url, fileName, onUrlExpired, scrollTarget, onS
   return (
     <div className="flex flex-col h-full" ref={containerRef}>
       <div className="flex items-center gap-2 mb-2 flex-wrap">
-        <div className="flex items-center gap-1 bg-white/5 rounded-lg px-1.5 py-1">
-          <button onClick={() => zoom(-0.15)} className="w-6 h-6 flex items-center justify-center text-white/60 hover:text-white transition-colors">−</button>
-          <span className="font-mono text-[10px] text-white/50 w-10 text-center">{Math.round(fitWidthScale * 100)}%</span>
-          <button onClick={() => zoom(0.15)} className="w-6 h-6 flex items-center justify-center text-white/60 hover:text-white transition-colors">+</button>
+        <div className="flex items-center gap-1 bg-gray-100 rounded-md px-1.5 py-1">
+          <button onClick={() => zoom(-0.15)} className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-900 hover:bg-gray-200 transition-colors">−</button>
+          <span className="font-mono text-[11px] text-gray-600 w-11 text-center">{Math.round(fitWidthScale * 100)}%</span>
+          <button onClick={() => zoom(0.15)} className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-900 hover:bg-gray-200 transition-colors">+</button>
         </div>
-        <div className="flex items-center gap-1.5 font-mono text-[10px] text-white/50">
+        <div className="flex items-center gap-1.5 font-mono text-[11px] text-gray-600">
           <span>Page</span>
           <input
             value={pageInput}
             onChange={(e) => setPageInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") handlePageInputSubmit(); }}
             onBlur={handlePageInputSubmit}
-            className="w-10 bg-white/5 border border-white/10 rounded px-1.5 py-1 text-center text-white outline-none focus:border-white/25"
+            className="w-11 bg-white border border-gray-300 rounded px-1.5 py-1 text-center text-gray-900 outline-none focus:border-[#0696D7] focus:ring-2 focus:ring-[#0696D7]/20"
           />
           <span>/ {numPages || "—"}</span>
         </div>
@@ -219,30 +219,30 @@ export function PdfCanvasViewer({ url, fileName, onUrlExpired, scrollTarget, onS
             onChange={(e) => runSearch(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") gotoMatch(e.shiftKey ? matchIndex - 1 : matchIndex + 1); }}
             placeholder="Search this document…"
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] outline-none focus:border-white/25"
+            className="flex-1 bg-white border border-gray-300 rounded-md px-2.5 py-1.5 text-[12px] text-gray-900 placeholder-gray-500 outline-none focus:border-[#0696D7] focus:ring-2 focus:ring-[#0696D7]/20"
           />
           {query.trim() && (
-            <span className="font-mono text-[9px] text-white/40 shrink-0 whitespace-nowrap">
+            <span className="font-mono text-[11px] text-gray-600 shrink-0 whitespace-nowrap">
               {indexing ? `indexing ${indexedCount}/${numPages}…` : matches.length === 0 ? "0 results" : `${matchIndex + 1}/${matches.length}`}
             </span>
           )}
           {matches.length > 0 && (
             <div className="flex items-center gap-0.5 shrink-0">
-              <button onClick={() => gotoMatch(matchIndex - 1)} className="w-6 h-6 flex items-center justify-center text-white/50 hover:text-white transition-colors">‹</button>
-              <button onClick={() => gotoMatch(matchIndex + 1)} className="w-6 h-6 flex items-center justify-center text-white/50 hover:text-white transition-colors">›</button>
+              <button onClick={() => gotoMatch(matchIndex - 1)} className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">‹</button>
+              <button onClick={() => gotoMatch(matchIndex + 1)} className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors">›</button>
             </div>
           )}
         </div>
       </div>
 
-      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto rounded-xl bg-black/30 p-4">
+      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto rounded-lg bg-gray-100 border border-gray-200 p-4">
         {loadError ? (
           <div className="h-full flex items-center justify-center px-6 text-center">
-            <p className="text-[12px] text-red-400">{loadError}</p>
+            <p className="text-[13px] text-red-700">{loadError}</p>
           </div>
         ) : !pdfDoc ? (
           <div className="h-full flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-white/20 border-t-[#0696D7] rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-gray-200 border-t-[#0696D7] rounded-full animate-spin" />
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4">
@@ -357,12 +357,12 @@ function PdfPageCanvas({ pdfDoc, pageNumber, scale, registerEl, onBecomeVisible,
   return (
     <div
       ref={wrapperRef}
-      className={`relative bg-white rounded shadow-lg transition-shadow ${highlighted ? "ring-2 ring-[#0696D7] ring-offset-2 ring-offset-black/30" : ""}`}
+      className={`relative bg-white rounded shadow-lg transition-shadow ${highlighted ? "ring-2 ring-[#0696D7] ring-offset-2 ring-offset-gray-100" : ""}`}
       style={viewportSize ? { width: viewportSize.w, height: viewportSize.h } : { width: "100%", height: 400 }}
       title={`${fileName} — page ${pageNumber}`}
     >
       <canvas ref={canvasRef} className="block" />
-      <span className="absolute bottom-1 right-1.5 font-mono text-[9px] text-black/30 select-none">{pageNumber}</span>
+      <span className="absolute bottom-1 right-1.5 font-mono text-[11px] text-gray-500 select-none">{pageNumber}</span>
     </div>
   );
 }

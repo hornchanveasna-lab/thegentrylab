@@ -25,18 +25,18 @@ export function QuickDocumentsPanel({ tenderId }: { tenderId: string }) {
 
   return (
     <div className="flex h-full">
-      <div className="w-[200px] shrink-0 border-r border-white/8 overflow-y-auto">
+      <div className="w-[200px] shrink-0 border-r border-gray-200 overflow-y-auto">
         {isLoading ? (
           <LoadingSpinner />
         ) : documents.length === 0 ? (
-          <p className="text-[11px] text-white/30 p-3">No documents yet.</p>
+          <p className="text-[12px] text-gray-600 p-3">No documents yet.</p>
         ) : (
-          <div className="flex flex-col divide-y divide-white/6">
+          <div className="flex flex-col divide-y divide-gray-100">
             {documents.map((doc) => (
               <button
                 key={doc.id}
                 onClick={() => select(doc)}
-                className={`text-left px-3 py-2 text-[11px] truncate transition-colors ${selected?.id === doc.id ? "bg-white/[0.06] text-[#0696D7]" : "text-white/70 hover:bg-white/[0.03]"}`}
+                className={`text-left px-3 py-2 text-[12px] truncate transition-colors ${selected?.id === doc.id ? "bg-[#0696D7]/[0.07] text-[#046C9B] font-medium" : "text-gray-700 hover:bg-gray-50"}`}
                 title={doc.file_name}
               >
                 {doc.file_name}
@@ -48,7 +48,7 @@ export function QuickDocumentsPanel({ tenderId }: { tenderId: string }) {
       <div className="flex-1 min-w-0 p-3">
         {!selected ? (
           <div className="h-full flex items-center justify-center">
-            <p className="text-[11px] text-white/30">Select a document to preview it.</p>
+            <p className="text-[12px] text-gray-600">Select a document to preview it.</p>
           </div>
         ) : urlLoading || !url ? (
           <div className="h-full flex items-center justify-center"><LoadingSpinner /></div>
@@ -56,8 +56,8 @@ export function QuickDocumentsPanel({ tenderId }: { tenderId: string }) {
           <PdfCanvasViewer url={url} fileName={selected.file_name} onUrlExpired={() => getTenderDocumentUrl(selected)} />
         ) : (
           <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-4">
-            <p className="text-[11px] text-white/40">Preview isn't available here for .{selected.file_type.toLowerCase()} files.</p>
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px]" style={{ color: "#0696D7" }}>
+            <p className="text-[12px] text-gray-600">Preview isn't available here for .{selected.file_type.toLowerCase()} files.</p>
+            <a href={url} target="_blank" rel="noopener noreferrer" className="text-[12px] font-medium hover:underline" style={{ color: "#046C9B" }}>
               Open in new tab ↗
             </a>
           </div>
