@@ -587,6 +587,23 @@
   .pr-cpage-tfoot { display: block !important; flex-shrink: 0; margin-top: auto; order: 3; }
   .pr-cpage-tbody > tr      { display: block !important; }
   .pr-cpage-tbody > tr > td { display: block !important; box-sizing: border-box; }
+}
+
+/* ── Report typography, colour and layout below — unconditional, not
+   scoped to @media print. isPrinting shows this same markup directly on
+   screen too (see the .advisor-print comment above — Android's "Save as
+   PDF" doesn't reliably trigger @media print), so if these rules only
+   existed inside @media print, the on-screen preview would fall back to
+   completely unstyled default text: no heading sizes, no colour, no
+   spacing — headings, paragraphs and the reference list all rendering
+   at the same size with no visual separation, which is what actually
+   reads as "overlapping" content in the preview. Confirmed by reproducing
+   the report with mock data and inspecting the rendered DOM: every .pr-*
+   class below resolved to browser-default styling on screen because its
+   only rule lived behind this media query. Pagination-only concerns
+   (page setup, hiding chrome, forced page breaks, the exact-297mm-height
+   table layout) stay above, inside @media print, since those genuinely
+   only apply to real paginated output. */
 
   /* ── Disclaimer + Metadata — smaller body text ── */
   .pr-disclaimer-page .pr-p,
@@ -802,7 +819,6 @@
   .pr-disclaimer-page .pr-p  { font-size: 7.5pt; color: #888; font-weight: 300; line-height: 1.65; }
   .pr-disclaimer-page .pr-warn { font-size: 7.5pt; }
   .pr-disclaimer-page .pr-section-number { color: #bbb; }
-}
 
 /* ── Framework detail page — light mode chart fixes ─────── */
 [data-theme="light"] .fw-chart text { fill: rgba(0,0,0,0.45) !important; }
