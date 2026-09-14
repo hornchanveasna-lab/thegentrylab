@@ -55,6 +55,54 @@ async function ensurePdfjsPolyfills() {
   }
 }
 
+/** Reassembles pdfjs text items into lines.
+ *
+ *  This used to `.join(" ")` every item on a page, which produced one
+ *  enormous line per page with no structure at all. That is fine for
+ *  full-text search and useless for anything that needs to know where a
+ *  clause heading starts — the clause parser (lib/clauses.ts) finds zero
+ *  clauses in text with no line breaks.
+ *
+ *  pdfjs marks the last item of each visual line with `hasEOL`. Some
+ *  producers never set it, so when a page comes back with no breaks at all
+ *  we fall back to grouping by the y-translation in each item's transform
+ *  matrix, which is what `hasEOL` is derived from anyway. */
+function itemsToLines(items: unknown[]): string {
+  interface TextItem { str: string; hasEOL?: boolean; transform?: number[] }
+  const texts = items.filter((it): it is TextItem => !!it && typeof it === "object" && "str" in it);
+  if (texts.length === 0) return "";
+
+  const lines: string[] = [];
+  let current = "";
+  let sawEOL = false;
+  for (const it of texts) {
+    current += it.str;
+    if (it.hasEOL) { lines.push(current); current = ""; sawEOL = true; }
+  }
+  if (current.trim()) lines.push(current);
+  if (sawEOL) return lines.map((l) => l.trimEnd()).join("\n").trim();
+
+  // Fallback: group by baseline. transform[5] is the y translation; items
+  // within half a line-height of each other sit on the same visual line.
+  const rows = new Map<number, { x: number; str: string }[]>();
+  for (const it of texts) {
+    const y = Math.round(it.transform?.[5] ?? 0);
+    const x = it.transform?.[4] ?? 0;
+    let key = y;
+    for (const existing of rows.keys()) {
+      if (Math.abs(existing - y) <= 2) { key = existing; break; }
+    }
+    const row = rows.get(key) ?? [];
+    row.push({ x, str: it.str });
+    rows.set(key, row);
+  }
+  return [...rows.entries()]
+    .sort((a, b) => b[0] - a[0]) // top of the page downwards
+    .map(([, row]) => row.sort((a, b) => a.x - b.x).map((c) => c.str).join("").trimEnd())
+    .filter((l) => l.trim())
+    .join("\n");
+}
+
 export async function extractPdf(buf: Buffer): Promise<ExtractedSection[]> {
   await ensurePdfjsPolyfills();
   const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -69,8 +117,7 @@ export async function extractPdf(buf: Buffer): Promise<ExtractedSection[]> {
   for (let i = 1; i <= doc.numPages; i++) {
     const page = await doc.getPage(i);
     const content = await page.getTextContent();
-    const text = content.items.map((it) => ("str" in it ? it.str : "")).join(" ");
-    sections.push({ pageNumber: i, sectionLabel: null, text });
+    sections.push({ pageNumber: i, sectionLabel: null, text: itemsToLines(content.items) });
   }
   return sections;
 }

@@ -4,7 +4,10 @@ import {
   useTender, useTenderDocuments, useTenderRequirements, useTenderChecklist, useTenderGaps, useTenderRisks,
   PROJECT_TYPE_LABELS, riskBand,
 } from "@/lib/tender-data";
-import { TenderShell, Card, KpiPanel, KpiTile, StatusBadge, LoadingSpinner } from "@/components/tender/shared";
+import {
+  TenderShell, Card, KpiPanel, KpiTile, StatusBadge, LoadingSpinner, PageLoading,
+  deadlineUrgency, formatDate, statusColor, linkCls, humanize,
+} from "@/components/tender/shared";
 
 interface AttentionBucket {
   key: string;
@@ -28,7 +31,7 @@ function TenderOverview() {
   const { data: gaps = [] } = useTenderGaps(tenderId);
   const { data: risks = [] } = useTenderRisks(tenderId);
 
-  if (!user) return <div className="min-h-screen bg-white" />;
+  if (!user) return <PageLoading />;
   if (isLoading || !tender) return <div className="min-h-screen bg-white"><LoadingSpinner /></div>;
 
   const docsProcessed = documents.filter((d) => d.status === "processed").length;
@@ -37,7 +40,8 @@ function TenderOverview() {
   const highGaps = gaps.filter((g) => g.severity === "high" && !g.resolved).length;
   const missingReqs = requirements.filter((r) => r.status === "missing_info").length;
   const missingChecklist = checklist.filter((c) => c.status === "missing_information").length;
-  const topRisks = risks.slice(0, 5);
+  const topRisks = [...risks].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
+  const urgency = deadlineUrgency(tender.submission_deadline);
 
   // Prioritized attention feed — only counts we can actually justify from real
   // status fields (no invented "needs action" state for anything else, e.g.
@@ -56,37 +60,46 @@ function TenderOverview() {
       title={tender.name}
       subtitle={
         <span>
-          {tender.client && <>{tender.client} · </>}
-          {tender.location && <>{tender.location} · </>}
-          {tender.project_type && PROJECT_TYPE_LABELS[tender.project_type]}
+          {[
+            tender.tender_reference,
+            tender.client,
+            tender.location,
+            tender.project_type && PROJECT_TYPE_LABELS[tender.project_type],
+          ].filter(Boolean).join(" · ") || "No project details recorded yet"}
         </span>
       }
       action={<StatusBadge value={tender.status} />}
     >
       <div className="mb-4">
-        <KpiPanel title="Project Health">
+        <KpiPanel title="Project health">
           <KpiTile
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" /><path d="M14 2v6h6" /></svg>}
-            value={<>{docsProcessed}<span className="text-gray-400 text-sm">/{documents.length}</span></>}
+            value={<>{docsProcessed}<span className="text-gray-500 text-[15px]">/{documents.length}</span></>}
             label="Documents processed"
+            hint={documents.length === 0 ? "Nothing uploaded yet" : `${documents.length - docsProcessed} still to process`}
           />
           <KpiTile
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M8 12.5l2.5 2.5L16 9" /></svg>}
-            value={<>{reqReady}<span className="text-gray-400 text-sm">/{requirements.length}</span></>}
+            value={<>{reqReady}<span className="text-gray-500 text-[15px]">/{requirements.length}</span></>}
             label="Requirements ready"
-            color="#22c55e"
+            color="#15803d"
+            hint={requirements.length === 0 ? "Not extracted yet" : `${Math.round((reqReady / requirements.length) * 100)}% complete`}
           />
           <KpiTile
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3 2 20h20L12 3Z" /><path d="M12 10v4" /></svg>}
             value={criticalGaps}
-            label={`Critical gaps · ${highGaps} high`}
-            color="#ef4444"
+            label="Critical gaps"
+            color="#b91c1c"
+            hint={`${highGaps} high-severity`}
           />
           <KpiTile
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></svg>}
-            value={tender.submission_deadline ? new Date(tender.submission_deadline).toLocaleDateString() : "—"}
-            label="Submission deadline"
-            color="#f97316"
+            // Days remaining is the number that changes a decision; the date
+            // itself is the supporting detail, not the headline.
+            value={urgency ? (urgency.days < 0 ? "Past" : urgency.days) : "—"}
+            label={urgency && urgency.days >= 0 ? "Days to deadline" : "Submission deadline"}
+            color={urgency?.color ?? "#4b5563"}
+            hint={tender.submission_deadline ? formatDate(tender.submission_deadline) : "No deadline set"}
           />
         </KpiPanel>
       </div>
@@ -94,19 +107,22 @@ function TenderOverview() {
       <div className="mb-4">
         <Card title="Attention required">
           {documents.length === 0 ? (
-            <p className="text-[12px] text-gray-400">Upload the tender package to get started.</p>
+            <p className="text-[13px] text-gray-600">
+              Upload the tender package to get started —{" "}
+              <Link to="/tender/$tenderId/documents" params={{ tenderId }} className={linkCls}>go to Documents →</Link>
+            </p>
           ) : attention.length === 0 ? (
-            <p className="text-[12px] text-gray-400">Nothing needs attention right now.</p>
+            <p className="text-[13px] text-gray-600">Nothing needs attention right now.</p>
           ) : (
-            <div className="flex flex-col divide-y divide-gray-100">
+            <div className="flex flex-col divide-y divide-gray-100 -my-1">
               {attention.map((b) => (
                 <Link key={b.key} to={b.to} params={{ tenderId }}
-                  className="flex items-center justify-between gap-3 py-2.5 hover:bg-gray-50 transition-colors -mx-2 px-2 rounded-lg">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <StatusBadge value={b.severity} />
-                    <p className="text-[12px] text-gray-700 truncate">{b.label}</p>
-                  </div>
-                  <span className="text-[13px] font-bold text-gray-500 shrink-0">{b.count}</span>
+                  className="flex items-center justify-between gap-3 py-2.5 hover:bg-gray-50 transition-colors -mx-2 px-2 rounded-md">
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <span className="w-1.5 h-3.5 rounded-sm shrink-0" style={{ backgroundColor: statusColor(b.severity) }} />
+                    <span className="text-[13px] text-gray-800 truncate">{b.label}</span>
+                  </span>
+                  <span className="text-[13px] font-semibold text-gray-900 shrink-0 tabular-nums">{b.count}</span>
                 </Link>
               ))}
             </div>
@@ -115,33 +131,43 @@ function TenderOverview() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        <Card title="Top risks" action={<Link to="/tender/$tenderId/risks" params={{ tenderId }} className="text-[10px] text-[#0696D7]">View all →</Link>}>
+        <Card title="Top risks" action={<Link to="/tender/$tenderId/risks" params={{ tenderId }} className={linkCls}>View all →</Link>}>
           {topRisks.length === 0 ? (
-            <p className="text-[12px] text-gray-400">No risks identified yet — run the Risk Register once documents are processed.</p>
+            <p className="text-[13px] text-gray-600">No risks identified yet — the register fills in once documents are processed.</p>
           ) : (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-3">
               {topRisks.map((r) => (
                 <div key={r.id} className="flex items-start justify-between gap-3">
-                  <p className="text-[12px] text-gray-600 flex-1">{r.description}</p>
-                  <StatusBadge value={riskBand(r.risk_score).toLowerCase()} label={`${riskBand(r.risk_score)} (${r.risk_score})`} />
+                  <p className="text-[13px] text-gray-700 flex-1 leading-snug">{r.description}</p>
+                  <span className="shrink-0">
+                    <StatusBadge value={riskBand(r.risk_score).toLowerCase()} label={`${riskBand(r.risk_score)} (${r.risk_score})`} />
+                  </span>
                 </div>
               ))}
             </div>
           )}
         </Card>
 
-        <Card title="Requirements by status">
+        <Card title="Requirements by status" action={<Link to="/tender/$tenderId/requirements" params={{ tenderId }} className={linkCls}>View all →</Link>}>
           {requirements.length === 0 ? (
-            <p className="text-[12px] text-gray-400">No requirements extracted yet.</p>
+            <p className="text-[13px] text-gray-600">No requirements extracted yet.</p>
           ) : (
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-3">
               {(["open", "in_progress", "missing_info", "ready", "approved"] as const).map((s) => {
                 const count = requirements.filter((r) => r.status === s).length;
                 if (count === 0) return null;
+                const pct = Math.round((count / requirements.length) * 100);
                 return (
-                  <div key={s} className="flex items-center justify-between gap-3">
-                    <StatusBadge value={s} />
-                    <span className="text-[12px] text-gray-500">{count}</span>
+                  <div key={s}>
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <StatusBadge value={s} label={humanize(s)} />
+                      <span className="text-[12px] text-gray-600 tabular-nums shrink-0">{count} · {pct}%</span>
+                    </div>
+                    {/* A bare count gives no sense of proportion; the bar shows
+                        at a glance how much of the package each state holds. */}
+                    <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: statusColor(s) }} />
+                    </div>
                   </div>
                 );
               })}

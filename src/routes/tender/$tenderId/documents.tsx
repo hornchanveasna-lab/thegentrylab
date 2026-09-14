@@ -7,7 +7,10 @@ import {
   updateTenderDocumentCategory, processTenderDocument, importTenderDocumentFromLink,
   getTenderDocumentUrl, TENDER_DOC_CATEGORIES, type TenderDocCategory, type TenderDocument,
 } from "@/lib/tender-data";
-import { TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, humanize } from "@/components/tender/shared";
+import {
+  TenderShell, Card, StatusBadge, EmptyState, LoadingSpinner, PageLoading, Button, Banner,
+  Modal, humanize, selectCls, inputCls, ACCENT, ACCENT_TEXT,
+} from "@/components/tender/shared";
 import { PdfCanvasViewer, type PdfScrollTarget } from "@/components/tender/PdfCanvasViewer";
 
 export const Route = createFileRoute("/tender/$tenderId/documents")({
@@ -46,27 +49,22 @@ function UploadProgressBar({ progress, onCancel }: { progress: UploadProgress; o
   const etaSec = rate > 0 ? remainingBytes / rate : null;
 
   return (
-    <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+    <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
       <div className="flex items-center justify-between mb-2 gap-3">
-        <p className="text-[11px] text-gray-500">
+        <p className="text-[12px] text-gray-700">
           Uploading {filesDone}/{filesTotal} file{filesTotal !== 1 ? "s" : ""} · {formatBytes(bytesDone)} / {formatBytes(bytesTotal)}
         </p>
         <div className="flex items-center gap-3 shrink-0">
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[12px] text-gray-600 tabular-nums">
             {etaSec !== null ? `~${formatEta(etaSec)} left` : "estimating…"}
           </p>
-          <button
-            onClick={onCancel}
-            className="text-[10px] text-gray-400 hover:text-red-400 transition-colors"
-          >
-            Cancel
-          </button>
+          <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
         </div>
       </div>
       <div className="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, backgroundColor: "#0696D7" }}
+          style={{ width: `${pct}%`, backgroundColor: ACCENT }}
         />
       </div>
     </div>
@@ -126,7 +124,7 @@ function findDocFolder(tree: DocTreeFolder, path: string): DocTreeFolder | undef
 
 function FolderIcon({ size = 16 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: "#0696D7" }}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color: ACCENT }}>
       <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" fill="currentColor" fillOpacity="0.18" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );
@@ -138,7 +136,7 @@ function Breadcrumbs({ rootLabel, path, onNavigate }: { rootLabel: string; path:
     <div className="flex items-center gap-1.5 mb-3 flex-wrap text-[12px]">
       <button
         onClick={() => onNavigate("")}
-        className={`font-semibold transition-colors ${crumbs.length === 0 ? "text-gray-900" : "text-gray-500 hover:text-[#0696D7]"}`}
+        className={`font-medium transition-colors ${crumbs.length === 0 ? "text-gray-900" : "text-gray-600 hover:text-[#046C9B]"}`}
       >
         {rootLabel}
       </button>
@@ -147,10 +145,10 @@ function Breadcrumbs({ rootLabel, path, onNavigate }: { rootLabel: string; path:
         const isLast = i === crumbs.length - 1;
         return (
           <span key={segPath} className="flex items-center gap-1.5">
-            <span className="text-gray-300">/</span>
+            <span className="text-gray-400" aria-hidden="true">/</span>
             <button
               onClick={() => onNavigate(segPath)}
-              className={`transition-colors truncate max-w-[220px] ${isLast ? "text-gray-900 font-semibold" : "text-gray-500 hover:text-[#0696D7]"}`}
+              className={`transition-colors truncate max-w-[220px] ${isLast ? "text-gray-900 font-medium" : "text-gray-600 hover:text-[#046C9B]"}`}
             >
               {c}
             </button>
@@ -161,8 +159,8 @@ function Breadcrumbs({ rootLabel, path, onNavigate }: { rootLabel: string; path:
   );
 }
 
-function FolderBrowser({ tree, tenderId, onChanged, selectedId, onSelectFile }: {
-  tree: DocTreeFolder; tenderId: string; onChanged: () => void;
+function FolderBrowser({ tree, onChanged, selectedId, onSelectFile }: {
+  tree: DocTreeFolder; onChanged: () => void;
   selectedId: string | null; onSelectFile: (doc: TenderDocument) => void;
 }) {
   const [currentPath, setCurrentPath] = useState("");
@@ -175,32 +173,32 @@ function FolderBrowser({ tree, tenderId, onChanged, selectedId, onSelectFile }: 
       <Breadcrumbs rootLabel="Documents" path={currentPath} onNavigate={setCurrentPath} />
       <Card>
         {isEmpty ? (
-          <p className="text-[12px] text-gray-400 py-6 text-center">This folder is empty.</p>
+          <p className="text-[13px] text-gray-600 py-6 text-center">This folder is empty.</p>
         ) : (
           <div className="overflow-x-auto -mx-5 -mt-1">
             {/* table-fixed makes the unwidthed Name column actually shrink
                 (and truncate) to fit, instead of the browser sizing every
                 column by content and pushing Category/Status/Actions off
                 to the right behind a horizontal scrollbar. */}
-            <table className="w-full text-[12px] border-collapse table-fixed">
+            <table className="w-full text-[13px] border-collapse table-fixed">
               <thead>
                 <tr className="text-left border-b border-gray-200">
-                  <th className="text-[9px] font-medium text-gray-400 pb-2 pl-5 pr-3">Name</th>
-                  <th className="text-[9px] font-medium text-gray-400 pb-2 pr-3 w-[150px]">Category</th>
-                  <th className="text-[9px] font-medium text-gray-400 pb-2 pr-3 w-[90px]">Status</th>
-                  <th className="text-[9px] font-medium text-gray-400 pb-2 pr-5 w-[110px] text-right">Actions</th>
+                  <th className="text-[12px] font-medium text-gray-600 pb-2 pl-5 pr-3">Name</th>
+                  <th className="text-[12px] font-medium text-gray-600 pb-2 pr-3 w-[155px]">Category</th>
+                  <th className="text-[12px] font-medium text-gray-600 pb-2 pr-3 w-[105px]">Status</th>
+                  <th className="text-[12px] font-medium text-gray-600 pb-2 pr-5 w-[125px] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {current.folders.map((sub) => (
                   <tr key={sub.path} onClick={() => setCurrentPath(sub.path)} className="cursor-pointer hover:bg-gray-50 transition-colors">
-                    <td colSpan={4} className="py-2 pl-5 pr-3">
+                    <td colSpan={4} className="py-2.5 pl-5 pr-5">
                       <div className="flex items-center gap-2">
-                        <FolderIcon size={14} />
-                        <span className="font-semibold truncate flex-1">{sub.name}</span>
-                        <span className="text-[9px] text-gray-400 shrink-0">{countTreeFiles(sub)} file{countTreeFiles(sub) !== 1 ? "s" : ""}</span>
-                        <svg width="12" height="12" viewBox="0 0 10 10" className="shrink-0">
-                          <path d="M2 1 L8 5 L2 9" fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <FolderIcon size={15} />
+                        <span className="font-medium text-gray-900 truncate flex-1">{sub.name}</span>
+                        <span className="text-[11px] text-gray-500 shrink-0">{countTreeFiles(sub)} file{countTreeFiles(sub) !== 1 ? "s" : ""}</span>
+                        <svg width="12" height="12" viewBox="0 0 10 10" className="shrink-0 text-gray-400">
+                          <path d="M2 1 L8 5 L2 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
                     </td>
@@ -210,7 +208,6 @@ function FolderBrowser({ tree, tenderId, onChanged, selectedId, onSelectFile }: 
                   <DocumentRow
                     key={doc.id}
                     doc={doc}
-                    tenderId={tenderId}
                     onChanged={onChanged}
                     selected={doc.id === selectedId}
                     onSelect={() => onSelectFile(doc)}
@@ -252,7 +249,7 @@ function DocumentPreviewPane({ doc, scrollTarget, onScrollTargetConsumed }: {
     return (
       <Card>
         <div className="h-[70vh] flex items-center justify-center">
-          <p className="text-[12px] text-gray-400">Select a document to view it here.</p>
+          <p className="text-[13px] text-gray-600">Select a document to view it here.</p>
         </div>
       </Card>
     );
@@ -265,21 +262,23 @@ function DocumentPreviewPane({ doc, scrollTarget, onScrollTargetConsumed }: {
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="min-w-0 flex items-center gap-2">
           <FileIcon fileType={doc.file_type} />
-          <p className="text-[12px] font-semibold truncate">{doc.file_name}</p>
+          <p className="text-[13px] font-medium text-gray-900 truncate">{doc.file_name}</p>
         </div>
         {url && (
           <a href={url} target="_blank" rel="noopener noreferrer"
-            className="shrink-0 text-[9px] text-gray-400 hover:text-[#0696D7] transition-colors">
+            className="shrink-0 text-[12px] font-medium text-gray-600 hover:text-[#046C9B] transition-colors">
             Open in new tab ↗
           </a>
         )}
       </div>
-      <div className={`rounded-xl overflow-hidden bg-black/20 border border-gray-200 ${ext === "pdf" ? "h-[75vh]" : "h-[70vh]"}`}>
+      {/* bg-gray-50, not the old bg-black/20 — that was a dark-theme leftover
+          that only rendered light via an !important sweep in styles.css. */}
+      <div className={`rounded-lg overflow-hidden bg-gray-50 border border-gray-200 ${ext === "pdf" ? "h-[75vh]" : "h-[70vh]"}`}>
         {loading ? (
           <div className="h-full flex items-center justify-center"><LoadingSpinner /></div>
         ) : error ? (
           <div className="h-full flex items-center justify-center px-6 text-center">
-            <p className="text-[12px] text-red-600">{error}</p>
+            <p className="text-[13px] text-red-700">{error}</p>
           </div>
         ) : !url ? null : ext === "pdf" ? (
           <div className="h-full p-3">
@@ -303,9 +302,9 @@ function DocumentPreviewPane({ doc, scrollTarget, onScrollTargetConsumed }: {
           />
         ) : (
           <div className="h-full flex flex-col items-center justify-center gap-2 px-6 text-center">
-            <p className="text-[12px] text-gray-400">Preview isn't available for .{ext} files.</p>
+            <p className="text-[13px] text-gray-600">Preview isn't available for .{ext} files.</p>
             <a href={url} target="_blank" rel="noopener noreferrer"
-              className="text-[10px]" style={{ color: "#0696D7" }}>
+              className="text-[12px] font-medium hover:underline" style={{ color: ACCENT_TEXT }}>
               Open in new tab ↗
             </a>
           </div>
@@ -343,7 +342,7 @@ function TenderDocuments() {
   const doneBytesRef = useRef(0);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  if (!user || !orgId) return <div className="min-h-screen bg-white" />;
+  if (!user || !orgId) return <PageLoading />;
 
   async function processUploadQueue() {
     if (!orgId) return;
@@ -453,9 +452,14 @@ function TenderDocuments() {
   }
 
   const tree = buildDocTree(documents);
+  const processed = documents.filter((d) => d.status === "processed").length;
+  const failed = documents.filter((d) => d.status === "failed").length;
 
   return (
     <TenderShell tenderId={tenderId} title="Documents"
+      subtitle={documents.length > 0
+        ? `${documents.length} file${documents.length === 1 ? "" : "s"} · ${processed} processed${failed > 0 ? ` · ${failed} failed` : ""}`
+        : undefined}
       action={
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" multiple className="hidden"
@@ -463,23 +467,15 @@ function TenderDocuments() {
           <input ref={folderInputRef} type="file" multiple className="hidden"
             {...{ webkitdirectory: "true", directory: "true" } as Record<string, string>}
             onChange={(e) => handleFiles(e.target.files)} />
-          <button onClick={() => fileInputRef.current?.click()}
-            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold bg-gray-100 hover:bg-gray-200 transition-colors">
-            Upload Files
-          </button>
-          <button onClick={() => folderInputRef.current?.click()}
-            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold"
-            style={{ backgroundColor: "#0696D7", color: "#ffffff" }}>
-            {uploading ? "Add more…" : "Upload Folder"}
-          </button>
-          <button onClick={() => setLinkModalOpen(true)} disabled={linkImporting}
-            className="px-3.5 py-2.5 rounded-xl text-[11px] font-bold bg-gray-100 hover:bg-gray-200 disabled:opacity-40 transition-colors">
-            Add by Link
-          </button>
+          <Button onClick={() => fileInputRef.current?.click()}>Upload files</Button>
+          <Button onClick={() => setLinkModalOpen(true)} disabled={linkImporting}>Add by link</Button>
+          <Button variant="primary" onClick={() => folderInputRef.current?.click()}>
+            {uploading ? "Add more…" : "Upload folder"}
+          </Button>
         </div>
       }
     >
-      {uploadError && <p className="text-[12px] text-red-600 mb-4">{uploadError}</p>}
+      {uploadError && <Banner tone="error" action={<Button size="sm" variant="ghost" onClick={() => setUploadError(null)}>Dismiss</Button>}>{uploadError}</Banner>}
 
       {uploadProgress && <UploadProgressBar progress={uploadProgress} onCancel={cancelUpload} />}
 
@@ -496,12 +492,12 @@ function TenderDocuments() {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
-        className="relative rounded-2xl transition-colors"
+        className="relative rounded-lg transition-colors"
       >
         {dragOver && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed pointer-events-none"
-            style={{ borderColor: "#0696D7", backgroundColor: "color-mix(in srgb, #0696D7 8%, transparent)" }}>
-            <p className="text-[13px] font-bold" style={{ color: "#0696D7" }}>Drop files to upload</p>
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg border-2 border-dashed pointer-events-none"
+            style={{ borderColor: ACCENT, backgroundColor: "color-mix(in srgb, #0696D7 8%, white)" }}>
+            <p className="text-[14px] font-semibold" style={{ color: ACCENT_TEXT }}>Drop files to upload</p>
           </div>
         )}
 
@@ -509,13 +505,12 @@ function TenderDocuments() {
           <LoadingSpinner />
         ) : documents.length === 0 ? (
           <EmptyState title="No documents uploaded yet"
-            hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use Upload Files / Upload Folder / Add by Link above. ZIP and RAR archives auto-expand into their own folder once processed." />
+            hint="Upload the full tender package — Instructions to Tenderers, conditions, specs, drawings, BOQ, forms. Drag and drop files here, or use the buttons above. ZIP and RAR archives auto-expand into their own folder once processed." />
         ) : (
           <div className="flex flex-col lg:flex-row gap-4 items-start">
-            <div className="w-full lg:w-[380px] shrink-0">
+            <div className="w-full lg:w-[400px] shrink-0">
               <FolderBrowser
                 tree={tree}
-                tenderId={tenderId}
                 onChanged={() => queryClient.invalidateQueries({ queryKey: ["tender_documents", tenderId] })}
                 selectedId={selectedDoc?.id ?? null}
                 onSelectFile={setSelectedDoc}
@@ -540,34 +535,29 @@ function LinkImportModal({ uploading, onCancel, onSubmit }: {
 }) {
   const [url, setUrl] = useState("");
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onCancel}>
-      <div className="w-full max-w-md rounded-2xl bg-[#0d0d10] border border-gray-200 p-5" onClick={(e) => e.stopPropagation()}>
-        <p className="text-[14px] font-bold mb-1">Add document by link</p>
-        <p className="text-[11px] text-gray-400 mb-4">
-          Paste a Google Drive or OneDrive/SharePoint share link. Make sure it's set to "Anyone with the link can view" — this only works for a single file, not a folder.
-        </p>
-        <input
-          autoFocus
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && url.trim() && !uploading) onSubmit(url); }}
-          placeholder="https://drive.google.com/file/d/..."
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[12px] mb-4 outline-none focus:border-gray-200"
-        />
-        <div className="flex items-center justify-end gap-2">
-          <button onClick={onCancel} disabled={uploading}
-            className="px-3.5 py-2 rounded-xl text-[11px] font-bold text-gray-500 hover:text-gray-900 transition-colors disabled:opacity-40">
-            Cancel
-          </button>
-          <button onClick={() => onSubmit(url)} disabled={uploading || !url.trim()}
-            className="px-3.5 py-2 rounded-xl text-[11px] font-bold disabled:opacity-40"
-            style={{ backgroundColor: "#0696D7", color: "#ffffff" }}>
+    <Modal
+      title="Add document by link"
+      description={<>Paste a Google Drive or OneDrive/SharePoint share link. Make sure it's set to “Anyone with the link can view” — this only works for a single file, not a folder.</>}
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onCancel} disabled={uploading}>Cancel</Button>
+          <Button variant="primary" onClick={() => onSubmit(url)} disabled={uploading || !url.trim()}>
             {uploading ? "Importing…" : "Import"}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </>
+      }
+    >
+      <input
+        autoFocus
+        type="url"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && url.trim() && !uploading) onSubmit(url); }}
+        placeholder="https://drive.google.com/file/d/..."
+        className={inputCls}
+      />
+    </Modal>
   );
 }
 
@@ -575,31 +565,24 @@ function RemoveConfirmModal({ fileName, onCancel, onConfirm }: {
   fileName: string; onCancel: () => void; onConfirm: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4" onClick={onCancel}>
-      <div className="w-full max-w-md rounded-2xl bg-[#0d0d10] border border-gray-200 p-5" onClick={(e) => e.stopPropagation()}>
-        <p className="text-[14px] font-bold mb-1">Remove document?</p>
-        <p className="text-[11px] text-gray-400 mb-5">
-          <span className="text-gray-600">{fileName}</span> and its extracted chunks will be removed permanently. This can't be undone.
-        </p>
-        <div className="flex items-center justify-end gap-2">
-          <button onClick={onCancel}
-            className="px-3.5 py-2 rounded-xl text-[11px] font-bold text-gray-500 hover:text-gray-900 transition-colors">
-            Cancel
-          </button>
-          <button onClick={onConfirm}
-            className="px-3.5 py-2 rounded-xl text-[11px] font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
-            Remove forever
-          </button>
-        </div>
-      </div>
-    </div>
+    <Modal
+      title="Remove document?"
+      description={<><span className="font-medium text-gray-900">{fileName}</span> and its extracted chunks will be removed permanently. This can't be undone.</>}
+      onClose={onCancel}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button variant="danger" onClick={onConfirm}>Remove forever</Button>
+        </>
+      }
+    />
   );
 }
 
 function FileIcon({ fileType }: { fileType: string }) {
   const ext = fileType.toLowerCase();
-  const color = ext === "pdf" ? "#ef4444" : ext === "xlsx" || ext === "xls" || ext === "csv" ? "#22c55e"
-    : ext === "docx" || ext === "doc" ? "#3b82f6" : ext === "zip" || ext === "rar" ? "#f59e0b" : "rgba(0,0,0,0.3)";
+  const color = ext === "pdf" ? "#b91c1c" : ext === "xlsx" || ext === "xls" || ext === "csv" ? "#15803d"
+    : ext === "docx" || ext === "doc" ? "#1d4ed8" : ext === "zip" || ext === "rar" ? "#b45309" : "#6b7280";
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0" style={{ color }}>
       <path d="M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Z" fill="currentColor" fillOpacity="0.15" stroke="currentColor" strokeWidth="1.5" />
@@ -609,7 +592,7 @@ function FileIcon({ fileType }: { fileType: string }) {
 }
 
 function DocumentRow({ doc, onChanged, selected, onSelect }: {
-  doc: TenderDocument; tenderId: string; onChanged: () => void; selected: boolean; onSelect: () => void;
+  doc: TenderDocument; onChanged: () => void; selected: boolean; onSelect: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
   const [retrying, setRetrying] = useState(false);
@@ -622,50 +605,48 @@ function DocumentRow({ doc, onChanged, selected, onSelect }: {
   }
 
   return (
-    <tr className={`transition-colors ${selected ? "bg-gray-50" : "hover:bg-gray-50"}`}>
-      <td className="py-2 pl-5 pr-3 min-w-0">
+    <tr className={`transition-colors ${selected ? "bg-[#0696D7]/[0.07]" : "hover:bg-gray-50"}`}>
+      <td className="py-2.5 pl-5 pr-3 min-w-0">
         <button onClick={onSelect} title="Preview document" className="flex items-center gap-2 w-full text-left min-w-0">
           <FileIcon fileType={doc.file_type} />
-          <span className={`truncate font-medium transition-colors ${selected ? "text-[#0696D7]" : "hover:text-[#0696D7]"}`}>
+          <span className={`truncate font-medium transition-colors ${selected ? "text-[#046C9B]" : "text-gray-900 hover:text-[#046C9B]"}`}>
             {doc.file_name}
           </span>
         </button>
         {doc.status === "failed" && doc.processing_error && (
-          <p className="text-[9px] text-red-500 mt-0.5 truncate pl-[22px]" title={doc.processing_error}>{doc.processing_error}</p>
+          <p className="text-[11px] text-red-700 mt-0.5 truncate pl-[24px]" title={doc.processing_error}>{doc.processing_error}</p>
         )}
       </td>
-      <td className="py-2 pr-3">
-        <div className="flex items-center gap-1.5">
-          <select
-            value={doc.doc_category ?? ""}
-            onChange={(e) => updateTenderDocumentCategory(doc.id, e.target.value as TenderDocCategory).then(onChanged)}
-            className="bg-gray-50 border border-gray-200 rounded-lg px-1.5 py-1 text-[10px] text-gray-500 max-w-full"
-          >
-            <option value="" className="bg-white text-gray-900">Uncategorized</option>
-            {TENDER_DOC_CATEGORIES.map((c) => <option key={c} value={c} className="bg-white text-gray-900">{humanize(c)}</option>)}
-          </select>
-        </div>
-        {doc.discipline && <span className="text-[9px] text-gray-400">{doc.discipline}</span>}
-      </td>
-      <td className="py-2 pr-3"><StatusBadge value={doc.status} /></td>
-      <td className="py-2 pr-5 text-right whitespace-nowrap">
-        {(doc.status === "failed" || doc.status === "uploaded") && (
-          <button
-            disabled={retrying}
-            title={doc.status === "uploaded" ? "Still shows Uploaded? Processing may have timed out (large zip/rar archives can exceed the 60s limit) — click to retry." : undefined}
-            onClick={async () => { setRetrying(true); await processTenderDocument(doc.id); onChanged(); setRetrying(false); }}
-            className="text-gray-400 hover:text-gray-900 transition-colors text-[10px] mr-2.5"
-          >
-            {retrying ? "Retrying…" : "Retry"}
-          </button>
-        )}
-        <button
-          disabled={deleting}
-          onClick={() => setConfirmOpen(true)}
-          className="transition-colors text-[10px] text-gray-400 hover:text-red-400"
+      <td className="py-2.5 pr-3">
+        <select
+          value={doc.doc_category ?? ""}
+          aria-label={`Category for ${doc.file_name}`}
+          onChange={(e) => updateTenderDocumentCategory(doc.id, e.target.value as TenderDocCategory).then(onChanged)}
+          className={`${selectCls} max-w-full`}
         >
-          {deleting ? "Removing…" : "Remove"}
-        </button>
+          <option value="">Uncategorized</option>
+          {TENDER_DOC_CATEGORIES.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}
+        </select>
+        {doc.discipline && <span className="block text-[11px] text-gray-500 mt-0.5">{doc.discipline}</span>}
+      </td>
+      <td className="py-2.5 pr-3"><StatusBadge value={doc.status} /></td>
+      <td className="py-2.5 pr-5 text-right whitespace-nowrap">
+        <span className="inline-flex items-center gap-1 justify-end">
+          {(doc.status === "failed" || doc.status === "uploaded") && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={retrying}
+              title={doc.status === "uploaded" ? "Still shows Uploaded? Processing may have timed out (large zip/rar archives can exceed the 60s limit) — click to retry." : undefined}
+              onClick={async () => { setRetrying(true); await processTenderDocument(doc.id); onChanged(); setRetrying(false); }}
+            >
+              {retrying ? "Retrying…" : "Retry"}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" disabled={deleting} onClick={() => setConfirmOpen(true)}>
+            {deleting ? "Removing…" : "Remove"}
+          </Button>
+        </span>
         {confirmOpen && (
           <RemoveConfirmModal
             fileName={doc.file_name}

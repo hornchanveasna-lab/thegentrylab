@@ -23,7 +23,7 @@ export async function getAuthedUserId(env: TenderEnv, authHeader: string | undef
       headers: { Authorization: authHeader, apikey: env.serviceKey },
     });
     if (!res.ok) return null;
-    const { id } = await res.json();
+    const { id } = await res.json() as { id?: string };
     return id ?? null;
   } catch {
     return null;
@@ -35,7 +35,7 @@ async function sbGet<T>(env: TenderEnv, path: string): Promise<T[]> {
     headers: { apikey: env.serviceKey, Authorization: `Bearer ${env.serviceKey}`, Accept: "application/json" },
   });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return res.json() as Promise<T[]>;
 }
 
 export async function sbPatch(env: TenderEnv, path: string, body: Record<string, unknown>): Promise<void> {
@@ -60,7 +60,7 @@ export async function sbPost<T>(env: TenderEnv, path: string, body: Record<strin
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 /** Returns the tender's org_id if `userId` is a member of it, otherwise null. */
