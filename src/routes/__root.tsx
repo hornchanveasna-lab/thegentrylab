@@ -5,6 +5,7 @@ import {
   createRootRouteWithContext,
   useRouter,
   useRouterState,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { AuthProvider } from "@/lib/auth";
@@ -48,8 +49,9 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error(error);
+  const message = error instanceof Error ? error.message : undefined;
   const router = useRouter();
   useEffect(() => {
     console.error("Root error boundary caught:", error);
@@ -62,9 +64,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-white/50">
           Something went wrong. You can try refreshing or head back home.
         </p>
-        {error?.message && (
+        {message && (
           <p className="mt-3 font-mono text-[10px] text-red-400/70 bg-red-900/10 border border-red-900/20 rounded px-3 py-2 text-left break-all">
-            {error.message}
+            {message}
           </p>
         )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
