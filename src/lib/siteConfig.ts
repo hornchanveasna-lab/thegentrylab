@@ -126,7 +126,7 @@ export const DEFAULT_CONFIG: SiteConfig = {
 
   refreshSchedule: "weekly",
 
-  advisoryEmail:   "advisory@thegentrylab.io",
+  advisoryEmail:   "advisory.thegentrylab@gmail.com",
   contactOffice:   "Phnom Penh, Cambodia",
   contactCity:     "Phnom Penh",
   contactPhone:    "",

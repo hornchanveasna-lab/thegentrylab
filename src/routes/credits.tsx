@@ -488,7 +488,7 @@ function CreditsPage() {
               { q: "Do credits expire?", a: "No. Purchased credits never expire. New user welcome credits (500 free) also carry over indefinitely." },
               { q: "What are my free credits?", a: "Every new account gets 500 free credits — enough for 6 standard briefs or 25 chat messages. No card required." },
               { q: "How is the price calculated?", a: "Credit prices are based on actual compute costs per request — longer, more complex briefs consume more compute and cost more credits. Prices are set to cover infrastructure and ongoing research into Cambodia's industrial data." },
-              { q: "Can I get a refund?", a: "Unused credits can be refunded within 30 days of purchase. Contact advisory@thegentrylab.io." },
+              { q: "Can I get a refund?", a: "Unused credits can be refunded within 30 days of purchase. Contact advisory.thegentrylab@gmail.com." },
             ].map((item, i) => (
               <div key={i} className="p-4 rounded-xl"
                 style={{ backgroundColor: c.cardBg, border: `1px solid ${c.cardBorder}` }}>

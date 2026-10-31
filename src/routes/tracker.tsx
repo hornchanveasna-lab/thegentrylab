@@ -280,7 +280,7 @@ function ProjectDetail({ project, onClose }: { project: TrackedProject; onClose:
       {/* ── Advisory CTA ── */}
       <div className="px-5 py-4 bg-[#0e0e10]">
         <a
-          href={`mailto:advisory@thegentrylab.io?subject=Project%20intel%20-%20${encodeURIComponent(project.name)}`}
+          href={`mailto:advisory.thegentrylab@gmail.com?subject=Project%20intel%20-%20${encodeURIComponent(project.name)}`}
           className="flex items-center justify-between group"
         >
           <div>

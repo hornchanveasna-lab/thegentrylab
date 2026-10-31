@@ -23,7 +23,7 @@ export const Route = createFileRoute("/research/sez-landscape-2026")({
   component: SezLandscapeBrief,
 });
 
-const EMAIL = "advisory@thegentrylab.io";
+const EMAIL = "advisory.thegentrylab@gmail.com";
 
 function isSezOrPark(s: MapSite) {
   return s.layer === "investment" && (s.kind === "sez" || s.kind === "park");

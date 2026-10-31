@@ -20,7 +20,7 @@ export const Route = createFileRoute("/contact")({
   component: ContactPage,
 });
 
-const EMAIL = "advisory@thegentrylab.io";
+const EMAIL = "advisory.thegentrylab@gmail.com";
 
 function ContactPage() {
   useSmoothScroll();

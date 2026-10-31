@@ -1919,7 +1919,7 @@ function PRHeader({ title, refId, dateStr }: { title: string; refId: string; dat
 function PRFooter({ pageNum, refId, year }: { pageNum: number; refId: string; year: number }) {
   return (
     <footer className="pr-running-footer">
-      <div className="pr-rf-left">© {year} The Gentry Lab · advisory@thegentrylab.io</div>
+      <div className="pr-rf-left">© {year} The Gentry Lab · advisory.thegentrylab@gmail.com</div>
       <div className="pr-rf-page">{pageNum}</div>
       <div className="pr-rf-right">Ref #{refId} · AI-generated advisory. Verify independently.</div>
     </footer>
@@ -2301,7 +2301,7 @@ function PrintReport({
         <div className="pr-foreword-sig">
           <strong>The Gentry Lab Advisory Team</strong><br />
           AI Industrial Advisor Platform · Phnom Penh, Cambodia<br />
-          advisory@thegentrylab.io · thegentrylab.io
+          advisory.thegentrylab@gmail.com · thegentrylab.io
         </div>
       </ContentPage>
 
@@ -2616,7 +2616,7 @@ function PrintReport({
               { label: "Jurisdiction",      value: "Kingdom of Cambodia" },
               { label: "Platform",          value: "GentryLab AI Industrial Advisor" },
               { label: "Platform URL",      value: "thegentrylab.io/tools/advisor" },
-              { label: "Contact",           value: "advisory@thegentrylab.io" },
+              { label: "Contact",           value: "advisory.thegentrylab@gmail.com" },
             ].map(m => (
               <div key={m.label} style={{ display: "flex", gap: "8pt", alignItems: "flex-start", borderBottom: "0.5pt solid #f0f0f0", padding: "4pt 0" }}>
                 <span style={{ fontFamily: PF.head, fontSize: "7pt", color: "#aaa", minWidth: "80pt", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.08em", paddingTop: "1pt" }}>{m.label}</span>
@@ -2675,7 +2675,7 @@ function PrintReport({
             <div style={{ fontFamily: PF.head, fontSize: "6.5pt", color: "#aaa", letterSpacing: "0.1em", marginTop: "1pt" }}>AI Industrial Advisor · Kingdom of Cambodia</div>
           </div>
           <div style={{ textAlign: "right", fontFamily: "monospace", fontSize: "6.5pt", color: "#bbb", lineHeight: 1.7 }}>
-            <div>advisory@thegentrylab.io</div>
+            <div>advisory.thegentrylab@gmail.com</div>
             <div>thegentrylab.io</div>
             <div>© {year} The Gentry Lab</div>
           </div>
@@ -2722,7 +2722,7 @@ function PrintReport({
 
         <div style={{ marginTop: "24pt", padding: "10pt 14pt", backgroundColor: "#f8f8f8", border: "1pt solid #e8e8e8", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ fontFamily: PF.head, fontSize: "7pt", color: "#cc3300", fontWeight: 800, letterSpacing: "0.22em", textTransform: "uppercase" }}>THE GENTRY LAB</div>
-          <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "#aaa" }}>© {year} The Gentry Lab · thegentrylab.io · advisory@thegentrylab.io</div>
+          <div style={{ fontFamily: "monospace", fontSize: "6.5pt", color: "#aaa" }}>© {year} The Gentry Lab · thegentrylab.io · advisory.thegentrylab@gmail.com</div>
         </div>
       </ContentPage>
 
@@ -2765,7 +2765,7 @@ function PrintReport({
         <div style={{ position: "relative", zIndex: 1, borderTop: "0.75pt solid rgba(255,255,255,0.2)", paddingTop: "14pt", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
             <div style={{ fontFamily: PF.head, fontSize: "8pt", color: "rgba(255,255,255,0.8)", fontWeight: 600, letterSpacing: "0.06em", marginBottom: "4pt" }}>thegentrylab.io</div>
-            <div style={{ fontFamily: PF.body, fontSize: "7pt", color: "rgba(255,255,255,0.45)" }}>advisory@thegentrylab.io</div>
+            <div style={{ fontFamily: PF.body, fontSize: "7pt", color: "rgba(255,255,255,0.45)" }}>advisory.thegentrylab@gmail.com</div>
           </div>
           <div style={{ fontFamily: PF.head, fontSize: "6.5pt", color: "rgba(255,255,255,0.35)", textAlign: "right", lineHeight: 1.8 }}>
             <div>© {year} The Gentry Lab</div>
@@ -3268,7 +3268,7 @@ function AdvisorPage() {
       { x: 0.4, y: 1.2, w: 12.5, h: 5.0, valign: "top" },
     );
     s1d.addText("THE GENTRY LAB ADVISORY TEAM", { x: 0.4, y: 6.55, w: 8, h: 0.25, fontSize: 9, color: DARK, bold: true, fontFace: "Arial" });
-    s1d.addText("AI Industrial Advisor Platform · Phnom Penh, Cambodia · advisory@thegentrylab.io", { x: 0.4, y: 6.8, w: 10, h: 0.25, fontSize: 8, color: LGRAY, fontFace: "Arial" });
+    s1d.addText("AI Industrial Advisor Platform · Phnom Penh, Cambodia · advisory.thegentrylab@gmail.com", { x: 0.4, y: 6.8, w: 10, h: 0.25, fontSize: 8, color: LGRAY, fontFace: "Arial" });
 
     // ── Slide 1e: Table of Contents + Acronyms (mirrors PDF Section III) ──
     const s1e = pptx.addSlide();
@@ -3468,7 +3468,7 @@ function AdvisorPage() {
     const metaItems = [
       ["Reference", `#${refId}`], ["Generated", dateStr], ["Brief", selectedBrief.title],
       ["Category", cat.label], ["Report Type", reportType === "comprehensive" ? "Comprehensive" : "Standard"],
-      ["Platform", "GentryLab AI Industrial Advisor"], ["Contact", "advisory@thegentrylab.io"],
+      ["Platform", "GentryLab AI Industrial Advisor"], ["Contact", "advisory.thegentrylab@gmail.com"],
     ];
     sLast.addTable([
       [{ text: "Field", options: { bold: true, color: WHITE, fill: { color: RED }, fontSize: 9, fontFace: "Arial" } },
@@ -4335,7 +4335,7 @@ function AdvisorPage() {
                       Want a human expert to review this brief and advise on next steps?
                     </p>
                   </div>
-                  <a href="mailto:advisory@thegentrylab.io?subject=AI Brief Review Request"
+                  <a href="mailto:advisory.thegentrylab@gmail.com?subject=AI Brief Review Request"
                     className="px-5 py-2.5 rounded-lg font-bold text-[12px] shrink-0 transition"
                     style={{ backgroundColor: "#ff5100", color: "#ffffff" }}>
                     Get Expert Review →

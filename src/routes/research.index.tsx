@@ -19,7 +19,7 @@ export const Route = createFileRoute("/research/")({
   component: ResearchPage,
 });
 
-const EMAIL = "advisory@thegentrylab.io";
+const EMAIL = "advisory.thegentrylab@gmail.com";
 
 /* ── Briefs readable free on-site (no advisory gate) ─────── */
 const FREE_BRIEF_ROUTES: Record<string, string> = {
