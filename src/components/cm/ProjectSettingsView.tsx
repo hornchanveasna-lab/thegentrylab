@@ -101,6 +101,7 @@ import {
   logCMActivity,
 } from "@/lib/cm-data";
 import { useAuthCM } from "@/lib/auth-cm";
+import { reverseGeocode } from "@/lib/geo/free-map";
 
 const inputCls = "w-full bg-surface-2 rounded-xl border border-border px-3.5 py-2.5 text-[13px] text-text-primary placeholder-text-subtle focus:outline-none focus:border-brand-accent/60 transition-colors";
 const labelCls = "font-mono text-[10px] uppercase tracking-widest text-text-subtle";
@@ -205,11 +206,7 @@ function InfoSection({ project, canEdit, onChanged }: { project: CMProject; canE
         const fallback = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
         setLocationMapUrl(`https://www.google.com/maps?q=${latitude},${longitude}`);
         try {
-          const key = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
-          if (!key) { setLocation(fallback); return; }
-          const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${key}`);
-          const json = await res.json();
-          setLocation(json?.results?.[0]?.formatted_address || fallback);
+          setLocation((await reverseGeocode(latitude, longitude)) || fallback);
         } catch {
           setLocation(fallback);
         } finally {

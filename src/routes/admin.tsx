@@ -1,8 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { DashboardBody } from "./dashboard";
 import { useQueryClient } from "@tanstack/react-query";
-import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
+import { Map as MapGL, Source, Layer, Marker, useMap, type MapRef, type MapLayerMouseEvent } from "react-map-gl/maplibre";
+import type { MapMouseEvent } from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { SATELLITE_PLAIN_STYLE } from "@/lib/geo/free-map";
 import { useAuth } from "@/lib/auth";
 import {
   useMapSites, useSiteImages, addSiteImage,
@@ -18,7 +21,6 @@ export const Route = createFileRoute("/admin")({
 });
 
 const ADMIN_EMAIL     = "horn.chanveasna@gmail.com";
-const GMAPS_KEY       = import.meta.env.VITE_GOOGLE_MAPS_KEY as string;
 const WEB_IMAGE_URL   = "https://mcxfukjopdnouicwacbn.supabase.co/functions/v1/web-image-fetch";
 const STATUS_OPTS     = ["Operational", "Under Construction", "Planned"] as const;
 
@@ -199,17 +201,18 @@ function AdminPage() {
 /* ══════════════════════════════════════════════════════════
    MAP + EDIT TAB
 ══════════════════════════════════════════════════════════ */
-const DARK_MAP_STYLES = [
-  { elementType: "geometry",               stylers: [{ color: "#0d1117" }] },
-  { elementType: "labels.text.fill",       stylers: [{ color: "#7a8899" }] },
-  { elementType: "labels.text.stroke",     stylers: [{ color: "#0d1117" }] },
-  { featureType: "road.highway",           elementType: "geometry",         stylers: [{ color: "#1e2d3a" }] },
-  { featureType: "poi",                    stylers: [{ visibility: "off" }] },
-  { featureType: "transit",                stylers: [{ visibility: "off" }] },
-  { featureType: "water",                  elementType: "geometry",         stylers: [{ color: "#0a1628" }] },
-  { featureType: "landscape",              elementType: "geometry",         stylers: [{ color: "#0f1a22" }] },
-  { featureType: "administrative.country", elementType: "geometry.stroke",  stylers: [{ color: "#445060" }, { weight: 1.5 }] },
-] as google.maps.MapTypeStyle[];
+type LngLat = [number, number]; // [lng, lat], GeoJSON order
+
+const BOUNDARY_COLOR = "#ff5100";
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+/** A saved `boundary` value, if it is a (Multi)Polygon geometry MapLibre can render. */
+function toBoundaryGeometry(b: unknown): GeoJSON.Polygon | GeoJSON.MultiPolygon | null {
+  const g = b as { type?: unknown; coordinates?: unknown } | null | undefined;
+  if (!g || (g.type !== "Polygon" && g.type !== "MultiPolygon")) return null;
+  if (!Array.isArray(g.coordinates) || g.coordinates.length === 0) return null;
+  return g as GeoJSON.Polygon | GeoJSON.MultiPolygon;
+}
 
 function MapEditTab({ sites, selected, onSelect, onSaved }: {
   sites: MapSite[];
@@ -217,24 +220,28 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
   onSelect: (s: MapSite) => void;
   onSaved: (s: MapSite) => void;
 }) {
+  const mapRef = useRef<MapRef>(null);
   const [drawMode,       setDrawMode]       = useState(false);
   const [polygonDrawn,   setPolygonDrawn]   = useState(false);
   const [savingBoundary, setSavingBoundary] = useState(false);
-  // ref that BoundaryLayer populates so we can extract GeoJSON on save
-  const drawnPolygonRef = useRef<google.maps.Polygon | null>(null);
+  // Vertices of the boundary being drawn, [lng, lat], open ring (first point not repeated)
+  const [draftPath,      setDraftPath]      = useState<LngLat[]>([]);
+  const [hoveredId,      setHoveredId]      = useState<string | null>(null);
 
   // Reset draw state when site changes
   useEffect(() => {
     setDrawMode(false);
     setPolygonDrawn(false);
-    drawnPolygonRef.current = null;
+    setDraftPath([]);
   }, [selected?.id]);
 
+  const startDraw  = useCallback(() => { setDraftPath([]); setPolygonDrawn(false); setDrawMode(true); }, []);
+  const cancelDraw = useCallback(() => { setDrawMode(false); setPolygonDrawn(false); setDraftPath([]); }, []);
+  const finishDraw = useCallback(() => setPolygonDrawn(true), []);
+
   async function handleSaveBoundary() {
-    const poly = drawnPolygonRef.current;
-    if (!poly || !selected) return;
-    const path = poly.getPath().getArray().map((pt) => [pt.lng(), pt.lat()]);
-    if (path.length < 3) return;
+    if (!selected || draftPath.length < 3) return;
+    const path = draftPath.map(([lng, lat]) => [lng, lat]);
     path.push(path[0]); // close ring
     const geojson = { type: "Polygon", coordinates: [path] };
     setSavingBoundary(true);
@@ -242,7 +249,7 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
     setSavingBoundary(false);
     setDrawMode(false);
     setPolygonDrawn(false);
-    drawnPolygonRef.current = null;
+    setDraftPath([]);
     onSaved({ ...selected, boundary: geojson } as MapSite);
   }
 
@@ -252,34 +259,101 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
     onSaved({ ...selected, boundary: null } as MapSite);
   }
 
+  const pinData = useMemo<GeoJSON.FeatureCollection<GeoJSON.Point>>(() => ({
+    type: "FeatureCollection",
+    features: sites
+      .filter((s) => s.lat && s.lng)
+      .map((s) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+        properties: {
+          id: s.id,
+          color: LAYER_META[s.layer as keyof typeof LAYER_META]?.color ?? "#94a3b8",
+          selected: selected?.id === s.id,
+        },
+      })),
+  }), [sites, selected?.id]);
+
+  const drawing = drawMode && !polygonDrawn;
+  const hovered = !drawMode && hoveredId ? sites.find((s) => s.id === hoveredId) ?? null : null;
+
+  function handleMapClick(e: MapLayerMouseEvent) {
+    if (drawMode) return; // vertex clicks are handled by BoundaryLayer
+    const id = e.features?.[0]?.properties?.id as string | undefined;
+    const site = id ? sites.find((s) => s.id === id) : undefined;
+    if (!site) return;
+    onSelect(site);
+    mapRef.current?.panTo([site.lng, site.lat]);
+  }
+
+  function handleMapMove(e: MapLayerMouseEvent) {
+    const id = (e.features?.[0]?.properties?.id as string | undefined) ?? null;
+    if (id !== hoveredId) setHoveredId(id);
+  }
+
   return (
     <div className="flex h-full">
       {/* Map pane */}
       <div className="flex-1 relative">
-        <APIProvider apiKey={GMAPS_KEY} libraries={["places", "drawing"]}>
-          <Map
-            defaultCenter={{ lat: 12.5657, lng: 104.991 }}
-            defaultZoom={7}
-            mapTypeId="satellite"
-            disableDefaultUI
-            className="w-full h-full"
-          >
-            <AdminPins sites={sites} selected={selected} onSelect={onSelect} />
-            {selected && (
-              <BoundaryLayer
-                site={selected}
-                drawMode={drawMode}
-                onPolygonReady={(poly) => { drawnPolygonRef.current = poly; setPolygonDrawn(true); }}
-                onCancel={() => { setDrawMode(false); setPolygonDrawn(false); }}
-              />
-            )}
-          </Map>
-        </APIProvider>
+        <MapGL
+          ref={mapRef}
+          initialViewState={{ latitude: 12.5657, longitude: 104.991, zoom: 7 }}
+          mapStyle={SATELLITE_PLAIN_STYLE}
+          style={{ width: "100%", height: "100%" }}
+          attributionControl={{ compact: true }}
+          doubleClickZoom={!drawing}
+          interactiveLayerIds={drawMode ? undefined : ["admin-pins"]}
+          cursor={drawing ? "crosshair" : hovered ? "pointer" : undefined}
+          onClick={handleMapClick}
+          onMouseMove={drawMode ? undefined : handleMapMove}
+          onMouseOut={() => setHoveredId(null)}
+        >
+          {/* Boundary sources first so pins stay on top */}
+          <BoundaryLayer
+            site={selected}
+            drawMode={drawMode}
+            path={draftPath}
+            finished={polygonDrawn}
+            onPathChange={setDraftPath}
+            onFinish={finishDraw}
+            onCancel={cancelDraw}
+          />
+          <Source id="admin-pins" type="geojson" data={pinData}>
+            <Layer
+              id="admin-pins"
+              type="circle"
+              layout={{ "circle-sort-key": ["case", ["get", "selected"], 1, 0] }}
+              paint={{
+                "circle-color": ["get", "color"],
+                "circle-radius": ["case", ["get", "selected"], 11, 7.5],
+                "circle-opacity": ["case", ["get", "selected"], 1, 0.75],
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": ["case", ["get", "selected"], 2, 1],
+                "circle-stroke-opacity": 0.6,
+              }}
+            />
+          </Source>
+          {hovered && (
+            <Marker longitude={hovered.lng} latitude={hovered.lat} anchor="bottom" offset={[0, -14]} style={{ pointerEvents: "none" }}>
+              <div className="bg-black/85 text-white border border-white/15 rounded px-2 py-1 font-mono text-[10px] whitespace-nowrap">
+                {hovered.name}
+              </div>
+            </Marker>
+          )}
+        </MapGL>
 
         {/* Draw mode instructions */}
-        {drawMode && !polygonDrawn && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/90 border border-[#ff5100]/50 text-white px-4 py-2 rounded-lg font-mono text-[10px] text-center whitespace-nowrap">
-            Click to place points · Double-click to finish · <span className="text-white/40">Esc to cancel</span>
+        {drawing && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+            <div className="bg-black/90 border border-[#ff5100]/50 text-white px-4 py-2 rounded-lg font-mono text-[10px] text-center whitespace-nowrap">
+              Click to place points · Click first point or double-click to finish · <span className="text-white/40">Backspace undo · Esc cancel</span>
+            </div>
+            {draftPath.length > 0 && (
+              <button onClick={() => setDraftPath([])}
+                className="px-3 py-1.5 font-mono text-[10px] text-white/60 hover:text-white bg-black/70 border border-white/10 rounded-lg">
+                Clear
+              </button>
+            )}
           </div>
         )}
         {drawMode && polygonDrawn && (
@@ -292,7 +366,7 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
               style={{ backgroundColor: "#ff5100", color: "#fff", opacity: savingBoundary ? 0.6 : 1 }}>
               {savingBoundary ? "Saving…" : "Save Boundary"}
             </button>
-            <button onClick={() => { setPolygonDrawn(false); drawnPolygonRef.current?.setMap(null); drawnPolygonRef.current = null; setDrawMode(true); }}
+            <button onClick={startDraw}
               className="px-3 py-1.5 font-mono text-[10px] text-white/40 hover:text-white/70 bg-black/70 border border-white/10 rounded-lg">
               Redraw
             </button>
@@ -328,7 +402,7 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
             site={selected}
             onSaved={onSaved}
             onClose={() => onSelect(null as unknown as MapSite)}
-            onStartDraw={() => { setDrawMode(true); setPolygonDrawn(false); }}
+            onStartDraw={startDraw}
             onClearBoundary={handleClearBoundary}
             isDrawing={drawMode}
           />
@@ -338,113 +412,152 @@ function MapEditTab({ sites, selected, onSelect, onSaved }: {
   );
 }
 
-/* ── Boundary draw + display layer (inside Map context) ── */
-function BoundaryLayer({ site, drawMode, onPolygonReady, onCancel }: {
-  site: MapSite;
+/* ── Boundary display + click-to-draw polygon (inside Map context) ──
+   MapLibre has no drawing manager, so this is a small hand-rolled one:
+   click adds a vertex, clicking the first vertex (or double-clicking)
+   closes the ring, then every vertex becomes a draggable handle.      */
+function BoundaryLayer({ site, drawMode, path, finished, onPathChange, onFinish, onCancel }: {
+  site: MapSite | null;
   drawMode: boolean;
-  onPolygonReady: (poly: google.maps.Polygon) => void;
+  path: LngLat[];
+  finished: boolean;
+  onPathChange: (path: LngLat[]) => void;
+  onFinish: () => void;
   onCancel: () => void;
 }) {
-  const map = useMap();
+  const { current: map } = useMap();
+  const [cursor, setCursor] = useState<LngLat | null>(null);
+  const active = drawMode && !!site;
+  const drawing = active && !finished;
 
-  // Show existing saved boundary
+  // Pan & zoom to the site when drawing starts
   useEffect(() => {
-    if (!map || !site.boundary || drawMode) return;
-    const geo = site.boundary as { type: string; coordinates: number[][][] };
-    if (!geo?.coordinates?.[0]) return;
-    const ring = geo.type === "MultiPolygon"
-      ? geo.coordinates[0][0]
-      : geo.coordinates[0];
-    const paths = ring.map(([lng, lat]) => ({ lat, lng }));
-    const poly = new google.maps.Polygon({
-      map: map as google.maps.Map,
-      paths,
-      fillColor: "#ff5100", fillOpacity: 0.15,
-      strokeColor: "#ff5100", strokeOpacity: 0.9, strokeWeight: 2,
-      clickable: false, zIndex: 1,
-    });
-    return () => poly.setMap(null);
-  }, [map, site.id, site.boundary, drawMode]);
+    if (!map || !active || !site) return;
+    map.flyTo({ center: [site.lng, site.lat], zoom: 16 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, active, site?.id]);
 
-  // Drawing manager
+  // Vertex placement
   useEffect(() => {
-    if (!map || !drawMode) return;
-    // Pan & zoom to site
-    map.panTo({ lat: site.lat, lng: site.lng });
-    map.setZoom(16);
-
-    const dm = new google.maps.drawing.DrawingManager({
-      drawingMode: google.maps.drawing.OverlayType.POLYGON,
-      drawingControl: false,
-      polygonOptions: {
-        fillColor: "#ff5100", fillOpacity: 0.2,
-        strokeColor: "#ff5100", strokeWeight: 2.5,
-        editable: true, draggable: false, zIndex: 10,
-      },
-    });
-    dm.setMap(map as google.maps.Map);
-
-    const listener = dm.addListener("polygoncomplete", (poly: google.maps.Polygon) => {
-      dm.setDrawingMode(null);
-      onPolygonReady(poly);
-    });
-
-    const keyHandler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
-    window.addEventListener("keydown", keyHandler);
-
-    return () => {
-      google.maps.event.removeListener(listener);
-      dm.setMap(null);
-      window.removeEventListener("keydown", keyHandler);
+    if (!map || !drawing) return;
+    const m = map.getMap();
+    const onClick = (e: MapMouseEvent) => {
+      const last = path[path.length - 1];
+      if (last) {
+        // ignore the second click of a double-click (same spot as the last vertex)
+        const p = m.project(last);
+        if (Math.hypot(p.x - e.point.x, p.y - e.point.y) < 5) return;
+      }
+      const ll = e.lngLat.wrap();
+      onPathChange([...path, [ll.lng, ll.lat]]);
     };
-  }, [map, drawMode, site.lat, site.lng, onPolygonReady, onCancel]);
+    const onDblClick = (e: MapMouseEvent) => {
+      e.preventDefault();
+      if (path.length >= 3) onFinish();
+    };
+    const onMove = (e: MapMouseEvent) => setCursor([e.lngLat.lng, e.lngLat.lat]);
+    const onOut = () => setCursor(null);
+    m.on("click", onClick);
+    m.on("dblclick", onDblClick);
+    m.on("mousemove", onMove);
+    m.on("mouseout", onOut);
+    return () => {
+      m.off("click", onClick);
+      m.off("dblclick", onDblClick);
+      m.off("mousemove", onMove);
+      m.off("mouseout", onOut);
+    };
+  }, [map, drawing, path, onPathChange, onFinish]);
 
-  return null;
-}
-
-/* ── Map pins rendered inside the Map context ──────────── */
-function AdminPins({ sites, selected, onSelect }: {
-  sites: MapSite[];
-  selected: MapSite | null;
-  onSelect: (s: MapSite) => void;
-}) {
-  const map = useMap();
-
+  // Esc cancels; Backspace / Delete / Ctrl+Z removes the last vertex
   useEffect(() => {
-    if (!map || !sites.length) return;
-    const markers: google.maps.Marker[] = [];
+    if (!active) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onCancel(); return; }
+      if (finished) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (e.key === "Backspace" || e.key === "Delete" || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z")) {
+        e.preventDefault();
+        onPathChange(path.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [active, finished, path, onPathChange, onCancel]);
 
-    sites.forEach(site => {
-      if (!site.lat || !site.lng) return;
-      const color = LAYER_META[site.layer as keyof typeof LAYER_META]?.color ?? "#94a3b8";
-      const isSelected = selected?.id === site.id;
-      const size = isSelected ? 12 : 8;
+  // Existing saved boundary (hidden while drawing a new one)
+  const saved = !drawMode && site ? toBoundaryGeometry(site.boundary) : null;
+  const savedData: GeoJSON.FeatureCollection = saved
+    ? { type: "FeatureCollection", features: [{ type: "Feature", geometry: saved, properties: {} }] }
+    : EMPTY_FC;
 
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size * 2 + 4}" height="${size * 2 + 4}">
-        <circle cx="${size + 2}" cy="${size + 2}" r="${size}" fill="${color}" fill-opacity="${isSelected ? 1 : 0.75}" stroke="#fff" stroke-width="${isSelected ? 2 : 1}" stroke-opacity="0.6"/>
-      </svg>`;
+  // In-progress line, or the closed polygon once finished
+  const draftData = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!active) return EMPTY_FC;
+    if (finished && path.length >= 3) {
+      return { type: "FeatureCollection", features: [{
+        type: "Feature", properties: {},
+        geometry: { type: "Polygon", coordinates: [[...path, path[0]]] },
+      }] };
+    }
+    const line = cursor && path.length ? [...path, cursor] : path;
+    if (line.length < 2) return EMPTY_FC;
+    return { type: "FeatureCollection", features: [{
+      type: "Feature", properties: {},
+      geometry: { type: "LineString", coordinates: line },
+    }] };
+  }, [active, finished, path, cursor]);
 
-      const marker = new google.maps.Marker({
-        position: { lat: site.lat, lng: site.lng },
-        map,
-        title: site.name,
-        icon: {
-          url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-          anchor: new google.maps.Point(size + 2, size + 2),
-        },
-        zIndex: isSelected ? 100 : 1,
-      });
-      marker.addListener("click", () => {
-        onSelect(site);
-        map.panTo({ lat: site.lat, lng: site.lng });
-      });
-      markers.push(marker);
-    });
+  return (
+    <>
+      <Source id="site-boundary" type="geojson" data={savedData}>
+        <Layer id="site-boundary-fill" type="fill" paint={{ "fill-color": BOUNDARY_COLOR, "fill-opacity": 0.15 }} />
+        <Layer id="site-boundary-line" type="line" paint={{ "line-color": BOUNDARY_COLOR, "line-opacity": 0.9, "line-width": 2 }} />
+      </Source>
+      <Source id="boundary-draft" type="geojson" data={draftData}>
+        <Layer id="boundary-draft-fill" type="fill" filter={["==", ["geometry-type"], "Polygon"]}
+          paint={{ "fill-color": BOUNDARY_COLOR, "fill-opacity": 0.2 }} />
+        <Layer id="boundary-draft-line" type="line" layout={{ "line-join": "round", "line-cap": "round" }}
+          paint={{ "line-color": BOUNDARY_COLOR, "line-width": 2.5 }} />
+      </Source>
 
-    return () => markers.forEach(m => m.setMap(null));
-  }, [map, sites, selected, onSelect]);
-
-  return null;
+      {/* Vertex handles: first one closes the ring while drawing; all are draggable once finished */}
+      {active && path.map(([lng, lat], i) => {
+        const closer = drawing && i === 0 && path.length >= 3;
+        return (
+          <Marker
+            key={i}
+            longitude={lng}
+            latitude={lat}
+            anchor="center"
+            draggable={finished}
+            onDrag={(e) => {
+              const ll = e.lngLat.wrap();
+              onPathChange(path.map((pt, j) => (j === i ? [ll.lng, ll.lat] : pt)));
+            }}
+            onClick={(e) => {
+              e.originalEvent.stopPropagation();
+              if (closer) onFinish();
+            }}
+            style={{ pointerEvents: finished || closer ? "auto" : "none", cursor: finished ? "move" : closer ? "pointer" : undefined }}
+          >
+            <div
+              title={closer ? "Close boundary" : undefined}
+              style={{
+                width: closer ? 14 : 10,
+                height: closer ? 14 : 10,
+                borderRadius: "50%",
+                background: "#ffffff",
+                border: `2px solid ${BOUNDARY_COLOR}`,
+                boxSizing: "border-box",
+              }}
+            />
+          </Marker>
+        );
+      })}
+    </>
+  );
 }
 
 /* ══════════════════════════════════════════════════════════
