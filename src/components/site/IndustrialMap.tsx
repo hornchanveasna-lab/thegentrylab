@@ -1457,8 +1457,9 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
         setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
       }}
     >
-      {/* Map canvas */}
-      <div className="absolute inset-0">
+      {/* Map canvas — `isolate` keeps marker z-indexes (selected pin = 999)
+          inside the map, so they can't paint over the panels and sheets */}
+      <div className="absolute inset-0 isolate">
         <MapGL
           initialViewState={{ longitude: 104.9, latitude: 12.2, zoom: toMl(7) }}
           minZoom={toMl(6)}
