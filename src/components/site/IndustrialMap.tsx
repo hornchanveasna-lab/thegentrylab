@@ -1,6 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { APIProvider, Map, useMap } from "@vis.gl/react-google-maps";
-import { GoogleMapsOverlay } from "@deck.gl/google-maps";
+import { Marker, type Map as MlMap, type StyleSpecification } from "maplibre-gl";
+import {
+  Map as MapGL,
+  Layer as MapLayer,
+  ScaleControl,
+  Source,
+  useControl,
+  useMap,
+  type MapLayerMouseEvent,
+} from "react-map-gl/maplibre";
+import { MapboxOverlay } from "@deck.gl/mapbox";
+import "maplibre-gl/dist/maplibre-gl.css";
+import {
+  SATELLITE_STYLE,
+  STYLE_URLS,
+  TERRAIN_STYLE,
+  geocodePlace,
+  reverseGeocode,
+  searchPlaces,
+} from "@/lib/geo/free-map";
 import { GeoJsonLayer, BitmapLayer } from "@deck.gl/layers";
 import type { Layer } from "@deck.gl/core";
 import { useLang } from "@/lib/i18n";
@@ -33,48 +51,12 @@ const STATUS_COLOR: Record<string, string> = {
   Planned:              "#94a3b8",
 };
 
-/* ── Google Maps style arrays ───────────────────────────── */
-const DARK_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry",            stylers: [{ color: "#0d1117" }] },
-  { elementType: "labels.text.fill",    stylers: [{ color: "#7a8899" }] },
-  { elementType: "labels.text.stroke",  stylers: [{ color: "#0d1117" }] },
-  { featureType: "road.highway",         elementType: "geometry",         stylers: [{ color: "#1e2d3a" }] },
-  { featureType: "road.highway",         elementType: "geometry.stroke",  stylers: [{ color: "#2e4055" }, { weight: 1.5 }] },
-  { featureType: "road.highway",         elementType: "labels.text.fill", stylers: [{ color: "#7a99b0" }] },
-  { featureType: "road.arterial",        elementType: "geometry",         stylers: [{ color: "#172030" }] },
-  { featureType: "road.local",           elementType: "geometry",         stylers: [{ color: "#10171f" }] },
-  { featureType: "administrative",       elementType: "geometry.stroke",  stylers: [{ color: "#2a3545" }] },
-  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#445060" }, { weight: 1.5 }] },
-  { featureType: "poi",                  stylers: [{ visibility: "off" }] },
-  { featureType: "transit",              stylers: [{ visibility: "off" }] },
-  { featureType: "water",                elementType: "geometry",         stylers: [{ color: "#0a1628" }] },
-  { featureType: "water",                elementType: "labels.text.fill", stylers: [{ color: "#1e3a5f" }] },
-  { featureType: "landscape",            elementType: "geometry",         stylers: [{ color: "#0f1a22" }] },
-  { featureType: "landscape.natural",    elementType: "geometry",         stylers: [{ color: "#0c1820" }] },
-];
-
-const LIGHT_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry",            stylers: [{ color: "#f5f0eb" }] },
-  { elementType: "labels.text.fill",    stylers: [{ color: "#2d3748" }] },
-  { elementType: "labels.text.stroke",  stylers: [{ color: "#f5f0eb" }, { weight: 3 }] },
-  { featureType: "road.highway",         elementType: "geometry",         stylers: [{ color: "#c8b89a" }] },
-  { featureType: "road.highway",         elementType: "geometry.stroke",  stylers: [{ color: "#a89880" }, { weight: 0.6 }] },
-  { featureType: "road.highway",         elementType: "labels.text.fill", stylers: [{ color: "#3d3020" }] },
-  { featureType: "road.arterial",        elementType: "geometry",         stylers: [{ color: "#ddd8d0" }] },
-  { featureType: "road.local",           elementType: "geometry",         stylers: [{ color: "#e8e3dc" }] },
-  { featureType: "poi",                  stylers: [{ visibility: "off" }] },
-  { featureType: "transit",             stylers: [{ visibility: "off" }] },
-  { featureType: "water",               elementType: "geometry",         stylers: [{ color: "#b3d4e8" }] },
-  { featureType: "landscape",           elementType: "geometry",         stylers: [{ color: "#f0ece5" }] },
-  { featureType: "administrative.country", elementType: "geometry.stroke", stylers: [{ color: "#b0a090" }, { weight: 1.5 }] },
-];
-
 /* ── Basemap definitions ─────────────────────────────────── */
+/* All free and key-less (see src/lib/geo/free-map.ts) — no Google billing. */
 type BasemapKey = "standard" | "dark" | "light" | "terrain" | "satellite" | "flood" | "nicfi";
 interface BasemapDef {
   label: string;
-  mapTypeId: string;
-  styles?: google.maps.MapTypeStyle[];
+  style: string | StyleSpecification;
   isDark: boolean;
   swatch: string;
   floodOverlay?: boolean;
@@ -82,14 +64,18 @@ interface BasemapDef {
 }
 
 const BASEMAPS: Record<BasemapKey, BasemapDef> = {
-  standard:  { label: "Standard",  mapTypeId: "roadmap",  isDark: false, swatch: "#e8ecf0" },
-  dark:      { label: "Dark",      mapTypeId: "roadmap",  styles: DARK_STYLES,  isDark: true,  swatch: "#0d1117" },
-  light:     { label: "Light",     mapTypeId: "roadmap",  styles: LIGHT_STYLES, isDark: false, swatch: "#e8e4dc" },
-  terrain:   { label: "Terrain",   mapTypeId: "terrain",  isDark: false, swatch: "#c5d5a0" },
-  satellite: { label: "Satellite", mapTypeId: "hybrid",   isDark: true,  swatch: "#1a2f1a" },
-  flood:     { label: "Flood",     mapTypeId: "hybrid",   isDark: true,  swatch: "#0a1a2f", floodOverlay: true },
-  nicfi:     { label: "NICFI (Recent)", mapTypeId: "roadmap", isDark: true, swatch: "#2d5a1f", nicfiOverlay: true },
+  standard:  { label: "Standard",  style: STYLE_URLS.liberty,  isDark: false, swatch: "#e8ecf0" },
+  dark:      { label: "Dark",      style: STYLE_URLS.dark,     isDark: true,  swatch: "#0d1117" },
+  light:     { label: "Light",     style: STYLE_URLS.positron, isDark: false, swatch: "#e8e4dc" },
+  terrain:   { label: "Terrain",   style: TERRAIN_STYLE,       isDark: false, swatch: "#c5d5a0" },
+  satellite: { label: "Satellite", style: SATELLITE_STYLE,     isDark: true,  swatch: "#1a2f1a" },
+  flood:     { label: "Flood",     style: SATELLITE_STYLE,     isDark: true,  swatch: "#0a1a2f", floodOverlay: true },
+  nicfi:     { label: "NICFI (Recent)", style: STYLE_URLS.liberty, isDark: true, swatch: "#2d5a1f", nicfiOverlay: true },
 };
+
+/** MapLibre draws 512px tiles, so its zoom N looks like Google's zoom N+1.
+ *  Zoom numbers in this file stay in the old Google scale; convert here. */
+const toMl = (googleZoom: number) => googleZoom - 1;
 
 function themeBasemap(): BasemapKey {
   try {
@@ -252,50 +238,6 @@ function parseCoords(text: string): [number, number] | null {
   const m = text.match(/^(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)$/);
   if (m) return [parseFloat(m[1]), parseFloat(m[2])];
   return null;
-}
-
-async function geocodePlace(query: string): Promise<[number, number] | null> {
-  // Use Maps JS SDK Geocoder (avoids CORS issues with REST endpoint)
-  if (window.google?.maps) {
-    return new Promise((resolve) => {
-      new google.maps.Geocoder().geocode(
-        { address: query + " Cambodia", region: "kh" },
-        (results, status) => {
-          if (status === google.maps.GeocoderStatus.OK && results?.[0]?.geometry?.location) {
-            const loc = results[0].geometry.location;
-            resolve([loc.lat(), loc.lng()]);
-          } else resolve(null);
-        }
-      );
-    });
-  }
-  // Nominatim fallback (no API key environment)
-  try {
-    const key = import.meta.env.VITE_GOOGLE_MAPS_KEY;
-    const url = key
-      ? `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query + " Cambodia")}&key=${key}`
-      : `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&countrycodes=kh&format=json&limit=1`;
-    const res = await fetch(url, key ? {} : { headers: { "Accept-Language": "en" } });
-    const data = await res.json();
-    if (key) {
-      const loc = data.results?.[0]?.geometry?.location;
-      return loc ? [loc.lat, loc.lng] : null;
-    }
-    if (data?.[0]) return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-  } catch { /* ignore */ }
-  return null;
-}
-
-/* ── Tile bounds helper for WMS overlay ─────────────────── */
-function tileToBounds(x: number, y: number, z: number) {
-  const n = Math.pow(2, z);
-  const west = (x / n) * 360 - 180;
-  const east = ((x + 1) / n) * 360 - 180;
-  const northRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / n)));
-  const southRad = Math.atan(Math.sinh(Math.PI * (1 - (2 * (y + 1)) / n)));
-  const north = (northRad * 180) / Math.PI;
-  const south = (southRad * 180) / Math.PI;
-  return { west, east, north, south };
 }
 
 /* ── Icon SVG paths ─────────────────────────────────────── */
@@ -462,6 +404,12 @@ function ZoomLabelController() {
       ".pin-label { display:none; }",
       ".tgl-labels-key .pin-label-key { display:block; }",
       ".tgl-labels-all .pin-label { display:block; }",
+      // Expanding ring under the selected site pin
+      ".tgl-pulse { width:16px; height:16px; pointer-events:none; }",
+      ".tgl-pulse::after { content:''; position:absolute; inset:0; border-radius:9999px;" +
+        " border:2px solid var(--pulse); background:color-mix(in srgb, var(--pulse) 15%, transparent);" +
+        " animation:tgl-pulse 1.6s ease-out infinite; }",
+      "@keyframes tgl-pulse { from { transform:scale(1); opacity:.7; } to { transform:scale(9); opacity:0; } }",
     ].join(" ");
     document.head.appendChild(s);
     return () => { document.getElementById(id)?.remove(); };
@@ -469,24 +417,47 @@ function ZoomLabelController() {
   return null;
 }
 
-/* ── Inner map sub-components (must be inside <Map>) ────── */
+/* ── Inner map sub-components (must be inside <MapGL>) ────── */
+
+/** The underlying MapLibre map (null until mounted). */
+function useMl(): MlMap | null {
+  const { current } = useMap();
+  return current ? current.getMap() : null;
+}
+
+/** <img> element for an inline-SVG map marker. */
+function svgMarkerEl(svg: string, w: number, h: number, title?: string): HTMLImageElement {
+  const img = document.createElement("img");
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  img.width = w;
+  img.height = h;
+  img.draggable = false;
+  img.style.cursor = "pointer";
+  if (title) img.title = title;
+  return img;
+}
+
+/** Map clicks also fire for clicks on HTML markers — skip those. */
+function isMarkerClick(e: MapLayerMouseEvent): boolean {
+  const t = e.originalEvent?.target as HTMLElement | null;
+  return !!t?.closest?.(".maplibregl-marker");
+}
 
 function FlyController({ target }: { target: { lat: number; lng: number; zoom: number; sheetOffset?: boolean } | null }) {
-  const map = useMap();
+  const map = useMl();
   useEffect(() => {
     if (!map || !target) return;
-    map.panTo({ lat: target.lat, lng: target.lng });
-    map.setZoom(target.zoom);
+    map.easeTo({ center: [target.lng, target.lat], zoom: toMl(target.zoom), duration: 600 });
     // When opening straight into a site's detail sheet (shared link), the
     // bottom sheet covers roughly the lower half of the screen — nudge the
     // pin up so it lands in the middle of the visible map strip above the
     // sheet instead of the true screen center (which is hidden behind it).
     if (target.sheetOffset) {
-      google.maps.event.addListenerOnce(map, "idle", () => {
+      map.once("moveend", () => {
         const sheetHeight = window.innerHeight * 0.52;
         const visibleHeight = window.innerHeight - sheetHeight;
         const desiredScreenY = visibleHeight * 0.3; // near the top of the visible strip, not centered in it
-        map.panBy(0, window.innerHeight / 2 - desiredScreenY);
+        map.panBy([0, window.innerHeight / 2 - desiredScreenY]);
       });
     }
   }, [map, target]);
@@ -494,71 +465,29 @@ function FlyController({ target }: { target: { lat: number; lng: number; zoom: n
 }
 
 function ZoomClassController({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElement> }) {
-  const map = useMap();
+  const map = useMl();
   useEffect(() => {
     if (!map) return;
+    map.touchZoomRotate.disableRotation();
     const update = () => {
-      const z  = map.getZoom() ?? 7;
+      const z  = map.getZoom() + 1; // back to the Google zoom scale used below
       const el = wrapperRef.current;
       if (!el) return;
       el.classList.toggle("tgl-labels-key", z >= 9);
       el.classList.toggle("tgl-labels-all", z >= 11);
     };
     update();
-    const listener = map.addListener("zoom_changed", update);
-    return () => google.maps.event.removeListener(listener);
+    map.on("zoom", update);
+    return () => { map.off("zoom", update); };
   }, [map, wrapperRef]);
   return null;
 }
 
-function CorridorLayer({ corridors }: { corridors: Corridor[] }) {
-  const map = useMap();
-  const polysRef = useRef<google.maps.Polyline[]>([]);
-
-  useEffect(() => {
-    if (!map) return;
-
-    polysRef.current.forEach((p) => p.setMap(null));
-
-    polysRef.current = corridors.map((c) =>
-      new google.maps.Polyline({
-        path: c.waypoints.map(([lat, lng]) => ({ lat, lng })),
-        strokeColor:   c.color,
-        strokeWeight:  3,
-        strokeOpacity: 0,
-        icons: [{
-          icon: {
-            path:          "M 0,-1 0,1",
-            strokeOpacity: 0.85,
-            strokeColor:   c.color,
-            strokeWeight:  3,
-            scale:         4,
-          },
-          offset: "0",
-          repeat: "26px",
-        }],
-        map,
-      })
-    );
-
-    return () => {
-      polysRef.current.forEach((p) => p.setMap(null));
-      polysRef.current = [];
-    };
-  }, [map, corridors]);
-
-  return null;
-}
-
-function markerIcon(s: MapSite, selected: boolean) {
+function markerSpec(s: MapSite, selected: boolean) {
   const color = KIND_COLOR[s.kind] ?? LAYER_META[s.layer].color;
   const isKey = (s.score ?? 0) >= 85;
-  const { svg, cx, pinH, pinW } = buildPinSvg(s.kind, color, isKey, selected);
-  return {
-    url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-    anchor:     new google.maps.Point(cx, pinH),
-    scaledSize: new google.maps.Size(pinW, pinH),
-  };
+  const { svg, pinH, pinW } = buildPinSvg(s.kind, color, isKey, selected);
+  return { svg, w: pinW, h: pinH };
 }
 
 function SiteMarkerLayer({
@@ -569,11 +498,9 @@ function SiteMarkerLayer({
   onSelect: (s: MapSite) => void;
   onHover: (s: MapSite | null) => void;
 }) {
-  const map         = useMap();
-  const markersRef  = useRef<Map<string, google.maps.Marker>>(new globalThis.Map());
+  const map         = useMl();
+  const markersRef  = useRef<Map<string, Marker>>(new globalThis.Map());
   const siteByIdRef = useRef<Map<string, MapSite>>(new globalThis.Map());
-  const pulseRef    = useRef<google.maps.Circle | null>(null);
-  const animRef     = useRef<number | null>(null);
   const onSelectRef = useRef(onSelect);
   const onHoverRef  = useRef(onHover);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
@@ -582,85 +509,58 @@ function SiteMarkerLayer({
   // Build markers when the site list changes
   useEffect(() => {
     if (!map) return;
-    markersRef.current.forEach((m) => m.setMap(null));
-    markersRef.current = new globalThis.Map();
-    siteByIdRef.current = new globalThis.Map();
+    const markers = new globalThis.Map<string, Marker>();
+    const byId    = new globalThis.Map<string, MapSite>();
 
-    sites.forEach((s) => {
-      siteByIdRef.current.set(s.id, s);
-      const marker = new google.maps.Marker({
-        position: { lat: s.lat, lng: s.lng },
-        map,
-        title:   s.name,
-        opacity: s.coordVerified ? 1 : 0.6,
-        icon:    markerIcon(s, false),
-      });
-      marker.addListener("click", () => onSelectRef.current(s));
-      marker.addListener("mouseover", () => onHoverRef.current(s));
-      marker.addListener("mouseout",  () => onHoverRef.current(null));
-      markersRef.current.set(s.id, marker);
-    });
+    for (const s of sites) {
+      byId.set(s.id, s);
+      const { svg, w, h } = markerSpec(s, false);
+      const el = svgMarkerEl(svg, w, h, s.name);
+      el.style.opacity = s.coordVerified ? "1" : "0.6";
+      el.addEventListener("click", () => onSelectRef.current(s));
+      el.addEventListener("mouseenter", () => onHoverRef.current(s));
+      el.addEventListener("mouseleave", () => onHoverRef.current(null));
+      markers.set(s.id, new Marker({ element: el, anchor: "bottom" }).setLngLat([s.lng, s.lat]).addTo(map));
+    }
+    markersRef.current  = markers;
+    siteByIdRef.current = byId;
 
-    return () => {
-      markersRef.current.forEach((m) => m.setMap(null));
-      markersRef.current = new globalThis.Map();
-    };
+    return () => { markers.forEach((m) => m.remove()); };
   }, [map, sites]);
 
   // Highlight + pulse the selected marker
   useEffect(() => {
     if (!map) return;
 
-    // Reset all to normal, enlarge the selected one
     markersRef.current.forEach((m, id) => {
       const s = siteByIdRef.current.get(id);
       if (!s) return;
       const sel = id === selectedId;
-      m.setIcon(markerIcon(s, sel));
-      m.setZIndex(sel ? 999 : undefined);
-      m.setOpacity(sel ? 1 : s.coordVerified ? 1 : 0.6);
+      const { svg, w, h } = markerSpec(s, sel);
+      const el = m.getElement() as HTMLImageElement;
+      el.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      el.width = w;
+      el.height = h;
+      el.style.zIndex = sel ? "999" : "";
+      el.style.opacity = sel || s.coordVerified ? "1" : "0.6";
     });
-
-    // Tear down any existing pulse
-    if (animRef.current) { cancelAnimationFrame(animRef.current); animRef.current = null; }
-    pulseRef.current?.setMap(null);
-    pulseRef.current = null;
 
     const sel = selectedId ? siteByIdRef.current.get(selectedId) : null;
     if (!sel) return;
 
-    const color = KIND_COLOR[sel.kind] ?? LAYER_META[sel.layer].color;
-    const circle = new google.maps.Circle({
-      map,
-      center: { lat: sel.lat, lng: sel.lng },
-      radius: 0,
-      strokeColor: color, strokeOpacity: 0.6, strokeWeight: 2,
-      fillColor: color, fillOpacity: 0.12, clickable: false, zIndex: 1,
-    });
-    pulseRef.current = circle;
-
-    const MAX = 1200; // metres
-    const start = performance.now();
-    const tick = (t: number) => {
-      const phase = ((t - start) % 1600) / 1600;     // 1.6s loop
-      circle.setRadius(phase * MAX);
-      circle.setOptions({ strokeOpacity: 0.6 * (1 - phase), fillOpacity: 0.12 * (1 - phase) });
-      animRef.current = requestAnimationFrame(tick);
-    };
-    animRef.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-      pulseRef.current?.setMap(null);
-      pulseRef.current = null;
-    };
-  }, [map, selectedId]);
+    // Expanding ring under the selected pin (CSS animation, see ZoomLabelController)
+    const ring = document.createElement("div");
+    ring.className = "tgl-pulse";
+    ring.style.setProperty("--pulse", KIND_COLOR[sel.kind] ?? LAYER_META[sel.layer].color);
+    const pulse = new Marker({ element: ring, anchor: "center" }).setLngLat([sel.lng, sel.lat]).addTo(map);
+    return () => { pulse.remove(); };
+  }, [map, selectedId, sites]);
 
   return null;
 }
 
 function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }) {
-  const map = useMap();
+  const map = useMl();
 
   useEffect(() => {
     if (!map) return;
@@ -675,54 +575,31 @@ function PinMarkerLayer({ position }: { position: { lat: number; lng: number } }
       <text x="24" y="31" text-anchor="middle" font-size="15" fill="white" font-family="sans-serif">★</text>
       <circle cx="24" cy="54" r="2" fill="rgba(0,0,0,0.25)"/>
     </svg>`;
-    const marker = new google.maps.Marker({
-      position, map, title: "Your location",
-      icon: {
-        url:        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-        anchor:     new google.maps.Point(24, 56),
-        scaledSize: new google.maps.Size(48, 58),
-      },
-    });
-    return () => { marker.setMap(null); };
+    const el = svgMarkerEl(svg, 48, 58, "Your location");
+    el.style.cursor = "default";
+    const marker = new Marker({ element: el, anchor: "bottom", offset: [0, 2] })
+      .setLngLat([position.lng, position.lat])
+      .addTo(map);
+    return () => { marker.remove(); };
   }, [map, position]);
 
   return null;
 }
 
+/* GloFAS 100-year flood hazard (Copernicus EMS) — WMS in Web Mercator */
+const FLOOD_TILES = [
+  "https://ows.globalfloods.eu/glofas-ows/ows.py?" +
+    "SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0" +
+    "&LAYERS=FloodHazard100y&STYLES=&FORMAT=image/png&TRANSPARENT=true" +
+    "&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256",
+];
 
 function FloodLayer() {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map) return;
-
-    const layer = new google.maps.ImageMapType({
-      getTileUrl: (coord, zoom) => {
-        const b    = tileToBounds(coord.x, coord.y, zoom);
-        const bbox = `${b.south},${b.west},${b.north},${b.east}`;
-        return (
-          "https://ows.globalfloods.eu/glofas-ows/ows.py?" +
-          "SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0" +
-          "&LAYERS=FloodHazard100y&STYLES=&FORMAT=image/png&TRANSPARENT=true" +
-          `&CRS=EPSG:4326&BBOX=${bbox}&WIDTH=256&HEIGHT=256`
-        );
-      },
-      tileSize: new google.maps.Size(256, 256),
-      opacity:  0.45,
-      name:     "GloFAS Flood Risk",
-    });
-
-    map.overlayMapTypes.push(layer);
-
-    return () => {
-      const arr = map.overlayMapTypes;
-      for (let i = 0; i < arr.getLength(); i++) {
-        if (arr.getAt(i) === layer) { arr.removeAt(i); break; }
-      }
-    };
-  }, [map]);
-
-  return null;
+  return (
+    <Source id="glofas-flood" type="raster" tiles={FLOOD_TILES} tileSize={256} attribution="Flood hazard © GloFAS / Copernicus EMS">
+      <MapLayer id="glofas-flood" type="raster" paint={{ "raster-opacity": 0.45 }} />
+    </Source>
+  );
 }
 
 /* ── Planet NICFI (free monthly tropical-belt satellite mosaic) ──
@@ -731,7 +608,7 @@ function FloodLayer() {
  * key from planet.com/nicfi (VITE_PLANET_NICFI_API_KEY). Resolves the
  * latest published mosaic via Planet's Mosaics API on mount so its
  * acquisition date can be surfaced in the UI, then renders its tiles
- * as a full-opacity overlay (fallback: the roadmap base shows through
+ * as a full-opacity overlay (fallback: the street base shows through
  * wherever a tile 404s or the resolve call fails). */
 export type NicfiMeta =
   | { status: "missing-key" }
@@ -740,10 +617,9 @@ export type NicfiMeta =
   | { status: "error"; message: string };
 
 function NicfiLayer({ onMeta }: { onMeta: (meta: NicfiMeta) => void }) {
-  const map = useMap();
+  const [tileUrl, setTileUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!map) return;
     const apiKey = import.meta.env.VITE_PLANET_NICFI_API_KEY as string | undefined;
     if (!apiKey) {
       onMeta({ status: "missing-key" });
@@ -751,7 +627,6 @@ function NicfiLayer({ onMeta }: { onMeta: (meta: NicfiMeta) => void }) {
     }
 
     let cancelled = false;
-    let layer: google.maps.ImageMapType | null = null;
     onMeta({ status: "loading" });
 
     (async () => {
@@ -774,18 +649,7 @@ function NicfiLayer({ onMeta }: { onMeta: (meta: NicfiMeta) => void }) {
 
         const latest = [...mosaics].sort((a, b) => (b.last_acquired ?? "").localeCompare(a.last_acquired ?? ""))[0];
         if (cancelled) return;
-
-        layer = new google.maps.ImageMapType({
-          getTileUrl: (coord, zoom) =>
-            latest._links.tiles
-              .replace("{z}", String(zoom))
-              .replace("{x}", String(coord.x))
-              .replace("{y}", String(coord.y)),
-          tileSize: new google.maps.Size(256, 256),
-          opacity: 1,
-          name: "Planet NICFI",
-        });
-        map.overlayMapTypes.push(layer);
+        setTileUrl(latest._links.tiles);
         onMeta({ status: "ready", name: latest.name, lastAcquired: latest.last_acquired });
       } catch (err) {
         if (!cancelled) {
@@ -794,18 +658,16 @@ function NicfiLayer({ onMeta }: { onMeta: (meta: NicfiMeta) => void }) {
       }
     })();
 
-    return () => {
-      cancelled = true;
-      if (layer) {
-        const arr = map.overlayMapTypes;
-        for (let i = 0; i < arr.getLength(); i++) {
-          if (arr.getAt(i) === layer) { arr.removeAt(i); break; }
-        }
-      }
-    };
-  }, [map, onMeta]);
+    return () => { cancelled = true; };
+  }, [onMeta]);
 
-  return null;
+  const tiles = useMemo(() => (tileUrl ? [tileUrl] : null), [tileUrl]);
+  if (!tiles) return null;
+  return (
+    <Source id="planet-nicfi" type="raster" tiles={tiles} tileSize={256} attribution="Imagery © Planet Labs (NICFI)">
+      <MapLayer id="planet-nicfi" type="raster" />
+    </Source>
+  );
 }
 
 /* ── Area layers (GADM boundaries + derived footprints) ──── */
@@ -821,80 +683,28 @@ type AreaHoverInfo = { props: Record<string, unknown>; layerId: string; x: numbe
 
 /** Single deck.gl overlay — renders all GeoJSON boundary layers + coverage rasters via WebGL */
 function DeckGlMapOverlay({ layers, onHover }: { layers: Layer[]; onHover?: (info: AreaHoverInfo) => void }) {
-  const map = useMap();
-  const overlayRef = useRef<GoogleMapsOverlay | null>(null);
   const onHoverRef = useRef(onHover);
   useEffect(() => { onHoverRef.current = onHover; }, [onHover]);
 
-  useEffect(() => {
-    if (!map) return;
-    const overlay = new GoogleMapsOverlay({
-      interleaved: false,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      onHover: (info: any) => {
-        if (info.object && info.layer?.id?.startsWith("area-")) {
-          onHoverRef.current?.({ props: info.object.properties ?? {}, layerId: info.layer.id, x: info.x, y: info.y });
-        } else {
-          onHoverRef.current?.(null);
-        }
-      },
-    });
-    overlay.setMap(map as google.maps.Map);
-    overlayRef.current = overlay;
-    return () => {
-      overlay.setMap(null);
-      overlayRef.current = null;
-    };
-  }, [map]);
+  const overlay = useControl(
+    () =>
+      new MapboxOverlay({
+        interleaved: false,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        onHover: (info: any) => {
+          if (info.object && info.layer?.id?.startsWith("area-")) {
+            onHoverRef.current?.({ props: info.object.properties ?? {}, layerId: info.layer.id, x: info.x, y: info.y });
+          } else {
+            onHoverRef.current?.(null);
+          }
+        },
+      }),
+  );
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    overlayRef.current?.setProps({ layers } as any);
-  }, [layers]);
-
-  return null;
-}
-
-/** SEZ footprint circles — radius derived from each SEZ's size in hectares */
-function SezFootprintLayer({
-  sites, opacity, onSelect,
-}: {
-  sites: MapSite[];
-  opacity: number;
-  onSelect: (s: MapSite) => void;
-}) {
-  const map = useMap();
-  const onSelectRef = useRef(onSelect);
-  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
-
-  useEffect(() => {
-    if (!map) return;
-    const circles: google.maps.Circle[] = [];
-
-    for (const s of sites) {
-      if (s.kind !== "sez" && s.kind !== "park") continue;
-      const ha = parseSizeHa(s.size);
-      if (!ha || ha <= 0) continue;
-      // area (m²) = ha × 10,000 ; radius = sqrt(area / π)
-      const radius = Math.sqrt((ha * 10_000) / Math.PI);
-      const circle = new google.maps.Circle({
-        map,
-        center:        { lat: s.lat, lng: s.lng },
-        radius,
-        fillColor:     "#ff5100",
-        fillOpacity:   0.16 * opacity,
-        strokeColor:   "#ff5100",
-        strokeOpacity: 0.85 * opacity,
-        strokeWeight:  1.4,
-        clickable:     true,
-        zIndex:        2,
-      });
-      circle.addListener("click", () => onSelectRef.current(s));
-      circles.push(circle);
-    }
-
-    return () => { circles.forEach((c) => c.setMap(null)); };
-  }, [map, sites, opacity]);
+    overlay.setProps({ layers } as any);
+  }, [overlay, layers]);
 
   return null;
 }
@@ -963,11 +773,12 @@ const CONN_COLORS = {
   border:  "#D85A30",
 } as const;
 
-/* Fetch road geometry from OSRM (free, no API key). Falls back to straight line. */
+/* Fetch road geometry from OSRM (free, no API key). Falls back to straight line.
+ * Returns [lng, lat] pairs (GeoJSON order). */
 async function fetchRoadPath(
   from: { lat: number; lng: number },
   to:   { lat: number; lng: number },
-): Promise<google.maps.LatLngLiteral[]> {
+): Promise<[number, number][]> {
   try {
     const url =
       `https://router.project-osrm.org/route/v1/driving/` +
@@ -976,118 +787,106 @@ async function fetchRoadPath(
     const res = await fetch(url, { signal: AbortSignal.timeout(6000) });
     const data = await res.json();
     const coords = data.routes?.[0]?.geometry?.coordinates as [number, number][] | undefined;
-    if (coords?.length) return coords.map(([lng, lat]) => ({ lat, lng }));
+    if (coords?.length) return coords;
   } catch { /* timeout or error — fall through */ }
-  return [{ lat: from.lat, lng: from.lng }, { lat: to.lat, lng: to.lng }];
+  return [[from.lng, from.lat], [to.lng, to.lat]];
 }
+
+/* "Marching ants" dash frames, stepped to animate the route lines */
+const DASH_FRAMES: number[][] = [
+  [0, 4, 3], [0.5, 4, 2.5], [1, 4, 2], [1.5, 4, 1.5], [2, 4, 1], [2.5, 4, 0.5], [3, 4, 0],
+  [0, 0.5, 3, 3.5], [0, 1, 3, 3], [0, 1.5, 3, 2.5], [0, 2, 3, 2], [0, 2.5, 3, 1.5], [0, 3, 3, 1], [0, 3.5, 3, 0.5],
+];
 
 /* ── Connectivity route layer — animated dashed lines on site select ─── */
 function ConnectivityRouteLayer({ site }: { site: MapSite }) {
-  const map = useMap();
+  const map = useMl();
 
+  const routes = useMemo(
+    () =>
+      ([
+        { name: site.nearest_airport ?? "", type: "airport" },
+        { name: site.nearest_port    ?? "", type: "port" },
+        { name: site.nearest_border  ?? "", type: "border" },
+      ] as { name: string; type: keyof typeof CONN_COLORS }[])
+        .map((r) => ({ ...r, resolved: resolveRef(r.name) }))
+        .filter((r) => r.name && REF_COORDS[r.resolved])
+        .map((r) => ({ ...r, to: REF_COORDS[r.resolved] })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [site.id],
+  );
+
+  // Straight lines first, swapped for road geometry as OSRM answers
+  const [roadPaths, setRoadPaths] = useState<Partial<Record<string, [number, number][]>>>({});
   useEffect(() => {
-    if (!map) return;
-
-    const routes: { name: string; type: keyof typeof CONN_COLORS }[] = [
-      { name: site.nearest_airport ?? "", type: "airport" },
-      { name: site.nearest_port    ?? "", type: "port" },
-      { name: site.nearest_border  ?? "", type: "border" },
-    ].filter((r) => r.name && REF_COORDS[resolveRef(r.name)]);
-
-    if (!routes.length) return;
-
-    const polys:   google.maps.Polyline[] = [];
-    const labels:  google.maps.Marker[]   = [];
-    const timers:  ReturnType<typeof setInterval>[] = [];
     let cancelled = false;
-
-    const dashSymbol = (color: string): google.maps.Symbol => ({
-      path: "M 0,-1 0,1",
-      strokeOpacity: 1,
-      strokeColor: color,
-      scale: 3,
-    });
-
-    const addRoute = (
-      path:  google.maps.LatLngLiteral[],
-      color: string,
-      targetName: string,
-      targetCoord: { lat: number; lng: number },
-      type: keyof typeof CONN_COLORS,
-    ) => {
-      if (cancelled) return;
-
-      const poly = new google.maps.Polyline({
-        path,
-        map,
-        strokeOpacity: 0,
-        strokeWeight: 0,
-        zIndex: 50,
-        icons: [{
-          icon: dashSymbol(color),
-          offset: "0",
-          repeat: "16px",
-        }],
-      });
-      polys.push(poly);
-
-      // Animate dash offset
-      let offset = 0;
-      const timer = setInterval(() => {
-        offset = (offset + 1) % 100;
-        const icons = poly.get("icons") as google.maps.IconSequence[];
-        icons[0].offset = offset + "%";
-        poly.set("icons", icons);
-      }, 25);
-      timers.push(timer);
-
-      // Endpoint label marker
-      const typeIcon = type === "airport" ? "✈" : type === "port" ? "⚓" : "🛂";
-      const shortName = targetName.length > 22 ? targetName.slice(0, 21) + "…" : targetName;
-      const labelSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="28">
-        <rect x="0" y="0" width="160" height="28" rx="4" fill="${color}" fill-opacity="0.92"/>
-        <text x="8" y="19" font-size="13" fill="white" font-family="sans-serif" font-weight="600">${typeIcon} ${shortName}</text>
-      </svg>`;
-      const label = new google.maps.Marker({
-        position: targetCoord,
-        map,
-        icon: {
-          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(labelSvg),
-          anchor: new google.maps.Point(0, 14),
-          scaledSize: new google.maps.Size(160, 28),
-        },
-        zIndex: 51,
-        clickable: false,
-      });
-      labels.push(label);
-    };
-
-    // Draw straight lines immediately, replace with road routes async
+    setRoadPaths({});
     for (const r of routes) {
-      const resolvedName = resolveRef(r.name);
-      const to = REF_COORDS[resolvedName];
-      const color = CONN_COLORS[r.type];
-      const from = { lat: site.lat, lng: site.lng };
-      const straight = [from, to];
-
-      addRoute(straight, color, resolvedName, to, r.type);
-
-      // Fetch road route and replace path
-      const idx = polys.length - 1;
-      fetchRoadPath(from, to).then((roadPath) => {
-        if (!cancelled && polys[idx]) polys[idx].setPath(roadPath);
+      fetchRoadPath({ lat: site.lat, lng: site.lng }, r.to).then((path) => {
+        if (!cancelled) setRoadPaths((prev) => ({ ...prev, [r.type]: path }));
       });
     }
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routes]);
 
-    return () => {
-      cancelled = true;
-      timers.forEach((t) => clearInterval(t));
-      polys.forEach((p)  => p.setMap(null));
-      labels.forEach((l) => l.setMap(null));
-    };
-  }, [map, site.id]);
+  const data = useMemo<GeoJSON.FeatureCollection>(() => ({
+    type: "FeatureCollection",
+    features: routes.map((r) => ({
+      type: "Feature",
+      properties: { color: CONN_COLORS[r.type] },
+      geometry: {
+        type: "LineString",
+        coordinates: roadPaths[r.type] ?? [[site.lng, site.lat], [r.to.lng, r.to.lat]],
+      },
+    })),
+  }), [routes, roadPaths, site.lat, site.lng]);
 
-  return null;
+  // Animate the dashes
+  useEffect(() => {
+    if (!map || !routes.length) return;
+    let frame = 0;
+    const timer = setInterval(() => {
+      frame = (frame + 1) % DASH_FRAMES.length;
+      if (map.getLayer("conn-routes")) map.setPaintProperty("conn-routes", "line-dasharray", DASH_FRAMES[frame]);
+    }, 60);
+    return () => clearInterval(timer);
+  }, [map, routes]);
+
+  // Endpoint labels
+  useEffect(() => {
+    if (!map) return;
+    const labels = routes.map((r) => {
+      const typeIcon = r.type === "airport" ? "✈" : r.type === "port" ? "⚓" : "🛂";
+      const shortName = r.resolved.length > 22 ? r.resolved.slice(0, 21) + "…" : r.resolved;
+      const el = document.createElement("div");
+      el.textContent = `${typeIcon} ${shortName}`;
+      Object.assign(el.style, {
+        background: CONN_COLORS[r.type],
+        color: "#fff",
+        font: "600 13px sans-serif",
+        padding: "5px 8px",
+        borderRadius: "4px",
+        whiteSpace: "nowrap",
+        pointerEvents: "none",
+        opacity: "0.92",
+      });
+      return new Marker({ element: el, anchor: "left" }).setLngLat([r.to.lng, r.to.lat]).addTo(map);
+    });
+    return () => { labels.forEach((l) => l.remove()); };
+  }, [map, routes]);
+
+  if (!routes.length) return null;
+  return (
+    <Source id="conn-routes" type="geojson" data={data}>
+      <MapLayer
+        id="conn-routes"
+        type="line"
+        layout={{ "line-join": "round" }}
+        paint={{ "line-color": ["get", "color"], "line-width": 3, "line-dasharray": [0, 4, 3] }}
+      />
+    </Source>
+  );
 }
 
 /* ── Province centroids (for news geo-tagging) ───────────── */
@@ -1127,7 +926,7 @@ function NewsMarkerLayer({
   news: NewsItem[];
   onProvinceClick: (province: string, items: NewsItem[]) => void;
 }) {
-  const map = useMap();
+  const map = useMl();
   const onClickRef = useRef(onProvinceClick);
   useEffect(() => { onClickRef.current = onProvinceClick; }, [onProvinceClick]);
 
@@ -1142,7 +941,7 @@ function NewsMarkerLayer({
       byProvince.get(prov)!.push(item);
     }
 
-    const markers: google.maps.Marker[] = [];
+    const markers: Marker[] = [];
 
     byProvince.forEach((items, province) => {
       const coords = PROVINCE_CENTROIDS[province] ?? PROVINCE_CENTROIDS["Nationwide"];
@@ -1158,22 +957,13 @@ function NewsMarkerLayer({
         ${count > 1 ? `<circle cx="25" cy="11" r="7" fill="#dc2626"/><text x="25" y="15" text-anchor="middle" font-size="8" fill="white" font-family="sans-serif" font-weight="bold">${count}</text>` : ""}
       </svg>`;
 
-      const marker = new google.maps.Marker({
-        position: { lat: coords[0], lng: coords[1] },
-        map,
-        title: `${province}: ${count} news item${count > 1 ? "s" : ""}`,
-        icon: {
-          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-          anchor: new google.maps.Point(18, 18),
-          scaledSize: new google.maps.Size(36, 36),
-        },
-        zIndex: 300,
-      });
-      marker.addListener("click", () => onClickRef.current(province, items));
-      markers.push(marker);
+      const el = svgMarkerEl(svg, 36, 36, `${province}: ${count} news item${count > 1 ? "s" : ""}`);
+      el.style.zIndex = "300";
+      el.addEventListener("click", () => onClickRef.current(province, items));
+      markers.push(new Marker({ element: el, anchor: "center" }).setLngLat([coords[1], coords[0]]).addTo(map));
     });
 
-    return () => { markers.forEach((m) => m.setMap(null)); };
+    return () => { markers.forEach((m) => m.remove()); };
   }, [map, news]);
 
   return null;
@@ -1186,13 +976,13 @@ function ProjectMarkerLayer({
   projects: TrackedProject[];
   onSelect: (p: TrackedProject) => void;
 }) {
-  const map = useMap();
+  const map = useMl();
   const onSelectRef = useRef(onSelect);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
 
   useEffect(() => {
     if (!map) return;
-    const markers: google.maps.Marker[] = [];
+    const markers: Marker[] = [];
 
     for (const p of projects) {
       if (p.lat == null || p.lng == null) continue;
@@ -1202,22 +992,13 @@ function ProjectMarkerLayer({
         <text x="16" y="20" text-anchor="middle" font-size="11" fill="white" font-family="sans-serif" font-weight="bold">P</text>
       </svg>`;
 
-      const marker = new google.maps.Marker({
-        position: { lat: p.lat, lng: p.lng },
-        map,
-        title: p.name,
-        icon: {
-          url: "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg),
-          anchor: new google.maps.Point(16, 16),
-          scaledSize: new google.maps.Size(32, 32),
-        },
-        zIndex: 250,
-      });
-      marker.addListener("click", () => onSelectRef.current(p));
-      markers.push(marker);
+      const el = svgMarkerEl(svg, 32, 32, p.name);
+      el.style.zIndex = "250";
+      el.addEventListener("click", () => onSelectRef.current(p));
+      markers.push(new Marker({ element: el, anchor: "center" }).setLngLat([p.lng, p.lat]).addTo(map));
     }
 
-    return () => { markers.forEach((m) => m.setMap(null)); };
+    return () => { markers.forEach((m) => m.remove()); };
   }, [map, projects]);
 
   return null;
@@ -1244,48 +1025,30 @@ function getRelatedResearch(site: MapSite, research: ResearchBrief[]): ResearchB
 }
 
 /* ── Preview map ────────────────────────────────────────── */
-const gKey = import.meta.env.VITE_GOOGLE_MAPS_KEY as string | undefined;
-
-function PreviewMapInner() {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!map) return;
-    const polys = CORRIDORS.map(
-      (c) =>
-        new google.maps.Polyline({
-          path:          c.waypoints.map(([lat, lng]) => ({ lat, lng })),
-          strokeColor:   c.color,
-          strokeWeight:  2,
-          strokeOpacity: 0.6,
-          map,
-        }),
-    );
-    return () => polys.forEach((p) => p.setMap(null));
-  }, [map]);
-
-  return null;
-}
+const CORRIDOR_GEOJSON: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: CORRIDORS.map((c) => ({
+    type: "Feature",
+    properties: { color: c.color },
+    geometry: { type: "LineString", coordinates: c.waypoints.map(([lat, lng]) => [lng, lat]) },
+  })),
+};
 
 function PreviewMapView() {
   return (
-    <APIProvider apiKey={gKey ?? ""} libraries={["places"]}>
-      <Map
-        style={{ height: "100%", width: "100%" }}
-        defaultCenter={{ lat: 12.5, lng: 104.9 }}
-        defaultZoom={7}
-        minZoom={6}
-        maxZoom={8}
-        mapTypeId="roadmap"
-        styles={DARK_STYLES}
-        disableDefaultUI
-        gestureHandling="none"
-        backgroundColor="#0d1117"
-        onClick={undefined}
-      >
-        <PreviewMapInner />
-      </Map>
-    </APIProvider>
+    <MapGL
+      initialViewState={{ longitude: 104.9, latitude: 12.5, zoom: toMl(7) }}
+      minZoom={toMl(6)}
+      maxZoom={toMl(8)}
+      mapStyle={STYLE_URLS.dark}
+      style={{ height: "100%", width: "100%", background: "#0d1117" }}
+      interactive={false}
+      attributionControl={{ compact: true }}
+    >
+      <Source id="preview-corridors" type="geojson" data={CORRIDOR_GEOJSON}>
+        <MapLayer id="preview-corridors" type="line" paint={{ "line-color": ["get", "color"], "line-width": 2, "line-opacity": 0.6 }} />
+      </Source>
+    </MapGL>
   );
 }
 
@@ -1349,7 +1112,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   const [pinMarker, setPinMarker] = useState<{ lat: number; lng: number } | null>(null);
   const [locSearching, setLocSearching] = useState(false);
   const [locError, setLocError]         = useState("");
-  const [suggestions, setSuggestions]   = useState<{ placeId: string; main: string; secondary: string; siteId?: string }[]>([]);
+  const [suggestions, setSuggestions]   = useState<{ placeId: string; main: string; secondary: string; siteId?: string; lat?: number; lng?: number }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const autocompleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchWrapRef = useRef<HTMLDivElement>(null);
@@ -1377,24 +1140,20 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     // different marker should.
     setLocCallout({ lat, lng, address: null, plusCode: null, loading: true });
     try {
-      const [geoRes, admin] = await Promise.all([
-        fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${gKey}`).then((r) => r.json()),
+      const [fullAddress, admin] = await Promise.all([
+        reverseGeocode(lat, lng),
         resolveAdminUnits(lat, lng),
       ]);
-      /* Prefer a named locality over Plus Code */
-      const named = geoRes.results?.find((x: { types: string[] }) =>
-        x.types?.some((t: string) => ["locality","sublocality","neighborhood","natural_feature","establishment","point_of_interest"].includes(t))
-      );
-      const plusCode = geoRes.plus_code?.global_code ?? null;
-      const address = named?.address_components?.[0]?.long_name ?? geoRes.results?.[0]?.formatted_address?.split(",")[0] ?? null;
-      setLocCallout({ lat, lng, address, plusCode, province: admin.province, district: admin.district, commune: admin.commune, loading: false });
+      const address = fullAddress?.split(",")[0]?.trim() || null;
+      setLocCallout({ lat, lng, address, plusCode: null, province: admin.province, district: admin.district, commune: admin.commune, loading: false });
     } catch {
       setLocCallout((c) => c ? { ...c, loading: false } : null);
     }
-  }, [gKey]);
+  }, []);
 
-  /* Fetch Places Autocomplete suggestions via Maps JS SDK (no CORS issue) */
-  const fetchSuggestions = useCallback((input: string) => {
+  /* Suggestions: platform sites first, then OpenStreetMap places (Photon) */
+  const suggestAbort = useRef<AbortController | null>(null);
+  const fetchSuggestions = useCallback(async (input: string) => {
     if (input.length < 2) { setSuggestions([]); return; }
 
     /* Platform data first — sites already tracked on the map (name, code, province) */
@@ -1407,41 +1166,28 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
       )
       .slice(0, 4)
       .map((s) => ({ placeId: `site:${s.id}`, main: s.name, secondary: s.province ?? "", siteId: s.id }));
+    setSuggestions(siteMatches);
 
-    if (!window.google?.maps?.places) { setSuggestions(siteMatches); return; }
-    const svc = new google.maps.places.AutocompleteService();
-    svc.getPlacePredictions(
-      { input, componentRestrictions: { country: "kh" } },
-      (predictions, status) => {
-        const placeMatches = status === google.maps.places.PlacesServiceStatus.OK && predictions
-          ? predictions.slice(0, 5 - siteMatches.length).map((p) => ({
-              placeId:   p.place_id,
-              main:      p.structured_formatting?.main_text ?? p.description,
-              secondary: p.structured_formatting?.secondary_text ?? "",
-            }))
-          : [];
-        setSuggestions([...siteMatches, ...placeMatches]);
-      }
-    );
+    suggestAbort.current?.abort();
+    const ctrl = new AbortController();
+    suggestAbort.current = ctrl;
+    const places = await searchPlaces(input, Math.max(1, 5 - siteMatches.length), ctrl.signal);
+    if (ctrl.signal.aborted) return;
+    setSuggestions([
+      ...siteMatches,
+      ...places.map((p, i) => ({ placeId: `osm:${p.id}:${i}`, main: p.label, secondary: p.secondary, lat: p.lat, lng: p.lng })),
+    ]);
   }, [sites]);
 
-  /* Pick a suggestion — resolve coords via Geocoder (no CORS, no fake div) */
-  const pickSuggestion = useCallback((s: { placeId: string; main: string; secondary: string }) => {
+  /* Pick a place suggestion — coordinates come with it, no second lookup */
+  const pickSuggestion = useCallback((s: { main: string; lat?: number; lng?: number }) => {
     setLocationInput(s.main);
     setSuggestions([]);
     setShowSuggestions(false);
-    setLocSearching(true);
-    if (!window.google?.maps) { setLocSearching(false); return; }
-    const geocoder = new google.maps.Geocoder();
-    geocoder.geocode({ placeId: s.placeId }, (results, status) => {
-      if (status === google.maps.GeocoderStatus.OK && results?.[0]?.geometry?.location) {
-        const loc = results[0].geometry.location;
-        setPinMarker({ lat: loc.lat(), lng: loc.lng() });
-        setPinTarget({ lat: loc.lat(), lng: loc.lng(), zoom: 15 });
-        showCalloutAt(loc.lat(), loc.lng());
-      }
-      setLocSearching(false);
-    });
+    if (s.lat == null || s.lng == null) return;
+    setPinMarker({ lat: s.lat, lng: s.lng });
+    setPinTarget({ lat: s.lat, lng: s.lng, zoom: 15 });
+    showCalloutAt(s.lat, s.lng);
   }, [showCalloutAt]);
 
   /* Dismiss suggestions on outside click */
@@ -1455,10 +1201,9 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleMapClick = useCallback((e: { detail: { latLng: { lat: number; lng: number } | null } }) => {
-    const ll = e.detail.latLng;
-    if (!ll) return;
-    showCalloutAt(ll.lat, ll.lng);
+  const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
+    if (isMarkerClick(e)) return;
+    showCalloutAt(e.lngLat.lat, e.lngLat.lng);
   }, [showCalloutAt]);
 
   const visible = useMemo(() => {
@@ -1476,9 +1221,6 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
   // isDark must be declared BEFORE the deckLayers useMemo (it's in the dep array + callback)
   const bm = BASEMAPS[basemap];
   const isDark = bm.isDark;
-
-  // Corridors layer is now a folder — no standalone corridor lines
-  const visibleCorridors: typeof CORRIDORS = [];
 
   // Road layers use light colors on dark basemap; flip to dark on light basemap
   const ROAD_LIGHT_MODE_COLORS: Partial<Record<AreaKey, string>> = {
@@ -1717,59 +1459,55 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
     >
       {/* Map canvas */}
       <div className="absolute inset-0">
-        <APIProvider apiKey={gKey ?? ""} libraries={["places"]}>
-          <Map
-            style={{ height: "100%", width: "100%" }}
-            defaultCenter={{ lat: 12.2, lng: 104.9 }}
-            defaultZoom={7}
-            minZoom={6}
-            maxZoom={17}
-            mapTypeId={bm.mapTypeId}
-            styles={bm.styles}
-            disableDefaultUI
-            scaleControl
-            gestureHandling="greedy"
-            backgroundColor="#0d1117"
-            onClick={handleMapClick}
-          >
-            <FlyController target={pinTarget} />
-            <ZoomLabelController />
-            <ZoomClassController wrapperRef={wrapperRef} />
+        <MapGL
+          initialViewState={{ longitude: 104.9, latitude: 12.2, zoom: toMl(7) }}
+          minZoom={toMl(6)}
+          maxZoom={toMl(17)}
+          mapStyle={bm.style}
+          style={{ height: "100%", width: "100%", background: "#0d1117" }}
+          dragRotate={false}
+          pitchWithRotate={false}
+          touchPitch={false}
+          attributionControl={{ compact: true }}
+          onClick={handleMapClick}
+        >
+          <ScaleControl position="bottom-right" />
+          <FlyController target={pinTarget} />
+          <ZoomLabelController />
+          <ZoomClassController wrapperRef={wrapperRef} />
 
-            {(floodVisible || bm.floodOverlay) && <FloodLayer />}
-            {bm.nicfiOverlay && <NicfiLayer onMeta={setNicfiMeta} />}
+          {(floodVisible || bm.floodOverlay) && <FloodLayer />}
+          {bm.nicfiOverlay && <NicfiLayer onMeta={setNicfiMeta} />}
 
-            {/* deck.gl overlay — only mount when layers exist to avoid blank WebGL canvas */}
-            {deckLayers.length > 0 && <DeckGlMapOverlay layers={deckLayers} onHover={setAreaHover} />}
+          {/* deck.gl overlay — only mount when layers exist to avoid blank WebGL canvas */}
+          {deckLayers.length > 0 && <DeckGlMapOverlay layers={deckLayers} onHover={setAreaHover} />}
 
-            <CorridorLayer corridors={visibleCorridors} />
-            <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
-            {selected && <ConnectivityRouteLayer site={selected} />}
-            {newsVisible && (
-              <NewsMarkerLayer
-                news={allNews}
-                onProvinceClick={(province, items) => {
-                  setNewsPanel({ province, items });
-                  setSelected(null);
-                  setSelectedProject(null);
-                  setLocCallout(null);
-                }}
-              />
-            )}
-            {projectsVisible && (
-              <ProjectMarkerLayer
-                projects={allProjects}
-                onSelect={(p) => {
-                  setSelectedProject(p);
-                  setSelected(null);
-                  setNewsPanel(null);
-                  setLocCallout(null);
-                }}
-              />
-            )}
-            {pinMarker && <PinMarkerLayer position={pinMarker} />}
-          </Map>
-        </APIProvider>
+          <SiteMarkerLayer sites={visible} selectedId={selected?.id ?? null} onSelect={handleSelect} onHover={setHoveredSite} />
+          {selected && <ConnectivityRouteLayer site={selected} />}
+          {newsVisible && (
+            <NewsMarkerLayer
+              news={allNews}
+              onProvinceClick={(province, items) => {
+                setNewsPanel({ province, items });
+                setSelected(null);
+                setSelectedProject(null);
+                setLocCallout(null);
+              }}
+            />
+          )}
+          {projectsVisible && (
+            <ProjectMarkerLayer
+              projects={allProjects}
+              onSelect={(p) => {
+                setSelectedProject(p);
+                setSelected(null);
+                setNewsPanel(null);
+                setLocCallout(null);
+              }}
+            />
+          )}
+          {pinMarker && <PinMarkerLayer position={pinMarker} />}
+        </MapGL>
       </div>
 
       {/* ── Pin-for-Advisor mode hint ──────────────────────── */}
@@ -1864,7 +1602,7 @@ export function IndustrialMap({ previewMode = false }: IndustrialMapProps) {
               </button>
             ))}
             <div className="px-4 py-1.5 flex justify-end border-t border-white/5">
-              <img src="https://maps.gstatic.com/mapfiles/api-3/images/powered-by-google-on-non-white.png" alt="Powered by Google" className="h-3.5 opacity-40" />
+              <span className="font-mono text-[9px] text-white/40">Search © OpenStreetMap · Photon</span>
             </div>
           </div>
         )}
