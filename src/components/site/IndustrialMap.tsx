@@ -2201,7 +2201,9 @@ function MapLegend({
   covActive: Set<string>;
   siteSelected: boolean;
 }) {
-  const [open, setOpen] = useState(true);
+  // Start collapsed on phones — the open panel covers a third of a small map
+  const [open, setOpen] = useState(() => typeof window === "undefined" || window.innerWidth >= 640);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
   const activeAreas = ALL_AREAS.filter((k) => areaActive.has(k));
   const activeCov = COVERAGE.filter((c) => covActive.has(c.key));
   const hasContent = floodOn || activeAreas.length > 0 || activeCov.length > 0;
@@ -2219,11 +2221,12 @@ function MapLegend({
   if (siteSelected) return null;
 
   return (
-    <div className="absolute bottom-4 left-4 z-[450] max-w-[210px]">
+    // bottom-9 clears the map's own attribution line along the bottom edge
+    <div className="absolute bottom-9 left-3 sm:left-4 z-[450] max-w-[200px]">
       {hasContent && open && (
-        <div className="bg-black/90 backdrop-blur border border-white/12 shadow-2xl mb-1.5">
+        <div className="bg-black/90 backdrop-blur border border-white/12 shadow-2xl">
           <div className="px-3 py-1.5 border-b border-white/8 flex items-center justify-between">
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">Legend</span>
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/60">Legend</span>
             <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white text-xs leading-none">✕</button>
           </div>
           <div className="p-2.5 space-y-2">
@@ -2264,22 +2267,41 @@ function MapLegend({
               </div>
             )}
           </div>
+          {/* Source credits, folded into the panel instead of a separate box */}
+          <p className="px-3 py-1.5 border-t border-white/8 font-mono text-[8px] leading-snug text-white/60">
+            Data: {sources.join(" · ")}
+          </p>
         </div>
       )}
-      {/* Always-on source attribution strip */}
-      <div className="flex items-center gap-1.5">
-        {hasContent && !open && (
-          <button
-            onClick={() => setOpen(true)}
-            className="bg-black/90 backdrop-blur border border-white/12 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/50 hover:text-white/80 transition"
-          >
-            Legend
-          </button>
-        )}
-        <div className="bg-black/90 backdrop-blur border border-white/12 px-2 py-1">
-          <span className="font-mono text-[9px] text-white/60 leading-tight">Data: {sources.join(" · ")}</span>
-        </div>
-      </div>
+
+      {/* Panel closed (or nothing to show): two small chips instead of the full text */}
+      {!(hasContent && open) && (
+        <>
+          {sourcesOpen && (
+            <p className="mb-1 bg-black/90 backdrop-blur border border-white/12 px-2 py-1 font-mono text-[8px] leading-snug text-white/60">
+              Data: {sources.join(" · ")}
+            </p>
+          )}
+          <div className="flex items-center gap-1">
+            {hasContent && (
+              <button
+                onClick={() => setOpen(true)}
+                className="bg-black/90 backdrop-blur border border-white/12 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/60 hover:text-white/90 transition"
+              >
+                Legend
+              </button>
+            )}
+            <button
+              onClick={() => setSourcesOpen((v) => !v)}
+              aria-expanded={sourcesOpen}
+              title={`Data: ${sources.join(" · ")}`}
+              className="bg-black/90 backdrop-blur border border-white/12 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-white/60 hover:text-white/90 transition"
+            >
+              Sources
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
