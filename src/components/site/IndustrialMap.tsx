@@ -2221,8 +2221,9 @@ function MapLegend({
   if (siteSelected) return null;
 
   return (
-    // bottom-9 clears the map's own attribution line along the bottom edge
-    <div className="absolute bottom-9 left-3 sm:left-4 z-[450] max-w-[200px]">
+    // Sit above the map's own attribution line: it wraps to two lines on
+    // phones (~44px tall), one line on wider screens
+    <div className="absolute bottom-14 sm:bottom-9 left-3 sm:left-4 z-[450] max-w-[200px]">
       {hasContent && open && (
         <div className="bg-black/90 backdrop-blur border border-white/12 shadow-2xl">
           <div className="px-3 py-1.5 border-b border-white/8 flex items-center justify-between">
